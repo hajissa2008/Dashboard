@@ -3,128 +3,152 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Activity Completion Dashboard</title>
+<title>Maseel - Activity Completion Dashboard</title>
+<script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #f0f2f5; color: #333; padding: 20px; }
-  .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+  .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 12px; }
   .header h1 { font-size: 24px; font-weight: 600; color: #1a1a2e; }
-  .header-controls { display: flex; gap: 12px; align-items: center; }
-  .header-controls select, .header-controls input { padding: 8px 12px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; }
-  .header-controls button { padding: 8px 16px; background: #1a73e8; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; }
-  .header-controls button:hover { background: #1557b0; }
-  .header-controls button.secondary { background: #fff; color: #333; border: 1px solid #ccc; }
-  .header-controls button.secondary:hover { background: #f5f5f5; }
+  .header-controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .header-controls button { padding: 8px 18px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500; }
+  .btn-primary { background: #1a73e8; color: #fff; }
+  .btn-primary:hover { background: #1557b0; }
+  .btn-secondary { background: #fff; color: #333; border: 1px solid #ccc !important; }
+  .btn-secondary:hover { background: #f5f5f5; }
+  .btn-danger { background: #d93025; color: #fff; }
+  .btn-danger:hover { background: #b71c1c; }
+  .btn-success { background: #1e7e34; color: #fff; }
+  .btn-success:hover { background: #15652b; }
+  .btn:disabled { opacity: .5; cursor: default; }
+  .user-info { font-size: 13px; color: #555; display: flex; align-items: center; gap: 8px; }
+  .user-info img { width: 28px; height: 28px; border-radius: 50%; }
   .error-banner { background: #fdecea; color: #b71c1c; padding: 12px 16px; border-radius: 8px; margin-bottom: 16px; display: none; font-size: 14px; }
   .error-banner.show { display: block; }
-  .kpi-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; margin-bottom: 24px; }
+  .success-banner { background: #e6f4ea; color: #1e7e34; padding: 12px 16px; border-radius: 8px; margin-bottom: 16px; display: none; font-size: 14px; }
+  .success-banner.show { display: block; }
+  .config-panel { background: #fff; border-radius: 12px; padding: 20px 24px; box-shadow: 0 1px 4px rgba(0,0,0,.08); margin-bottom: 24px; display: none; }
+  .config-panel h3 { font-size: 15px; color: #555; margin-bottom: 12px; }
+  .config-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
+  .config-field { display: flex; flex-direction: column; gap: 4px; }
+  .config-field label { font-size: 12px; color: #888; font-weight: 500; }
+  .config-field input, .config-field select { padding: 7px 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 13px; min-width: 220px; }
+  .config-field .hint { font-size: 11px; color: #aaa; margin-top: 2px; }
+  .config-actions { display: flex; gap: 8px; align-items: flex-end; }
+  .kpi-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; margin-bottom: 24px; }
   .kpi-card { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 1px 4px rgba(0,0,0,.08); border-left: 4px solid #1a73e8; }
-  .kpi-card .name { font-size: 14px; color: #666; margin-bottom: 4px; }
+  .kpi-card .name { font-size: 14px; color: #666; margin-bottom: 4px; font-weight: 500; }
   .kpi-card .value { font-size: 28px; font-weight: 700; }
   .kpi-card .sub { font-size: 12px; color: #888; margin-top: 4px; }
   .kpi-card .bar-container { margin-top: 10px; height: 6px; background: #e0e0e0; border-radius: 3px; overflow: hidden; }
   .kpi-card .bar-fill { height: 100%; border-radius: 3px; transition: width .6s ease; }
-  .summary-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+  .summary-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 16px; margin-bottom: 24px; }
   .summary-card { background: #fff; border-radius: 12px; padding: 16px 20px; box-shadow: 0 1px 4px rgba(0,0,0,.08); text-align: center; }
   .summary-card .label { font-size: 13px; color: #888; }
   .summary-card .number { font-size: 26px; font-weight: 700; margin-top: 4px; }
   .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
   .chart-box { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
   .chart-box h3 { font-size: 15px; color: #555; margin-bottom: 12px; }
-  .chart-box canvas { max-height: 260px; }
+  .chart-box canvas { max-height: 280px; }
   .table-container { background: #fff; border-radius: 12px; box-shadow: 0 1px 4px rgba(0,0,0,.08); overflow: hidden; }
-  .table-container .table-header { padding: 16px 20px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
-  .table-container .table-header h3 { font-size: 15px; color: #555; }
-  .table-container .table-header input { padding: 6px 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px; width: 200px; }
+  .table-header { padding: 16px 20px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+  .table-header h3 { font-size: 15px; color: #555; }
+  .table-header input { padding: 6px 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px; width: 200px; }
   table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  th { background: #fafafa; text-align: left; padding: 10px 16px; font-weight: 600; color: #555; border-bottom: 2px solid #eee; cursor: pointer; user-select: none; }
+  th { background: #fafafa; text-align: left; padding: 10px 16px; font-weight: 600; color: #555; border-bottom: 2px solid #eee; cursor: pointer; user-select: none; white-space: nowrap; }
   th:hover { color: #1a73e8; }
+  th .sort-arrow { font-size: 10px; margin-left: 4px; color: #aaa; }
   td { padding: 10px 16px; border-bottom: 1px solid #f0f0f0; }
   tr:hover { background: #f8f9ff; }
   .badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 500; }
-  .badge-completed { background: #e6f4ea; color: #1e7e34; }
+  .badge-done { background: #e6f4ea; color: #1e7e34; }
   .badge-in-progress { background: #fff3cd; color: #856404; }
+  .badge-for-inspection { background: #d1e4ff; color: #1a56db; }
+  .badge-partially-inspected { background: #fce4ec; color: #c62828; }
   .badge-not-started { background: #f1f1f1; color: #666; }
-  .badge-blocked { background: #fdecea; color: #b71c1c; }
-  .pagination { padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: #666; }
+  .pagination { padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: #666; flex-wrap: wrap; gap: 8px; }
   .pagination button { padding: 4px 12px; background: #fff; border: 1px solid #ccc; border-radius: 4px; cursor: pointer; }
   .pagination button:disabled { opacity: .4; cursor: default; }
   .loading { text-align: center; padding: 60px 20px; color: #888; }
   .loading .spinner { width: 36px; height: 36px; border: 3px solid #e0e0e0; border-top-color: #1a73e8; border-radius: 50%; animation: spin .8s linear infinite; margin: 0 auto 12px; }
   @keyframes spin { to { transform: rotate(360deg); } }
-  .config-panel { background: #fff; border-radius: 12px; padding: 20px 24px; box-shadow: 0 1px 4px rgba(0,0,0,.08); margin-bottom: 24px; }
-  .config-panel h3 { font-size: 15px; color: #555; margin-bottom: 12px; }
-  .config-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
-  .config-field { display: flex; flex-direction: column; gap: 4px; }
-  .config-field label { font-size: 12px; color: #888; font-weight: 500; }
-  .config-field input, .config-field select { padding: 7px 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 13px; min-width: 180px; }
-  .config-field .hint { font-size: 11px; color: #aaa; margin-top: 2px; }
-  @media (max-width: 900px) { .charts-row { grid-template-columns: 1fr; } .summary-row { grid-template-columns: repeat(2, 1fr); } }
+  .last-updated { font-size: 12px; color: #aaa; margin-bottom: 16px; text-align: right; }
+  .filter-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; align-items: center; }
+  .filter-row select, .filter-row input { padding: 6px 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 13px; }
+  @media (max-width: 900px) { .charts-row { grid-template-columns: 1fr; } }
+  @media (max-width: 600px) { .header { flex-direction: column; align-items: stretch; } .kpi-grid { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
 
 <div class="header">
-  <h1>Activity Completion Dashboard</h1>
+  <h1>&#9670; Maseel &mdash; Completion Dashboard</h1>
   <div class="header-controls">
-    <button class="secondary" onclick="showConfig()">Settings</button>
-    <button onclick="refreshData()">Refresh</button>
+    <span class="user-info" id="userInfo" style="display:none"><img id="userAvatar" src=""><span id="userName"></span></span>
+    <button class="btn-secondary" onclick="toggleConfig()" id="btnConfig">Settings</button>
+    <button class="btn-secondary" onclick="togglePhaseFilter()" id="btnPhase">Phases</button>
+    <button class="btn-primary" onclick="refreshData()" id="btnRefresh">&#8635; Refresh</button>
   </div>
 </div>
 
 <div class="error-banner" id="errorBanner"></div>
+<div class="success-banner" id="successBanner"></div>
 
-<div class="config-panel" id="configPanel" style="display:none">
-  <h3>GitHub Configuration</h3>
+<div class="config-panel" id="configPanel">
+  <h3>SharePoint Configuration</h3>
   <div class="config-row">
     <div class="config-field">
-      <label>Personal Access Token</label>
-      <input id="cfgToken" type="password" placeholder="ghp_...">
-      <div class="hint">Requires repo scope</div>
+      <label>SharePoint Site URL</label>
+      <input id="cfgSiteUrl" placeholder="https://tenant.sharepoint.com/sites/SiteName" value="https://sascontractingsa.sharepoint.com/sites/Alenshaiah">
+      <div class="hint">Full URL to your SharePoint site</div>
     </div>
     <div class="config-field">
-      <label>Repo Owner</label>
-      <input id="cfgOwner" placeholder="org-name or username">
+      <label>List Name</label>
+      <input id="cfgListName" placeholder="e.g. Maseel Activity" value="EMSL15P6 Update 3Jun2026 G 7">
+      <div class="hint">Exactly as it appears in SharePoint</div>
     </div>
-    <div class="config-field">
-      <label>Repo Name</label>
-      <input id="cfgRepo" placeholder="repo-name">
-    </div>
-    <div class="config-field">
-      <label>In Progress Labels</label>
-      <input id="cfgInProg" value="in progress,wip,ongoing" placeholder="comma-separated">
-      <div class="hint">Labels that mean "in progress"</div>
-    </div>
-    <div class="config-field">
-      <label>Completed Labels</label>
-      <input id="cfgCompleted" value="completed,done,finished" placeholder="comma-separated">
-      <div class="hint">Labels that mean "completed" (closed issues also count)</div>
-    </div>
-    <div class="config-field">
-      <label>Blocked Labels</label>
-      <input id="cfgBlocked" value="blocked,waiting" placeholder="comma-separated">
-      <div class="hint">Labels that mean "blocked"</div>
-    </div>
-    <div style="display:flex;gap:8px;align-items:flex-end">
-      <button onclick="saveConfig()">Apply &amp; Connect</button>
-      <button class="secondary" onclick="hideConfig()">Close</button>
+    <div class="config-actions">
+      <button class="btn-primary" onclick="saveConfig()">Save &amp; Connect</button>
+      <button class="btn-secondary" onclick="toggleConfig()">Close</button>
     </div>
   </div>
+  <div style="margin-top:12px;padding-top:12px;border-top:1px solid #eee">
+    <button class="btn-danger" onclick="logout()">Sign Out</button>
+    <span style="font-size:12px;color:#aaa;margin-left:12px">Signs you out of Microsoft 365 for this app</span>
+  </div>
+</div>
+
+<div class="filter-row" id="phaseFilterRow" style="display:none">
+  <label style="font-size:13px;font-weight:500;color:#555">Phase:</label>
+  <select id="phaseFilter" onchange="applyFilters()">
+    <option value="">All Phases</option>
+  </select>
+  <label style="font-size:13px;font-weight:500;color:#555;margin-left:8px">Status:</label>
+  <select id="statusFilter" onchange="applyFilters()">
+    <option value="">All Statuses</option>
+    <option value="Done">Done</option>
+    <option value="In Progress">In Progress</option>
+    <option value="For Inspection">For Inspection</option>
+    <option value="Partially Inspected">Partially Inspected</option>
+    <option value="Not Started">Not Started</option>
+  </select>
 </div>
 
 <div class="summary-row" id="summaryRow">
   <div class="summary-card"><div class="label">Total Activities</div><div class="number" id="statTotal">0</div></div>
-  <div class="summary-card"><div class="label">Completed</div><div class="number" id="statCompleted">0</div></div>
+  <div class="summary-card"><div class="label">Done</div><div class="number" id="statDone">0</div></div>
   <div class="summary-card"><div class="label">In Progress</div><div class="number" id="statInProgress">0</div></div>
+  <div class="summary-card"><div class="label">For Inspection</div><div class="number" id="statForInspection">0</div></div>
+  <div class="summary-card"><div class="label">Partially Inspected</div><div class="number" id="statPartiallyInspected">0</div></div>
   <div class="summary-card"><div class="label">Not Started</div><div class="number" id="statNotStarted">0</div></div>
 </div>
 
 <div class="kpi-grid" id="kpiGrid"></div>
 
 <div class="charts-row">
-  <div class="chart-box"><h3>Completion by Person</h3><canvas id="chartPerson"></canvas></div>
-  <div class="chart-box"><h3>Overall Status Distribution</h3><canvas id="chartStatus"></canvas></div>
+  <div class="chart-box"><h3>Activities by Person</h3><canvas id="chartPerson"></canvas></div>
+  <div class="chart-box"><h3>Status Distribution</h3><canvas id="chartStatus"></canvas></div>
 </div>
 
 <div class="table-container" id="tableContainer">
@@ -134,284 +158,383 @@
   </div>
   <div id="loadingIndicator" class="loading">
     <div class="spinner"></div>
-    <p id="loadingText">Loading data from GitHub...</p>
+    <p id="loadingText">Connecting to SharePoint...</p>
   </div>
   <div id="tableWrapper" style="display:none">
     <table>
       <thead><tr>
-        <th onclick="sortBy('title')">Activity</th>
-        <th onclick="sortBy('responsible')">Responsible</th>
-        <th onclick="sortBy('status')">Status</th>
-        <th onclick="sortBy('completed')">Done</th>
+        <th onclick="sortBy('ActivityID')">ID <span class="sort-arrow"></span></th>
+        <th onclick="sortBy('title')">Activity <span class="sort-arrow"></span></th>
+        <th onclick="sortBy('Phase')">Phase <span class="sort-arrow"></span></th>
+        <th onclick="sortBy('responsible')">Responsible <span class="sort-arrow"></span></th>
+        <th onclick="sortBy('status')">Status <span class="sort-arrow"></span></th>
+        <th onclick="sortBy('progress')">Progress <span class="sort-arrow"></span></th>
+        <th onclick="sortBy('Start')">Start <span class="sort-arrow"></span></th>
+        <th onclick="sortBy('Finish')">Finish <span class="sort-arrow"></span></th>
       </tr></thead>
       <tbody id="tableBody"></tbody>
     </table>
     <div class="pagination">
       <span id="pageInfo"></span>
-      <div><button id="prevBtn" onclick="prevPage()">Prev</button> <button id="nextBtn" onclick="nextPage()">Next</button></div>
+      <div><button id="prevBtn" onclick="prevPage()">&#9664; Prev</button> <button id="nextBtn" onclick="nextPage()">Next &#9654;</button></div>
     </div>
   </div>
 </div>
 
+<div class="last-updated" id="lastUpdated"></div>
+
 <script>
+const CLIENT_ID = '1b3e37d8-0ba9-44b2-9033-68e4d8068a87';
+const TENANT_ID = '684547e2-bb8b-450a-a3e1-3a6bc15e9471';
+const SCOPES = ['User.Read', 'openid', 'profile', 'https://graph.microsoft.com/Sites.ReadWrite.All'];
+
+const STATUS_ORDER = ['Done', 'For Inspection', 'Partially Inspected', 'In Progress', 'Not Started'];
+
+const pca = new msal.PublicClientApplication({
+  auth: { clientId: CLIENT_ID, authority: `https://login.microsoftonline.com/${TENANT_ID}` },
+  cache: { cacheLocation: 'localStorage' }
+});
+
 const STATE = {
   items: [],
   filtered: [],
-  sortKey: 'title',
+  personMap: {},
+  stats: { total: 0, done: 0, inProgress: 0, forInspection: 0, partiallyInspected: 0, notStarted: 0 },
+  phases: [],
+  sortKey: 'ActivityID',
   sortAsc: true,
   page: 0,
-  pageSize: 20,
+  pageSize: 25,
   kpiChart: null,
   statusChart: null,
+  user: null,
+  token: null,
+  lastRefresh: null,
 };
 
-const DEFAULTS = {
-  token: '',
-  owner: '',
-  repo: '',
-  inProgLabels: 'in progress,wip,ongoing',
-  completedLabels: 'completed,done,finished',
-  blockedLabels: 'blocked,waiting',
-};
+function escHtml(s) {
+  if (s == null) return '';
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+function fmtDate(d) {
+  if (!d) return '&mdash;';
+  try { return new Date(d).toLocaleDateString(); } catch { return d; }
+}
+
+function pct(a, b) {
+  return b ? Math.round(a / b * 100) : 0;
+}
+
+/* ── Config ──────────────────────────────── */
 
 function loadConfig() {
-  let cfg;
-  try { cfg = JSON.parse(localStorage.getItem('ghConfig')); } catch { cfg = {}; }
-  return { ...DEFAULTS, ...cfg };
+  try { return JSON.parse(localStorage.getItem('spConfig')) || {}; } catch { return {}; }
 }
-
-function saveConfig() {
+function saveConfigUI() {
   const cfg = {
-    token: document.getElementById('cfgToken').value.trim(),
-    owner: document.getElementById('cfgOwner').value.trim(),
-    repo: document.getElementById('cfgRepo').value.trim(),
-    inProgLabels: document.getElementById('cfgInProg').value.trim(),
-    completedLabels: document.getElementById('cfgCompleted').value.trim(),
-    blockedLabels: document.getElementById('cfgBlocked').value.trim(),
+    siteUrl: document.getElementById('cfgSiteUrl').value.trim(),
+    listName: document.getElementById('cfgListName').value.trim(),
   };
-  localStorage.setItem('ghConfig', JSON.stringify(cfg));
-  hideConfig();
+  localStorage.setItem('spConfig', JSON.stringify(cfg));
+  toggleConfig();
+  return cfg;
+}
+function saveConfig() {
+  saveConfigUI();
   refreshData();
 }
-
-function showConfig() {
+function toggleConfig() {
+  const p = document.getElementById('configPanel');
   const cfg = loadConfig();
-  document.getElementById('cfgToken').value = cfg.token;
-  document.getElementById('cfgOwner').value = cfg.owner;
-  document.getElementById('cfgRepo').value = cfg.repo;
-  document.getElementById('cfgInProg').value = cfg.inProgLabels;
-  document.getElementById('cfgCompleted').value = cfg.completedLabels;
-  document.getElementById('cfgBlocked').value = cfg.blockedLabels;
-  document.getElementById('configPanel').style.display = 'block';
-}
-
-function hideConfig() {
-  document.getElementById('configPanel').style.display = 'none';
-}
-
-function showError(msg) {
-  const el = document.getElementById('errorBanner');
-  el.textContent = msg;
-  el.classList.add('show');
-}
-
-function hideError() {
-  document.getElementById('errorBanner').classList.remove('show');
-}
-
-async function refreshData() {
-  hideError();
-  document.getElementById('loadingIndicator').style.display = 'block';
-  document.getElementById('loadingText').textContent = 'Loading data from GitHub...';
-  document.getElementById('tableWrapper').style.display = 'none';
-  try {
-    STATE.items = await fetchGitHubData();
-    applyFilters();
-    document.getElementById('loadingIndicator').style.display = 'none';
-    document.getElementById('tableWrapper').style.display = '';
-  } catch (err) {
-    document.getElementById('loadingIndicator').style.display = 'none';
-    showError('Failed to load data: ' + err.message);
-    STATE.items = [];
-    applyFilters();
+  if (p.style.display !== 'block') {
+    document.getElementById('cfgSiteUrl').value = cfg.siteUrl || 'https://sascontractingsa.sharepoint.com/sites/Alenshaiah';
+    document.getElementById('cfgListName').value = cfg.listName || 'EMSL15P6 Update 3Jun2026 G 7';
+    p.style.display = 'block';
+  } else {
+    p.style.display = 'none';
   }
 }
 
-async function fetchGitHubData() {
-  const cfg = loadConfig();
-  if (!cfg.token) throw new Error('Please configure your GitHub Personal Access Token in Settings');
-  if (!cfg.owner || !cfg.repo) throw new Error('Please configure repo owner and name in Settings');
-
-  const inProgSet = new Set(cfg.inProgLabels.split(',').map(s => s.trim().toLowerCase()));
-  const completedSet = new Set(cfg.completedLabels.split(',').map(s => s.trim().toLowerCase()));
-  const blockedSet = new Set(cfg.blockedLabels.split(',').map(s => s.trim().toLowerCase()));
-
-  let allIssues = [];
-  let page = 1;
-  let hasMore = true;
-
-  while (hasMore) {
-    const url = `https://api.github.com/repos/${encodeURIComponent(cfg.owner)}/${encodeURIComponent(cfg.repo)}/issues?state=all&per_page=100&page=${page}`;
-    const resp = await fetch(url, {
-      headers: {
-        'Accept': 'application/vnd.github+json',
-        'Authorization': 'Bearer ' + cfg.token,
-        'X-GitHub-Api-Version': '2022-11-28',
-      },
-    });
-    if (resp.status === 401) throw new Error('Invalid token. Check your PAT and ensure it has repo scope.');
-    if (resp.status === 404) throw new Error('Repo not found. Check owner/name.');
-    if (resp.status === 403) {
-      const body = await resp.json().catch(() => ({}));
-      throw new Error(body.message || 'Rate limited. Try again later.');
-    }
-    if (!resp.ok) throw new Error(`GitHub API: HTTP ${resp.status}`);
-    const issues = await resp.json();
-    if (!issues.length) break;
-    allIssues = allIssues.concat(issues);
-    const link = resp.headers.get('Link') || '';
-    hasMore = link.includes('rel="next"');
-    page++;
-  }
-
-  return allIssues
-    .filter(issue => !issue.pull_request)
-    .map(issue => {
-      const labelNames = (issue.labels || []).map(l => typeof l === 'string' ? l : l.name).filter(Boolean);
-      const lowerLabels = labelNames.map(n => n.toLowerCase());
-      let status;
-      if (issue.state === 'closed' || lowerLabels.some(l => completedSet.has(l))) {
-        status = 'Completed';
-      } else if (lowerLabels.some(l => blockedSet.has(l))) {
-        status = 'Blocked';
-      } else if (lowerLabels.some(l => inProgSet.has(l))) {
-        status = 'In Progress';
-      } else {
-        status = 'Not Started';
-      }
-
-      let responsible = 'Unassigned';
-      if (issue.assignees && issue.assignees.length > 0) {
-        responsible = issue.assignees.map(a => a.login).join(', ');
-      } else if (issue.assignee) {
-        responsible = issue.assignee.login;
-      }
-
-      return {
-        id: issue.number,
-        title: issue.title,
-        url: issue.html_url,
-        responsible,
-        status,
-        labels: labelNames,
-        createdAt: issue.created_at,
-        updatedAt: issue.updated_at,
-      };
-    });
+function togglePhaseFilter() {
+  const el = document.getElementById('phaseFilterRow');
+  el.style.display = el.style.display === 'none' ? '' : 'none';
 }
 
-function applyFilters() {
-  const raw = STATE.items;
-  const personMap = {};
-  let total = 0, completed = 0, inProgress = 0, notStarted = 0, blocked = 0;
+/* ── Auth ────────────────────────────────── */
 
-  raw.forEach(item => {
-    item.responsible.split(',').map(s => s.trim()).filter(Boolean).forEach(resp => {
-      if (!personMap[resp]) personMap[resp] = { name: resp, total: 0, completed: 0, inProgress: 0, notStarted: 0, blocked: 0 };
-      personMap[resp].total++;
-    });
-    total++;
-    if (item.status === 'Completed') { completed++; }
-    else if (item.status === 'In Progress') { inProgress++; }
-    else if (item.status === 'Blocked') { blocked++; }
-    else { notStarted++; }
+async function getToken() {
+  const accounts = pca.getAllAccounts();
+  if (accounts.length > 0) {
+    try {
+      const resp = await pca.acquireTokenSilent({ scopes: SCOPES, account: accounts[0] });
+      return resp.accessToken;
+    } catch { }
+  }
+  const resp = await pca.loginPopup({ scopes: SCOPES });
+  return resp.accessToken;
+}
+
+async function getUserInfo(token) {
+  const resp = await fetch('https://graph.microsoft.com/v1.0/me', {
+    headers: { Authorization: 'Bearer ' + token }
   });
+  return await resp.json();
+}
 
-  Object.keys(personMap).forEach(name => {
-    raw.forEach(item => {
-      const assignees = item.responsible.split(',').map(s => s.trim());
-      if (assignees.includes(name)) {
-        const p = personMap[name];
-        if (item.status === 'Completed') p.completed++;
-        else if (item.status === 'In Progress') p.inProgress++;
-        else if (item.status === 'Blocked') p.blocked++;
-        else p.notStarted++;
+function updateUserUI(user) {
+  if (user && user.displayName) {
+    document.getElementById('userInfo').style.display = 'flex';
+    document.getElementById('userAvatar').src = user.userPrincipalName
+      ? 'https://graph.microsoft.com/v1.0/users/' + user.id + '/photo/$value'
+      : '';
+    document.getElementById('userAvatar').onerror = function () { this.src = ''; this.style.display = 'none'; };
+    document.getElementById('userName').textContent = user.displayName;
+  }
+}
+
+async function ensureAuth() {
+  if (STATE.token) return STATE.token;
+  STATE.token = await getToken();
+  STATE.user = await getUserInfo(STATE.token);
+  updateUserUI(STATE.user);
+  return STATE.token;
+}
+
+function logout() {
+  const accounts = pca.getAllAccounts();
+  accounts.forEach(a => pca.logoutPopup({ account: a }));
+  STATE.token = null;
+  STATE.user = null;
+  document.getElementById('userInfo').style.display = 'none';
+  localStorage.removeItem('spListCtx');
+}
+
+/* ── Graph API: Fetch SharePoint Data ────── */
+
+async function getSiteInfo(token, siteUrl) {
+  const m = siteUrl.match(/https:\/\/([^\/]+)\/sites\/([^\/]+)/);
+  if (!m) throw new Error('Invalid SharePoint site URL. Expected format: https://tenant.sharepoint.com/sites/SiteName');
+  const host = m[1], path = m[2];
+  const url = `https://graph.microsoft.com/v1.0/sites/${host}:/sites/${path}`;
+  const resp = await fetch(url, { headers: { Authorization: 'Bearer ' + token } });
+  if (!resp.ok) {
+    const text = await resp.text().catch(() => '');
+    throw new Error(`Failed to find site: HTTP ${resp.status} ${text}`);
+  }
+  return await resp.json();
+}
+
+async function getListInfo(token, siteId, listName) {
+  const url = `https://graph.microsoft.com/v1.0/sites/${siteId}/lists?$search="${encodeURIComponent(listName)}"`;
+  const resp = await fetch(url, { headers: { Authorization: 'Bearer ' + token } });
+  if (!resp.ok) throw new Error(`Failed to search lists: HTTP ${resp.status}`);
+  const data = await resp.json();
+  const list = data.value.find(l => l.displayName === listName || l.name === listName);
+  if (!list) throw new Error(`List "${listName}" not found. Available lists: ${data.value.map(l => l.displayName).join(', ')}`);
+  return list;
+}
+
+async function fetchAllItems(token, siteId, listId) {
+  let items = [];
+  let nextLink = `https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${listId}/items?expand=fields&$top=5000`;
+  let page = 0;
+  while (nextLink) {
+    page++;
+    const resp = await fetch(nextLink, { headers: { Authorization: 'Bearer ' + token } });
+    if (!resp.ok) {
+      if (resp.status === 429) {
+        const retry = resp.headers.get('Retry-After');
+        const ms = (retry ? parseInt(retry) : 30) * 1000;
+        await new Promise(r => setTimeout(r, ms));
+        continue;
       }
+      throw new Error(`Failed to fetch items (page ${page}): HTTP ${resp.status}`);
+    }
+    const data = await resp.json();
+    items = items.concat(data.value);
+    nextLink = data['@odata.nextLink'] || null;
+  }
+  return items;
+}
+
+function normalizeItems(rawItems) {
+  return rawItems.map(item => {
+    const f = item.fields || {};
+    const statusRaw = (f.Status || f.st || '').trim();
+    let status = 'Not Started';
+    const s = statusRaw.toLowerCase();
+    if (s === 'done' || s === 'completed') status = 'Done';
+    else if (s === 'for inspection' || s === 'forinsp') status = 'For Inspection';
+    else if (s === 'partially inspected' || s === 'partinsp' || s === 'partial') status = 'Partially Inspected';
+    else if (s === 'in progress' || s === 'inprogress' || s === 'wip') status = 'In Progress';
+
+    const progressRaw = f.Progress || f.pc;
+    const progress = progressRaw != null ? parseFloat(progressRaw) : (status === 'Done' ? 100 : 0);
+
+    const respRaw = f.Responsible || f.resp || f.ResponsibleList || '';
+    const responsible = respRaw.toString().trim() || 'Unassigned';
+
+    const phase = f.Phase || f.ph || '';
+
+    return {
+      id: item.id,
+      ActivityID: f.ActivityID || f.id || '',
+      title: f.Title || '',
+      Phase: phase,
+      Discipline: f.Discipline || f.disc || '',
+      status,
+      progress,
+      responsible,
+      Start: f.Start || f.s || null,
+      Finish: f.Finish || f.f || null,
+      Duration: f.Duration || f.dur || null,
+      Float: f.Float || f.floatDays || null,
+      TotalQty: f.TotalQty || f.totalQty || null,
+      Unit: f.Unit || f.unit || null,
+      Notes: f.Notes || f.Notes || '',
+      _raw: f,
+    };
+  });
+}
+
+/* ── Data Processing ─────────────────────── */
+
+function processItems(items) {
+  const personMap = {};
+  const stats = { total: 0, done: 0, inProgress: 0, forInspection: 0, partiallyInspected: 0, notStarted: 0 };
+  const phases = new Set();
+
+  items.forEach(item => {
+    stats.total++;
+    if (item.status === 'Done') stats.done++;
+    else if (item.status === 'For Inspection') stats.forInspection++;
+    else if (item.status === 'Partially Inspected') stats.partiallyInspected++;
+    else if (item.status === 'In Progress') stats.inProgress++;
+    else stats.notStarted++;
+
+    if (item.Phase) phases.add(item.Phase);
+
+    const names = item.responsible.split(/[,/]/).map(s => s.trim()).filter(Boolean);
+    if (!names.length) names.push('Unassigned');
+
+    names.forEach(name => {
+      if (!personMap[name]) personMap[name] = { name, total: 0, done: 0, inProgress: 0, forInspection: 0, partiallyInspected: 0, notStarted: 0 };
+      personMap[name].total++;
+      if (item.status === 'Done') personMap[name].done++;
+      else if (item.status === 'For Inspection') personMap[name].forInspection++;
+      else if (item.status === 'Partially Inspected') personMap[name].partiallyInspected++;
+      else if (item.status === 'In Progress') personMap[name].inProgress++;
+      else personMap[name].notStarted++;
     });
   });
 
   STATE.personMap = personMap;
-  STATE.stats = { total, completed, inProgress, notStarted, blocked };
+  STATE.stats = stats;
+  STATE.phases = [...phases].sort();
+  STATE.items = items;
+  STATE.filtered = items.slice();
+}
 
-  STATE.filtered = raw.slice();
+/* ── Filters ─────────────────────────────── */
+
+function applyFilters() {
+  const phaseVal = document.getElementById('phaseFilter').value;
+  const statusVal = document.getElementById('statusFilter').value;
+
+  STATE.filtered = STATE.items.filter(item => {
+    if (phaseVal && item.Phase !== phaseVal) return false;
+    if (statusVal && item.status !== statusVal) return false;
+    return true;
+  });
+
   STATE.page = 0;
-  STATE.sortKey = 'title';
-  STATE.sortAsc = true;
-
+  renderTable();
   updateSummary();
   renderKPI();
   renderChart();
-  renderTable();
 }
 
+/* ── Summary Cards ───────────────────────── */
+
 function updateSummary() {
-  const s = STATE.stats || { total: 0, completed: 0, inProgress: 0, notStarted: 0, blocked: 0 };
+  const s = STATE.stats;
   document.getElementById('statTotal').textContent = s.total;
-  document.getElementById('statCompleted').textContent = s.completed;
+  document.getElementById('statDone').textContent = s.done;
   document.getElementById('statInProgress').textContent = s.inProgress;
+  document.getElementById('statForInspection').textContent = s.forInspection;
+  document.getElementById('statPartiallyInspected').textContent = s.partiallyInspected;
   document.getElementById('statNotStarted').textContent = s.notStarted;
 }
 
+/* ── KPI Cards per Person ────────────────── */
+
 function renderKPI() {
   const grid = document.getElementById('kpiGrid');
-  const map = STATE.personMap || {};
-  const entries = Object.values(map);
-  if (!entries.length) { grid.innerHTML = '<p style="color:#888;grid-column:1/-1">No data to display.</p>'; return; }
+  const entries = Object.values(STATE.personMap).filter(p => p.total > 0);
+  if (!entries.length) {
+    grid.innerHTML = '<p style="color:#888;grid-column:1/-1;padding:20px;text-align:center">No matching data.</p>';
+    return;
+  }
 
   entries.sort((a, b) => b.total - a.total);
 
   grid.innerHTML = entries.map(p => {
-    const pct = p.total ? Math.round(p.completed / p.total * 100) : 0;
-    const color = pct >= 80 ? '#1e7e34' : pct >= 50 ? '#e67e22' : '#b71c1c';
+    const pctDone = Math.round(p.done / p.total * 100);
+    const color = pctDone >= 80 ? '#1e7e34' : pctDone >= 50 ? '#e67e22' : '#b71c1c';
+    const barW = Math.max(2, pctDone);
     return `<div class="kpi-card" style="border-left-color:${color}">
-      <div class="name">@${escHtml(p.name)}</div>
-      <div class="value">${p.completed} / ${p.total}</div>
-      <div class="sub">${pct}% &middot; ${p.inProgress} in prog &middot; ${p.blocked} blocked &middot; ${p.notStarted} not started</div>
-      <div class="bar-container"><div class="bar-fill" style="width:${pct}%;background:${color}"></div></div>
+      <div class="name">${escHtml(p.name)}</div>
+      <div class="value">${p.done} / ${p.total}</div>
+      <div class="sub">${pctDone}% done &middot;
+        ${p.forInspection ? p.forInspection + ' for insp &middot;' : ''}
+        ${p.partiallyInspected ? p.partiallyInspected + ' partial &middot;' : ''}
+        ${p.inProgress} in prog &middot;
+        ${p.notStarted} not started
+      </div>
+      <div class="bar-container"><div class="bar-fill" style="width:${barW}%;background:${color}"></div></div>
     </div>`;
   }).join('');
 }
 
-function renderChart() {
-  const map = STATE.personMap || {};
-  const stats = STATE.stats || {};
-  const entries = Object.values(map);
+/* ── Charts ──────────────────────────────── */
 
-  const labels = entries.map(p => '@' + p.name);
-  const completedData = entries.map(p => p.completed);
-  const inProgData = entries.map(p => p.inProgress);
-  const notStartedData = entries.map(p => p.notStarted);
-  const blockedData = entries.map(p => p.blocked);
+function renderChart() {
+  const entries = Object.values(STATE.personMap).filter(p => p.total > 0).sort((a, b) => b.total - a.total);
+  const stats = STATE.stats;
 
   const ctx1 = document.getElementById('chartPerson').getContext('2d');
   if (STATE.kpiChart) STATE.kpiChart.destroy();
+
+  const personLabels = entries.map(p => p.name);
+  const doneData = entries.map(p => p.done);
+  const forInspData = entries.map(p => p.forInspection);
+  const partInspData = entries.map(p => p.partiallyInspected);
+  const inProgData = entries.map(p => p.inProgress);
+  const nsData = entries.map(p => p.notStarted);
+
   STATE.kpiChart = new Chart(ctx1, {
     type: 'bar',
     data: {
-      labels,
+      labels: personLabels,
       datasets: [
-        { label: 'Completed', data: completedData, backgroundColor: '#2e7d32', borderRadius: 3 },
-        { label: 'In Progress', data: inProgData, backgroundColor: '#f9a825', borderRadius: 3 },
-        { label: 'Blocked', data: blockedData, backgroundColor: '#e53935', borderRadius: 3 },
-        { label: 'Not Started', data: notStartedData, backgroundColor: '#bdbdbd', borderRadius: 3 },
+        { label: 'Done', data: doneData, backgroundColor: '#2e7d32', borderRadius: 2 },
+        { label: 'For Inspection', data: forInspData, backgroundColor: '#1a56db', borderRadius: 2 },
+        { label: 'Partially Inspected', data: partInspData, backgroundColor: '#c62828', borderRadius: 2 },
+        { label: 'In Progress', data: inProgData, backgroundColor: '#f9a825', borderRadius: 2 },
+        { label: 'Not Started', data: nsData, backgroundColor: '#bdbdbd', borderRadius: 2 },
       ],
     },
     options: {
       responsive: true,
       maintainAspectRatio: true,
-      plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, padding: 12 } } },
+      plugins: {
+        legend: { position: 'bottom', labels: { boxWidth: 12, padding: 12 } },
+      },
       scales: {
-        x: { grid: { display: false } },
+        x: { grid: { display: false }, ticks: { maxRotation: 45 } },
         y: { beginAtZero: true, ticks: { stepSize: 1 } },
       },
     },
@@ -419,15 +542,16 @@ function renderChart() {
 
   const ctx2 = document.getElementById('chartStatus').getContext('2d');
   if (STATE.statusChart) STATE.statusChart.destroy();
+
+  const statusLabels = ['Done', 'For Inspection', 'Partially Inspected', 'In Progress', 'Not Started'];
+  const statusData = [stats.done, stats.forInspection, stats.partiallyInspected, stats.inProgress, stats.notStarted];
+  const statusColors = ['#2e7d32', '#1a56db', '#c62828', '#f9a825', '#bdbdbd'];
+
   STATE.statusChart = new Chart(ctx2, {
     type: 'doughnut',
     data: {
-      labels: ['Completed', 'In Progress', 'Blocked', 'Not Started'],
-      datasets: [{
-        data: [stats.completed, stats.inProgress, stats.blocked, stats.notStarted],
-        backgroundColor: ['#2e7d32', '#f9a825', '#e53935', '#bdbdbd'],
-        borderWidth: 0,
-      }],
+      labels: statusLabels,
+      datasets: [{ data: statusData, backgroundColor: statusColors, borderWidth: 0 }],
     },
     options: {
       responsive: true,
@@ -439,24 +563,44 @@ function renderChart() {
   });
 }
 
+/* ── Table ───────────────────────────────── */
+
 function renderTable() {
   const filter = (document.getElementById('tableFilter').value || '').toLowerCase();
   let items = STATE.filtered;
+
   if (filter) {
     items = items.filter(it =>
+      (it.ActivityID || '').toLowerCase().includes(filter) ||
       (it.title || '').toLowerCase().includes(filter) ||
       (it.responsible || '').toLowerCase().includes(filter) ||
       (it.status || '').toLowerCase().includes(filter) ||
-      (it.labels || []).some(l => l.toLowerCase().includes(filter))
+      (it.Phase || '').toLowerCase().includes(filter)
     );
   }
 
   const key = STATE.sortKey;
   const asc = STATE.sortAsc;
   items = items.slice().sort((a, b) => {
-    let va = (a[key] || '').toString().toLowerCase();
-    let vb = (b[key] || '').toString().toLowerCase();
-    if (key === 'completed') { va = a.status === 'Completed'; vb = b.status === 'Completed'; }
+    let va = (a[key] || '');
+    let vb = (b[key] || '');
+    if (key === 'ActivityID' || key === 'id') {
+      const na = parseInt(va); const nb = parseInt(vb);
+      if (!isNaN(na) && !isNaN(nb)) return asc ? na - nb : nb - na;
+    }
+    if (key === 'progress') {
+      return asc ? (va - vb) : (vb - va);
+    }
+    if (key === 'Start' || key === 'Finish') {
+      const da = va ? new Date(va) : null;
+      const db = vb ? new Date(vb) : null;
+      if (da && db) return asc ? da - db : db - da;
+      if (da) return asc ? -1 : 1;
+      if (db) return asc ? 1 : -1;
+      return 0;
+    }
+    va = va.toString().toLowerCase();
+    vb = vb.toString().toLowerCase();
     return va < vb ? (asc ? -1 : 1) : va > vb ? (asc ? 1 : -1) : 0;
   });
 
@@ -464,22 +608,33 @@ function renderTable() {
   const pageItems = items.slice(start, start + STATE.pageSize);
   const totalPages = Math.ceil(items.length / STATE.pageSize) || 1;
 
+  if (STATE.page >= totalPages) STATE.page = totalPages - 1;
+
   document.getElementById('pageInfo').textContent = `Page ${STATE.page + 1} of ${totalPages} (${items.length} items)`;
-  document.getElementById('prevBtn').disabled = STATE.page === 0;
+  document.getElementById('prevBtn').disabled = STATE.page <= 0;
   document.getElementById('nextBtn').disabled = STATE.page >= totalPages - 1;
 
   const tbody = document.getElementById('tableBody');
   tbody.innerHTML = pageItems.map(item => {
-    const badgeClass = item.status === 'Completed' ? 'badge-completed' :
-      item.status === 'In Progress' ? 'badge-in-progress' :
-      item.status === 'Blocked' ? 'badge-blocked' : 'badge-not-started';
+    const bc = item.status === 'Done' ? 'badge-done' :
+      item.status === 'For Inspection' ? 'badge-for-inspection' :
+      item.status === 'Partially Inspected' ? 'badge-partially-inspected' :
+      item.status === 'In Progress' ? 'badge-in-progress' : 'badge-not-started';
     return `<tr>
-      <td><a href="${escHtml(item.url)}" target="_blank" style="color:#1a73e8;text-decoration:none">${escHtml(item.title)}</a></td>
+      <td style="font-size:12px;color:#888;font-family:monospace">${escHtml(item.ActivityID)}</td>
+      <td style="font-weight:500">${escHtml(item.title)}</td>
+      <td>${escHtml(item.Phase)}</td>
       <td>${escHtml(item.responsible)}</td>
-      <td><span class="badge ${badgeClass}">${escHtml(item.status)}</span></td>
-      <td>${item.status === 'Completed' ? '&#10003;' : '&#8212;'}</td>
+      <td><span class="badge ${bc}">${escHtml(item.status)}</span></td>
+      <td>${item.progress != null ? item.progress + '%' : '&mdash;'}</td>
+      <td style="font-size:12px">${fmtDate(item.Start)}</td>
+      <td style="font-size:12px">${fmtDate(item.Finish)}</td>
     </tr>`;
   }).join('');
+
+  document.querySelectorAll('.table-container th .sort-arrow').forEach(el => el.textContent = '');
+  const activeTh = document.querySelectorAll(`.table-container th`)[['ActivityID', 'title', 'Phase', 'responsible', 'status', 'progress', 'Start', 'Finish'].indexOf(key)];
+  if (activeTh) activeTh.querySelector('.sort-arrow').textContent = asc ? ' \u25B2' : ' \u25BC';
 }
 
 function sortBy(key) {
@@ -491,23 +646,93 @@ function sortBy(key) {
 function prevPage() { if (STATE.page > 0) { STATE.page--; renderTable(); } }
 function nextPage() { STATE.page++; renderTable(); }
 
-function escHtml(s) {
-  if (s == null) return '';
-  const d = document.createElement('div');
-  d.textContent = s;
-  return d.innerHTML;
+/* ── Error / Success Banners ─────────────── */
+
+function showError(msg, permanent) {
+  const el = document.getElementById('errorBanner');
+  el.textContent = msg;
+  el.classList.add('show');
+  if (!permanent) setTimeout(() => el.classList.remove('show'), 8000);
 }
+function hideError() { document.getElementById('errorBanner').classList.remove('show'); }
+function showSuccess(msg) {
+  const el = document.getElementById('successBanner');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 5000);
+}
+
+/* ── Main Refresh ────────────────────────── */
+
+async function refreshData() {
+  hideError();
+  const loading = document.getElementById('loadingIndicator');
+  const wrapper = document.getElementById('tableWrapper');
+  const loadingText = document.getElementById('loadingText');
+
+  loading.style.display = 'block';
+  wrapper.style.display = 'none';
+  loadingText.textContent = 'Connecting to Microsoft 365...';
+
+  const cfg = loadConfig();
+  if (!cfg.siteUrl || !cfg.listName) {
+    loading.style.display = 'none';
+    showError('Please configure your SharePoint site URL and list name in Settings.');
+    toggleConfig();
+    return;
+  }
+
+  try {
+    loadingText.textContent = 'Signing in...';
+    const token = await ensureAuth();
+
+    loadingText.textContent = 'Finding SharePoint site...';
+    const site = await getSiteInfo(token, cfg.siteUrl);
+
+    loadingText.textContent = 'Finding list...';
+    const list = await getListInfo(token, site.id, cfg.listName);
+
+    loadingText.textContent = `Fetching items from "${list.displayName}"...`;
+    const rawItems = await fetchAllItems(token, site.id, list.id);
+
+    loadingText.textContent = 'Processing data...';
+    const items = normalizeItems(rawItems);
+    processItems(items);
+
+    const phaseSel = document.getElementById('phaseFilter');
+    phaseSel.innerHTML = '<option value="">All Phases</option>' +
+      STATE.phases.map(p => `<option value="${escHtml(p)}">${escHtml(p)}</option>`).join('');
+
+    STATE.lastRefresh = new Date();
+    document.getElementById('lastUpdated').textContent = 'Last updated: ' + STATE.lastRefresh.toLocaleString();
+
+    loading.style.display = 'none';
+    wrapper.style.display = '';
+
+    applyFilters();
+    showSuccess(`Loaded ${items.length} activities from ${list.displayName}`);
+  } catch (err) {
+    loading.style.display = 'none';
+    showError(err.message, true);
+    STATE.items = [];
+    STATE.filtered = [];
+    applyFilters();
+  }
+}
+
+/* ── Init ────────────────────────────────── */
 
 (async function init() {
   const cfg = loadConfig();
-  if (cfg.token && cfg.owner && cfg.repo) {
+  if (cfg.siteUrl && cfg.listName && pca.getAllAccounts().length > 0) {
     await refreshData();
   } else {
-    document.getElementById('loadingText').innerHTML =
-      'Configure your GitHub repo in <a href="#" onclick="showConfig();return false" style="color:#1a73e8">Settings</a>, then click Refresh.';
+    const loadingText = document.getElementById('loadingText');
+    loadingText.innerHTML = 'Configure your SharePoint connection in <a href="#" onclick="toggleConfig();return false" style="color:#1a73e8">Settings</a>, then click Refresh.';
+    document.getElementById('loadingIndicator').querySelector('.spinner').style.display = 'none';
     document.getElementById('loadingIndicator').innerHTML =
-      '<p style="margin-top:20px;color:#888">No GitHub configuration found.</p>' +
-      '<p style="margin-top:12px"><button onclick="showConfig()" style="padding:10px 28px;background:#1a73e8;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:15px">Open Settings</button></p>';
+      '<p style="margin-top:20px;color:#888">No SharePoint configuration found. Sign in with your Microsoft 365 account to connect.</p>' +
+      '<p style="margin-top:12px"><button class="btn-primary" onclick="refreshData()" style="font-size:15px;padding:10px 28px">Sign In &amp; Connect</button></p>';
   }
 })();
 </script>
