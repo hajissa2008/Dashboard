@@ -3,544 +3,536 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Maseel - Activity Completion Dashboard</title>
+<title>Maseel - Executive Dashboard</title>
 <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #f0f2f5; color: #333; padding: 20px; }
-  .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 12px; }
-  .header h1 { font-size: 24px; font-weight: 600; color: #1a1a2e; }
-  .header-controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-  .header-controls button { padding: 8px 18px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500; }
-  .btn-primary { background: #1a73e8; color: #fff; }
-  .btn-primary:hover { background: #1557b0; }
-  .btn-secondary { background: #fff; color: #333; border: 1px solid #ccc !important; }
-  .btn-secondary:hover { background: #f5f5f5; }
-  .btn-danger { background: #d93025; color: #fff; }
-  .btn-danger:hover { background: #b71c1c; }
-  .btn-success { background: #1e7e34; color: #fff; }
-  .btn-success:hover { background: #15652b; }
-  .user-info { font-size: 13px; color: #555; display: flex; align-items: center; gap: 8px; }
-  .user-info img { width: 28px; height: 28px; border-radius: 50%; }
-  .error-banner { background: #fdecea; color: #b71c1c; padding: 12px 16px; border-radius: 8px; margin-bottom: 16px; display: none; font-size: 14px; }
+  body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: #0f1219; color: #e0e0e0; min-height: 100vh; }
+  ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: #1a1f2e; } ::-webkit-scrollbar-thumb { background: #3a4166; border-radius: 3px; }
+
+  /* Header */
+  .top-bar { background: linear-gradient(135deg, #1a1f2e 0%, #0d1b2a 100%); border-bottom: 1px solid #2a2f4a; padding: 16px 32px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+  .top-bar h1 { font-size: 22px; font-weight: 700; color: #fff; letter-spacing: .5px; }
+  .top-bar h1 span { color: #4fc3f7; }
+  .top-controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .top-controls button { padding: 7px 16px; border: none; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 600; transition: all .2s; }
+  .btn-ghost { background: rgba(255,255,255,.08); color: #b0b8d1; } .btn-ghost:hover { background: rgba(255,255,255,.15); color: #fff; }
+  .btn-accent { background: #4fc3f7; color: #0d1b2a; } .btn-accent:hover { background: #39b0e4; }
+  .btn-danger { background: #ef5350; color: #fff; } .btn-danger:hover { background: #d32f2f; }
+  .user-info { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #b0b8d1; }
+
+  /* Content */
+  .content { max-width: 1440px; margin: 0 auto; padding: 24px 32px; }
+
+  /* KPI Row */
+  .kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; margin-bottom: 24px; }
+  .kpi-tile { background: linear-gradient(135deg, #1a1f2e, #1e2538); border-radius: 14px; padding: 20px 24px; border: 1px solid #2a2f4a; position: relative; overflow: hidden; }
+  .kpi-tile::after { content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%; border-radius: 14px 0 0 14px; }
+  .kpi-tile .label { font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #6b7294; margin-bottom: 6px; }
+  .kpi-tile .number { font-size: 32px; font-weight: 700; line-height: 1.1; }
+  .kpi-tile .sub { font-size: 12px; color: #6b7294; margin-top: 4px; }
+  .kpi-tile.total::after { background: #4fc3f7; } .kpi-tile.total .number { color: #4fc3f7; }
+  .kpi-tile.done::after { background: #66bb6a; } .kpi-tile.done .number { color: #66bb6a; }
+  .kpi-tile.overdue::after { background: #ef5350; } .kpi-tile.overdue .number { color: #ef5350; }
+  .kpi-tile.progress::after { background: #ffa726; } .kpi-tile.progress .number { color: #ffa726; }
+  .kpi-tile.inprog::after { background: #42a5f5; } .kpi-tile.inprog .number { color: #42a5f5; }
+
+  /* Section headers */
+  .section-title { font-size: 16px; font-weight: 600; color: #b0b8d1; margin-bottom: 16px; display: flex; align-items: center; gap: 10px; text-transform: uppercase; letter-spacing: 1px; }
+  .section-title .count { font-size: 13px; color: #6b7294; font-weight: 400; }
+
+  /* Phase Grid */
+  .phase-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; margin-bottom: 32px; }
+  .phase-card { background: linear-gradient(135deg, #1a1f2e, #1e2538); border-radius: 14px; padding: 20px; border: 1px solid #2a2f4a; transition: transform .2s, border-color .2s; }
+  .phase-card:hover { transform: translateY(-2px); border-color: #3a4166; }
+  .phase-card.top { border-color: #66bb6a; } .phase-card.warn { border-color: #ffa726; } .phase-card.critical { border-color: #ef5350; }
+  .phase-card .phase-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .phase-card .phase-name { font-size: 18px; font-weight: 700; color: #fff; }
+  .phase-card .phase-status { font-size: 11px; padding: 3px 10px; border-radius: 20px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; }
+  .phase-card .phase-status.ok { background: rgba(102,187,106,.15); color: #66bb6a; }
+  .phase-card .phase-status.atrisk { background: rgba(255,167,38,.15); color: #ffa726; }
+  .phase-card .phase-status.critical { background: rgba(239,83,80,.15); color: #ef5350; }
+  .phase-card .phase-stats { display: flex; gap: 16px; margin-bottom: 12px; }
+  .phase-card .phase-stat { text-align: center; flex: 1; padding: 8px; background: rgba(0,0,0,.2); border-radius: 8px; }
+  .phase-card .phase-stat .val { font-size: 18px; font-weight: 700; color: #fff; }
+  .phase-card .phase-stat .lbl { font-size: 10px; color: #6b7294; text-transform: uppercase; letter-spacing: .5px; }
+  .phase-card .phase-stat .val.green { color: #66bb6a; } .phase-card .phase-stat .val.red { color: #ef5350; } .phase-card .phase-stat .val.blue { color: #42a5f5; }
+  .phase-bar { height: 6px; background: #252b42; border-radius: 3px; overflow: hidden; margin-top: 4px; }
+  .phase-bar-fill { height: 100%; border-radius: 3px; transition: width .8s ease; }
+
+  /* Overdue Section */
+  .overdue-section { background: linear-gradient(135deg, #1e1a2e, #2a1a2e); border: 1px solid #4a2a3a; border-radius: 14px; padding: 20px; margin-bottom: 32px; }
+  .overdue-section .section-title { color: #ef5350; }
+  .overdue-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 12px; }
+  .overdue-item { background: rgba(239,83,80,.08); border-left: 3px solid #ef5350; border-radius: 8px; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; gap: 12px; transition: background .2s; }
+  .overdue-item:hover { background: rgba(239,83,80,.15); }
+  .overdue-item .oi-left { flex: 1; min-width: 0; }
+  .overdue-item .oi-id { font-size: 11px; color: #ef5350; font-family: monospace; }
+  .overdue-item .oi-title { font-size: 14px; font-weight: 600; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .overdue-item .oi-meta { font-size: 12px; color: #8b7294; margin-top: 2px; }
+  .overdue-item .oi-right { text-align: right; flex-shrink: 0; }
+  .overdue-item .oi-days { font-size: 22px; font-weight: 700; color: #ef5350; line-height: 1; }
+  .overdue-item .oi-days-label { font-size: 10px; text-transform: uppercase; color: #8b7294; letter-spacing: .5px; }
+  .overdue-item .oi-status { font-size: 11px; padding: 2px 8px; border-radius: 10px; font-weight: 600; }
+
+  /* Bottom row */
+  .bottom-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+  .chart-card { background: linear-gradient(135deg, #1a1f2e, #1e2538); border-radius: 14px; padding: 20px; border: 1px solid #2a2f4a; }
+  .chart-card h3 { font-size: 13px; color: #6b7294; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px; }
+  .chart-card canvas { max-height: 280px; }
+
+  /* Person KPI */
+  .person-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; margin-bottom: 24px; }
+  .person-card { background: linear-gradient(135deg, #1a1f2e, #1e2538); border-radius: 10px; padding: 14px 16px; border: 1px solid #2a2f4a; border-left: 3px solid #3a4166; }
+  .person-card .pc-name { font-size: 13px; color: #b0b8d1; margin-bottom: 2px; }
+  .person-card .pc-value { font-size: 20px; font-weight: 700; color: #fff; }
+  .person-card .pc-sub { font-size: 11px; color: #6b7294; margin-top: 2px; }
+  .person-card .pc-overdue { color: #ef5350; font-weight: 600; }
+
+  /* Config Panel (modal) */
+  .config-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.7); z-index: 1000; align-items: center; justify-content: center; }
+  .config-overlay.show { display: flex; }
+  .config-modal { background: #1a1f2e; border: 1px solid #2a2f4a; border-radius: 16px; padding: 32px; max-width: 480px; width: 90%; }
+  .config-modal h3 { font-size: 18px; color: #fff; margin-bottom: 16px; }
+  .config-field { margin-bottom: 14px; }
+  .config-field label { font-size: 12px; color: #6b7294; text-transform: uppercase; letter-spacing: .5px; display: block; margin-bottom: 4px; }
+  .config-field input { width: 100%; padding: 10px 12px; background: #0f1219; border: 1px solid #2a2f4a; border-radius: 8px; color: #e0e0e0; font-size: 14px; outline: none; }
+  .config-field input:focus { border-color: #4fc3f7; }
+  .config-field .hint { font-size: 11px; color: #4a5274; margin-top: 4px; }
+  .config-actions { display: flex; gap: 8px; margin-top: 20px; }
+  .config-actions button { padding: 9px 20px; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600; }
+
+  .error-banner { background: rgba(239,83,80,.15); color: #ef5350; border: 1px solid rgba(239,83,80,.3); padding: 12px 16px; border-radius: 8px; margin-bottom: 16px; display: none; font-size: 14px; }
   .error-banner.show { display: block; }
-  .success-banner { background: #e6f4ea; color: #1e7e34; padding: 12px 16px; border-radius: 8px; margin-bottom: 16px; display: none; font-size: 14px; }
+  .success-banner { background: rgba(102,187,106,.15); color: #66bb6a; border: 1px solid rgba(102,187,106,.3); padding: 12px 16px; border-radius: 8px; margin-bottom: 16px; display: none; font-size: 14px; }
   .success-banner.show { display: block; }
-  .config-panel { background: #fff; border-radius: 12px; padding: 20px 24px; box-shadow: 0 1px 4px rgba(0,0,0,.08); margin-bottom: 24px; display: none; }
-  .config-panel h3 { font-size: 15px; color: #555; margin-bottom: 12px; }
-  .config-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
-  .config-field { display: flex; flex-direction: column; gap: 4px; }
-  .config-field label { font-size: 12px; color: #888; font-weight: 500; }
-  .config-field input { padding: 7px 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 13px; min-width: 220px; }
-  .config-field .hint { font-size: 11px; color: #aaa; margin-top: 2px; }
-  .config-actions { display: flex; gap: 8px; align-items: flex-end; }
-  .kpi-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; margin-bottom: 24px; }
-  .kpi-card { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 1px 4px rgba(0,0,0,.08); border-left: 4px solid #1a73e8; }
-  .kpi-card .name { font-size: 14px; color: #666; margin-bottom: 4px; font-weight: 500; }
-  .kpi-card .value { font-size: 28px; font-weight: 700; }
-  .kpi-card .sub { font-size: 12px; color: #888; margin-top: 4px; }
-  .kpi-card .bar-container { margin-top: 10px; height: 6px; background: #e0e0e0; border-radius: 3px; overflow: hidden; }
-  .kpi-card .bar-fill { height: 100%; border-radius: 3px; transition: width .6s ease; }
-  .summary-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 16px; margin-bottom: 24px; }
-  .summary-card { background: #fff; border-radius: 12px; padding: 16px 20px; box-shadow: 0 1px 4px rgba(0,0,0,.08); text-align: center; }
-  .summary-card .label { font-size: 13px; color: #888; }
-  .summary-card .number { font-size: 26px; font-weight: 700; margin-top: 4px; }
-  .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
-  .chart-box { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
-  .chart-box h3 { font-size: 15px; color: #555; margin-bottom: 12px; }
-  .chart-box canvas { max-height: 280px; }
-  .table-container { background: #fff; border-radius: 12px; box-shadow: 0 1px 4px rgba(0,0,0,.08); overflow: hidden; }
-  .table-header { padding: 16px 20px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
-  .table-header h3 { font-size: 15px; color: #555; }
-  .table-header input { padding: 6px 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px; width: 200px; }
-  table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  th { background: #fafafa; text-align: left; padding: 10px 16px; font-weight: 600; color: #555; border-bottom: 2px solid #eee; cursor: pointer; user-select: none; white-space: nowrap; }
-  th:hover { color: #1a73e8; }
-  th .sort-arrow { font-size: 10px; margin-left: 4px; color: #aaa; }
-  td { padding: 10px 16px; border-bottom: 1px solid #f0f0f0; }
-  tr:hover { background: #f8f9ff; }
-  .badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 500; }
-  .badge-done { background: #e6f4ea; color: #1e7e34; }
-  .badge-in-progress { background: #fff3cd; color: #856404; }
-  .badge-for-inspection { background: #d1e4ff; color: #1a56db; }
-  .badge-partially-inspected { background: #fce4ec; color: #c62828; }
-  .badge-not-started { background: #f1f1f1; color: #666; }
-  .pagination { padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: #666; flex-wrap: wrap; gap: 8px; }
-  .pagination button { padding: 4px 12px; background: #fff; border: 1px solid #ccc; border-radius: 4px; cursor: pointer; }
-  .pagination button:disabled { opacity: .4; cursor: default; }
-  .loading { text-align: center; padding: 60px 20px; color: #888; }
-  .loading .spinner { width: 36px; height: 36px; border: 3px solid #e0e0e0; border-top-color: #1a73e8; border-radius: 50%; animation: spin .8s linear infinite; margin: 0 auto 12px; }
+  .loading { text-align: center; padding: 80px 20px; color: #6b7294; }
+  .loading .spinner { width: 40px; height: 40px; border: 3px solid #2a2f4a; border-top-color: #4fc3f7; border-radius: 50%; animation: spin .8s linear infinite; margin: 0 auto 16px; }
   @keyframes spin { to { transform: rotate(360deg); } }
-  .last-updated { font-size: 12px; color: #aaa; margin-bottom: 16px; text-align: right; }
-  .filter-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; align-items: center; }
-  .filter-row select, .filter-row input { padding: 6px 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 13px; }
-  @keyframes blink { 0%, 100% { background: #fff0f0; color: #b71c1c; } 50% { background: #ffcdd2; color: #d50000; } }
-  tr.overdue { animation: blink 1.5s ease-in-out infinite; }
-  tr.overdue td:first-child { border-left: 3px solid #d50000; }
-  .badge-overdue { background: #d50000; color: #fff; animation: blink 1.5s ease-in-out infinite; }
-  @media (max-width: 900px) { .charts-row { grid-template-columns: 1fr; } }
-  @media (max-width: 600px) { .header { flex-direction: column; align-items: stretch; } .kpi-grid { grid-template-columns: 1fr; } }
+  .last-updated { font-size: 12px; color: #4a5274; text-align: right; margin-top: 16px; padding-top: 16px; border-top: 1px solid #1a1f2e; }
+
+  .filter-bar { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; align-items: center; }
+  .filter-bar select, .filter-bar input { padding: 7px 12px; background: #0f1219; border: 1px solid #2a2f4a; border-radius: 8px; color: #e0e0e0; font-size: 13px; outline: none; }
+  .filter-bar select:focus, .filter-bar input:focus { border-color: #4fc3f7; }
+  .filter-bar label { font-size: 12px; color: #6b7294; text-transform: uppercase; letter-spacing: .5px; }
+
+  @media (max-width: 900px) { .bottom-row { grid-template-columns: 1fr; } .content { padding: 16px; } .top-bar { padding: 12px 16px; } }
 </style>
 </head>
 <body>
 
-<div class="header">
-  <h1>&#9670; Maseel &mdash; Completion Dashboard</h1>
-  <div class="header-controls">
+<div class="top-bar">
+  <h1>&#9670; <span>Maseel</span> Executive Dashboard</h1>
+  <div class="top-controls">
     <span class="user-info" id="userInfo" style="display:none"><span id="userName"></span></span>
-    <button class="btn-secondary" onclick="toggleConfig()" id="btnConfig">Settings</button>
-    <button class="btn-secondary" onclick="togglePhaseFilter()" id="btnPhase">Phases</button>
-    <button class="btn-primary" onclick="signInAndLoad()" id="btnRefresh">&#8635; Refresh</button>
+    <button class="btn-ghost" onclick="toggleConfig()">&#9881; Settings</button>
+    <button class="btn-ghost" onclick="document.getElementById('filterBar').style.display=document.getElementById('filterBar').style.display==='none'?'':'none'">&#9776; Filters</button>
+    <button class="btn-accent" onclick="signInAndLoad()" id="btnRefresh">&#8635; Refresh</button>
   </div>
 </div>
 
-<div class="error-banner" id="errorBanner"></div>
-<div class="success-banner" id="successBanner"></div>
+<div class="content">
+  <div class="error-banner" id="errorBanner"></div>
+  <div class="success-banner" id="successBanner"></div>
 
-<div class="config-panel" id="configPanel">
-  <h3>SharePoint Configuration</h3>
-  <div class="config-row">
-    <div class="config-field">
-      <label>SharePoint Site URL</label>
-      <input id="cfgSiteUrl" value="https://sascontractingsa.sharepoint.com/sites/Alenshaiah">
-      <div class="hint">Full URL to your SharePoint site</div>
+  <!-- Filters -->
+  <div class="filter-bar" id="filterBar" style="display:none">
+    <label>Phase:</label>
+    <select id="phaseFilter" onchange="applyFilters()"><option value="">All</option></select>
+    <label>Status:</label>
+    <select id="statusFilter" onchange="applyFilters()">
+      <option value="">All</option>
+      <option value="Done">Done</option>
+      <option value="In Progress">In Progress</option>
+      <option value="For Inspection">For Inspection</option>
+      <option value="Partially Inspected">Partially Insp.</option>
+      <option value="Not Started">Not Started</option>
+    </select>
+    <label>Search:</label>
+    <input id="searchInput" placeholder="Search..." oninput="applyFilters()" style="width:180px">
+  </div>
+
+  <!-- Config Modal -->
+  <div class="config-overlay" id="configOverlay">
+    <div class="config-modal">
+      <h3>SharePoint Configuration</h3>
+      <div class="config-field">
+        <label>Site URL</label>
+        <input id="cfgSiteUrl" value="https://sascontractingsa.sharepoint.com/sites/Alenshaiah">
+        <div class="hint">Full URL to your SharePoint site</div>
+      </div>
+      <div class="config-field">
+        <label>List Name</label>
+        <input id="cfgListName" value="Maseel Activity">
+        <div class="hint">Exactly as in SharePoint</div>
+      </div>
+      <div class="config-actions">
+        <button class="btn-accent" onclick="saveConfig()">Save & Connect</button>
+        <button class="btn-ghost" onclick="toggleConfig()">Cancel</button>
+      </div>
+      <div style="margin-top:16px;padding-top:16px;border-top:1px solid #2a2f4a">
+        <button class="btn-danger" onclick="logout()" style="padding:7px 16px;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600">Sign Out</button>
+        <span style="font-size:12px;color:#4a5274;margin-left:12px">Signs out of Microsoft 365</span>
+      </div>
     </div>
-    <div class="config-field">
-      <label>List Name</label>
-      <input id="cfgListName" value="Maseel Activity">
-      <div class="hint">Exactly as it appears in SharePoint</div>
+  </div>
+
+  <!-- KPI Row -->
+  <div class="kpi-row" id="kpiRow" style="display:none">
+    <div class="kpi-tile total"><div class="label">Total Activities</div><div class="number" id="statTotal">0</div></div>
+    <div class="kpi-tile done"><div class="label">Completed</div><div class="number" id="statDone">0</div><div class="sub" id="statPct">0%</div></div>
+    <div class="kpi-tile inprog"><div class="label">In Progress</div><div class="number" id="statInProg">0</div></div>
+    <div class="kpi-tile overdue"><div class="label">&#9888; Overdue</div><div class="number" id="statOverdue">0</div><div class="sub" id="statOverduePct">0% of active</div></div>
+    <div class="kpi-tile progress"><div class="label">Overall Progress</div><div class="number" id="statOverallPct">0%</div></div>
+  </div>
+
+  <!-- Section: Phases -->
+  <div id="phaseSection" style="display:none">
+    <div class="section-title">&#128202; Phases <span class="count" id="phaseCount"></span></div>
+    <div class="phase-grid" id="phaseGrid"></div>
+  </div>
+
+  <!-- Section: Overdue -->
+  <div id="overdueSection" style="display:none">
+    <div class="section-title">&#9888; Overdue Activities <span class="count" id="overdueCount"></span></div>
+    <div class="overdue-section">
+      <div class="overdue-grid" id="overdueGrid"></div>
     </div>
-    <div class="config-actions">
-      <button class="btn-primary" onclick="saveConfig()">Save</button>
-      <button class="btn-secondary" onclick="toggleConfig()">Close</button>
-    </div>
   </div>
-  <div style="margin-top:12px;padding-top:12px;border-top:1px solid #eee">
-    <button class="btn-danger" onclick="logout()">Sign Out</button>
-    <span style="font-size:12px;color:#aaa;margin-left:12px">Signs you out of Microsoft 365 for this app</span>
+
+  <!-- Bottom Charts -->
+  <div class="bottom-row" id="chartsRow" style="display:none">
+    <div class="chart-card"><h3>Status Distribution</h3><canvas id="chartStatus"></canvas></div>
+    <div class="chart-card"><h3>Completion by Person</h3><canvas id="chartPerson"></canvas></div>
   </div>
-</div>
 
-<div class="filter-row" id="phaseFilterRow" style="display:none">
-  <label style="font-size:13px;font-weight:500;color:#555">Phase:</label>
-  <select id="phaseFilter" onchange="applyFilters()">
-    <option value="">All Phases</option>
-  </select>
-  <label style="font-size:13px;font-weight:500;color:#555;margin-left:8px">Status:</label>
-  <select id="statusFilter" onchange="applyFilters()">
-    <option value="">All Statuses</option>
-    <option value="Done">Done</option>
-    <option value="In Progress">In Progress</option>
-    <option value="For Inspection">For Inspection</option>
-    <option value="Partially Inspected">Partially Inspected</option>
-    <option value="Not Started">Not Started</option>
-  </select>
-</div>
-
-<div class="summary-row" id="summaryRow">
-  <div class="summary-card"><div class="label">Total Activities</div><div class="number" id="statTotal">0</div></div>
-  <div class="summary-card"><div class="label">Done</div><div class="number" id="statDone">0</div></div>
-  <div class="summary-card"><div class="label">In Progress</div><div class="number" id="statInProgress">0</div></div>
-  <div class="summary-card"><div class="label">For Inspection</div><div class="number" id="statForInspection">0</div></div>
-  <div class="summary-card"><div class="label">Partially Inspected</div><div class="number" id="statPartiallyInspected">0</div></div>
-  <div class="summary-card"><div class="label">Not Started</div><div class="number" id="statNotStarted">0</div></div>
-  <div class="summary-card" style="background:#fff0f0;border:2px solid #d50000"><div class="label" style="color:#b71c1c;font-weight:600">&#9888; Overdue</div><div class="number" style="color:#d50000" id="statOverdue">0</div></div>
-</div>
-
-<div class="kpi-grid" id="kpiGrid"></div>
-
-<div class="charts-row">
-  <div class="chart-box"><h3>Activities by Person</h3><canvas id="chartPerson"></canvas></div>
-  <div class="chart-box"><h3>Status Distribution</h3><canvas id="chartStatus"></canvas></div>
-</div>
-
-<div class="table-container" id="tableContainer">
-  <div class="table-header">
-    <h3>Activity List</h3>
-    <input id="tableFilter" placeholder="Filter activities..." oninput="renderTable()">
+  <!-- Person KPI -->
+  <div id="personSection" style="display:none">
+    <div class="section-title">&#128101; Team <span class="count" id="personCount"></span></div>
+    <div class="person-row" id="personGrid"></div>
   </div>
+
+  <div class="last-updated" id="lastUpdated"></div>
+
+  <!-- Loading -->
   <div id="loadingIndicator" class="loading">
     <div class="spinner"></div>
-    <p id="loadingText">Loading...</p>
-  </div>
-  <div id="tableWrapper" style="display:none">
-    <table>
-      <thead><tr>
-        <th onclick="sortBy('ActivityID')">ID <span class="sort-arrow"></span></th>
-        <th onclick="sortBy('title')">Activity <span class="sort-arrow"></span></th>
-        <th onclick="sortBy('Phase')">Phase <span class="sort-arrow"></span></th>
-        <th onclick="sortBy('responsible')">Responsible <span class="sort-arrow"></span></th>
-        <th onclick="sortBy('status')">Status <span class="sort-arrow"></span></th>
-        <th onclick="sortBy('progress')">Progress <span class="sort-arrow"></span></th>
-        <th onclick="sortBy('Start')">Start <span class="sort-arrow"></span></th>
-        <th onclick="sortBy('Finish')">Finish <span class="sort-arrow"></span></th>
-      </tr></thead>
-      <tbody id="tableBody"></tbody>
-    </table>
-    <div class="pagination">
-      <span id="pageInfo"></span>
-      <div><button id="prevBtn" onclick="prevPage()">&#9664; Prev</button> <button id="nextBtn" onclick="nextPage()">Next &#9654;</button></div>
-    </div>
+    <p id="loadingText">Connecting to SharePoint...</p>
   </div>
 </div>
-
-<div class="last-updated" id="lastUpdated"></div>
 
 <script>
 const CLIENT_ID = '1b3e37d8-0ba9-44b2-9033-68e4d8068a87';
 const TENANT_ID = '684547e2-bb8b-450a-a3e1-3a6bc15e9471';
 const SCOPES = ['User.Read', 'openid', 'profile', 'https://graph.microsoft.com/Sites.ReadWrite.All'];
+const pca = new msal.PublicClientApplication({ auth: { clientId: CLIENT_ID, authority: `https://login.microsoftonline.com/${TENANT_ID}` }, cache: { cacheLocation: 'localStorage' } });
 
-const pca = new msal.PublicClientApplication({
-  auth: { clientId: CLIENT_ID, authority: `https://login.microsoftonline.com/${TENANT_ID}` },
-  cache: { cacheLocation: 'localStorage' }
-});
-
-const STATE = {
-  items: [], filtered: [], personMap: {}, phases: [],
-  stats: { total: 0, done: 0, inProgress: 0, forInspection: 0, partiallyInspected: 0, notStarted: 0 },
-  sortKey: 'ActivityID', sortAsc: true, page: 0, pageSize: 25,
-  kpiChart: null, statusChart: null, user: null, token: null,
-};
+const STATE = { items: [], filtered: [], phases: {}, stats: {}, personMap: {}, sortKey: 'ActivityID', sortAsc: true, page: 0, pageSize: 25, kpiChart: null, statusChart: null, user: null, token: null };
 
 function escHtml(s) { if (s == null) return ''; const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
-function fmtDate(d) { if (!d) return '&mdash;'; try { return new Date(d).toLocaleDateString(); } catch { return d; } }
+function fmtDate(d) { if (!d) return '&mdash;'; try { return new Date(d).toLocaleDateString('en-GB'); } catch { return d; } }
 function abbrEmail(s) { if (!s) return ''; const m = s.match(/(.+)@/); return m ? m[1] : s; }
-function isOverdue(finish, status) { if (!finish || status === 'Done') return false; try { return new Date(finish) < new Date(); } catch { return false; } }
+function isOverdue(finish, status) { if (!finish || status === 'Done') return false; try { return new Date(finish) < new Date(new Date().toDateString()); } catch { return false; } }
+function daysOverdue(finish) { if (!finish) return 0; return Math.floor((Date.now() - new Date(finish).getTime()) / 86400000); }
+function pct(a, b) { return b ? Math.round(a / b * 100) : 0; }
 
-/* ── Config ──────────────────────────────── */
-
+/* Config */
 function loadConfig() { try { return JSON.parse(localStorage.getItem('spConfig')) || {}; } catch { return {}; } }
-function saveConfigUI() {
-  const cfg = { siteUrl: document.getElementById('cfgSiteUrl').value.trim(), listName: document.getElementById('cfgListName').value.trim() };
-  localStorage.setItem('spConfig', JSON.stringify(cfg));
-  toggleConfig();
-  return cfg;
-}
-function saveConfig() { saveConfigUI(); signInAndLoad(); }
 function toggleConfig() {
-  const p = document.getElementById('configPanel');
-  const cfg = loadConfig();
-  p.style.display = p.style.display === 'block' ? 'none' : 'block';
+  const o = document.getElementById('configOverlay'), cfg = loadConfig();
+  o.classList.toggle('show');
   document.getElementById('cfgSiteUrl').value = cfg.siteUrl || 'https://sascontractingsa.sharepoint.com/sites/Alenshaiah';
   document.getElementById('cfgListName').value = cfg.listName || 'Maseel Activity';
 }
-function togglePhaseFilter() { document.getElementById('phaseFilterRow').style.display = document.getElementById('phaseFilterRow').style.display === 'none' ? '' : 'none'; }
+function saveConfig() {
+  const cfg = { siteUrl: document.getElementById('cfgSiteUrl').value.trim(), listName: document.getElementById('cfgListName').value.trim() };
+  localStorage.setItem('spConfig', JSON.stringify(cfg));
+  toggleConfig(); signInAndLoad();
+}
 
-/* ── Auth ────────────────────────────────── */
-
+/* Auth */
 async function getToken() {
   const accounts = pca.getAllAccounts();
-  if (accounts.length > 0) {
-    try {
-      const resp = await pca.acquireTokenSilent({ scopes: SCOPES, account: accounts[0] });
-      if (resp && resp.accessToken) return resp.accessToken;
-    } catch (e) { console.warn('Silent token acquisition failed:', e); }
-  }
-  try {
-    const resp = await pca.loginPopup({ scopes: SCOPES });
-    if (!resp || !resp.accessToken) throw new Error('MSAL login succeeded but no access token returned');
-    return resp.accessToken;
-  } catch (e) {
-    if (e.message && e.message.includes('Popup') && e.message.includes('blocked')) {
-      throw new Error('Sign-in popup was blocked. Please allow popups for this site and try again.');
-    }
-    if (e.message && e.message.includes('AADSTS50011')) {
-      throw new Error('Redirect URI mismatch. Make sure the Azure AD app has "' + window.location.href + '" or "' + window.location.origin + '/" as a redirect URI.');
-    }
-    throw e;
-  }
+  if (accounts.length > 0) { try { const r = await pca.acquireTokenSilent({ scopes: SCOPES, account: accounts[0] }); if (r && r.accessToken) return r.accessToken; } catch {} }
+  const r = await pca.loginPopup({ scopes: SCOPES });
+  if (!r || !r.accessToken) throw new Error('MSAL login succeeded but no access token returned');
+  return r.accessToken;
 }
-
-async function getUserInfo(token) {
-  const resp = await fetch('https://graph.microsoft.com/v1.0/me', { headers: { Authorization: 'Bearer ' + token } });
-  return await resp.json();
-}
-
 async function ensureAuth() {
   if (STATE.token) return STATE.token;
   const token = await getToken();
-  if (!token || typeof token !== 'string' || token.split('.').length !== 3) {
-    throw new Error('Invalid token received from Microsoft. Please sign out and try again.');
-  }
+  if (!token || token.split('.').length !== 3) throw new Error('Invalid token. Please sign out and try again.');
   STATE.token = token;
-  STATE.user = await getUserInfo(STATE.token);
+  const r = await fetch('https://graph.microsoft.com/v1.0/me', { headers: { Authorization: 'Bearer ' + token } });
+  STATE.user = await r.json();
   if (STATE.user && STATE.user.displayName) {
     document.getElementById('userInfo').style.display = 'flex';
     document.getElementById('userName').textContent = STATE.user.displayName;
   }
   return STATE.token;
 }
+function logout() { pca.getAllAccounts().forEach(a => pca.logoutPopup({ account: a }).catch(() => {})); STATE.token = null; STATE.user = null; document.getElementById('userInfo').style.display = 'none'; }
 
-function logout() {
-  pca.getAllAccounts().forEach(a => pca.logoutPopup({ account: a }).catch(() => {}));
-  STATE.token = null; STATE.user = null;
-  document.getElementById('userInfo').style.display = 'none';
+/* Graph */
+async function getSiteInfo(token, url) {
+  const m = url.match(/https:\/\/([^\/]+)\/sites\/([^\/]+)/);
+  if (!m) throw new Error('Invalid site URL');
+  const r = await fetch(`https://graph.microsoft.com/v1.0/sites/${m[1]}:/sites/${m[2]}`, { headers: { Authorization: 'Bearer ' + token } });
+  if (!r.ok) throw new Error('Site not found');
+  return await r.json();
 }
-
-/* ── Graph API ───────────────────────────── */
-
-async function getSiteInfo(token, siteUrl) {
-  const m = siteUrl.match(/https:\/\/([^\/]+)\/sites\/([^\/]+)/);
-  if (!m) throw new Error('Invalid SharePoint site URL. Expected: https://tenant.sharepoint.com/sites/SiteName');
-  const resp = await fetch(`https://graph.microsoft.com/v1.0/sites/${m[1]}:/sites/${m[2]}`, { headers: { Authorization: 'Bearer ' + token } });
-  if (!resp.ok) throw new Error('Site not found. Check the URL.');
-  return await resp.json();
-}
-
-async function getListInfo(token, siteId, listName) {
-  const resp = await fetch(`https://graph.microsoft.com/v1.0/sites/${siteId}/lists?$search="${encodeURIComponent(listName)}"`, { headers: { Authorization: 'Bearer ' + token } });
-  if (!resp.ok) throw new Error('Failed to search lists');
-  const data = await resp.json();
-  const list = data.value.find(l => l.displayName === listName || l.name === listName);
-  if (!list) throw new Error(`List "${listName}" not found.`);
+async function getListInfo(token, siteId, name) {
+  const r = await fetch(`https://graph.microsoft.com/v1.0/sites/${siteId}/lists?$search="${encodeURIComponent(name)}"`, { headers: { Authorization: 'Bearer ' + token } });
+  if (!r.ok) throw new Error('Failed to search lists');
+  const d = await r.json();
+  const list = d.value.find(l => l.displayName === name || l.name === name);
+  if (!list) throw new Error(`List "${name}" not found.`);
   return list;
 }
-
 async function fetchAllItems(token, siteId, listId) {
-  let items = [], nextLink = `https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${listId}/items?expand=fields&$top=5000`;
-  while (nextLink) {
-    const resp = await fetch(nextLink, { headers: { Authorization: 'Bearer ' + token } });
-    if (resp.status === 429) { await new Promise(r => setTimeout(r, 30000)); continue; }
-    if (!resp.ok) throw new Error('Failed to fetch items');
-    const data = await resp.json();
-    items = items.concat(data.value);
-    nextLink = data['@odata.nextLink'] || null;
+  let items = [], next = `https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${listId}/items?expand=fields&$top=5000`;
+  while (next) {
+    const r = await fetch(next, { headers: { Authorization: 'Bearer ' + token } });
+    if (r.status === 429) { await new Promise(r => setTimeout(r, 30000)); continue; }
+    if (!r.ok) throw new Error('Failed to fetch items');
+    const d = await r.json();
+    items = items.concat(d.value);
+    next = d['@odata.nextLink'] || null;
   }
   return items;
 }
 
-function normalizeItems(rawItems) {
-  return rawItems.map(item => {
+/* Normalize */
+function normalizeItems(raw) {
+  return raw.map(item => {
     const f = item.fields || {};
-    const statusRaw = (f.Status || f.st || '').trim().toLowerCase();
+    const sr = (f.Status || f.st || '').trim().toLowerCase();
     let status = 'Not Started';
-    if (statusRaw === 'done' || statusRaw === 'completed') status = 'Done';
-    else if (statusRaw.includes('for inspection') || statusRaw === 'forinsp') status = 'For Inspection';
-    else if (statusRaw.includes('partially') || statusRaw === 'partinsp') status = 'Partially Inspected';
-    else if (statusRaw.includes('in progress') || statusRaw === 'inprogress' || statusRaw === 'wip') status = 'In Progress';
-    const progressRaw = f.Progress || f.pc;
-    const progress = progressRaw != null ? parseFloat(progressRaw) : (status === 'Done' ? 100 : 0);
-    const respRaw = f.Responsible || f.resp || f.ResponsibleList || '';
-    const responsible = respRaw.toString().trim() || 'Unassigned';
+    if (sr === 'done' || sr === 'completed') status = 'Done';
+    else if (sr.includes('for inspection') || sr === 'forinsp') status = 'For Inspection';
+    else if (sr.includes('partially') || sr === 'partinsp') status = 'Partially Inspected';
+    else if (sr.includes('in progress') || sr === 'inprogress' || sr === 'wip') status = 'In Progress';
+    const pr = f.Progress || f.pc;
+    const progress = pr != null ? parseFloat(pr) : (status === 'Done' ? 100 : 0);
+    const rr = f.Responsible || f.resp || f.ResponsibleList || '';
+    const responsible = rr.toString().trim() || 'Unassigned';
     const finish = f.Finish || f.f || null;
     return {
       id: item.id, ActivityID: f.ActivityID || '', title: f.Title || '', Phase: f.Phase || f.ph || '',
-      Discipline: f.Discipline || f.disc || '', status, progress, responsible,
-      Start: f.Start || f.s || null, Finish: finish,
-      Duration: f.Duration || f.dur || null, Float: f.Float || f.floatDays || null,
-      TotalQty: f.TotalQty || null, Unit: f.Unit || null, Notes: f.Notes || '',
-      overdue: isOverdue(finish, status),
+      status, progress, responsible, Start: f.Start || f.s || null, Finish: finish,
+      overdue: isOverdue(finish, status), daysOverdue: isOverdue(finish, status) ? daysOverdue(finish) : 0,
     };
   });
 }
 
-/* ── Process ─────────────────────────────── */
-
+/* Process */
 function processItems(items) {
-  const pm = {}, stats = { total: 0, done: 0, inProgress: 0, forInspection: 0, partiallyInspected: 0, notStarted: 0, overdue: 0 }, phases = new Set();
+  const phases = {}, pm = {};
+  let total = 0, done = 0, inProg = 0, forInsp = 0, partInsp = 0, notStarted = 0, overdueCount = 0;
+
   items.forEach(item => {
-    stats.total++;
-    if (item.status === 'Done') stats.done++;
-    else if (item.status === 'For Inspection') stats.forInspection++;
-    else if (item.status === 'Partially Inspected') stats.partiallyInspected++;
-    else if (item.status === 'In Progress') stats.inProgress++;
-    else stats.notStarted++;
-    if (item.overdue) stats.overdue++;
-    if (item.Phase) phases.add(item.Phase);
+    total++;
+    if (item.status === 'Done') done++;
+    else if (item.status === 'For Inspection') forInsp++;
+    else if (item.status === 'Partially Inspected') partInsp++;
+    else if (item.status === 'In Progress') inProg++;
+    else notStarted++;
+    if (item.overdue) overdueCount++;
+
+    const ph = item.Phase || 'Other';
+    if (!phases[ph]) phases[ph] = { name: ph, total: 0, done: 0, overdue: 0, items: [] };
+    phases[ph].total++;
+    phases[ph].items.push(item);
+    if (item.status === 'Done') phases[ph].done++;
+    if (item.overdue) phases[ph].overdue++;
+
     const names = item.responsible.split(/[,/]/).map(s => s.trim()).filter(Boolean);
     if (!names.length) names.push('Unassigned');
     names.forEach(name => {
-      if (!pm[name]) pm[name] = { name, total: 0, done: 0, inProgress: 0, forInspection: 0, partiallyInspected: 0, notStarted: 0, overdue: 0 };
+      if (!pm[name]) pm[name] = { name, total: 0, done: 0, overdue: 0 };
       pm[name].total++;
       if (item.status === 'Done') pm[name].done++;
-      else if (item.status === 'For Inspection') pm[name].forInspection++;
-      else if (item.status === 'Partially Inspected') pm[name].partiallyInspected++;
-      else if (item.status === 'In Progress') pm[name].inProgress++;
-      else pm[name].notStarted++;
       if (item.overdue) pm[name].overdue++;
     });
   });
-  STATE.personMap = pm; STATE.stats = stats; STATE.phases = [...phases].sort();
-  STATE.items = items; STATE.filtered = items.slice();
+
+  STATE.phases = phases;
+  STATE.personMap = pm;
+  STATE.stats = { total, done, inProg, forInsp, partInsp, notStarted, overdue: overdueCount };
+  STATE.items = items;
+  STATE.filtered = items.slice();
 }
 
-/* ── Filters ─────────────────────────────── */
+/* Render All */
+function render() {
+  const phases = STATE.phases, stats = STATE.stats, pm = STATE.personMap;
 
-function applyFilters() {
-  const pv = document.getElementById('phaseFilter').value, sv = document.getElementById('statusFilter').value;
-  STATE.filtered = STATE.items.filter(item => (!pv || item.Phase === pv) && (!sv || item.status === sv));
-  STATE.page = 0;
-  renderTable(); updateSummary(); renderKPI(); renderChart();
-}
+  document.getElementById('kpiRow').style.display = 'grid';
+  document.getElementById('statTotal').textContent = stats.total;
+  document.getElementById('statDone').textContent = stats.done;
+  document.getElementById('statPct').textContent = pct(stats.done, stats.total) + '% complete';
+  document.getElementById('statInProg').textContent = stats.inProg + stats.forInsp + stats.partInsp;
+  document.getElementById('statOverdue').textContent = stats.overdue;
+  document.getElementById('statOverduePct').textContent = pct(stats.overdue, stats.total - stats.done) + '% of active';
+  document.getElementById('statOverallPct').textContent = pct(stats.done, stats.total) + '%';
 
-/* ── Summary ─────────────────────────────── */
-
-function updateSummary() {
-  const s = STATE.stats;
-  document.getElementById('statTotal').textContent = s.total;
-  document.getElementById('statDone').textContent = s.done;
-  document.getElementById('statInProgress').textContent = s.inProgress;
-  document.getElementById('statForInspection').textContent = s.forInspection;
-  document.getElementById('statPartiallyInspected').textContent = s.partiallyInspected;
-  document.getElementById('statNotStarted').textContent = s.notStarted;
-  document.getElementById('statOverdue').textContent = s.overdue || 0;
-}
-
-/* ── KPI Cards ───────────────────────────── */
-
-function renderKPI() {
-  const grid = document.getElementById('kpiGrid');
-  const entries = Object.values(STATE.personMap).filter(p => p.total > 0).sort((a, b) => b.total - a.total);
-  if (!entries.length) { grid.innerHTML = '<p style="color:#888;padding:20px;text-align:center">No matching data.</p>'; return; }
-  grid.innerHTML = entries.map(p => {
-    const pct = Math.round(p.done / p.total * 100);
-    const color = p.overdue ? '#d50000' : pct >= 80 ? '#1e7e34' : pct >= 50 ? '#e67e22' : '#b71c1c';
-    const nameDisplay = abbrEmail(p.name);
-    return `<div class="kpi-card" style="border-left-color:${color}${p.overdue ? ';border-left-width:6px' : ''}">
-      <div class="name">${escHtml(nameDisplay)}</div>
-      <div class="value">${p.done} / ${p.total}</div>
-      <div class="sub">${pct}% done${p.overdue ? ' &middot; <span style="color:#d50000;font-weight:600">' + p.overdue + ' overdue</span>' : ''}${p.forInspection ? ' &middot; ' + p.forInspection + ' for insp' : ''}${p.partiallyInspected ? ' &middot; ' + p.partiallyInspected + ' partial' : ''} &middot; ${p.inProgress} in prog &middot; ${p.notStarted} not started</div>
-      <div class="bar-container"><div class="bar-fill" style="width:${Math.max(2,pct)}%;background:${color}"></div></div>
+  // Phases
+  document.getElementById('phaseSection').style.display = 'block';
+  const phaseNames = Object.keys(phases).sort();
+  document.getElementById('phaseCount').textContent = '(' + phaseNames.length + ')';
+  document.getElementById('phaseGrid').innerHTML = phaseNames.map(name => {
+    const ph = phases[name];
+    const pctDone = pct(ph.done, ph.total);
+    const tier = ph.overdue > 0 ? 'critical' : pctDone < 50 ? 'warn' : 'top';
+    const statusLabel = ph.overdue > 0 ? 'Overdue' : pctDone >= 80 ? 'On Track' : pctDone >= 50 ? 'At Risk' : 'Behind';
+    const statusClass = ph.overdue > 0 ? 'critical' : pctDone >= 80 ? 'ok' : pctDone >= 50 ? 'atrisk' : 'critical';
+    const barColor = ph.overdue > 0 ? '#ef5350' : pctDone >= 80 ? '#66bb6a' : pctDone >= 50 ? '#ffa726' : '#ef5350';
+    return `<div class="phase-card ${tier}">
+      <div class="phase-header">
+        <div class="phase-name">${escHtml(name)}</div>
+        <div class="phase-status ${statusClass}">${statusLabel}</div>
+      </div>
+      <div class="phase-stats">
+        <div class="phase-stat"><div class="val">${ph.done}</div><div class="lbl">Done</div></div>
+        <div class="phase-stat"><div class="val">${ph.total}</div><div class="lbl">Total</div></div>
+        <div class="phase-stat"><div class="val ${ph.overdue > 0 ? 'red' : 'green'}">${ph.overdue}</div><div class="lbl">Overdue</div></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:12px;color:#6b7294;margin-bottom:4px">
+        <span>${pctDone}% complete</span>
+        <span>${ph.total - ph.done} remaining</span>
+      </div>
+      <div class="phase-bar"><div class="phase-bar-fill" style="width:${pctDone}%;background:${barColor}"></div></div>
     </div>`;
   }).join('');
-}
 
-/* ── Charts ──────────────────────────────── */
+  // Overdue
+  const overdueItems = STATE.items.filter(i => i.overdue).sort((a, b) => b.daysOverdue - a.daysOverdue);
+  document.getElementById('overdueSection').style.display = overdueItems.length ? 'block' : 'none';
+  document.getElementById('overdueCount').textContent = '(' + overdueItems.length + ')';
+  document.getElementById('overdueGrid').innerHTML = overdueItems.map(item => {
+    const days = item.daysOverdue;
+    const sevColor = days > 30 ? '#ef5350' : days > 14 ? '#ffa726' : '#ffd54f';
+    return `<div class="overdue-item" style="border-left-color:${sevColor}">
+      <div class="oi-left">
+        <div class="oi-id">${escHtml(item.ActivityID)}</div>
+        <div class="oi-title">${escHtml(item.title)}</div>
+        <div class="oi-meta">${escHtml(item.Phase)} &middot; ${escHtml(abbrEmail(item.responsible))} &middot; Due: ${fmtDate(item.Finish)}</div>
+      </div>
+      <div class="oi-right">
+        <div class="oi-days">${days}</div>
+        <div class="oi-days-label">days overdue</div>
+        <div class="oi-status" style="background:${sevColor}22;color:${sevColor}">${escHtml(item.status)}</div>
+      </div>
+    </div>`;
+  }).join('');
 
-function renderChart() {
-  const entries = Object.values(STATE.personMap).filter(p => p.total > 0).sort((a, b) => b.total - a.total);
-  const stats = STATE.stats;
-  const ctx1 = document.getElementById('chartPerson').getContext('2d');
+  // Charts
+  document.getElementById('chartsRow').style.display = 'grid';
+  const ctx1 = document.getElementById('chartStatus').getContext('2d');
+  if (STATE.statusChart) STATE.statusChart.destroy();
+  STATE.statusChart = new Chart(ctx1, {
+    type: 'doughnut',
+    data: {
+      labels: ['Done', 'In Progress', 'For Insp.', 'Partial Insp.', 'Not Started'],
+      datasets: [{ data: [stats.done, stats.inProg, stats.forInsp, stats.partInsp, stats.notStarted], backgroundColor: ['#66bb6a', '#42a5f5', '#ab47bc', '#ffa726', '#546e7a'], borderWidth: 0 }],
+    },
+    options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { position: 'bottom', labels: { color: '#b0b8d1', boxWidth: 12, padding: 12 } } } },
+  });
+  const pEntries = Object.values(pm).filter(p => p.total > 0).sort((a, b) => b.total - a.total);
+  const ctx2 = document.getElementById('chartPerson').getContext('2d');
   if (STATE.kpiChart) STATE.kpiChart.destroy();
-  STATE.kpiChart = new Chart(ctx1, {
+  STATE.kpiChart = new Chart(ctx2, {
     type: 'bar',
     data: {
-      labels: entries.map(p => abbrEmail(p.name)),
+      labels: pEntries.map(p => abbrEmail(p.name)),
       datasets: [
-        { label: 'Done', data: entries.map(p => p.done), backgroundColor: '#2e7d32', borderRadius: 2 },
-        { label: 'For Inspection', data: entries.map(p => p.forInspection), backgroundColor: '#1a56db', borderRadius: 2 },
-        { label: 'Partially Inspected', data: entries.map(p => p.partiallyInspected), backgroundColor: '#c62828', borderRadius: 2 },
-        { label: 'In Progress', data: entries.map(p => p.inProgress), backgroundColor: '#f9a825', borderRadius: 2 },
-        { label: 'Not Started', data: entries.map(p => p.notStarted), backgroundColor: '#bdbdbd', borderRadius: 2 },
+        { label: 'Done', data: pEntries.map(p => p.done), backgroundColor: '#66bb6a', borderRadius: 2 },
+        { label: 'Overdue', data: pEntries.map(p => p.overdue), backgroundColor: '#ef5350', borderRadius: 2 },
+        { label: 'Other', data: pEntries.map(p => p.total - p.done - p.overdue), backgroundColor: '#546e7a', borderRadius: 2 },
       ],
     },
     options: {
       responsive: true, maintainAspectRatio: true,
-      plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, padding: 12 } } },
-      scales: { x: { grid: { display: false }, ticks: { maxRotation: 45 } }, y: { beginAtZero: true, ticks: { stepSize: 1 } } },
+      plugins: { legend: { position: 'bottom', labels: { color: '#b0b8d1', boxWidth: 12, padding: 12 } } },
+      scales: { x: { grid: { display: false }, ticks: { color: '#6b7294', maxRotation: 45 } }, y: { beginAtZero: true, ticks: { color: '#6b7294', stepSize: 1 } } },
     },
   });
-  const ctx2 = document.getElementById('chartStatus').getContext('2d');
-  if (STATE.statusChart) STATE.statusChart.destroy();
-  STATE.statusChart = new Chart(ctx2, {
-    type: 'doughnut',
-    data: {
-      labels: ['Done', 'For Inspection', 'Partially Inspected', 'In Progress', 'Not Started'],
-      datasets: [{ data: [stats.done, stats.forInspection, stats.partiallyInspected, stats.inProgress, stats.notStarted], backgroundColor: ['#2e7d32', '#1a56db', '#c62828', '#f9a825', '#bdbdbd'], borderWidth: 0 }],
-    },
-    options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, padding: 12 } } } },
-  });
-}
 
-/* ── Table ───────────────────────────────── */
-
-function renderTable() {
-  const filter = (document.getElementById('tableFilter').value || '').toLowerCase();
-  let items = STATE.filtered;
-  if (filter) items = items.filter(it => (it.ActivityID + ' ' + it.title + ' ' + it.responsible + ' ' + it.status + ' ' + it.Phase).toLowerCase().includes(filter));
-  const key = STATE.sortKey, asc = STATE.sortAsc;
-  items = items.slice().sort((a, b) => {
-    let va = a[key] || '', vb = b[key] || '';
-    if (key === 'ActivityID') { const na = parseInt(va), nb = parseInt(vb); if (!isNaN(na) && !isNaN(nb)) return asc ? na - nb : nb - na; }
-    if (key === 'progress') return asc ? (va - vb) : (vb - va);
-    if (key === 'Start' || key === 'Finish') { const da = va ? new Date(va) : null, db = vb ? new Date(vb) : null; if (da && db) return asc ? da - db : db - da; if (da) return asc ? -1 : 1; if (db) return asc ? 1 : -1; return 0; }
-    va = va.toString().toLowerCase(); vb = vb.toString().toLowerCase();
-    return va < vb ? (asc ? -1 : 1) : va > vb ? (asc ? 1 : -1) : 0;
-  });
-  const start = STATE.page * STATE.pageSize, pageItems = items.slice(start, start + STATE.pageSize);
-  const totalPages = Math.ceil(items.length / STATE.pageSize) || 1;
-  if (STATE.page >= totalPages) STATE.page = totalPages - 1;
-  document.getElementById('pageInfo').textContent = `Page ${STATE.page + 1} of ${totalPages} (${items.length} items)`;
-  document.getElementById('prevBtn').disabled = STATE.page <= 0;
-  document.getElementById('nextBtn').disabled = STATE.page >= totalPages - 1;
-  document.getElementById('tableBody').innerHTML = pageItems.map(item => {
-    const bc = item.status === 'Done' ? 'badge-done' : item.status === 'For Inspection' ? 'badge-for-inspection' : item.status === 'Partially Inspected' ? 'badge-partially-inspected' : item.status === 'In Progress' ? 'badge-in-progress' : 'badge-not-started';
-    const rowClass = item.overdue ? ' class="overdue"' : '';
-    const finishDisplay = item.overdue ? '<span style="font-weight:600;color:#d50000">' + fmtDate(item.Finish) + ' &#9888;</span>' : fmtDate(item.Finish);
-    return `<tr${rowClass}><td style="font-size:12px;color:#888;font-family:monospace">${escHtml(item.ActivityID)}</td><td style="font-weight:500">${escHtml(item.title)}</td><td>${escHtml(item.Phase)}</td><td>${escHtml(abbrEmail(item.responsible))}</td><td><span class="badge ${bc}">${escHtml(item.status)}</span></td><td>${item.progress != null ? item.progress + '%' : '&mdash;'}</td><td style="font-size:12px">${fmtDate(item.Start)}</td><td style="font-size:12px">${finishDisplay}</td></tr>`;
+  // Person cards
+  document.getElementById('personSection').style.display = 'block';
+  document.getElementById('personCount').textContent = '(' + pEntries.length + ')';
+  document.getElementById('personGrid').innerHTML = pEntries.map(p => {
+    const pctDone = pct(p.done, p.total);
+    const color = p.overdue ? '#ef5350' : pctDone >= 80 ? '#66bb6a' : pctDone >= 50 ? '#ffa726' : '#6b7294';
+    return `<div class="person-card" style="border-left-color:${color}">
+      <div class="pc-name">${escHtml(abbrEmail(p.name))}</div>
+      <div class="pc-value">${p.done}/${p.total}</div>
+      <div class="pc-sub">${pctDone}% done${p.overdue ? ' &middot; <span class="pc-overdue">' + p.overdue + ' overdue</span>' : ''}</div>
+    </div>`;
   }).join('');
-  document.querySelectorAll('th .sort-arrow').forEach(el => el.textContent = '');
-  const idx = ['ActivityID', 'title', 'Phase', 'responsible', 'status', 'progress', 'Start', 'Finish'].indexOf(key);
-  const ths = document.querySelectorAll('th');
-  if (ths[idx]) ths[idx].querySelector('.sort-arrow').textContent = asc ? ' \u25B2' : ' \u25BC';
+
+  document.getElementById('lastUpdated').textContent = 'Last updated: ' + new Date().toLocaleString();
 }
 
-function sortBy(key) { if (STATE.sortKey === key) STATE.sortAsc = !STATE.sortAsc; else { STATE.sortKey = key; STATE.sortAsc = true; } renderTable(); }
-function prevPage() { if (STATE.page > 0) { STATE.page--; renderTable(); } }
-function nextPage() { STATE.page++; renderTable(); }
+/* Filters */
+function applyFilters() {
+  const pv = document.getElementById('phaseFilter').value, sv = document.getElementById('statusFilter').value, q = (document.getElementById('searchInput').value || '').toLowerCase();
+  STATE.filtered = STATE.items.filter(item => {
+    if (pv && item.Phase !== pv) return false;
+    if (sv && item.status !== sv) return false;
+    if (q && !(item.ActivityID + ' ' + item.title + ' ' + item.responsible + ' ' + item.Phase).toLowerCase().includes(q)) return false;
+    return true;
+  });
+  processItems(STATE.filtered);
+  render();
+}
 
-/* ── Banners ─────────────────────────────── */
-
-function showError(msg, permanent) { const el = document.getElementById('errorBanner'); el.textContent = msg; el.classList.add('show'); if (!permanent) setTimeout(() => el.classList.remove('show'), 8000); }
-function hideError() { document.getElementById('errorBanner').classList.remove('show'); }
-function showSuccess(msg) { const el = document.getElementById('successBanner'); el.textContent = msg; el.classList.add('show'); setTimeout(() => el.classList.remove('show'), 5000); }
-
-/* ── Main ────────────────────────────────── */
-
+/* Main */
 async function signInAndLoad() {
-  hideError();
-  const loading = document.getElementById('loadingIndicator'), wrapper = document.getElementById('tableWrapper'), text = document.getElementById('loadingText');
-  loading.style.display = 'block'; wrapper.style.display = 'none'; text.textContent = 'Connecting to Microsoft 365...';
+  document.getElementById('errorBanner').classList.remove('show');
+  const ld = document.getElementById('loadingIndicator'), txt = document.getElementById('loadingText');
+  ld.style.display = 'block'; txt.textContent = 'Connecting...';
   const cfg = loadConfig();
-  if (!cfg.siteUrl || !cfg.listName) {
-    loading.style.display = 'none';
-    showError('Please configure SharePoint site URL and list name in Settings first.');
-    toggleConfig();
-    return;
-  }
+  if (!cfg.siteUrl || !cfg.listName) { ld.style.display = 'none'; showError('Configure SharePoint in Settings first.'); toggleConfig(); return; }
   try {
-    text.textContent = 'Signing in...';
-    await ensureAuth();
-    text.textContent = 'Finding SharePoint site...';
-    const site = await getSiteInfo(STATE.token, cfg.siteUrl);
-    text.textContent = 'Finding list...';
-    const list = await getListInfo(STATE.token, site.id, cfg.listName);
-    text.textContent = 'Fetching data...';
-    const raw = await fetchAllItems(STATE.token, site.id, list.id);
-    text.textContent = 'Processing...';
+    txt.textContent = 'Signing in...';
+    const token = await ensureAuth();
+    txt.textContent = 'Finding site...';
+    const site = await getSiteInfo(token, cfg.siteUrl);
+    txt.textContent = 'Finding list...';
+    const list = await getListInfo(token, site.id, cfg.listName);
+    txt.textContent = 'Loading data...';
+    const raw = await fetchAllItems(token, site.id, list.id);
+    txt.textContent = 'Processing...';
     const items = normalizeItems(raw);
     processItems(items);
     const sel = document.getElementById('phaseFilter');
-    sel.innerHTML = '<option value="">All Phases</option>' + STATE.phases.map(p => `<option value="${escHtml(p)}">${escHtml(p)}</option>`).join('');
-    document.getElementById('lastUpdated').textContent = 'Last updated: ' + new Date().toLocaleString();
-    loading.style.display = 'none'; wrapper.style.display = '';
-    applyFilters();
+    sel.innerHTML = '<option value="">All Phases</option>' + Object.keys(STATE.phases).sort().map(p => `<option value="${escHtml(p)}">${escHtml(p)}</option>`).join('');
+    ld.style.display = 'none';
+    render();
     showSuccess('Loaded ' + items.length + ' activities from ' + list.displayName);
   } catch (err) {
-    loading.style.display = 'none';
-    showError(err.message, true);
+    ld.style.display = 'none';
+    showError(err.message);
     STATE.items = []; STATE.filtered = [];
-    applyFilters();
+    render();
   }
 }
 
-/* ── Init ────────────────────────────────── */
+function showError(msg) { const e = document.getElementById('errorBanner'); e.textContent = msg; e.classList.add('show'); }
+function showSuccess(msg) { const e = document.getElementById('successBanner'); e.textContent = msg; e.classList.add('show'); setTimeout(() => e.classList.remove('show'), 5000); }
 
+/* Init */
 (async function init() {
   const cfg = loadConfig();
   if (cfg.siteUrl && cfg.listName) {
-    if (pca.getAllAccounts().length > 0) {
-      await signInAndLoad();
-    } else {
-      const text = document.getElementById('loadingText');
-      document.getElementById('loadingIndicator').querySelector('.spinner').style.display = 'none';
-      text.innerHTML = 'Configured for <strong>' + escHtml(cfg.siteUrl) + '</strong> &mdash; <a href="#" onclick="signInAndLoad();return false" style="color:#1a73e8">Sign in to start</a>.';
-    }
+    if (pca.getAllAccounts().length > 0) { await signInAndLoad(); return; }
+    document.getElementById('loadingIndicator').querySelector('.spinner').style.display = 'none';
+    document.getElementById('loadingText').innerHTML = 'Configured &mdash; <a href="#" onclick="signInAndLoad();return false" style="color:#4fc3f7">Sign in to start</a>.';
   } else {
     document.getElementById('loadingIndicator').querySelector('.spinner').style.display = 'none';
-    document.getElementById('loadingText').innerHTML = 'Set your SharePoint connection in <a href="#" onclick="toggleConfig();return false" style="color:#1a73e8">Settings</a>, then click <strong>Refresh</strong>.';
+    document.getElementById('loadingText').innerHTML = 'Set up in <a href="#" onclick="toggleConfig();return false" style="color:#4fc3f7">Settings</a> then click Refresh.';
   }
 })();
 </script>
