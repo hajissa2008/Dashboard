@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Maseel - Activity Completion Dashboard</title>
-<script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -183,19 +182,29 @@
 
 <div class="last-updated" id="lastUpdated"></div>
 
+<!-- Device Code Modal -->
+<div id="deviceCodeModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:16px;padding:40px;max-width:440px;width:90%;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,.2)">
+    <div style="font-size:40px;margin-bottom:8px">&#128274;</div>
+    <h2 style="font-size:20px;margin-bottom:4px">Sign in with Microsoft</h2>
+    <p style="color:#666;font-size:14px;margin-bottom:20px">Go to <strong>microsoft.com/devicelogin</strong> and enter this code:</p>
+    <div id="deviceCodeDisplay" style="font-size:40px;font-weight:700;letter-spacing:6px;background:#f0f2f5;padding:16px;border-radius:12px;font-family:monospace;margin-bottom:16px;user-select:all"></div>
+    <button id="deviceCodeCopyBtn" onclick="copyDeviceCode()" style="padding:8px 20px;background:#1a73e8;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:14px">Copy Code</button>
+    <div style="margin-top:20px;display:flex;align-items:center;justify-content:center;gap:10px;color:#888;font-size:13px">
+      <span class="spinner" style="display:inline-block;width:16px;height:16px;border:2px solid #e0e0e0;border-top-color:#1a73e8;border-radius:50%;animation:spin .8s linear infinite;vertical-align:middle"></span>
+      <span id="deviceCodeStatus">Waiting for authentication...</span>
+    </div>
+    <button onclick="hideDeviceCodeModal();deviceCodePolling=false" style="margin-top:16px;padding:6px 16px;background:transparent;border:1px solid #ccc;border-radius:6px;cursor:pointer;font-size:13px;color:#666">Cancel</button>
+  </div>
+</div>
+
 <script>
 const CLIENT_ID = '1b3e37d8-0ba9-44b2-9033-68e4d8068a87';
 const TENANT_ID = '684547e2-bb8b-450a-a3e1-3a6bc15e9471';
-const SCOPES = ['User.Read', 'openid', 'profile', 'https://graph.microsoft.com/Sites.ReadWrite.All'];
 
 const STATUS_ORDER = ['Done', 'For Inspection', 'Partially Inspected', 'In Progress', 'Not Started'];
 
-const msalRedirectUri = window.location.origin + '/';
-
-const pca = new msal.PublicClientApplication({
-  auth: { clientId: CLIENT_ID, authority: `https://login.microsoftonline.com/${TENANT_ID}`, redirectUri: msalRedirectUri },
-  cache: { cacheLocation: 'localStorage' }
-});
+const DEVICE_CODE_SCOPE = 'User.Read openid profile https://graph.microsoft.com/Sites.ReadWrite.All offline_access';
 
 const STATE = {
   items: [],
@@ -265,53 +274,183 @@ function togglePhaseFilter() {
   el.style.display = el.style.display === 'none' ? '' : 'none';
 }
 
-/* ── Auth ────────────────────────────────── */
+/* ── Auth: Device Code Flow ─────────────── */
 
-async function getToken() {
-  const accounts = pca.getAllAccounts();
-  if (accounts.length > 0) {
-    try {
-      const resp = await pca.acquireTokenSilent({ scopes: SCOPES, account: accounts[0] });
-      return resp.accessToken;
-    } catch { }
+const TOKEN_KEY = 'maseel_token_cache';
+
+function loadTokenCache() {
+  try { return JSON.parse(localStorage.getItem(TOKEN_KEY)); } catch { return null; }
+}
+function saveTokenCache(data) {
+  localStorage.setItem(TOKEN_KEY, JSON.stringify(data));
+}
+function clearTokenCache() {
+  localStorage.removeItem(TOKEN_KEY);
+  STATE.token = null;
+  STATE.user = null;
+}
+
+function isTokenValid(cache) {
+  if (!cache || !cache.accessToken || !cache.expiresAt) return false;
+  return Date.now() < cache.expiresAt - 60000;
+}
+
+async function refreshAccessToken(refreshToken) {
+  const resp = await fetch(`https://login.microsoftonline.com/${TENANT_ID}/oauth2/v2.0/token`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: CLIENT_ID,
+      refresh_token: refreshToken,
+      grant_type: 'refresh_token',
+      scope: DEVICE_CODE_SCOPE,
+    }),
+  });
+  if (!resp.ok) return null;
+  const data = await resp.json();
+  const cache = {
+    accessToken: data.access_token,
+    refreshToken: data.refresh_token || refreshToken,
+    expiresAt: Date.now() + (data.expires_in || 3600) * 1000,
+  };
+  saveTokenCache(cache);
+  return cache;
+}
+
+async function startDeviceCodeFlow() {
+  const resp = await fetch(`https://login.microsoftonline.com/${TENANT_ID}/oauth2/v2.0/devicecode`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: CLIENT_ID,
+      scope: DEVICE_CODE_SCOPE,
+    }),
+  });
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({}));
+    throw new Error(err.error_description || 'Failed to get device code');
   }
-  const resp = await pca.loginPopup({ scopes: SCOPES });
-  return resp.accessToken;
+  return await resp.json();
+}
+
+async function pollForToken(deviceCode, interval) {
+  const body = new URLSearchParams({
+    client_id: CLIENT_ID,
+    grant_type: 'urn:ietf:params:oauth:grant-type:device_code',
+    device_code: deviceCode,
+  });
+  while (true) {
+    await new Promise(r => setTimeout(r, interval * 1000));
+    const resp = await fetch(`https://login.microsoftonline.com/${TENANT_ID}/oauth2/v2.0/token`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body,
+    });
+    if (resp.ok) {
+      const data = await resp.json();
+      const cache = {
+        accessToken: data.access_token,
+        refreshToken: data.refresh_token,
+        expiresAt: Date.now() + (data.expires_in || 3600) * 1000,
+      };
+      saveTokenCache(cache);
+      STATE.token = data.access_token;
+      return data.access_token;
+    }
+    const err = await resp.json().catch(() => ({}));
+    if (err.error === 'authorization_pending') continue;
+    if (err.error === 'slow_down') { interval += 5; continue; }
+    throw new Error(err.error_description || 'Device code authentication failed');
+  }
 }
 
 async function getUserInfo(token) {
   const resp = await fetch('https://graph.microsoft.com/v1.0/me', {
     headers: { Authorization: 'Bearer ' + token }
   });
-  return await resp.json();
+  const user = await resp.json();
+  if (user.error) throw new Error(user.error.message);
+  return user;
 }
 
 function updateUserUI(user) {
   if (user && user.displayName) {
     document.getElementById('userInfo').style.display = 'flex';
-    document.getElementById('userAvatar').src = user.userPrincipalName
-      ? 'https://graph.microsoft.com/v1.0/users/' + user.id + '/photo/$value'
-      : '';
-    document.getElementById('userAvatar').onerror = function () { this.src = ''; this.style.display = 'none'; };
+    document.getElementById('userAvatar').src = '';
+    document.getElementById('userAvatar').style.display = 'none';
     document.getElementById('userName').textContent = user.displayName;
   }
 }
 
+let deviceCodePolling = false;
+
 async function ensureAuth() {
   if (STATE.token) return STATE.token;
-  STATE.token = await getToken();
-  STATE.user = await getUserInfo(STATE.token);
-  updateUserUI(STATE.user);
-  return STATE.token;
+
+  const cached = loadTokenCache();
+  if (cached) {
+    if (isTokenValid(cached)) {
+      STATE.token = cached.accessToken;
+      STATE.user = await getUserInfo(STATE.token);
+      updateUserUI(STATE.user);
+      return STATE.token;
+    }
+    if (cached.refreshToken) {
+      const refreshed = await refreshAccessToken(cached.refreshToken);
+      if (refreshed) {
+        STATE.token = refreshed.accessToken;
+        STATE.user = await getUserInfo(STATE.token);
+        updateUserUI(STATE.user);
+        return STATE.token;
+      }
+    }
+  }
+
+  return await startDeviceCodeAuth();
+}
+
+async function startDeviceCodeAuth() {
+  if (deviceCodePolling) return;
+  deviceCodePolling = true;
+
+  try {
+    const dc = await startDeviceCodeFlow();
+    showDeviceCodeModal(dc.user_code, dc.verification_uri, dc.message);
+    const token = await pollForToken(dc.device_code, dc.interval);
+    hideDeviceCodeModal();
+    STATE.token = token;
+    STATE.user = await getUserInfo(token);
+    updateUserUI(STATE.user);
+    deviceCodePolling = false;
+    return token;
+  } catch (err) {
+    hideDeviceCodeModal();
+    deviceCodePolling = false;
+    throw err;
+  }
 }
 
 function logout() {
-  const accounts = pca.getAllAccounts();
-  accounts.forEach(a => pca.logoutPopup({ account: a }));
-  STATE.token = null;
-  STATE.user = null;
+  clearTokenCache();
   document.getElementById('userInfo').style.display = 'none';
-  localStorage.removeItem('spListCtx');
+}
+
+function showDeviceCodeModal(code, verificationUri, message) {
+  document.getElementById('deviceCodeDisplay').textContent = code;
+  document.getElementById('deviceCodeStatus').textContent = 'Waiting for authentication...';
+  document.getElementById('deviceCodeModal').style.display = 'flex';
+}
+
+function hideDeviceCodeModal() {
+  document.getElementById('deviceCodeModal').style.display = 'none';
+}
+
+function copyDeviceCode() {
+  const code = document.getElementById('deviceCodeDisplay').textContent;
+  navigator.clipboard.writeText(code).catch(() => {});
+  const btn = document.getElementById('deviceCodeCopyBtn');
+  btn.textContent = 'Copied!';
+  setTimeout(() => { btn.textContent = 'Copy Code'; }, 2000);
 }
 
 /* ── Graph API: Fetch SharePoint Data ────── */
