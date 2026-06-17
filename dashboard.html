@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Maseel - Activity Completion Dashboard</title>
+<script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -20,7 +21,6 @@
   .btn-danger:hover { background: #b71c1c; }
   .btn-success { background: #1e7e34; color: #fff; }
   .btn-success:hover { background: #15652b; }
-  .btn:disabled { opacity: .5; cursor: default; }
   .user-info { font-size: 13px; color: #555; display: flex; align-items: center; gap: 8px; }
   .user-info img { width: 28px; height: 28px; border-radius: 50%; }
   .error-banner { background: #fdecea; color: #b71c1c; padding: 12px 16px; border-radius: 8px; margin-bottom: 16px; display: none; font-size: 14px; }
@@ -32,7 +32,7 @@
   .config-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
   .config-field { display: flex; flex-direction: column; gap: 4px; }
   .config-field label { font-size: 12px; color: #888; font-weight: 500; }
-  .config-field input, .config-field select { padding: 7px 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 13px; min-width: 220px; }
+  .config-field input { padding: 7px 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 13px; min-width: 220px; }
   .config-field .hint { font-size: 11px; color: #aaa; margin-top: 2px; }
   .config-actions { display: flex; gap: 8px; align-items: flex-end; }
   .kpi-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; margin-bottom: 24px; }
@@ -84,10 +84,10 @@
 <div class="header">
   <h1>&#9670; Maseel &mdash; Completion Dashboard</h1>
   <div class="header-controls">
-    <span class="user-info" id="userInfo" style="display:none"><img id="userAvatar" src=""><span id="userName"></span></span>
+    <span class="user-info" id="userInfo" style="display:none"><span id="userName"></span></span>
     <button class="btn-secondary" onclick="toggleConfig()" id="btnConfig">Settings</button>
     <button class="btn-secondary" onclick="togglePhaseFilter()" id="btnPhase">Phases</button>
-    <button class="btn-primary" onclick="refreshData()" id="btnRefresh">&#8635; Refresh</button>
+    <button class="btn-primary" onclick="signInAndLoad()" id="btnRefresh">&#8635; Refresh</button>
   </div>
 </div>
 
@@ -99,16 +99,16 @@
   <div class="config-row">
     <div class="config-field">
       <label>SharePoint Site URL</label>
-      <input id="cfgSiteUrl" placeholder="https://tenant.sharepoint.com/sites/SiteName" value="https://sascontractingsa.sharepoint.com/sites/Alenshaiah">
+      <input id="cfgSiteUrl" value="https://sascontractingsa.sharepoint.com/sites/Alenshaiah">
       <div class="hint">Full URL to your SharePoint site</div>
     </div>
     <div class="config-field">
       <label>List Name</label>
-      <input id="cfgListName" placeholder="e.g. Maseel Activity" value="EMSL15P6 Update 3Jun2026 G 7">
+      <input id="cfgListName" value="EMSL15P6 Update 3Jun2026 G 7">
       <div class="hint">Exactly as it appears in SharePoint</div>
     </div>
     <div class="config-actions">
-      <button class="btn-primary" onclick="saveConfig()">Save &amp; Connect</button>
+      <button class="btn-primary" onclick="saveConfig()">Save</button>
       <button class="btn-secondary" onclick="toggleConfig()">Close</button>
     </div>
   </div>
@@ -157,7 +157,7 @@
   </div>
   <div id="loadingIndicator" class="loading">
     <div class="spinner"></div>
-    <p id="loadingText">Connecting to SharePoint...</p>
+    <p id="loadingText">Loading...</p>
   </div>
   <div id="tableWrapper" style="display:none">
     <table>
@@ -182,318 +182,106 @@
 
 <div class="last-updated" id="lastUpdated"></div>
 
-<!-- Device Code Modal -->
-<div id="deviceCodeModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center">
-  <div style="background:#fff;border-radius:16px;padding:40px;max-width:440px;width:90%;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,.2)">
-    <div style="font-size:40px;margin-bottom:8px">&#128274;</div>
-    <h2 style="font-size:20px;margin-bottom:4px">Sign in with Microsoft</h2>
-    <p style="color:#666;font-size:14px;margin-bottom:20px">Go to <strong>microsoft.com/devicelogin</strong> and enter this code:</p>
-    <div id="deviceCodeDisplay" style="font-size:40px;font-weight:700;letter-spacing:6px;background:#f0f2f5;padding:16px;border-radius:12px;font-family:monospace;margin-bottom:16px;user-select:all"></div>
-    <button id="deviceCodeCopyBtn" onclick="copyDeviceCode()" style="padding:8px 20px;background:#1a73e8;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:14px">Copy Code</button>
-    <div style="margin-top:20px;display:flex;align-items:center;justify-content:center;gap:10px;color:#888;font-size:13px">
-      <span class="spinner" style="display:inline-block;width:16px;height:16px;border:2px solid #e0e0e0;border-top-color:#1a73e8;border-radius:50%;animation:spin .8s linear infinite;vertical-align:middle"></span>
-      <span id="deviceCodeStatus">Waiting for authentication...</span>
-    </div>
-    <button onclick="hideDeviceCodeModal();deviceCodePolling=false" style="margin-top:16px;padding:6px 16px;background:transparent;border:1px solid #ccc;border-radius:6px;cursor:pointer;font-size:13px;color:#666">Cancel</button>
-  </div>
-</div>
-
 <script>
 const CLIENT_ID = '1b3e37d8-0ba9-44b2-9033-68e4d8068a87';
 const TENANT_ID = '684547e2-bb8b-450a-a3e1-3a6bc15e9471';
+const SCOPES = ['User.Read', 'openid', 'profile', 'https://graph.microsoft.com/Sites.ReadWrite.All'];
 
-const STATUS_ORDER = ['Done', 'For Inspection', 'Partially Inspected', 'In Progress', 'Not Started'];
-
-const DEVICE_CODE_SCOPE = 'User.Read openid profile https://graph.microsoft.com/Sites.ReadWrite.All offline_access';
+const pca = new msal.PublicClientApplication({
+  auth: { clientId: CLIENT_ID, authority: `https://login.microsoftonline.com/${TENANT_ID}` },
+  cache: { cacheLocation: 'localStorage' }
+});
 
 const STATE = {
-  items: [],
-  filtered: [],
-  personMap: {},
+  items: [], filtered: [], personMap: {}, phases: [],
   stats: { total: 0, done: 0, inProgress: 0, forInspection: 0, partiallyInspected: 0, notStarted: 0 },
-  phases: [],
-  sortKey: 'ActivityID',
-  sortAsc: true,
-  page: 0,
-  pageSize: 25,
-  kpiChart: null,
-  statusChart: null,
-  user: null,
-  token: null,
-  lastRefresh: null,
+  sortKey: 'ActivityID', sortAsc: true, page: 0, pageSize: 25,
+  kpiChart: null, statusChart: null, user: null, token: null,
 };
 
-function escHtml(s) {
-  if (s == null) return '';
-  const d = document.createElement('div');
-  d.textContent = s;
-  return d.innerHTML;
-}
-
-function fmtDate(d) {
-  if (!d) return '&mdash;';
-  try { return new Date(d).toLocaleDateString(); } catch { return d; }
-}
-
-function pct(a, b) {
-  return b ? Math.round(a / b * 100) : 0;
-}
+function escHtml(s) { if (s == null) return ''; const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+function fmtDate(d) { if (!d) return '&mdash;'; try { return new Date(d).toLocaleDateString(); } catch { return d; } }
 
 /* ── Config ──────────────────────────────── */
 
-function loadConfig() {
-  try { return JSON.parse(localStorage.getItem('spConfig')) || {}; } catch { return {}; }
-}
+function loadConfig() { try { return JSON.parse(localStorage.getItem('spConfig')) || {}; } catch { return {}; } }
 function saveConfigUI() {
-  const cfg = {
-    siteUrl: document.getElementById('cfgSiteUrl').value.trim(),
-    listName: document.getElementById('cfgListName').value.trim(),
-  };
+  const cfg = { siteUrl: document.getElementById('cfgSiteUrl').value.trim(), listName: document.getElementById('cfgListName').value.trim() };
   localStorage.setItem('spConfig', JSON.stringify(cfg));
   toggleConfig();
   return cfg;
 }
-function saveConfig() {
-  saveConfigUI();
-  refreshData();
-}
+function saveConfig() { saveConfigUI(); signInAndLoad(); }
 function toggleConfig() {
   const p = document.getElementById('configPanel');
   const cfg = loadConfig();
-  if (p.style.display !== 'block') {
-    document.getElementById('cfgSiteUrl').value = cfg.siteUrl || 'https://sascontractingsa.sharepoint.com/sites/Alenshaiah';
-    document.getElementById('cfgListName').value = cfg.listName || 'EMSL15P6 Update 3Jun2026 G 7';
-    p.style.display = 'block';
-  } else {
-    p.style.display = 'none';
+  p.style.display = p.style.display === 'block' ? 'none' : 'block';
+  document.getElementById('cfgSiteUrl').value = cfg.siteUrl || 'https://sascontractingsa.sharepoint.com/sites/Alenshaiah';
+  document.getElementById('cfgListName').value = cfg.listName || 'EMSL15P6 Update 3Jun2026 G 7';
+}
+function togglePhaseFilter() { document.getElementById('phaseFilterRow').style.display = document.getElementById('phaseFilterRow').style.display === 'none' ? '' : 'none'; }
+
+/* ── Auth ────────────────────────────────── */
+
+async function getToken() {
+  const accounts = pca.getAllAccounts();
+  if (accounts.length > 0) {
+    try {
+      const resp = await pca.acquireTokenSilent({ scopes: SCOPES, account: accounts[0] });
+      return resp.accessToken;
+    } catch { }
   }
-}
-
-function togglePhaseFilter() {
-  const el = document.getElementById('phaseFilterRow');
-  el.style.display = el.style.display === 'none' ? '' : 'none';
-}
-
-/* ── Auth: Device Code Flow ─────────────── */
-
-const TOKEN_KEY = 'maseel_token_cache';
-
-function loadTokenCache() {
-  try { return JSON.parse(localStorage.getItem(TOKEN_KEY)); } catch { return null; }
-}
-function saveTokenCache(data) {
-  localStorage.setItem(TOKEN_KEY, JSON.stringify(data));
-}
-function clearTokenCache() {
-  localStorage.removeItem(TOKEN_KEY);
-  STATE.token = null;
-  STATE.user = null;
-}
-
-function isTokenValid(cache) {
-  if (!cache || !cache.accessToken || !cache.expiresAt) return false;
-  return Date.now() < cache.expiresAt - 60000;
-}
-
-async function refreshAccessToken(refreshToken) {
-  const resp = await fetch(`https://login.microsoftonline.com/${TENANT_ID}/oauth2/v2.0/token`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      client_id: CLIENT_ID,
-      refresh_token: refreshToken,
-      grant_type: 'refresh_token',
-      scope: DEVICE_CODE_SCOPE,
-    }),
-  });
-  if (!resp.ok) return null;
-  const data = await resp.json();
-  const cache = {
-    accessToken: data.access_token,
-    refreshToken: data.refresh_token || refreshToken,
-    expiresAt: Date.now() + (data.expires_in || 3600) * 1000,
-  };
-  saveTokenCache(cache);
-  return cache;
-}
-
-async function startDeviceCodeFlow() {
-  const resp = await fetch(`https://login.microsoftonline.com/${TENANT_ID}/oauth2/v2.0/devicecode`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      client_id: CLIENT_ID,
-      scope: DEVICE_CODE_SCOPE,
-    }),
-  });
-  if (!resp.ok) {
-    const err = await resp.json().catch(() => ({}));
-    throw new Error(err.error_description || 'Failed to get device code');
-  }
-  return await resp.json();
-}
-
-async function pollForToken(deviceCode, interval) {
-  const body = new URLSearchParams({
-    client_id: CLIENT_ID,
-    grant_type: 'urn:ietf:params:oauth:grant-type:device_code',
-    device_code: deviceCode,
-  });
-  while (true) {
-    await new Promise(r => setTimeout(r, interval * 1000));
-    const resp = await fetch(`https://login.microsoftonline.com/${TENANT_ID}/oauth2/v2.0/token`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body,
-    });
-    if (resp.ok) {
-      const data = await resp.json();
-      const cache = {
-        accessToken: data.access_token,
-        refreshToken: data.refresh_token,
-        expiresAt: Date.now() + (data.expires_in || 3600) * 1000,
-      };
-      saveTokenCache(cache);
-      STATE.token = data.access_token;
-      return data.access_token;
-    }
-    const err = await resp.json().catch(() => ({}));
-    if (err.error === 'authorization_pending') continue;
-    if (err.error === 'slow_down') { interval += 5; continue; }
-    throw new Error(err.error_description || 'Device code authentication failed');
-  }
+  const resp = await pca.loginPopup({ scopes: SCOPES });
+  return resp.accessToken;
 }
 
 async function getUserInfo(token) {
-  const resp = await fetch('https://graph.microsoft.com/v1.0/me', {
-    headers: { Authorization: 'Bearer ' + token }
-  });
-  const user = await resp.json();
-  if (user.error) throw new Error(user.error.message);
-  return user;
+  const resp = await fetch('https://graph.microsoft.com/v1.0/me', { headers: { Authorization: 'Bearer ' + token } });
+  return await resp.json();
 }
-
-function updateUserUI(user) {
-  if (user && user.displayName) {
-    document.getElementById('userInfo').style.display = 'flex';
-    document.getElementById('userAvatar').src = '';
-    document.getElementById('userAvatar').style.display = 'none';
-    document.getElementById('userName').textContent = user.displayName;
-  }
-}
-
-let deviceCodePolling = false;
 
 async function ensureAuth() {
   if (STATE.token) return STATE.token;
-
-  const cached = loadTokenCache();
-  if (cached) {
-    if (isTokenValid(cached)) {
-      STATE.token = cached.accessToken;
-      STATE.user = await getUserInfo(STATE.token);
-      updateUserUI(STATE.user);
-      return STATE.token;
-    }
-    if (cached.refreshToken) {
-      const refreshed = await refreshAccessToken(cached.refreshToken);
-      if (refreshed) {
-        STATE.token = refreshed.accessToken;
-        STATE.user = await getUserInfo(STATE.token);
-        updateUserUI(STATE.user);
-        return STATE.token;
-      }
-    }
+  STATE.token = await getToken();
+  STATE.user = await getUserInfo(STATE.token);
+  if (STATE.user && STATE.user.displayName) {
+    document.getElementById('userInfo').style.display = 'flex';
+    document.getElementById('userName').textContent = STATE.user.displayName;
   }
-
-  return await startDeviceCodeAuth();
-}
-
-async function startDeviceCodeAuth() {
-  if (deviceCodePolling) return;
-  deviceCodePolling = true;
-
-  try {
-    const dc = await startDeviceCodeFlow();
-    showDeviceCodeModal(dc.user_code, dc.verification_uri, dc.message);
-    const token = await pollForToken(dc.device_code, dc.interval);
-    hideDeviceCodeModal();
-    STATE.token = token;
-    STATE.user = await getUserInfo(token);
-    updateUserUI(STATE.user);
-    deviceCodePolling = false;
-    return token;
-  } catch (err) {
-    hideDeviceCodeModal();
-    deviceCodePolling = false;
-    throw err;
-  }
+  return STATE.token;
 }
 
 function logout() {
-  clearTokenCache();
+  pca.getAllAccounts().forEach(a => pca.logoutPopup({ account: a }).catch(() => {}));
+  STATE.token = null; STATE.user = null;
   document.getElementById('userInfo').style.display = 'none';
 }
 
-function showDeviceCodeModal(code, verificationUri, message) {
-  document.getElementById('deviceCodeDisplay').textContent = code;
-  document.getElementById('deviceCodeStatus').textContent = 'Waiting for authentication...';
-  document.getElementById('deviceCodeModal').style.display = 'flex';
-}
-
-function hideDeviceCodeModal() {
-  document.getElementById('deviceCodeModal').style.display = 'none';
-}
-
-function copyDeviceCode() {
-  const code = document.getElementById('deviceCodeDisplay').textContent;
-  navigator.clipboard.writeText(code).catch(() => {});
-  const btn = document.getElementById('deviceCodeCopyBtn');
-  btn.textContent = 'Copied!';
-  setTimeout(() => { btn.textContent = 'Copy Code'; }, 2000);
-}
-
-/* ── Graph API: Fetch SharePoint Data ────── */
+/* ── Graph API ───────────────────────────── */
 
 async function getSiteInfo(token, siteUrl) {
   const m = siteUrl.match(/https:\/\/([^\/]+)\/sites\/([^\/]+)/);
-  if (!m) throw new Error('Invalid SharePoint site URL. Expected format: https://tenant.sharepoint.com/sites/SiteName');
-  const host = m[1], path = m[2];
-  const url = `https://graph.microsoft.com/v1.0/sites/${host}:/sites/${path}`;
-  const resp = await fetch(url, { headers: { Authorization: 'Bearer ' + token } });
-  if (!resp.ok) {
-    const text = await resp.text().catch(() => '');
-    throw new Error(`Failed to find site: HTTP ${resp.status} ${text}`);
-  }
+  if (!m) throw new Error('Invalid SharePoint site URL. Expected: https://tenant.sharepoint.com/sites/SiteName');
+  const resp = await fetch(`https://graph.microsoft.com/v1.0/sites/${m[1]}:/sites/${m[2]}`, { headers: { Authorization: 'Bearer ' + token } });
+  if (!resp.ok) throw new Error('Site not found. Check the URL.');
   return await resp.json();
 }
 
 async function getListInfo(token, siteId, listName) {
-  const url = `https://graph.microsoft.com/v1.0/sites/${siteId}/lists?$search="${encodeURIComponent(listName)}"`;
-  const resp = await fetch(url, { headers: { Authorization: 'Bearer ' + token } });
-  if (!resp.ok) throw new Error(`Failed to search lists: HTTP ${resp.status}`);
+  const resp = await fetch(`https://graph.microsoft.com/v1.0/sites/${siteId}/lists?$search="${encodeURIComponent(listName)}"`, { headers: { Authorization: 'Bearer ' + token } });
+  if (!resp.ok) throw new Error('Failed to search lists');
   const data = await resp.json();
   const list = data.value.find(l => l.displayName === listName || l.name === listName);
-  if (!list) throw new Error(`List "${listName}" not found. Available lists: ${data.value.map(l => l.displayName).join(', ')}`);
+  if (!list) throw new Error(`List "${listName}" not found.`);
   return list;
 }
 
 async function fetchAllItems(token, siteId, listId) {
-  let items = [];
-  let nextLink = `https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${listId}/items?expand=fields&$top=5000`;
-  let page = 0;
+  let items = [], nextLink = `https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${listId}/items?expand=fields&$top=5000`;
   while (nextLink) {
-    page++;
     const resp = await fetch(nextLink, { headers: { Authorization: 'Bearer ' + token } });
-    if (!resp.ok) {
-      if (resp.status === 429) {
-        const retry = resp.headers.get('Retry-After');
-        const ms = (retry ? parseInt(retry) : 30) * 1000;
-        await new Promise(r => setTimeout(r, ms));
-        continue;
-      }
-      throw new Error(`Failed to fetch items (page ${page}): HTTP ${resp.status}`);
-    }
+    if (resp.status === 429) { await new Promise(r => setTimeout(r, 30000)); continue; }
+    if (!resp.ok) throw new Error('Failed to fetch items');
     const data = await resp.json();
     items = items.concat(data.value);
     nextLink = data['@odata.nextLink'] || null;
@@ -504,50 +292,30 @@ async function fetchAllItems(token, siteId, listId) {
 function normalizeItems(rawItems) {
   return rawItems.map(item => {
     const f = item.fields || {};
-    const statusRaw = (f.Status || f.st || '').trim();
+    const statusRaw = (f.Status || f.st || '').trim().toLowerCase();
     let status = 'Not Started';
-    const s = statusRaw.toLowerCase();
-    if (s === 'done' || s === 'completed') status = 'Done';
-    else if (s === 'for inspection' || s === 'forinsp') status = 'For Inspection';
-    else if (s === 'partially inspected' || s === 'partinsp' || s === 'partial') status = 'Partially Inspected';
-    else if (s === 'in progress' || s === 'inprogress' || s === 'wip') status = 'In Progress';
-
+    if (statusRaw === 'done' || statusRaw === 'completed') status = 'Done';
+    else if (statusRaw.includes('for inspection') || statusRaw === 'forinsp') status = 'For Inspection';
+    else if (statusRaw.includes('partially') || statusRaw === 'partinsp') status = 'Partially Inspected';
+    else if (statusRaw.includes('in progress') || statusRaw === 'inprogress' || statusRaw === 'wip') status = 'In Progress';
     const progressRaw = f.Progress || f.pc;
     const progress = progressRaw != null ? parseFloat(progressRaw) : (status === 'Done' ? 100 : 0);
-
     const respRaw = f.Responsible || f.resp || f.ResponsibleList || '';
     const responsible = respRaw.toString().trim() || 'Unassigned';
-
-    const phase = f.Phase || f.ph || '';
-
     return {
-      id: item.id,
-      ActivityID: f.ActivityID || f.id || '',
-      title: f.Title || '',
-      Phase: phase,
-      Discipline: f.Discipline || f.disc || '',
-      status,
-      progress,
-      responsible,
-      Start: f.Start || f.s || null,
-      Finish: f.Finish || f.f || null,
-      Duration: f.Duration || f.dur || null,
-      Float: f.Float || f.floatDays || null,
-      TotalQty: f.TotalQty || f.totalQty || null,
-      Unit: f.Unit || f.unit || null,
-      Notes: f.Notes || f.Notes || '',
-      _raw: f,
+      id: item.id, ActivityID: f.ActivityID || '', title: f.Title || '', Phase: f.Phase || f.ph || '',
+      Discipline: f.Discipline || f.disc || '', status, progress, responsible,
+      Start: f.Start || f.s || null, Finish: f.Finish || f.f || null,
+      Duration: f.Duration || f.dur || null, Float: f.Float || f.floatDays || null,
+      TotalQty: f.TotalQty || null, Unit: f.Unit || null, Notes: f.Notes || '',
     };
   });
 }
 
-/* ── Data Processing ─────────────────────── */
+/* ── Process ─────────────────────────────── */
 
 function processItems(items) {
-  const personMap = {};
-  const stats = { total: 0, done: 0, inProgress: 0, forInspection: 0, partiallyInspected: 0, notStarted: 0 };
-  const phases = new Set();
-
+  const pm = {}, stats = { total: 0, done: 0, inProgress: 0, forInspection: 0, partiallyInspected: 0, notStarted: 0 }, phases = new Set();
   items.forEach(item => {
     stats.total++;
     if (item.status === 'Done') stats.done++;
@@ -555,50 +323,33 @@ function processItems(items) {
     else if (item.status === 'Partially Inspected') stats.partiallyInspected++;
     else if (item.status === 'In Progress') stats.inProgress++;
     else stats.notStarted++;
-
     if (item.Phase) phases.add(item.Phase);
-
     const names = item.responsible.split(/[,/]/).map(s => s.trim()).filter(Boolean);
     if (!names.length) names.push('Unassigned');
-
     names.forEach(name => {
-      if (!personMap[name]) personMap[name] = { name, total: 0, done: 0, inProgress: 0, forInspection: 0, partiallyInspected: 0, notStarted: 0 };
-      personMap[name].total++;
-      if (item.status === 'Done') personMap[name].done++;
-      else if (item.status === 'For Inspection') personMap[name].forInspection++;
-      else if (item.status === 'Partially Inspected') personMap[name].partiallyInspected++;
-      else if (item.status === 'In Progress') personMap[name].inProgress++;
-      else personMap[name].notStarted++;
+      if (!pm[name]) pm[name] = { name, total: 0, done: 0, inProgress: 0, forInspection: 0, partiallyInspected: 0, notStarted: 0 };
+      pm[name].total++;
+      if (item.status === 'Done') pm[name].done++;
+      else if (item.status === 'For Inspection') pm[name].forInspection++;
+      else if (item.status === 'Partially Inspected') pm[name].partiallyInspected++;
+      else if (item.status === 'In Progress') pm[name].inProgress++;
+      else pm[name].notStarted++;
     });
   });
-
-  STATE.personMap = personMap;
-  STATE.stats = stats;
-  STATE.phases = [...phases].sort();
-  STATE.items = items;
-  STATE.filtered = items.slice();
+  STATE.personMap = pm; STATE.stats = stats; STATE.phases = [...phases].sort();
+  STATE.items = items; STATE.filtered = items.slice();
 }
 
 /* ── Filters ─────────────────────────────── */
 
 function applyFilters() {
-  const phaseVal = document.getElementById('phaseFilter').value;
-  const statusVal = document.getElementById('statusFilter').value;
-
-  STATE.filtered = STATE.items.filter(item => {
-    if (phaseVal && item.Phase !== phaseVal) return false;
-    if (statusVal && item.status !== statusVal) return false;
-    return true;
-  });
-
+  const pv = document.getElementById('phaseFilter').value, sv = document.getElementById('statusFilter').value;
+  STATE.filtered = STATE.items.filter(item => (!pv || item.Phase === pv) && (!sv || item.status === sv));
   STATE.page = 0;
-  renderTable();
-  updateSummary();
-  renderKPI();
-  renderChart();
+  renderTable(); updateSummary(); renderKPI(); renderChart();
 }
 
-/* ── Summary Cards ───────────────────────── */
+/* ── Summary ─────────────────────────────── */
 
 function updateSummary() {
   const s = STATE.stats;
@@ -610,32 +361,20 @@ function updateSummary() {
   document.getElementById('statNotStarted').textContent = s.notStarted;
 }
 
-/* ── KPI Cards per Person ────────────────── */
+/* ── KPI Cards ───────────────────────────── */
 
 function renderKPI() {
   const grid = document.getElementById('kpiGrid');
-  const entries = Object.values(STATE.personMap).filter(p => p.total > 0);
-  if (!entries.length) {
-    grid.innerHTML = '<p style="color:#888;grid-column:1/-1;padding:20px;text-align:center">No matching data.</p>';
-    return;
-  }
-
-  entries.sort((a, b) => b.total - a.total);
-
+  const entries = Object.values(STATE.personMap).filter(p => p.total > 0).sort((a, b) => b.total - a.total);
+  if (!entries.length) { grid.innerHTML = '<p style="color:#888;padding:20px;text-align:center">No matching data.</p>'; return; }
   grid.innerHTML = entries.map(p => {
-    const pctDone = Math.round(p.done / p.total * 100);
-    const color = pctDone >= 80 ? '#1e7e34' : pctDone >= 50 ? '#e67e22' : '#b71c1c';
-    const barW = Math.max(2, pctDone);
+    const pct = Math.round(p.done / p.total * 100);
+    const color = pct >= 80 ? '#1e7e34' : pct >= 50 ? '#e67e22' : '#b71c1c';
     return `<div class="kpi-card" style="border-left-color:${color}">
       <div class="name">${escHtml(p.name)}</div>
       <div class="value">${p.done} / ${p.total}</div>
-      <div class="sub">${pctDone}% done &middot;
-        ${p.forInspection ? p.forInspection + ' for insp &middot;' : ''}
-        ${p.partiallyInspected ? p.partiallyInspected + ' partial &middot;' : ''}
-        ${p.inProgress} in prog &middot;
-        ${p.notStarted} not started
-      </div>
-      <div class="bar-container"><div class="bar-fill" style="width:${barW}%;background:${color}"></div></div>
+      <div class="sub">${pct}% done${p.forInspection ? ' &middot; ' + p.forInspection + ' for insp' : ''}${p.partiallyInspected ? ' &middot; ' + p.partiallyInspected + ' partial' : ''} &middot; ${p.inProgress} in prog &middot; ${p.notStarted} not started</div>
+      <div class="bar-container"><div class="bar-fill" style="width:${Math.max(2,pct)}%;background:${color}"></div></div>
     </div>`;
   }).join('');
 }
@@ -645,62 +384,35 @@ function renderKPI() {
 function renderChart() {
   const entries = Object.values(STATE.personMap).filter(p => p.total > 0).sort((a, b) => b.total - a.total);
   const stats = STATE.stats;
-
   const ctx1 = document.getElementById('chartPerson').getContext('2d');
   if (STATE.kpiChart) STATE.kpiChart.destroy();
-
-  const personLabels = entries.map(p => p.name);
-  const doneData = entries.map(p => p.done);
-  const forInspData = entries.map(p => p.forInspection);
-  const partInspData = entries.map(p => p.partiallyInspected);
-  const inProgData = entries.map(p => p.inProgress);
-  const nsData = entries.map(p => p.notStarted);
-
   STATE.kpiChart = new Chart(ctx1, {
     type: 'bar',
     data: {
-      labels: personLabels,
+      labels: entries.map(p => p.name),
       datasets: [
-        { label: 'Done', data: doneData, backgroundColor: '#2e7d32', borderRadius: 2 },
-        { label: 'For Inspection', data: forInspData, backgroundColor: '#1a56db', borderRadius: 2 },
-        { label: 'Partially Inspected', data: partInspData, backgroundColor: '#c62828', borderRadius: 2 },
-        { label: 'In Progress', data: inProgData, backgroundColor: '#f9a825', borderRadius: 2 },
-        { label: 'Not Started', data: nsData, backgroundColor: '#bdbdbd', borderRadius: 2 },
+        { label: 'Done', data: entries.map(p => p.done), backgroundColor: '#2e7d32', borderRadius: 2 },
+        { label: 'For Inspection', data: entries.map(p => p.forInspection), backgroundColor: '#1a56db', borderRadius: 2 },
+        { label: 'Partially Inspected', data: entries.map(p => p.partiallyInspected), backgroundColor: '#c62828', borderRadius: 2 },
+        { label: 'In Progress', data: entries.map(p => p.inProgress), backgroundColor: '#f9a825', borderRadius: 2 },
+        { label: 'Not Started', data: entries.map(p => p.notStarted), backgroundColor: '#bdbdbd', borderRadius: 2 },
       ],
     },
     options: {
-      responsive: true,
-      maintainAspectRatio: true,
-      plugins: {
-        legend: { position: 'bottom', labels: { boxWidth: 12, padding: 12 } },
-      },
-      scales: {
-        x: { grid: { display: false }, ticks: { maxRotation: 45 } },
-        y: { beginAtZero: true, ticks: { stepSize: 1 } },
-      },
+      responsive: true, maintainAspectRatio: true,
+      plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, padding: 12 } } },
+      scales: { x: { grid: { display: false }, ticks: { maxRotation: 45 } }, y: { beginAtZero: true, ticks: { stepSize: 1 } } },
     },
   });
-
   const ctx2 = document.getElementById('chartStatus').getContext('2d');
   if (STATE.statusChart) STATE.statusChart.destroy();
-
-  const statusLabels = ['Done', 'For Inspection', 'Partially Inspected', 'In Progress', 'Not Started'];
-  const statusData = [stats.done, stats.forInspection, stats.partiallyInspected, stats.inProgress, stats.notStarted];
-  const statusColors = ['#2e7d32', '#1a56db', '#c62828', '#f9a825', '#bdbdbd'];
-
   STATE.statusChart = new Chart(ctx2, {
     type: 'doughnut',
     data: {
-      labels: statusLabels,
-      datasets: [{ data: statusData, backgroundColor: statusColors, borderWidth: 0 }],
+      labels: ['Done', 'For Inspection', 'Partially Inspected', 'In Progress', 'Not Started'],
+      datasets: [{ data: [stats.done, stats.forInspection, stats.partiallyInspected, stats.inProgress, stats.notStarted], backgroundColor: ['#2e7d32', '#1a56db', '#c62828', '#f9a825', '#bdbdbd'], borderWidth: 0 }],
     },
-    options: {
-      responsive: true,
-      maintainAspectRatio: true,
-      plugins: {
-        legend: { position: 'bottom', labels: { boxWidth: 12, padding: 12 } },
-      },
-    },
+    options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, padding: 12 } } } },
   });
 }
 
@@ -709,196 +421,96 @@ function renderChart() {
 function renderTable() {
   const filter = (document.getElementById('tableFilter').value || '').toLowerCase();
   let items = STATE.filtered;
-
-  if (filter) {
-    items = items.filter(it =>
-      (it.ActivityID || '').toLowerCase().includes(filter) ||
-      (it.title || '').toLowerCase().includes(filter) ||
-      (it.responsible || '').toLowerCase().includes(filter) ||
-      (it.status || '').toLowerCase().includes(filter) ||
-      (it.Phase || '').toLowerCase().includes(filter)
-    );
-  }
-
-  const key = STATE.sortKey;
-  const asc = STATE.sortAsc;
+  if (filter) items = items.filter(it => (it.ActivityID + ' ' + it.title + ' ' + it.responsible + ' ' + it.status + ' ' + it.Phase).toLowerCase().includes(filter));
+  const key = STATE.sortKey, asc = STATE.sortAsc;
   items = items.slice().sort((a, b) => {
-    let va = (a[key] || '');
-    let vb = (b[key] || '');
-    if (key === 'ActivityID' || key === 'id') {
-      const na = parseInt(va); const nb = parseInt(vb);
-      if (!isNaN(na) && !isNaN(nb)) return asc ? na - nb : nb - na;
-    }
-    if (key === 'progress') {
-      return asc ? (va - vb) : (vb - va);
-    }
-    if (key === 'Start' || key === 'Finish') {
-      const da = va ? new Date(va) : null;
-      const db = vb ? new Date(vb) : null;
-      if (da && db) return asc ? da - db : db - da;
-      if (da) return asc ? -1 : 1;
-      if (db) return asc ? 1 : -1;
-      return 0;
-    }
-    va = va.toString().toLowerCase();
-    vb = vb.toString().toLowerCase();
+    let va = a[key] || '', vb = b[key] || '';
+    if (key === 'ActivityID') { const na = parseInt(va), nb = parseInt(vb); if (!isNaN(na) && !isNaN(nb)) return asc ? na - nb : nb - na; }
+    if (key === 'progress') return asc ? (va - vb) : (vb - va);
+    if (key === 'Start' || key === 'Finish') { const da = va ? new Date(va) : null, db = vb ? new Date(vb) : null; if (da && db) return asc ? da - db : db - da; if (da) return asc ? -1 : 1; if (db) return asc ? 1 : -1; return 0; }
+    va = va.toString().toLowerCase(); vb = vb.toString().toLowerCase();
     return va < vb ? (asc ? -1 : 1) : va > vb ? (asc ? 1 : -1) : 0;
   });
-
-  const start = STATE.page * STATE.pageSize;
-  const pageItems = items.slice(start, start + STATE.pageSize);
+  const start = STATE.page * STATE.pageSize, pageItems = items.slice(start, start + STATE.pageSize);
   const totalPages = Math.ceil(items.length / STATE.pageSize) || 1;
-
   if (STATE.page >= totalPages) STATE.page = totalPages - 1;
-
   document.getElementById('pageInfo').textContent = `Page ${STATE.page + 1} of ${totalPages} (${items.length} items)`;
   document.getElementById('prevBtn').disabled = STATE.page <= 0;
   document.getElementById('nextBtn').disabled = STATE.page >= totalPages - 1;
-
-  const tbody = document.getElementById('tableBody');
-  tbody.innerHTML = pageItems.map(item => {
-    const bc = item.status === 'Done' ? 'badge-done' :
-      item.status === 'For Inspection' ? 'badge-for-inspection' :
-      item.status === 'Partially Inspected' ? 'badge-partially-inspected' :
-      item.status === 'In Progress' ? 'badge-in-progress' : 'badge-not-started';
-    return `<tr>
-      <td style="font-size:12px;color:#888;font-family:monospace">${escHtml(item.ActivityID)}</td>
-      <td style="font-weight:500">${escHtml(item.title)}</td>
-      <td>${escHtml(item.Phase)}</td>
-      <td>${escHtml(item.responsible)}</td>
-      <td><span class="badge ${bc}">${escHtml(item.status)}</span></td>
-      <td>${item.progress != null ? item.progress + '%' : '&mdash;'}</td>
-      <td style="font-size:12px">${fmtDate(item.Start)}</td>
-      <td style="font-size:12px">${fmtDate(item.Finish)}</td>
-    </tr>`;
+  document.getElementById('tableBody').innerHTML = pageItems.map(item => {
+    const bc = item.status === 'Done' ? 'badge-done' : item.status === 'For Inspection' ? 'badge-for-inspection' : item.status === 'Partially Inspected' ? 'badge-partially-inspected' : item.status === 'In Progress' ? 'badge-in-progress' : 'badge-not-started';
+    return `<tr><td style="font-size:12px;color:#888;font-family:monospace">${escHtml(item.ActivityID)}</td><td style="font-weight:500">${escHtml(item.title)}</td><td>${escHtml(item.Phase)}</td><td>${escHtml(item.responsible)}</td><td><span class="badge ${bc}">${escHtml(item.status)}</span></td><td>${item.progress != null ? item.progress + '%' : '&mdash;'}</td><td style="font-size:12px">${fmtDate(item.Start)}</td><td style="font-size:12px">${fmtDate(item.Finish)}</td></tr>`;
   }).join('');
-
-  document.querySelectorAll('.table-container th .sort-arrow').forEach(el => el.textContent = '');
-  const activeTh = document.querySelectorAll(`.table-container th`)[['ActivityID', 'title', 'Phase', 'responsible', 'status', 'progress', 'Start', 'Finish'].indexOf(key)];
-  if (activeTh) activeTh.querySelector('.sort-arrow').textContent = asc ? ' \u25B2' : ' \u25BC';
+  document.querySelectorAll('th .sort-arrow').forEach(el => el.textContent = '');
+  const idx = ['ActivityID', 'title', 'Phase', 'responsible', 'status', 'progress', 'Start', 'Finish'].indexOf(key);
+  const ths = document.querySelectorAll('th');
+  if (ths[idx]) ths[idx].querySelector('.sort-arrow').textContent = asc ? ' \u25B2' : ' \u25BC';
 }
 
-function sortBy(key) {
-  if (STATE.sortKey === key) STATE.sortAsc = !STATE.sortAsc;
-  else { STATE.sortKey = key; STATE.sortAsc = true; }
-  renderTable();
-}
-
+function sortBy(key) { if (STATE.sortKey === key) STATE.sortAsc = !STATE.sortAsc; else { STATE.sortKey = key; STATE.sortAsc = true; } renderTable(); }
 function prevPage() { if (STATE.page > 0) { STATE.page--; renderTable(); } }
 function nextPage() { STATE.page++; renderTable(); }
 
-/* ── Error / Success Banners ─────────────── */
+/* ── Banners ─────────────────────────────── */
 
-function showError(msg, permanent) {
-  const el = document.getElementById('errorBanner');
-  el.textContent = msg;
-  el.classList.add('show');
-  if (!permanent) setTimeout(() => el.classList.remove('show'), 8000);
-}
+function showError(msg, permanent) { const el = document.getElementById('errorBanner'); el.textContent = msg; el.classList.add('show'); if (!permanent) setTimeout(() => el.classList.remove('show'), 8000); }
 function hideError() { document.getElementById('errorBanner').classList.remove('show'); }
-function showSuccess(msg) {
-  const el = document.getElementById('successBanner');
-  el.textContent = msg;
-  el.classList.add('show');
-  setTimeout(() => el.classList.remove('show'), 5000);
-}
+function showSuccess(msg) { const el = document.getElementById('successBanner'); el.textContent = msg; el.classList.add('show'); setTimeout(() => el.classList.remove('show'), 5000); }
 
-/* ── Main Refresh ────────────────────────── */
+/* ── Main ────────────────────────────────── */
 
-async function refreshData() {
+async function signInAndLoad() {
   hideError();
-  const loading = document.getElementById('loadingIndicator');
-  const wrapper = document.getElementById('tableWrapper');
-  const loadingText = document.getElementById('loadingText');
-
-  loading.style.display = 'block';
-  wrapper.style.display = 'none';
-  loadingText.textContent = 'Connecting to Microsoft 365...';
-
+  const loading = document.getElementById('loadingIndicator'), wrapper = document.getElementById('tableWrapper'), text = document.getElementById('loadingText');
+  loading.style.display = 'block'; wrapper.style.display = 'none'; text.textContent = 'Connecting to Microsoft 365...';
   const cfg = loadConfig();
   if (!cfg.siteUrl || !cfg.listName) {
     loading.style.display = 'none';
-    showError('Please configure your SharePoint site URL and list name in Settings.');
+    showError('Please configure SharePoint site URL and list name in Settings first.');
     toggleConfig();
     return;
   }
-
   try {
-    loadingText.textContent = 'Signing in...';
-    const token = await ensureAuth();
-
-    loadingText.textContent = 'Finding SharePoint site...';
-    const site = await getSiteInfo(token, cfg.siteUrl);
-
-    loadingText.textContent = 'Finding list...';
-    const list = await getListInfo(token, site.id, cfg.listName);
-
-    loadingText.textContent = `Fetching items from "${list.displayName}"...`;
-    const rawItems = await fetchAllItems(token, site.id, list.id);
-
-    loadingText.textContent = 'Processing data...';
-    const items = normalizeItems(rawItems);
+    text.textContent = 'Signing in...';
+    await ensureAuth();
+    text.textContent = 'Finding SharePoint site...';
+    const site = await getSiteInfo(STATE.token, cfg.siteUrl);
+    text.textContent = 'Finding list...';
+    const list = await getListInfo(STATE.token, site.id, cfg.listName);
+    text.textContent = 'Fetching data...';
+    const raw = await fetchAllItems(STATE.token, site.id, list.id);
+    text.textContent = 'Processing...';
+    const items = normalizeItems(raw);
     processItems(items);
-
-    const phaseSel = document.getElementById('phaseFilter');
-    phaseSel.innerHTML = '<option value="">All Phases</option>' +
-      STATE.phases.map(p => `<option value="${escHtml(p)}">${escHtml(p)}</option>`).join('');
-
-    STATE.lastRefresh = new Date();
-    document.getElementById('lastUpdated').textContent = 'Last updated: ' + STATE.lastRefresh.toLocaleString();
-
-    loading.style.display = 'none';
-    wrapper.style.display = '';
-
+    const sel = document.getElementById('phaseFilter');
+    sel.innerHTML = '<option value="">All Phases</option>' + STATE.phases.map(p => `<option value="${escHtml(p)}">${escHtml(p)}</option>`).join('');
+    document.getElementById('lastUpdated').textContent = 'Last updated: ' + new Date().toLocaleString();
+    loading.style.display = 'none'; wrapper.style.display = '';
     applyFilters();
-    showSuccess(`Loaded ${items.length} activities from ${list.displayName}`);
+    showSuccess('Loaded ' + items.length + ' activities from ' + list.displayName);
   } catch (err) {
     loading.style.display = 'none';
-    let msg = err.message;
-    if (msg.includes('AADSTS50011')) {
-      const origin = window.location.origin;
-      msg = 'Redirect URI mismatch. Please add this URI to the Azure AD app:\n\n' +
-        '1. Go to https://portal.azure.com > Azure Active Directory > App registrations > select "Maseel" app (ID: ' + CLIENT_ID + ')\n' +
-        '2. Under "Authentication" > "Redirect URIs", add:\n' +
-        '   - ' + origin + '/\n' +
-        '   - ' + origin + '\n' +
-        '3. Under "Implicit grant and hybrid flows", check "Access tokens" and "ID tokens"\n' +
-        '4. Click Save, then refresh this page and try again.\n\n' +
-        'Current origin: ' + origin;
-    }
-    showError(msg, true);
-    STATE.items = [];
-    STATE.filtered = [];
+    showError(err.message, true);
+    STATE.items = []; STATE.filtered = [];
     applyFilters();
   }
 }
 
 /* ── Init ────────────────────────────────── */
 
-async function connectWithDefaults() {
-  const defaults = {
-    siteUrl: 'https://sascontractingsa.sharepoint.com/sites/Alenshaiah',
-    listName: 'EMSL15P6 Update 3Jun2026 G 7',
-  };
-  localStorage.setItem('spConfig', JSON.stringify(defaults));
-  await refreshData();
-}
-
 (async function init() {
   const cfg = loadConfig();
-  if (cfg.siteUrl && cfg.listName && pca.getAllAccounts().length > 0) {
-    await refreshData();
+  if (cfg.siteUrl && cfg.listName) {
+    if (pca.getAllAccounts().length > 0) {
+      await signInAndLoad();
+    } else {
+      const text = document.getElementById('loadingText');
+      document.getElementById('loadingIndicator').querySelector('.spinner').style.display = 'none';
+      text.innerHTML = 'Configured for <strong>' + escHtml(cfg.siteUrl) + '</strong> &mdash; <a href="#" onclick="signInAndLoad();return false" style="color:#1a73e8">Sign in to start</a>.';
+    }
   } else {
-    const spinner = document.getElementById('loadingIndicator').querySelector('.spinner');
-    const textEl = document.getElementById('loadingText');
-    if (spinner) spinner.style.display = 'none';
-    textEl.innerHTML = 'Configure your SharePoint connection in <a href="#" onclick="toggleConfig();return false" style="color:#1a73e8">Settings</a>, or click below to connect with defaults.';
-    const btn = document.createElement('button');
-    btn.className = 'btn-primary';
-    btn.style.cssText = 'margin-top:12px;font-size:15px;padding:10px 28px';
-    btn.textContent = 'Sign In & Connect';
-    btn.onclick = connectWithDefaults;
-    textEl.parentNode.appendChild(btn);
+    document.getElementById('loadingIndicator').querySelector('.spinner').style.display = 'none';
+    document.getElementById('loadingText').innerHTML = 'Set your SharePoint connection in <a href="#" onclick="toggleConfig();return false" style="color:#1a73e8">Settings</a>, then click <strong>Refresh</strong>.';
   }
 })();
 </script>
