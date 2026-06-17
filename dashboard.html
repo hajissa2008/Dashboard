@@ -10,8 +10,6 @@
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: #0f1219; color: #e0e0e0; min-height: 100vh; }
   ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: #1a1f2e; } ::-webkit-scrollbar-thumb { background: #3a4166; border-radius: 3px; }
-
-  /* Header */
   .top-bar { background: linear-gradient(135deg, #1a1f2e 0%, #0d1b2a 100%); border-bottom: 1px solid #2a2f4a; padding: 16px 32px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
   .top-bar h1 { font-size: 22px; font-weight: 700; color: #fff; letter-spacing: .5px; }
   .top-bar h1 span { color: #4fc3f7; }
@@ -21,102 +19,77 @@
   .btn-accent { background: #4fc3f7; color: #0d1b2a; } .btn-accent:hover { background: #39b0e4; }
   .btn-danger { background: #ef5350; color: #fff; } .btn-danger:hover { background: #d32f2f; }
   .user-info { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #b0b8d1; }
-
-  /* Content */
   .content { max-width: 1440px; margin: 0 auto; padding: 24px 32px; }
-
-  /* KPI Row */
-  .kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; margin-bottom: 24px; }
-  .kpi-tile { background: linear-gradient(135deg, #1a1f2e, #1e2538); border-radius: 14px; padding: 20px 24px; border: 1px solid #2a2f4a; position: relative; overflow: hidden; }
-  .kpi-tile::after { content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%; border-radius: 14px 0 0 14px; }
-  .kpi-tile .label { font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #6b7294; margin-bottom: 6px; }
-  .kpi-tile .number { font-size: 32px; font-weight: 700; line-height: 1.1; }
-  .kpi-tile .sub { font-size: 12px; color: #6b7294; margin-top: 4px; }
+  .kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px; margin-bottom: 24px; }
+  .kpi-tile { background: linear-gradient(135deg, #1a1f2e, #1e2538); border-radius: 14px; padding: 18px 22px; border: 1px solid #2a2f4a; position: relative; overflow: hidden; }
+  .kpi-tile::after { content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%; }
+  .kpi-tile .label { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #6b7294; margin-bottom: 4px; }
+  .kpi-tile .number { font-size: 30px; font-weight: 700; line-height: 1.1; }
+  .kpi-tile .sub { font-size: 11px; color: #6b7294; margin-top: 3px; }
   .kpi-tile.total::after { background: #4fc3f7; } .kpi-tile.total .number { color: #4fc3f7; }
   .kpi-tile.done::after { background: #66bb6a; } .kpi-tile.done .number { color: #66bb6a; }
   .kpi-tile.overdue::after { background: #ef5350; } .kpi-tile.overdue .number { color: #ef5350; }
   .kpi-tile.progress::after { background: #ffa726; } .kpi-tile.progress .number { color: #ffa726; }
   .kpi-tile.inprog::after { background: #42a5f5; } .kpi-tile.inprog .number { color: #42a5f5; }
-
-  /* Section headers */
-  .section-title { font-size: 16px; font-weight: 600; color: #b0b8d1; margin-bottom: 16px; display: flex; align-items: center; gap: 10px; text-transform: uppercase; letter-spacing: 1px; }
-  .section-title .count { font-size: 13px; color: #6b7294; font-weight: 400; }
-
-  /* Phase Grid */
-  .phase-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; margin-bottom: 32px; }
-  .phase-card { background: linear-gradient(135deg, #1a1f2e, #1e2538); border-radius: 14px; padding: 20px; border: 1px solid #2a2f4a; transition: transform .2s, border-color .2s; }
-  .phase-card:hover { transform: translateY(-2px); border-color: #3a4166; }
-  .phase-card.top { border-color: #66bb6a; } .phase-card.warn { border-color: #ffa726; } .phase-card.critical { border-color: #ef5350; }
-  .phase-card .phase-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-  .phase-card .phase-name { font-size: 18px; font-weight: 700; color: #fff; }
-  .phase-card .phase-status { font-size: 11px; padding: 3px 10px; border-radius: 20px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; }
-  .phase-card .phase-status.ok { background: rgba(102,187,106,.15); color: #66bb6a; }
-  .phase-card .phase-status.atrisk { background: rgba(255,167,38,.15); color: #ffa726; }
-  .phase-card .phase-status.critical { background: rgba(239,83,80,.15); color: #ef5350; }
-  .phase-card .phase-stats { display: flex; gap: 16px; margin-bottom: 12px; }
-  .phase-card .phase-stat { text-align: center; flex: 1; padding: 8px; background: rgba(0,0,0,.2); border-radius: 8px; }
-  .phase-card .phase-stat .val { font-size: 18px; font-weight: 700; color: #fff; }
-  .phase-card .phase-stat .lbl { font-size: 10px; color: #6b7294; text-transform: uppercase; letter-spacing: .5px; }
-  .phase-card .phase-stat .val.green { color: #66bb6a; } .phase-card .phase-stat .val.red { color: #ef5350; } .phase-card .phase-stat .val.blue { color: #42a5f5; }
-  .phase-bar { height: 6px; background: #252b42; border-radius: 3px; overflow: hidden; margin-top: 4px; }
-  .phase-bar-fill { height: 100%; border-radius: 3px; transition: width .8s ease; }
-
-  /* Overdue Section */
-  .overdue-section { background: linear-gradient(135deg, #1e1a2e, #2a1a2e); border: 1px solid #4a2a3a; border-radius: 14px; padding: 20px; margin-bottom: 32px; }
-  .overdue-section .section-title { color: #ef5350; }
-  .overdue-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 12px; }
-  .overdue-item { background: rgba(239,83,80,.08); border-left: 3px solid #ef5350; border-radius: 8px; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; gap: 12px; transition: background .2s; }
-  .overdue-item:hover { background: rgba(239,83,80,.15); }
-  .overdue-item .oi-left { flex: 1; min-width: 0; }
-  .overdue-item .oi-id { font-size: 11px; color: #ef5350; font-family: monospace; }
-  .overdue-item .oi-title { font-size: 14px; font-weight: 600; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .overdue-item .oi-meta { font-size: 12px; color: #8b7294; margin-top: 2px; }
-  .overdue-item .oi-right { text-align: right; flex-shrink: 0; }
-  .overdue-item .oi-days { font-size: 22px; font-weight: 700; color: #ef5350; line-height: 1; }
-  .overdue-item .oi-days-label { font-size: 10px; text-transform: uppercase; color: #8b7294; letter-spacing: .5px; }
-  .overdue-item .oi-status { font-size: 11px; padding: 2px 8px; border-radius: 10px; font-weight: 600; }
-
-  /* Bottom row */
-  .bottom-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
-  .chart-card { background: linear-gradient(135deg, #1a1f2e, #1e2538); border-radius: 14px; padding: 20px; border: 1px solid #2a2f4a; }
-  .chart-card h3 { font-size: 13px; color: #6b7294; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px; }
-  .chart-card canvas { max-height: 280px; }
-
-  /* Person KPI */
-  .person-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; margin-bottom: 24px; }
-  .person-card { background: linear-gradient(135deg, #1a1f2e, #1e2538); border-radius: 10px; padding: 14px 16px; border: 1px solid #2a2f4a; border-left: 3px solid #3a4166; }
-  .person-card .pc-name { font-size: 13px; color: #b0b8d1; margin-bottom: 2px; }
-  .person-card .pc-value { font-size: 20px; font-weight: 700; color: #fff; }
-  .person-card .pc-sub { font-size: 11px; color: #6b7294; margin-top: 2px; }
-  .person-card .pc-overdue { color: #ef5350; font-weight: 600; }
-
-  /* Config Panel (modal) */
+  .section-title { font-size: 15px; font-weight: 600; color: #b0b8d1; margin-bottom: 14px; display: flex; align-items: center; gap: 10px; text-transform: uppercase; letter-spacing: 1px; }
+  .section-title .count { font-size: 12px; color: #6b7294; font-weight: 400; }
+  .phase-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; margin-bottom: 28px; }
+  .phase-card { background: linear-gradient(135deg, #1a1f2e, #1e2538); border-radius: 14px; padding: 18px; border: 1px solid #2a2f4a; transition: transform .2s; }
+  .phase-card:hover { transform: translateY(-2px); }
+  .phase-card .ph-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .phase-card .ph-name { font-size: 17px; font-weight: 700; color: #fff; }
+  .phase-card .ph-badge { font-size: 10px; padding: 3px 10px; border-radius: 20px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; }
+  .ph-badge.ok { background: rgba(102,187,106,.15); color: #66bb6a; } .ph-badge.warn { background: rgba(255,167,38,.15); color: #ffa726; } .ph-badge.crit { background: rgba(239,83,80,.15); color: #ef5350; }
+  .phase-card .ph-stats { display: flex; gap: 12px; margin-bottom: 10px; }
+  .phase-card .ph-stat { flex: 1; text-align: center; padding: 6px; background: rgba(0,0,0,.2); border-radius: 8px; }
+  .phase-card .ph-stat .v { font-size: 17px; font-weight: 700; color: #fff; }
+  .phase-card .ph-stat .l { font-size: 9px; color: #6b7294; text-transform: uppercase; letter-spacing: .5px; }
+  .phase-card .ph-stat .v.grn { color: #66bb6a; } .phase-card .ph-stat .v.red { color: #ef5350; } .phase-card .ph-stat .v.blu { color: #42a5f5; }
+  .ph-bar { height: 5px; background: #252b42; border-radius: 3px; overflow: hidden; margin-top: 4px; }
+  .ph-bar-fill { height: 100%; border-radius: 3px; transition: width .8s ease; }
+  .overdue-section { margin-bottom: 28px; }
+  .overdue-section .os-title { color: #ef5350; margin-bottom: 12px; }
+  .overdue-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 10px; }
+  .overdue-item { background: rgba(239,83,80,.06); border-left: 3px solid #ef5350; border-radius: 8px; padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+  .overdue-item .oi-l { flex: 1; min-width: 0; }
+  .overdue-item .oi-id { font-size: 10px; color: #ef5350; font-family: monospace; }
+  .overdue-item .oi-title { font-size: 13px; font-weight: 600; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .overdue-item .oi-meta { font-size: 11px; color: #8b7294; margin-top: 1px; }
+  .overdue-item .oi-r { text-align: right; flex-shrink: 0; }
+  .overdue-item .oi-days { font-size: 20px; font-weight: 700; color: #ef5350; line-height: 1; }
+  .overdue-item .oi-days-l { font-size: 9px; text-transform: uppercase; color: #8b7294; letter-spacing: .5px; }
+  .bottom-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 24px; }
+  .chart-card { background: linear-gradient(135deg, #1a1f2e, #1e2538); border-radius: 14px; padding: 18px; border: 1px solid #2a2f4a; }
+  .chart-card h3 { font-size: 12px; color: #6b7294; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 14px; }
+  .chart-card canvas { max-height: 260px; }
+  .person-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; margin-bottom: 20px; }
+  .person-card { background: linear-gradient(135deg, #1a1f2e, #1e2538); border-radius: 10px; padding: 12px 14px; border: 1px solid #2a2f4a; border-left: 3px solid #3a4166; }
+  .person-card .pc-name { font-size: 12px; color: #b0b8d1; margin-bottom: 1px; }
+  .person-card .pc-value { font-size: 18px; font-weight: 700; color: #fff; }
+  .person-card .pc-sub { font-size: 10px; color: #6b7294; margin-top: 2px; }
+  .person-card .pc-ov { color: #ef5350; font-weight: 600; }
   .config-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.7); z-index: 1000; align-items: center; justify-content: center; }
   .config-overlay.show { display: flex; }
-  .config-modal { background: #1a1f2e; border: 1px solid #2a2f4a; border-radius: 16px; padding: 32px; max-width: 480px; width: 90%; }
-  .config-modal h3 { font-size: 18px; color: #fff; margin-bottom: 16px; }
-  .config-field { margin-bottom: 14px; }
-  .config-field label { font-size: 12px; color: #6b7294; text-transform: uppercase; letter-spacing: .5px; display: block; margin-bottom: 4px; }
-  .config-field input { width: 100%; padding: 10px 12px; background: #0f1219; border: 1px solid #2a2f4a; border-radius: 8px; color: #e0e0e0; font-size: 14px; outline: none; }
+  .config-modal { background: #1a1f2e; border: 1px solid #2a2f4a; border-radius: 16px; padding: 28px; max-width: 460px; width: 90%; }
+  .config-modal h3 { font-size: 17px; color: #fff; margin-bottom: 14px; }
+  .config-field { margin-bottom: 12px; }
+  .config-field label { font-size: 11px; color: #6b7294; text-transform: uppercase; letter-spacing: .5px; display: block; margin-bottom: 3px; }
+  .config-field input { width: 100%; padding: 9px 12px; background: #0f1219; border: 1px solid #2a2f4a; border-radius: 8px; color: #e0e0e0; font-size: 13px; outline: none; }
   .config-field input:focus { border-color: #4fc3f7; }
-  .config-field .hint { font-size: 11px; color: #4a5274; margin-top: 4px; }
-  .config-actions { display: flex; gap: 8px; margin-top: 20px; }
-  .config-actions button { padding: 9px 20px; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600; }
-
-  .error-banner { background: rgba(239,83,80,.15); color: #ef5350; border: 1px solid rgba(239,83,80,.3); padding: 12px 16px; border-radius: 8px; margin-bottom: 16px; display: none; font-size: 14px; }
+  .config-field .hint { font-size: 10px; color: #4a5274; margin-top: 3px; }
+  .config-actions { display: flex; gap: 8px; margin-top: 16px; }
+  .error-banner { background: rgba(239,83,80,.15); color: #ef5350; border: 1px solid rgba(239,83,80,.3); padding: 10px 14px; border-radius: 8px; margin-bottom: 14px; display: none; font-size: 13px; }
   .error-banner.show { display: block; }
-  .success-banner { background: rgba(102,187,106,.15); color: #66bb6a; border: 1px solid rgba(102,187,106,.3); padding: 12px 16px; border-radius: 8px; margin-bottom: 16px; display: none; font-size: 14px; }
+  .success-banner { background: rgba(102,187,106,.15); color: #66bb6a; border: 1px solid rgba(102,187,106,.3); padding: 10px 14px; border-radius: 8px; margin-bottom: 14px; display: none; font-size: 13px; }
   .success-banner.show { display: block; }
   .loading { text-align: center; padding: 80px 20px; color: #6b7294; }
-  .loading .spinner { width: 40px; height: 40px; border: 3px solid #2a2f4a; border-top-color: #4fc3f7; border-radius: 50%; animation: spin .8s linear infinite; margin: 0 auto 16px; }
+  .loading .spinner { width: 38px; height: 38px; border: 3px solid #2a2f4a; border-top-color: #4fc3f7; border-radius: 50%; animation: spin .8s linear infinite; margin: 0 auto 14px; }
   @keyframes spin { to { transform: rotate(360deg); } }
-  .last-updated { font-size: 12px; color: #4a5274; text-align: right; margin-top: 16px; padding-top: 16px; border-top: 1px solid #1a1f2e; }
-
-  .filter-bar { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; align-items: center; }
-  .filter-bar select, .filter-bar input { padding: 7px 12px; background: #0f1219; border: 1px solid #2a2f4a; border-radius: 8px; color: #e0e0e0; font-size: 13px; outline: none; }
+  .last-updated { font-size: 11px; color: #4a5274; text-align: right; margin-top: 14px; padding-top: 14px; border-top: 1px solid #1a1f2e; }
+  .filter-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; align-items: center; }
+  .filter-bar select, .filter-bar input { padding: 6px 10px; background: #0f1219; border: 1px solid #2a2f4a; border-radius: 8px; color: #e0e0e0; font-size: 12px; outline: none; }
   .filter-bar select:focus, .filter-bar input:focus { border-color: #4fc3f7; }
-  .filter-bar label { font-size: 12px; color: #6b7294; text-transform: uppercase; letter-spacing: .5px; }
-
+  .filter-bar label { font-size: 11px; color: #6b7294; text-transform: uppercase; letter-spacing: .5px; }
   @media (max-width: 900px) { .bottom-row { grid-template-columns: 1fr; } .content { padding: 16px; } .top-bar { padding: 12px 16px; } }
 </style>
 </head>
@@ -128,7 +101,7 @@
     <span class="user-info" id="userInfo" style="display:none"><span id="userName"></span></span>
     <button class="btn-ghost" onclick="toggleConfig()">&#9881; Settings</button>
     <button class="btn-ghost" onclick="document.getElementById('filterBar').style.display=document.getElementById('filterBar').style.display==='none'?'':'none'">&#9776; Filters</button>
-    <button class="btn-accent" onclick="signInAndLoad()" id="btnRefresh">&#8635; Refresh</button>
+    <button class="btn-accent" onclick="signInAndLoad()">&#8635; Refresh</button>
   </div>
 </div>
 
@@ -136,24 +109,18 @@
   <div class="error-banner" id="errorBanner"></div>
   <div class="success-banner" id="successBanner"></div>
 
-  <!-- Filters -->
   <div class="filter-bar" id="filterBar" style="display:none">
     <label>Phase:</label>
     <select id="phaseFilter" onchange="applyFilters()"><option value="">All</option></select>
     <label>Status:</label>
     <select id="statusFilter" onchange="applyFilters()">
-      <option value="">All</option>
-      <option value="Done">Done</option>
-      <option value="In Progress">In Progress</option>
-      <option value="For Inspection">For Inspection</option>
-      <option value="Partially Inspected">Partially Insp.</option>
-      <option value="Not Started">Not Started</option>
+      <option value="">All</option><option value="Done">Done</option><option value="In Progress">In Progress</option>
+      <option value="For Inspection">For Inspection</option><option value="Partially Inspected">Partial Insp.</option><option value="Not Started">Not Started</option>
     </select>
     <label>Search:</label>
-    <input id="searchInput" placeholder="Search..." oninput="applyFilters()" style="width:180px">
+    <input id="searchInput" placeholder="Activity / person / phase..." oninput="applyFilters()" style="width:180px">
   </div>
 
-  <!-- Config Modal -->
   <div class="config-overlay" id="configOverlay">
     <div class="config-modal">
       <h3>SharePoint Configuration</h3>
@@ -171,14 +138,13 @@
         <button class="btn-accent" onclick="saveConfig()">Save & Connect</button>
         <button class="btn-ghost" onclick="toggleConfig()">Cancel</button>
       </div>
-      <div style="margin-top:16px;padding-top:16px;border-top:1px solid #2a2f4a">
+      <div style="margin-top:14px;padding-top:14px;border-top:1px solid #2a2f4a">
         <button class="btn-danger" onclick="logout()" style="padding:7px 16px;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600">Sign Out</button>
-        <span style="font-size:12px;color:#4a5274;margin-left:12px">Signs out of Microsoft 365</span>
+        <span style="font-size:11px;color:#4a5274;margin-left:10px">Signs out of Microsoft 365</span>
       </div>
     </div>
   </div>
 
-  <!-- KPI Row -->
   <div class="kpi-row" id="kpiRow" style="display:none">
     <div class="kpi-tile total"><div class="label">Total Activities</div><div class="number" id="statTotal">0</div></div>
     <div class="kpi-tile done"><div class="label">Completed</div><div class="number" id="statDone">0</div><div class="sub" id="statPct">0%</div></div>
@@ -187,27 +153,21 @@
     <div class="kpi-tile progress"><div class="label">Overall Progress</div><div class="number" id="statOverallPct">0%</div></div>
   </div>
 
-  <!-- Section: Phases -->
   <div id="phaseSection" style="display:none">
     <div class="section-title">&#128202; Phases <span class="count" id="phaseCount"></span></div>
     <div class="phase-grid" id="phaseGrid"></div>
   </div>
 
-  <!-- Section: Overdue -->
   <div id="overdueSection" style="display:none">
-    <div class="section-title">&#9888; Overdue Activities <span class="count" id="overdueCount"></span></div>
-    <div class="overdue-section">
-      <div class="overdue-grid" id="overdueGrid"></div>
-    </div>
+    <div class="section-title os-title">&#9888; Overdue Activities <span class="count" id="overdueCount"></span></div>
+    <div class="overdue-grid" id="overdueGrid"></div>
   </div>
 
-  <!-- Bottom Charts -->
   <div class="bottom-row" id="chartsRow" style="display:none">
     <div class="chart-card"><h3>Status Distribution</h3><canvas id="chartStatus"></canvas></div>
     <div class="chart-card"><h3>Completion by Person</h3><canvas id="chartPerson"></canvas></div>
   </div>
 
-  <!-- Person KPI -->
   <div id="personSection" style="display:none">
     <div class="section-title">&#128101; Team <span class="count" id="personCount"></span></div>
     <div class="person-row" id="personGrid"></div>
@@ -215,7 +175,6 @@
 
   <div class="last-updated" id="lastUpdated"></div>
 
-  <!-- Loading -->
   <div id="loadingIndicator" class="loading">
     <div class="spinner"></div>
     <p id="loadingText">Connecting to SharePoint...</p>
@@ -228,72 +187,58 @@ const TENANT_ID = '684547e2-bb8b-450a-a3e1-3a6bc15e9471';
 const SCOPES = ['User.Read', 'openid', 'profile', 'https://graph.microsoft.com/Sites.ReadWrite.All'];
 const pca = new msal.PublicClientApplication({ auth: { clientId: CLIENT_ID, authority: `https://login.microsoftonline.com/${TENANT_ID}` }, cache: { cacheLocation: 'localStorage' } });
 
-const STATE = { items: [], filtered: [], phases: {}, stats: {}, personMap: {}, sortKey: 'ActivityID', sortAsc: true, page: 0, pageSize: 25, kpiChart: null, statusChart: null, user: null, token: null };
+const STATE = { items: [], filtered: [], phases: {}, stats: {}, personMap: {}, kpiChart: null, statusChart: null, user: null, token: null };
 
 function escHtml(s) { if (s == null) return ''; const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 function fmtDate(d) { if (!d) return '&mdash;'; try { return new Date(d).toLocaleDateString('en-GB'); } catch { return d; } }
 function abbrEmail(s) { if (!s) return ''; const m = s.match(/(.+)@/); return m ? m[1] : s; }
-function isOverdue(finish, status) { if (!finish || status === 'Done') return false; try { return new Date(finish) < new Date(new Date().toDateString()); } catch { return false; } }
-function daysOverdue(finish) { if (!finish) return 0; return Math.floor((Date.now() - new Date(finish).getTime()) / 86400000); }
+function cleanDate(s) { if (!s) return null; const d = new Date(s); if (isNaN(d.getTime())) return null; d.setHours(0,0,0,0); return d; }
+function isOverdue(finish, status) { if (!finish || !status || status === 'Done') return false; const fd = cleanDate(finish); if (!fd) return false; const td = new Date(); td.setHours(0,0,0,0); return fd < td; }
+function daysOverdue(finish) { if (!finish) return 0; const fd = cleanDate(finish); if (!fd) return 0; return Math.round((Date.now() - fd.getTime()) / 86400000); }
 function pct(a, b) { return b ? Math.round(a / b * 100) : 0; }
 
-/* Config */
 function loadConfig() { try { return JSON.parse(localStorage.getItem('spConfig')) || {}; } catch { return {}; } }
-function toggleConfig() {
-  const o = document.getElementById('configOverlay'), cfg = loadConfig();
-  o.classList.toggle('show');
-  document.getElementById('cfgSiteUrl').value = cfg.siteUrl || 'https://sascontractingsa.sharepoint.com/sites/Alenshaiah';
-  document.getElementById('cfgListName').value = cfg.listName || 'Maseel Activity';
-}
-function saveConfig() {
-  const cfg = { siteUrl: document.getElementById('cfgSiteUrl').value.trim(), listName: document.getElementById('cfgListName').value.trim() };
-  localStorage.setItem('spConfig', JSON.stringify(cfg));
-  toggleConfig(); signInAndLoad();
-}
+function toggleConfig() { const o = document.getElementById('configOverlay'), c = loadConfig(); o.classList.toggle('show'); document.getElementById('cfgSiteUrl').value = c.siteUrl || 'https://sascontractingsa.sharepoint.com/sites/Alenshaiah'; document.getElementById('cfgListName').value = c.listName || 'Maseel Activity'; }
+function saveConfig() { const c = { siteUrl: document.getElementById('cfgSiteUrl').value.trim(), listName: document.getElementById('cfgListName').value.trim() }; localStorage.setItem('spConfig', JSON.stringify(c)); toggleConfig(); signInAndLoad(); }
 
-/* Auth */
 async function getToken() {
-  const accounts = pca.getAllAccounts();
-  if (accounts.length > 0) { try { const r = await pca.acquireTokenSilent({ scopes: SCOPES, account: accounts[0] }); if (r && r.accessToken) return r.accessToken; } catch {} }
+  const acc = pca.getAllAccounts();
+  if (acc.length > 0) { try { const r = await pca.acquireTokenSilent({ scopes: SCOPES, account: acc[0] }); if (r && r.accessToken) return r.accessToken; } catch {} }
   const r = await pca.loginPopup({ scopes: SCOPES });
-  if (!r || !r.accessToken) throw new Error('MSAL login succeeded but no access token returned');
+  if (!r || !r.accessToken) throw new Error('MSAL returned no access token');
   return r.accessToken;
 }
 async function ensureAuth() {
   if (STATE.token) return STATE.token;
-  const token = await getToken();
-  if (!token || token.split('.').length !== 3) throw new Error('Invalid token. Please sign out and try again.');
-  STATE.token = token;
-  const r = await fetch('https://graph.microsoft.com/v1.0/me', { headers: { Authorization: 'Bearer ' + token } });
+  const t = await getToken();
+  if (!t || t.split('.').length !== 3) throw new Error('Invalid token. Sign out and try again.');
+  STATE.token = t;
+  const r = await fetch('https://graph.microsoft.com/v1.0/me', { headers: { Authorization: 'Bearer ' + t } });
   STATE.user = await r.json();
-  if (STATE.user && STATE.user.displayName) {
-    document.getElementById('userInfo').style.display = 'flex';
-    document.getElementById('userName').textContent = STATE.user.displayName;
-  }
+  if (STATE.user && STATE.user.displayName) { document.getElementById('userInfo').style.display = 'flex'; document.getElementById('userName').textContent = STATE.user.displayName; }
   return STATE.token;
 }
 function logout() { pca.getAllAccounts().forEach(a => pca.logoutPopup({ account: a }).catch(() => {})); STATE.token = null; STATE.user = null; document.getElementById('userInfo').style.display = 'none'; }
 
-/* Graph */
-async function getSiteInfo(token, url) {
+async function getSiteInfo(tok, url) {
   const m = url.match(/https:\/\/([^\/]+)\/sites\/([^\/]+)/);
   if (!m) throw new Error('Invalid site URL');
-  const r = await fetch(`https://graph.microsoft.com/v1.0/sites/${m[1]}:/sites/${m[2]}`, { headers: { Authorization: 'Bearer ' + token } });
-  if (!r.ok) throw new Error('Site not found');
+  const r = await fetch(`https://graph.microsoft.com/v1.0/sites/${m[1]}:/sites/${m[2]}`, { headers: { Authorization: 'Bearer ' + tok } });
+  if (!r.ok) throw new Error('Site not found. Check the URL.');
   return await r.json();
 }
-async function getListInfo(token, siteId, name) {
-  const r = await fetch(`https://graph.microsoft.com/v1.0/sites/${siteId}/lists?$search="${encodeURIComponent(name)}"`, { headers: { Authorization: 'Bearer ' + token } });
+async function getListInfo(tok, sid, name) {
+  const r = await fetch(`https://graph.microsoft.com/v1.0/sites/${sid}/lists?$search="${encodeURIComponent(name)}"`, { headers: { Authorization: 'Bearer ' + tok } });
   if (!r.ok) throw new Error('Failed to search lists');
   const d = await r.json();
-  const list = d.value.find(l => l.displayName === name || l.name === name);
-  if (!list) throw new Error(`List "${name}" not found.`);
-  return list;
+  const lst = d.value.find(l => l.displayName === name || l.name === name);
+  if (!lst) throw new Error('List "' + name + '" not found.');
+  return lst;
 }
-async function fetchAllItems(token, siteId, listId) {
-  let items = [], next = `https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${listId}/items?expand=fields&$top=5000`;
+async function fetchAllItems(tok, sid, lid) {
+  let items = [], next = `https://graph.microsoft.com/v1.0/sites/${sid}/lists/${lid}/items?expand=fields&$top=5000`;
   while (next) {
-    const r = await fetch(next, { headers: { Authorization: 'Bearer ' + token } });
+    const r = await fetch(next, { headers: { Authorization: 'Bearer ' + tok } });
     if (r.status === 429) { await new Promise(r => setTimeout(r, 30000)); continue; }
     if (!r.ok) throw new Error('Failed to fetch items');
     const d = await r.json();
@@ -303,7 +248,6 @@ async function fetchAllItems(token, siteId, listId) {
   return items;
 }
 
-/* Normalize */
 function normalizeItems(raw) {
   return raw.map(item => {
     const f = item.fields || {};
@@ -317,7 +261,7 @@ function normalizeItems(raw) {
     const progress = pr != null ? parseFloat(pr) : (status === 'Done' ? 100 : 0);
     const rr = f.Responsible || f.resp || f.ResponsibleList || '';
     const responsible = rr.toString().trim() || 'Unassigned';
-    const finish = f.Finish || f.f || null;
+    const finish = f.Finish || f.f || f.FinishDate || null;
     return {
       id: item.id, ActivityID: f.ActivityID || '', title: f.Title || '', Phase: f.Phase || f.ph || '',
       status, progress, responsible, Start: f.Start || f.s || null, Finish: finish,
@@ -326,156 +270,115 @@ function normalizeItems(raw) {
   });
 }
 
-/* Process */
 function processItems(items) {
   const phases = {}, pm = {};
-  let total = 0, done = 0, inProg = 0, forInsp = 0, partInsp = 0, notStarted = 0, overdueCount = 0;
-
+  let total = 0, done = 0, inProg = 0, forInsp = 0, partInsp = 0, ns = 0, ov = 0;
   items.forEach(item => {
     total++;
     if (item.status === 'Done') done++;
     else if (item.status === 'For Inspection') forInsp++;
     else if (item.status === 'Partially Inspected') partInsp++;
     else if (item.status === 'In Progress') inProg++;
-    else notStarted++;
-    if (item.overdue) overdueCount++;
-
+    else ns++;
+    if (item.overdue) ov++;
     const ph = item.Phase || 'Other';
     if (!phases[ph]) phases[ph] = { name: ph, total: 0, done: 0, overdue: 0, items: [] };
-    phases[ph].total++;
-    phases[ph].items.push(item);
+    phases[ph].total++; phases[ph].items.push(item);
     if (item.status === 'Done') phases[ph].done++;
     if (item.overdue) phases[ph].overdue++;
-
     const names = item.responsible.split(/[,/]/).map(s => s.trim()).filter(Boolean);
     if (!names.length) names.push('Unassigned');
-    names.forEach(name => {
-      if (!pm[name]) pm[name] = { name, total: 0, done: 0, overdue: 0 };
-      pm[name].total++;
-      if (item.status === 'Done') pm[name].done++;
-      if (item.overdue) pm[name].overdue++;
-    });
+    names.forEach(n => { if (!pm[n]) pm[n] = { name: n, total: 0, done: 0, overdue: 0 }; pm[n].total++; if (item.status === 'Done') pm[n].done++; if (item.overdue) pm[n].overdue++; });
   });
-
-  STATE.phases = phases;
-  STATE.personMap = pm;
-  STATE.stats = { total, done, inProg, forInsp, partInsp, notStarted, overdue: overdueCount };
-  STATE.items = items;
-  STATE.filtered = items.slice();
+  STATE.phases = phases; STATE.personMap = pm; STATE.stats = { total, done, inProg, forInsp, partInsp, ns, overdue: ov };
+  STATE.items = items; STATE.filtered = items.slice();
 }
 
-/* Render All */
 function render() {
-  const phases = STATE.phases, stats = STATE.stats, pm = STATE.personMap;
-
+  const ps = STATE.phases, st = STATE.stats, pm = STATE.personMap;
   document.getElementById('kpiRow').style.display = 'grid';
-  document.getElementById('statTotal').textContent = stats.total;
-  document.getElementById('statDone').textContent = stats.done;
-  document.getElementById('statPct').textContent = pct(stats.done, stats.total) + '% complete';
-  document.getElementById('statInProg').textContent = stats.inProg + stats.forInsp + stats.partInsp;
-  document.getElementById('statOverdue').textContent = stats.overdue;
-  document.getElementById('statOverduePct').textContent = pct(stats.overdue, stats.total - stats.done) + '% of active';
-  document.getElementById('statOverallPct').textContent = pct(stats.done, stats.total) + '%';
+  document.getElementById('statTotal').textContent = st.total;
+  document.getElementById('statDone').textContent = st.done;
+  document.getElementById('statPct').textContent = pct(st.done, st.total) + '% complete';
+  document.getElementById('statInProg').textContent = st.inProg + st.forInsp + st.partInsp;
+  document.getElementById('statOverdue').textContent = st.overdue;
+  document.getElementById('statOverduePct').textContent = pct(st.overdue, st.total - st.done) + '% of active';
+  document.getElementById('statOverallPct').textContent = pct(st.done, st.total) + '%';
 
-  // Phases
   document.getElementById('phaseSection').style.display = 'block';
-  const phaseNames = Object.keys(phases).sort();
-  document.getElementById('phaseCount').textContent = '(' + phaseNames.length + ')';
-  document.getElementById('phaseGrid').innerHTML = phaseNames.map(name => {
-    const ph = phases[name];
-    const pctDone = pct(ph.done, ph.total);
-    const tier = ph.overdue > 0 ? 'critical' : pctDone < 50 ? 'warn' : 'top';
-    const statusLabel = ph.overdue > 0 ? 'Overdue' : pctDone >= 80 ? 'On Track' : pctDone >= 50 ? 'At Risk' : 'Behind';
-    const statusClass = ph.overdue > 0 ? 'critical' : pctDone >= 80 ? 'ok' : pctDone >= 50 ? 'atrisk' : 'critical';
-    const barColor = ph.overdue > 0 ? '#ef5350' : pctDone >= 80 ? '#66bb6a' : pctDone >= 50 ? '#ffa726' : '#ef5350';
-    return `<div class="phase-card ${tier}">
-      <div class="phase-header">
-        <div class="phase-name">${escHtml(name)}</div>
-        <div class="phase-status ${statusClass}">${statusLabel}</div>
+  const pn = Object.keys(ps).sort();
+  document.getElementById('phaseCount').textContent = '(' + pn.length + ')';
+  document.getElementById('phaseGrid').innerHTML = pn.map(n => {
+    const p = ps[n], pd = pct(p.done, p.total);
+    const oc = p.overdue > 0 ? 'crit' : pd >= 80 ? 'ok' : pd >= 50 ? 'warn' : 'crit';
+    const ol = p.overdue > 0 ? (p.overdue + ' Overdue') : pd >= 80 ? 'On Track' : pd >= 50 ? 'At Risk' : 'Behind';
+    const bc = p.overdue > 0 ? '#ef5350' : pd >= 80 ? '#66bb6a' : pd >= 50 ? '#ffa726' : '#ef5350';
+    return `<div class="phase-card">
+      <div class="ph-header"><div class="ph-name">${escHtml(n)}</div><div class="ph-badge ${oc}">${ol}</div></div>
+      <div class="ph-stats">
+        <div class="ph-stat"><div class="v">${p.done}</div><div class="l">Done</div></div>
+        <div class="ph-stat"><div class="v">${p.total}</div><div class="l">Total</div></div>
+        <div class="ph-stat"><div class="v ${p.overdue?'red':'grn'}">${p.overdue}</div><div class="l">Overdue</div></div>
       </div>
-      <div class="phase-stats">
-        <div class="phase-stat"><div class="val">${ph.done}</div><div class="lbl">Done</div></div>
-        <div class="phase-stat"><div class="val">${ph.total}</div><div class="lbl">Total</div></div>
-        <div class="phase-stat"><div class="val ${ph.overdue > 0 ? 'red' : 'green'}">${ph.overdue}</div><div class="lbl">Overdue</div></div>
-      </div>
-      <div style="display:flex;justify-content:space-between;font-size:12px;color:#6b7294;margin-bottom:4px">
-        <span>${pctDone}% complete</span>
-        <span>${ph.total - ph.done} remaining</span>
-      </div>
-      <div class="phase-bar"><div class="phase-bar-fill" style="width:${pctDone}%;background:${barColor}"></div></div>
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:#6b7294;margin-bottom:3px"><span>${pd}% complete</span><span>${p.total-p.done} remaining</span></div>
+      <div class="ph-bar"><div class="ph-bar-fill" style="width:${pd}%;background:${bc}"></div></div>
     </div>`;
   }).join('');
 
-  // Overdue
-  const overdueItems = STATE.items.filter(i => i.overdue).sort((a, b) => b.daysOverdue - a.daysOverdue);
-  document.getElementById('overdueSection').style.display = overdueItems.length ? 'block' : 'none';
-  document.getElementById('overdueCount').textContent = '(' + overdueItems.length + ')';
-  document.getElementById('overdueGrid').innerHTML = overdueItems.map(item => {
-    const days = item.daysOverdue;
-    const sevColor = days > 30 ? '#ef5350' : days > 14 ? '#ffa726' : '#ffd54f';
-    return `<div class="overdue-item" style="border-left-color:${sevColor}">
-      <div class="oi-left">
+  const ovs = STATE.items.filter(i => i.overdue).sort((a, b) => b.daysOverdue - a.daysOverdue);
+  document.getElementById('overdueSection').style.display = ovs.length ? 'block' : 'none';
+  document.getElementById('overdueCount').textContent = '(' + ovs.length + ')';
+  document.getElementById('overdueGrid').innerHTML = ovs.map(item => {
+    const d = item.daysOverdue, sc = d > 30 ? '#ef5350' : d > 14 ? '#ffa726' : '#ffd54f';
+    return `<div class="overdue-item" style="border-left-color:${sc}">
+      <div class="oi-l">
         <div class="oi-id">${escHtml(item.ActivityID)}</div>
         <div class="oi-title">${escHtml(item.title)}</div>
-        <div class="oi-meta">${escHtml(item.Phase)} &middot; ${escHtml(abbrEmail(item.responsible))} &middot; Due: ${fmtDate(item.Finish)}</div>
+        <div class="oi-meta">${escHtml(item.Phase)} &middot; ${escHtml(abbrEmail(item.responsible))} &middot; Due ${fmtDate(item.Finish)} &middot; ${escHtml(item.status)}</div>
       </div>
-      <div class="oi-right">
-        <div class="oi-days">${days}</div>
-        <div class="oi-days-label">days overdue</div>
-        <div class="oi-status" style="background:${sevColor}22;color:${sevColor}">${escHtml(item.status)}</div>
+      <div class="oi-r">
+        <div class="oi-days">${d}</div>
+        <div class="oi-days-l">days overdue</div>
       </div>
     </div>`;
   }).join('');
 
-  // Charts
   document.getElementById('chartsRow').style.display = 'grid';
-  const ctx1 = document.getElementById('chartStatus').getContext('2d');
+  const c1 = document.getElementById('chartStatus').getContext('2d');
   if (STATE.statusChart) STATE.statusChart.destroy();
-  STATE.statusChart = new Chart(ctx1, {
+  STATE.statusChart = new Chart(c1, {
     type: 'doughnut',
-    data: {
-      labels: ['Done', 'In Progress', 'For Insp.', 'Partial Insp.', 'Not Started'],
-      datasets: [{ data: [stats.done, stats.inProg, stats.forInsp, stats.partInsp, stats.notStarted], backgroundColor: ['#66bb6a', '#42a5f5', '#ab47bc', '#ffa726', '#546e7a'], borderWidth: 0 }],
-    },
-    options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { position: 'bottom', labels: { color: '#b0b8d1', boxWidth: 12, padding: 12 } } } },
+    data: { labels: ['Done','In Progress','For Insp.','Partial Insp.','Not Started'], datasets: [{ data: [st.done,st.inProg,st.forInsp,st.partInsp,st.ns], backgroundColor: ['#66bb6a','#42a5f5','#ab47bc','#ffa726','#546e7a'], borderWidth: 0 }] },
+    options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { position: 'bottom', labels: { color: '#b0b8d1', boxWidth: 12, padding: 10 } } } },
   });
-  const pEntries = Object.values(pm).filter(p => p.total > 0).sort((a, b) => b.total - a.total);
-  const ctx2 = document.getElementById('chartPerson').getContext('2d');
+  const pe = Object.values(pm).filter(p => p.total > 0).sort((a, b) => b.total - a.total);
+  const c2 = document.getElementById('chartPerson').getContext('2d');
   if (STATE.kpiChart) STATE.kpiChart.destroy();
-  STATE.kpiChart = new Chart(ctx2, {
+  STATE.kpiChart = new Chart(c2, {
     type: 'bar',
     data: {
-      labels: pEntries.map(p => abbrEmail(p.name)),
+      labels: pe.map(p => abbrEmail(p.name)),
       datasets: [
-        { label: 'Done', data: pEntries.map(p => p.done), backgroundColor: '#66bb6a', borderRadius: 2 },
-        { label: 'Overdue', data: pEntries.map(p => p.overdue), backgroundColor: '#ef5350', borderRadius: 2 },
-        { label: 'Other', data: pEntries.map(p => p.total - p.done - p.overdue), backgroundColor: '#546e7a', borderRadius: 2 },
+        { label: 'Done', data: pe.map(p => p.done), backgroundColor: '#66bb6a', borderRadius: 2 },
+        { label: 'Overdue', data: pe.map(p => p.overdue), backgroundColor: '#ef5350', borderRadius: 2 },
+        { label: 'Other', data: pe.map(p => p.total - p.done - p.overdue), backgroundColor: '#546e7a', borderRadius: 2 },
       ],
     },
     options: {
-      responsive: true, maintainAspectRatio: true,
-      plugins: { legend: { position: 'bottom', labels: { color: '#b0b8d1', boxWidth: 12, padding: 12 } } },
+      responsive: true, maintainAspectRatio: true, plugins: { legend: { position: 'bottom', labels: { color: '#b0b8d1', boxWidth: 12, padding: 10 } } },
       scales: { x: { grid: { display: false }, ticks: { color: '#6b7294', maxRotation: 45 } }, y: { beginAtZero: true, ticks: { color: '#6b7294', stepSize: 1 } } },
     },
   });
 
-  // Person cards
   document.getElementById('personSection').style.display = 'block';
-  document.getElementById('personCount').textContent = '(' + pEntries.length + ')';
-  document.getElementById('personGrid').innerHTML = pEntries.map(p => {
-    const pctDone = pct(p.done, p.total);
-    const color = p.overdue ? '#ef5350' : pctDone >= 80 ? '#66bb6a' : pctDone >= 50 ? '#ffa726' : '#6b7294';
-    return `<div class="person-card" style="border-left-color:${color}">
-      <div class="pc-name">${escHtml(abbrEmail(p.name))}</div>
-      <div class="pc-value">${p.done}/${p.total}</div>
-      <div class="pc-sub">${pctDone}% done${p.overdue ? ' &middot; <span class="pc-overdue">' + p.overdue + ' overdue</span>' : ''}</div>
-    </div>`;
+  document.getElementById('personCount').textContent = '(' + pe.length + ')';
+  document.getElementById('personGrid').innerHTML = pe.map(p => {
+    const pd = pct(p.done, p.total), co = p.overdue ? '#ef5350' : pd >= 80 ? '#66bb6a' : pd >= 50 ? '#ffa726' : '#6b7294';
+    return `<div class="person-card" style="border-left-color:${co}"><div class="pc-name">${escHtml(abbrEmail(p.name))}</div><div class="pc-value">${p.done}/${p.total}</div><div class="pc-sub">${pd}% done${p.overdue ? ' &middot; <span class="pc-ov">' + p.overdue + ' overdue</span>' : ''}</div></div>`;
   }).join('');
-
   document.getElementById('lastUpdated').textContent = 'Last updated: ' + new Date().toLocaleString();
 }
 
-/* Filters */
 function applyFilters() {
   const pv = document.getElementById('phaseFilter').value, sv = document.getElementById('statusFilter').value, q = (document.getElementById('searchInput').value || '').toLowerCase();
   STATE.filtered = STATE.items.filter(item => {
@@ -484,46 +387,32 @@ function applyFilters() {
     if (q && !(item.ActivityID + ' ' + item.title + ' ' + item.responsible + ' ' + item.Phase).toLowerCase().includes(q)) return false;
     return true;
   });
-  processItems(STATE.filtered);
-  render();
+  processItems(STATE.filtered); render();
 }
 
-/* Main */
 async function signInAndLoad() {
   document.getElementById('errorBanner').classList.remove('show');
-  const ld = document.getElementById('loadingIndicator'), txt = document.getElementById('loadingText');
-  ld.style.display = 'block'; txt.textContent = 'Connecting...';
+  const ld = document.getElementById('loadingIndicator'), tx = document.getElementById('loadingText');
+  ld.style.display = 'block'; tx.textContent = 'Connecting...';
   const cfg = loadConfig();
   if (!cfg.siteUrl || !cfg.listName) { ld.style.display = 'none'; showError('Configure SharePoint in Settings first.'); toggleConfig(); return; }
   try {
-    txt.textContent = 'Signing in...';
-    const token = await ensureAuth();
-    txt.textContent = 'Finding site...';
-    const site = await getSiteInfo(token, cfg.siteUrl);
-    txt.textContent = 'Finding list...';
-    const list = await getListInfo(token, site.id, cfg.listName);
-    txt.textContent = 'Loading data...';
-    const raw = await fetchAllItems(token, site.id, list.id);
-    txt.textContent = 'Processing...';
-    const items = normalizeItems(raw);
+    tx.textContent = 'Signing in...'; await ensureAuth();
+    tx.textContent = 'Finding site...'; const site = await getSiteInfo(STATE.token, cfg.siteUrl);
+    tx.textContent = 'Finding list...'; const list = await getListInfo(STATE.token, site.id, cfg.listName);
+    tx.textContent = 'Loading data...'; const raw = await fetchAllItems(STATE.token, site.id, list.id);
+    tx.textContent = 'Processing...'; const items = normalizeItems(raw);
     processItems(items);
     const sel = document.getElementById('phaseFilter');
     sel.innerHTML = '<option value="">All Phases</option>' + Object.keys(STATE.phases).sort().map(p => `<option value="${escHtml(p)}">${escHtml(p)}</option>`).join('');
-    ld.style.display = 'none';
-    render();
+    ld.style.display = 'none'; render();
     showSuccess('Loaded ' + items.length + ' activities from ' + list.displayName);
-  } catch (err) {
-    ld.style.display = 'none';
-    showError(err.message);
-    STATE.items = []; STATE.filtered = [];
-    render();
-  }
+  } catch (err) { ld.style.display = 'none'; showError(err.message); STATE.items = []; STATE.filtered = []; render(); }
 }
 
-function showError(msg) { const e = document.getElementById('errorBanner'); e.textContent = msg; e.classList.add('show'); }
-function showSuccess(msg) { const e = document.getElementById('successBanner'); e.textContent = msg; e.classList.add('show'); setTimeout(() => e.classList.remove('show'), 5000); }
+function showError(m) { const e = document.getElementById('errorBanner'); e.textContent = m; e.classList.add('show'); }
+function showSuccess(m) { const e = document.getElementById('successBanner'); e.textContent = m; e.classList.add('show'); setTimeout(() => e.classList.remove('show'), 5000); }
 
-/* Init */
 (async function init() {
   const cfg = loadConfig();
   if (cfg.siteUrl && cfg.listName) {
