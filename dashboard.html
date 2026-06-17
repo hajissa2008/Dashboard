@@ -189,6 +189,8 @@ const pca = new msal.PublicClientApplication({ auth: { clientId: CLIENT_ID, auth
 
 const STATE = { items: [], filtered: [], phases: {}, stats: {}, personMap: {}, kpiChart: null, statusChart: null, user: null, token: null };
 
+const PHASE_COLORS = { 'MOB':'#6B7280','SD':'#8B5CF6','P1':'#F59E0B','P2':'#3B82F6','P3':'#10B981','P4':'#EF4444','P5':'#F97316','ML':'#EC4899' };
+const PHASE_ORDER = ['MOB','SD','P1','P2','P3','P4','P5','ML'];
 function escHtml(s) { if (s == null) return ''; const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 function fmtDate(d) { if (!d) return '&mdash;'; try { return new Date(d).toLocaleDateString('en-GB'); } catch { return d; } }
 function abbrEmail(s) { if (!s) return ''; const m = s.match(/(.+)@/); return m ? m[1] : s; }
@@ -196,6 +198,7 @@ function cleanDate(s) { if (!s) return null; const d = new Date(s); if (isNaN(d.
 function isOverdue(finish, status) { if (!finish || !status || status === 'Done') return false; const fd = cleanDate(finish); if (!fd) return false; const td = new Date(); td.setHours(0,0,0,0); return fd < td; }
 function daysOverdue(finish) { if (!finish) return 0; const fd = cleanDate(finish); if (!fd) return 0; return Math.round((Date.now() - fd.getTime()) / 86400000); }
 function pct(a, b) { return b ? Math.round(a / b * 100) : 0; }
+function sortPhases(names) { return names.sort((a,b)=>{ const ia=PHASE_ORDER.indexOf(a), ib=PHASE_ORDER.indexOf(b); if(ia>=0&&ib>=0) return ia-ib; if(ia>=0) return -1; if(ib>=0) return 1; return a.localeCompare(b); }); }
 
 function loadConfig() { try { return JSON.parse(localStorage.getItem('spConfig')) || {}; } catch { return {}; } }
 function toggleConfig() { const o = document.getElementById('configOverlay'), c = loadConfig(); o.classList.toggle('show'); document.getElementById('cfgSiteUrl').value = c.siteUrl || 'https://sascontractingsa.sharepoint.com/sites/Alenshaiah'; document.getElementById('cfgListName').value = c.listName || 'Maseel Activity'; }
@@ -251,20 +254,21 @@ async function fetchAllItems(tok, sid, lid) {
 function normalizeItems(raw) {
   return raw.map(item => {
     const f = item.fields || {};
-    const sr = (f.Status || f.st || '').trim().toLowerCase();
+    const sr = (f.Status || f.st || f.field_10 || '').trim().toLowerCase();
     let status = 'Not Started';
     if (sr === 'done' || sr === 'completed') status = 'Done';
     else if (sr.includes('for inspection') || sr === 'forinsp') status = 'For Inspection';
     else if (sr.includes('partially') || sr === 'partinsp') status = 'Partially Inspected';
     else if (sr.includes('in progress') || sr === 'inprogress' || sr === 'wip') status = 'In Progress';
-    const pr = f.Progress || f.pc;
+    const pr = f.Progress || f.pc || f.field_16 || null;
     const progress = pr != null ? parseFloat(pr) : (status === 'Done' ? 100 : 0);
-    const rr = f.Responsible || f.resp || f.ResponsibleList || '';
+    const rr = f.Responsible || f.resp || f.ResponsibleList || f.field_8 || '';
     const responsible = rr.toString().trim() || 'Unassigned';
-    const finish = f.Finish || f.f || f.FinishDate || null;
+    const finish = f.Finish || f.f || f.FinishDate || f.field_6 || null;
     return {
-      id: item.id, ActivityID: f.ActivityID || '', title: f.Title || '', Phase: f.Phase || f.ph || '',
-      status, progress, responsible, Start: f.Start || f.s || null, Finish: finish,
+      id: item.id, ActivityID: f.ActivityID || f.field_1 || '', title: f.Title || f.field_2 || '',
+      Phase: f.Phase || f.ph || f.field_3 || '',
+      status, progress, responsible, Start: f.Start || f.s || f.field_5 || null, Finish: finish,
       overdue: isOverdue(finish, status), daysOverdue: isOverdue(finish, status) ? daysOverdue(finish) : 0,
     };
   });
@@ -306,15 +310,15 @@ function render() {
   document.getElementById('statOverallPct').textContent = pct(st.done, st.total) + '%';
 
   document.getElementById('phaseSection').style.display = 'block';
-  const pn = Object.keys(ps).sort();
+  const pn = sortPhases(Object.keys(ps));
   document.getElementById('phaseCount').textContent = '(' + pn.length + ')';
   document.getElementById('phaseGrid').innerHTML = pn.map(n => {
     const p = ps[n], pd = pct(p.done, p.total);
     const oc = p.overdue > 0 ? 'crit' : pd >= 80 ? 'ok' : pd >= 50 ? 'warn' : 'crit';
     const ol = p.overdue > 0 ? (p.overdue + ' Overdue') : pd >= 80 ? 'On Track' : pd >= 50 ? 'At Risk' : 'Behind';
-    const bc = p.overdue > 0 ? '#ef5350' : pd >= 80 ? '#66bb6a' : pd >= 50 ? '#ffa726' : '#ef5350';
-    return `<div class="phase-card">
-      <div class="ph-header"><div class="ph-name">${escHtml(n)}</div><div class="ph-badge ${oc}">${ol}</div></div>
+    const bc = PHASE_COLORS[n] || (p.overdue > 0 ? '#ef5350' : pd >= 80 ? '#66bb6a' : pd >= 50 ? '#ffa726' : '#ef5350');
+    return `<div class="phase-card" style="border-left:3px solid ${bc}">
+      <div class="ph-header"><div class="ph-name" style="color:${bc}">${escHtml(n)}</div><div class="ph-badge ${oc}">${ol}</div></div>
       <div class="ph-stats">
         <div class="ph-stat"><div class="v">${p.done}</div><div class="l">Done</div></div>
         <div class="ph-stat"><div class="v">${p.total}</div><div class="l">Total</div></div>
