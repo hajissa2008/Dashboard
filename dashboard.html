@@ -104,7 +104,7 @@
     </div>
     <div class="config-field">
       <label>List Name</label>
-      <input id="cfgListName" value="EMSL15P6 Update 3Jun2026 G 7">
+      <input id="cfgListName" value="Maseel Activity">
       <div class="hint">Exactly as it appears in SharePoint</div>
     </div>
     <div class="config-actions">
@@ -228,11 +228,22 @@ async function getToken() {
   if (accounts.length > 0) {
     try {
       const resp = await pca.acquireTokenSilent({ scopes: SCOPES, account: accounts[0] });
-      return resp.accessToken;
-    } catch { }
+      if (resp && resp.accessToken) return resp.accessToken;
+    } catch (e) { console.warn('Silent token acquisition failed:', e); }
   }
-  const resp = await pca.loginPopup({ scopes: SCOPES });
-  return resp.accessToken;
+  try {
+    const resp = await pca.loginPopup({ scopes: SCOPES });
+    if (!resp || !resp.accessToken) throw new Error('MSAL login succeeded but no access token returned');
+    return resp.accessToken;
+  } catch (e) {
+    if (e.message && e.message.includes('Popup') && e.message.includes('blocked')) {
+      throw new Error('Sign-in popup was blocked. Please allow popups for this site and try again.');
+    }
+    if (e.message && e.message.includes('AADSTS50011')) {
+      throw new Error('Redirect URI mismatch. Make sure the Azure AD app has "' + window.location.href + '" or "' + window.location.origin + '/" as a redirect URI.');
+    }
+    throw e;
+  }
 }
 
 async function getUserInfo(token) {
@@ -242,7 +253,11 @@ async function getUserInfo(token) {
 
 async function ensureAuth() {
   if (STATE.token) return STATE.token;
-  STATE.token = await getToken();
+  const token = await getToken();
+  if (!token || typeof token !== 'string' || token.split('.').length !== 3) {
+    throw new Error('Invalid token received from Microsoft. Please sign out and try again.');
+  }
+  STATE.token = token;
   STATE.user = await getUserInfo(STATE.token);
   if (STATE.user && STATE.user.displayName) {
     document.getElementById('userInfo').style.display = 'flex';
