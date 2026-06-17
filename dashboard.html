@@ -190,8 +190,10 @@ const SCOPES = ['User.Read', 'openid', 'profile', 'https://graph.microsoft.com/S
 
 const STATUS_ORDER = ['Done', 'For Inspection', 'Partially Inspected', 'In Progress', 'Not Started'];
 
+const msalRedirectUri = window.location.origin + '/';
+
 const pca = new msal.PublicClientApplication({
-  auth: { clientId: CLIENT_ID, authority: `https://login.microsoftonline.com/${TENANT_ID}` },
+  auth: { clientId: CLIENT_ID, authority: `https://login.microsoftonline.com/${TENANT_ID}`, redirectUri: msalRedirectUri },
   cache: { cacheLocation: 'localStorage' }
 });
 
@@ -713,7 +715,19 @@ async function refreshData() {
     showSuccess(`Loaded ${items.length} activities from ${list.displayName}`);
   } catch (err) {
     loading.style.display = 'none';
-    showError(err.message, true);
+    let msg = err.message;
+    if (msg.includes('AADSTS50011')) {
+      const origin = window.location.origin;
+      msg = 'Redirect URI mismatch. Please add this URI to the Azure AD app:\n\n' +
+        '1. Go to https://portal.azure.com > Azure Active Directory > App registrations > select "Maseel" app (ID: ' + CLIENT_ID + ')\n' +
+        '2. Under "Authentication" > "Redirect URIs", add:\n' +
+        '   - ' + origin + '/\n' +
+        '   - ' + origin + '\n' +
+        '3. Under "Implicit grant and hybrid flows", check "Access tokens" and "ID tokens"\n' +
+        '4. Click Save, then refresh this page and try again.\n\n' +
+        'Current origin: ' + origin;
+    }
+    showError(msg, true);
     STATE.items = [];
     STATE.filtered = [];
     applyFilters();
@@ -722,17 +736,30 @@ async function refreshData() {
 
 /* ── Init ────────────────────────────────── */
 
+async function connectWithDefaults() {
+  const defaults = {
+    siteUrl: 'https://sascontractingsa.sharepoint.com/sites/Alenshaiah',
+    listName: 'EMSL15P6 Update 3Jun2026 G 7',
+  };
+  localStorage.setItem('spConfig', JSON.stringify(defaults));
+  await refreshData();
+}
+
 (async function init() {
   const cfg = loadConfig();
   if (cfg.siteUrl && cfg.listName && pca.getAllAccounts().length > 0) {
     await refreshData();
   } else {
-    const loadingText = document.getElementById('loadingText');
-    loadingText.innerHTML = 'Configure your SharePoint connection in <a href="#" onclick="toggleConfig();return false" style="color:#1a73e8">Settings</a>, then click Refresh.';
-    document.getElementById('loadingIndicator').querySelector('.spinner').style.display = 'none';
-    document.getElementById('loadingIndicator').innerHTML =
-      '<p style="margin-top:20px;color:#888">No SharePoint configuration found. Sign in with your Microsoft 365 account to connect.</p>' +
-      '<p style="margin-top:12px"><button class="btn-primary" onclick="refreshData()" style="font-size:15px;padding:10px 28px">Sign In &amp; Connect</button></p>';
+    const spinner = document.getElementById('loadingIndicator').querySelector('.spinner');
+    const textEl = document.getElementById('loadingText');
+    if (spinner) spinner.style.display = 'none';
+    textEl.innerHTML = 'Configure your SharePoint connection in <a href="#" onclick="toggleConfig();return false" style="color:#1a73e8">Settings</a>, or click below to connect with defaults.';
+    const btn = document.createElement('button');
+    btn.className = 'btn-primary';
+    btn.style.cssText = 'margin-top:12px;font-size:15px;padding:10px 28px';
+    btn.textContent = 'Sign In & Connect';
+    btn.onclick = connectWithDefaults;
+    textEl.parentNode.appendChild(btn);
   }
 })();
 </script>
