@@ -75,6 +75,10 @@
   .last-updated { font-size: 12px; color: #aaa; margin-bottom: 16px; text-align: right; }
   .filter-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; align-items: center; }
   .filter-row select, .filter-row input { padding: 6px 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 13px; }
+  @keyframes blink { 0%, 100% { background: #fff0f0; color: #b71c1c; } 50% { background: #ffcdd2; color: #d50000; } }
+  tr.overdue { animation: blink 1.5s ease-in-out infinite; }
+  tr.overdue td:first-child { border-left: 3px solid #d50000; }
+  .badge-overdue { background: #d50000; color: #fff; animation: blink 1.5s ease-in-out infinite; }
   @media (max-width: 900px) { .charts-row { grid-template-columns: 1fr; } }
   @media (max-width: 600px) { .header { flex-direction: column; align-items: stretch; } .kpi-grid { grid-template-columns: 1fr; } }
 </style>
@@ -141,6 +145,7 @@
   <div class="summary-card"><div class="label">For Inspection</div><div class="number" id="statForInspection">0</div></div>
   <div class="summary-card"><div class="label">Partially Inspected</div><div class="number" id="statPartiallyInspected">0</div></div>
   <div class="summary-card"><div class="label">Not Started</div><div class="number" id="statNotStarted">0</div></div>
+  <div class="summary-card" style="background:#fff0f0;border:2px solid #d50000"><div class="label" style="color:#b71c1c;font-weight:600">&#9888; Overdue</div><div class="number" style="color:#d50000" id="statOverdue">0</div></div>
 </div>
 
 <div class="kpi-grid" id="kpiGrid"></div>
@@ -201,6 +206,8 @@ const STATE = {
 
 function escHtml(s) { if (s == null) return ''; const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 function fmtDate(d) { if (!d) return '&mdash;'; try { return new Date(d).toLocaleDateString(); } catch { return d; } }
+function abbrEmail(s) { if (!s) return ''; const m = s.match(/(.+)@/); return m ? m[1] : s; }
+function isOverdue(finish, status) { if (!finish || status === 'Done') return false; try { return new Date(finish) < new Date(); } catch { return false; } }
 
 /* ── Config ──────────────────────────────── */
 
@@ -217,7 +224,7 @@ function toggleConfig() {
   const cfg = loadConfig();
   p.style.display = p.style.display === 'block' ? 'none' : 'block';
   document.getElementById('cfgSiteUrl').value = cfg.siteUrl || 'https://sascontractingsa.sharepoint.com/sites/Alenshaiah';
-  document.getElementById('cfgListName').value = cfg.listName || 'EMSL15P6 Update 3Jun2026 G 7';
+  document.getElementById('cfgListName').value = cfg.listName || 'Maseel Activity';
 }
 function togglePhaseFilter() { document.getElementById('phaseFilterRow').style.display = document.getElementById('phaseFilterRow').style.display === 'none' ? '' : 'none'; }
 
@@ -317,12 +324,14 @@ function normalizeItems(rawItems) {
     const progress = progressRaw != null ? parseFloat(progressRaw) : (status === 'Done' ? 100 : 0);
     const respRaw = f.Responsible || f.resp || f.ResponsibleList || '';
     const responsible = respRaw.toString().trim() || 'Unassigned';
+    const finish = f.Finish || f.f || null;
     return {
       id: item.id, ActivityID: f.ActivityID || '', title: f.Title || '', Phase: f.Phase || f.ph || '',
       Discipline: f.Discipline || f.disc || '', status, progress, responsible,
-      Start: f.Start || f.s || null, Finish: f.Finish || f.f || null,
+      Start: f.Start || f.s || null, Finish: finish,
       Duration: f.Duration || f.dur || null, Float: f.Float || f.floatDays || null,
       TotalQty: f.TotalQty || null, Unit: f.Unit || null, Notes: f.Notes || '',
+      overdue: isOverdue(finish, status),
     };
   });
 }
@@ -330,7 +339,7 @@ function normalizeItems(rawItems) {
 /* ── Process ─────────────────────────────── */
 
 function processItems(items) {
-  const pm = {}, stats = { total: 0, done: 0, inProgress: 0, forInspection: 0, partiallyInspected: 0, notStarted: 0 }, phases = new Set();
+  const pm = {}, stats = { total: 0, done: 0, inProgress: 0, forInspection: 0, partiallyInspected: 0, notStarted: 0, overdue: 0 }, phases = new Set();
   items.forEach(item => {
     stats.total++;
     if (item.status === 'Done') stats.done++;
@@ -338,17 +347,19 @@ function processItems(items) {
     else if (item.status === 'Partially Inspected') stats.partiallyInspected++;
     else if (item.status === 'In Progress') stats.inProgress++;
     else stats.notStarted++;
+    if (item.overdue) stats.overdue++;
     if (item.Phase) phases.add(item.Phase);
     const names = item.responsible.split(/[,/]/).map(s => s.trim()).filter(Boolean);
     if (!names.length) names.push('Unassigned');
     names.forEach(name => {
-      if (!pm[name]) pm[name] = { name, total: 0, done: 0, inProgress: 0, forInspection: 0, partiallyInspected: 0, notStarted: 0 };
+      if (!pm[name]) pm[name] = { name, total: 0, done: 0, inProgress: 0, forInspection: 0, partiallyInspected: 0, notStarted: 0, overdue: 0 };
       pm[name].total++;
       if (item.status === 'Done') pm[name].done++;
       else if (item.status === 'For Inspection') pm[name].forInspection++;
       else if (item.status === 'Partially Inspected') pm[name].partiallyInspected++;
       else if (item.status === 'In Progress') pm[name].inProgress++;
       else pm[name].notStarted++;
+      if (item.overdue) pm[name].overdue++;
     });
   });
   STATE.personMap = pm; STATE.stats = stats; STATE.phases = [...phases].sort();
@@ -374,6 +385,7 @@ function updateSummary() {
   document.getElementById('statForInspection').textContent = s.forInspection;
   document.getElementById('statPartiallyInspected').textContent = s.partiallyInspected;
   document.getElementById('statNotStarted').textContent = s.notStarted;
+  document.getElementById('statOverdue').textContent = s.overdue || 0;
 }
 
 /* ── KPI Cards ───────────────────────────── */
@@ -384,11 +396,12 @@ function renderKPI() {
   if (!entries.length) { grid.innerHTML = '<p style="color:#888;padding:20px;text-align:center">No matching data.</p>'; return; }
   grid.innerHTML = entries.map(p => {
     const pct = Math.round(p.done / p.total * 100);
-    const color = pct >= 80 ? '#1e7e34' : pct >= 50 ? '#e67e22' : '#b71c1c';
-    return `<div class="kpi-card" style="border-left-color:${color}">
-      <div class="name">${escHtml(p.name)}</div>
+    const color = p.overdue ? '#d50000' : pct >= 80 ? '#1e7e34' : pct >= 50 ? '#e67e22' : '#b71c1c';
+    const nameDisplay = abbrEmail(p.name);
+    return `<div class="kpi-card" style="border-left-color:${color}${p.overdue ? ';border-left-width:6px' : ''}">
+      <div class="name">${escHtml(nameDisplay)}</div>
       <div class="value">${p.done} / ${p.total}</div>
-      <div class="sub">${pct}% done${p.forInspection ? ' &middot; ' + p.forInspection + ' for insp' : ''}${p.partiallyInspected ? ' &middot; ' + p.partiallyInspected + ' partial' : ''} &middot; ${p.inProgress} in prog &middot; ${p.notStarted} not started</div>
+      <div class="sub">${pct}% done${p.overdue ? ' &middot; <span style="color:#d50000;font-weight:600">' + p.overdue + ' overdue</span>' : ''}${p.forInspection ? ' &middot; ' + p.forInspection + ' for insp' : ''}${p.partiallyInspected ? ' &middot; ' + p.partiallyInspected + ' partial' : ''} &middot; ${p.inProgress} in prog &middot; ${p.notStarted} not started</div>
       <div class="bar-container"><div class="bar-fill" style="width:${Math.max(2,pct)}%;background:${color}"></div></div>
     </div>`;
   }).join('');
@@ -404,7 +417,7 @@ function renderChart() {
   STATE.kpiChart = new Chart(ctx1, {
     type: 'bar',
     data: {
-      labels: entries.map(p => p.name),
+      labels: entries.map(p => abbrEmail(p.name)),
       datasets: [
         { label: 'Done', data: entries.map(p => p.done), backgroundColor: '#2e7d32', borderRadius: 2 },
         { label: 'For Inspection', data: entries.map(p => p.forInspection), backgroundColor: '#1a56db', borderRadius: 2 },
@@ -454,7 +467,9 @@ function renderTable() {
   document.getElementById('nextBtn').disabled = STATE.page >= totalPages - 1;
   document.getElementById('tableBody').innerHTML = pageItems.map(item => {
     const bc = item.status === 'Done' ? 'badge-done' : item.status === 'For Inspection' ? 'badge-for-inspection' : item.status === 'Partially Inspected' ? 'badge-partially-inspected' : item.status === 'In Progress' ? 'badge-in-progress' : 'badge-not-started';
-    return `<tr><td style="font-size:12px;color:#888;font-family:monospace">${escHtml(item.ActivityID)}</td><td style="font-weight:500">${escHtml(item.title)}</td><td>${escHtml(item.Phase)}</td><td>${escHtml(item.responsible)}</td><td><span class="badge ${bc}">${escHtml(item.status)}</span></td><td>${item.progress != null ? item.progress + '%' : '&mdash;'}</td><td style="font-size:12px">${fmtDate(item.Start)}</td><td style="font-size:12px">${fmtDate(item.Finish)}</td></tr>`;
+    const rowClass = item.overdue ? ' class="overdue"' : '';
+    const finishDisplay = item.overdue ? '<span style="font-weight:600;color:#d50000">' + fmtDate(item.Finish) + ' &#9888;</span>' : fmtDate(item.Finish);
+    return `<tr${rowClass}><td style="font-size:12px;color:#888;font-family:monospace">${escHtml(item.ActivityID)}</td><td style="font-weight:500">${escHtml(item.title)}</td><td>${escHtml(item.Phase)}</td><td>${escHtml(abbrEmail(item.responsible))}</td><td><span class="badge ${bc}">${escHtml(item.status)}</span></td><td>${item.progress != null ? item.progress + '%' : '&mdash;'}</td><td style="font-size:12px">${fmtDate(item.Start)}</td><td style="font-size:12px">${finishDisplay}</td></tr>`;
   }).join('');
   document.querySelectorAll('th .sort-arrow').forEach(el => el.textContent = '');
   const idx = ['ActivityID', 'title', 'Phase', 'responsible', 'status', 'progress', 'Start', 'Finish'].indexOf(key);
