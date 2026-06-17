@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Activity Completion Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #f0f2f5; color: #333; padding: 20px; }
+  .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+  .header h1 { font-size: 24px; font-weight: 600; color: #1a1a2e; }
+  .header-controls { display: flex; gap: 12px; align-items: center; }
+  .header-controls select, .header-controls input { padding: 8px 12px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; }
+  .header-controls button { padding: 8px 16px; background: #1a73e8; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; }
+  .header-controls button:hover { background: #1557b0; }
+  .header-controls button.secondary { background: #fff; color: #333; border: 1px solid #ccc; }
+  .header-controls button.secondary:hover { background: #f5f5f5; }
+  .error-banner { background: #fdecea; color: #b71c1c; padding: 12px 16px; border-radius: 8px; margin-bottom: 16px; display: none; font-size: 14px; }
+  .error-banner.show { display: block; }
+  .kpi-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; margin-bottom: 24px; }
+  .kpi-card { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 1px 4px rgba(0,0,0,.08); border-left: 4px solid #1a73e8; }
+  .kpi-card .name { font-size: 14px; color: #666; margin-bottom: 4px; }
+  .kpi-card .value { font-size: 28px; font-weight: 700; }
+  .kpi-card .sub { font-size: 12px; color: #888; margin-top: 4px; }
+  .kpi-card .bar-container { margin-top: 10px; height: 6px; background: #e0e0e0; border-radius: 3px; overflow: hidden; }
+  .kpi-card .bar-fill { height: 100%; border-radius: 3px; transition: width .6s ease; }
+  .summary-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+  .summary-card { background: #fff; border-radius: 12px; padding: 16px 20px; box-shadow: 0 1px 4px rgba(0,0,0,.08); text-align: center; }
+  .summary-card .label { font-size: 13px; color: #888; }
+  .summary-card .number { font-size: 26px; font-weight: 700; margin-top: 4px; }
+  .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+  .chart-box { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+  .chart-box h3 { font-size: 15px; color: #555; margin-bottom: 12px; }
+  .chart-box canvas { max-height: 260px; }
+  .table-container { background: #fff; border-radius: 12px; box-shadow: 0 1px 4px rgba(0,0,0,.08); overflow: hidden; }
+  .table-container .table-header { padding: 16px 20px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+  .table-container .table-header h3 { font-size: 15px; color: #555; }
+  .table-container .table-header input { padding: 6px 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px; width: 200px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { background: #fafafa; text-align: left; padding: 10px 16px; font-weight: 600; color: #555; border-bottom: 2px solid #eee; cursor: pointer; user-select: none; }
+  th:hover { color: #1a73e8; }
+  td { padding: 10px 16px; border-bottom: 1px solid #f0f0f0; }
+  tr:hover { background: #f8f9ff; }
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 500; }
+  .badge-completed { background: #e6f4ea; color: #1e7e34; }
+  .badge-in-progress { background: #fff3cd; color: #856404; }
+  .badge-not-started { background: #f1f1f1; color: #666; }
+  .badge-blocked { background: #fdecea; color: #b71c1c; }
+  .pagination { padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: #666; }
+  .pagination button { padding: 4px 12px; background: #fff; border: 1px solid #ccc; border-radius: 4px; cursor: pointer; }
+  .pagination button:disabled { opacity: .4; cursor: default; }
+  .loading { text-align: center; padding: 60px 20px; color: #888; }
+  .loading .spinner { width: 36px; height: 36px; border: 3px solid #e0e0e0; border-top-color: #1a73e8; border-radius: 50%; animation: spin .8s linear infinite; margin: 0 auto 12px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .config-panel { background: #fff; border-radius: 12px; padding: 20px 24px; box-shadow: 0 1px 4px rgba(0,0,0,.08); margin-bottom: 24px; }
+  .config-panel h3 { font-size: 15px; color: #555; margin-bottom: 12px; }
+  .config-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
+  .config-field { display: flex; flex-direction: column; gap: 4px; }
+  .config-field label { font-size: 12px; color: #888; font-weight: 500; }
+  .config-field input, .config-field select { padding: 7px 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 13px; min-width: 180px; }
+  .config-field .hint { font-size: 11px; color: #aaa; margin-top: 2px; }
+  @media (max-width: 900px) { .charts-row { grid-template-columns: 1fr; } .summary-row { grid-template-columns: repeat(2, 1fr); } }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Activity Completion Dashboard</h1>
+  <div class="header-controls">
+    <button class="secondary" onclick="showConfig()">Settings</button>
+    <button onclick="refreshData()">Refresh</button>
+  </div>
+</div>
+
+<div class="error-banner" id="errorBanner"></div>
+
+<div class="config-panel" id="configPanel" style="display:none">
+  <h3>GitHub Configuration</h3>
+  <div class="config-row">
+    <div class="config-field">
+      <label>Personal Access Token</label>
+      <input id="cfgToken" type="password" placeholder="ghp_...">
+      <div class="hint">Requires repo scope</div>
+    </div>
+    <div class="config-field">
+      <label>Repo Owner</label>
+      <input id="cfgOwner" placeholder="org-name or username">
+    </div>
+    <div class="config-field">
+      <label>Repo Name</label>
+      <input id="cfgRepo" placeholder="repo-name">
+    </div>
+    <div class="config-field">
+      <label>In Progress Labels</label>
+      <input id="cfgInProg" value="in progress,wip,ongoing" placeholder="comma-separated">
+      <div class="hint">Labels that mean "in progress"</div>
+    </div>
+    <div class="config-field">
+      <label>Completed Labels</label>
+      <input id="cfgCompleted" value="completed,done,finished" placeholder="comma-separated">
+      <div class="hint">Labels that mean "completed" (closed issues also count)</div>
+    </div>
+    <div class="config-field">
+      <label>Blocked Labels</label>
+      <input id="cfgBlocked" value="blocked,waiting" placeholder="comma-separated">
+      <div class="hint">Labels that mean "blocked"</div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:flex-end">
+      <button onclick="saveConfig()">Apply &amp; Connect</button>
+      <button class="secondary" onclick="hideConfig()">Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="summary-row" id="summaryRow">
+  <div class="summary-card"><div class="label">Total Activities</div><div class="number" id="statTotal">0</div></div>
+  <div class="summary-card"><div class="label">Completed</div><div class="number" id="statCompleted">0</div></div>
+  <div class="summary-card"><div class="label">In Progress</div><div class="number" id="statInProgress">0</div></div>
+  <div class="summary-card"><div class="label">Not Started</div><div class="number" id="statNotStarted">0</div></div>
+</div>
+
+<div class="kpi-grid" id="kpiGrid"></div>
+
+<div class="charts-row">
+  <div class="chart-box"><h3>Completion by Person</h3><canvas id="chartPerson"></canvas></div>
+  <div class="chart-box"><h3>Overall Status Distribution</h3><canvas id="chartStatus"></canvas></div>
+</div>
+
+<div class="table-container" id="tableContainer">
+  <div class="table-header">
+    <h3>Activity List</h3>
+    <input id="tableFilter" placeholder="Filter activities..." oninput="renderTable()">
+  </div>
+  <div id="loadingIndicator" class="loading">
+    <div class="spinner"></div>
+    <p id="loadingText">Loading data from GitHub...</p>
+  </div>
+  <div id="tableWrapper" style="display:none">
+    <table>
+      <thead><tr>
+        <th onclick="sortBy('title')">Activity</th>
+        <th onclick="sortBy('responsible')">Responsible</th>
+        <th onclick="sortBy('status')">Status</th>
+        <th onclick="sortBy('completed')">Done</th>
+      </tr></thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+    <div class="pagination">
+      <span id="pageInfo"></span>
+      <div><button id="prevBtn" onclick="prevPage()">Prev</button> <button id="nextBtn" onclick="nextPage()">Next</button></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const STATE = {
+  items: [],
+  filtered: [],
+  sortKey: 'title',
+  sortAsc: true,
+  page: 0,
+  pageSize: 20,
+  kpiChart: null,
+  statusChart: null,
+};
+
+const DEFAULTS = {
+  token: '',
+  owner: '',
+  repo: '',
+  inProgLabels: 'in progress,wip,ongoing',
+  completedLabels: 'completed,done,finished',
+  blockedLabels: 'blocked,waiting',
+};
+
+function loadConfig() {
+  let cfg;
+  try { cfg = JSON.parse(localStorage.getItem('ghConfig')); } catch { cfg = {}; }
+  return { ...DEFAULTS, ...cfg };
+}
+
+function saveConfig() {
+  const cfg = {
+    token: document.getElementById('cfgToken').value.trim(),
+    owner: document.getElementById('cfgOwner').value.trim(),
+    repo: document.getElementById('cfgRepo').value.trim(),
+    inProgLabels: document.getElementById('cfgInProg').value.trim(),
+    completedLabels: document.getElementById('cfgCompleted').value.trim(),
+    blockedLabels: document.getElementById('cfgBlocked').value.trim(),
+  };
+  localStorage.setItem('ghConfig', JSON.stringify(cfg));
+  hideConfig();
+  refreshData();
+}
+
+function showConfig() {
+  const cfg = loadConfig();
+  document.getElementById('cfgToken').value = cfg.token;
+  document.getElementById('cfgOwner').value = cfg.owner;
+  document.getElementById('cfgRepo').value = cfg.repo;
+  document.getElementById('cfgInProg').value = cfg.inProgLabels;
+  document.getElementById('cfgCompleted').value = cfg.completedLabels;
+  document.getElementById('cfgBlocked').value = cfg.blockedLabels;
+  document.getElementById('configPanel').style.display = 'block';
+}
+
+function hideConfig() {
+  document.getElementById('configPanel').style.display = 'none';
+}
+
+function showError(msg) {
+  const el = document.getElementById('errorBanner');
+  el.textContent = msg;
+  el.classList.add('show');
+}
+
+function hideError() {
+  document.getElementById('errorBanner').classList.remove('show');
+}
+
+async function refreshData() {
+  hideError();
+  document.getElementById('loadingIndicator').style.display = 'block';
+  document.getElementById('loadingText').textContent = 'Loading data from GitHub...';
+  document.getElementById('tableWrapper').style.display = 'none';
+  try {
+    STATE.items = await fetchGitHubData();
+    applyFilters();
+    document.getElementById('loadingIndicator').style.display = 'none';
+    document.getElementById('tableWrapper').style.display = '';
+  } catch (err) {
+    document.getElementById('loadingIndicator').style.display = 'none';
+    showError('Failed to load data: ' + err.message);
+    STATE.items = [];
+    applyFilters();
+  }
+}
+
+async function fetchGitHubData() {
+  const cfg = loadConfig();
+  if (!cfg.token) throw new Error('Please configure your GitHub Personal Access Token in Settings');
+  if (!cfg.owner || !cfg.repo) throw new Error('Please configure repo owner and name in Settings');
+
+  const inProgSet = new Set(cfg.inProgLabels.split(',').map(s => s.trim().toLowerCase()));
+  const completedSet = new Set(cfg.completedLabels.split(',').map(s => s.trim().toLowerCase()));
+  const blockedSet = new Set(cfg.blockedLabels.split(',').map(s => s.trim().toLowerCase()));
+
+  let allIssues = [];
+  let page = 1;
+  let hasMore = true;
+
+  while (hasMore) {
+    const url = `https://api.github.com/repos/${encodeURIComponent(cfg.owner)}/${encodeURIComponent(cfg.repo)}/issues?state=all&per_page=100&page=${page}`;
+    const resp = await fetch(url, {
+      headers: {
+        'Accept': 'application/vnd.github+json',
+        'Authorization': 'Bearer ' + cfg.token,
+        'X-GitHub-Api-Version': '2022-11-28',
+      },
+    });
+    if (resp.status === 401) throw new Error('Invalid token. Check your PAT and ensure it has repo scope.');
+    if (resp.status === 404) throw new Error('Repo not found. Check owner/name.');
+    if (resp.status === 403) {
+      const body = await resp.json().catch(() => ({}));
+      throw new Error(body.message || 'Rate limited. Try again later.');
+    }
+    if (!resp.ok) throw new Error(`GitHub API: HTTP ${resp.status}`);
+    const issues = await resp.json();
+    if (!issues.length) break;
+    allIssues = allIssues.concat(issues);
+    const link = resp.headers.get('Link') || '';
+    hasMore = link.includes('rel="next"');
+    page++;
+  }
+
+  return allIssues
+    .filter(issue => !issue.pull_request)
+    .map(issue => {
+      const labelNames = (issue.labels || []).map(l => typeof l === 'string' ? l : l.name).filter(Boolean);
+      const lowerLabels = labelNames.map(n => n.toLowerCase());
+      let status;
+      if (issue.state === 'closed' || lowerLabels.some(l => completedSet.has(l))) {
+        status = 'Completed';
+      } else if (lowerLabels.some(l => blockedSet.has(l))) {
+        status = 'Blocked';
+      } else if (lowerLabels.some(l => inProgSet.has(l))) {
+        status = 'In Progress';
+      } else {
+        status = 'Not Started';
+      }
+
+      let responsible = 'Unassigned';
+      if (issue.assignees && issue.assignees.length > 0) {
+        responsible = issue.assignees.map(a => a.login).join(', ');
+      } else if (issue.assignee) {
+        responsible = issue.assignee.login;
+      }
+
+      return {
+        id: issue.number,
+        title: issue.title,
+        url: issue.html_url,
+        responsible,
+        status,
+        labels: labelNames,
+        createdAt: issue.created_at,
+        updatedAt: issue.updated_at,
+      };
+    });
+}
+
+function applyFilters() {
+  const raw = STATE.items;
+  const personMap = {};
+  let total = 0, completed = 0, inProgress = 0, notStarted = 0, blocked = 0;
+
+  raw.forEach(item => {
+    item.responsible.split(',').map(s => s.trim()).filter(Boolean).forEach(resp => {
+      if (!personMap[resp]) personMap[resp] = { name: resp, total: 0, completed: 0, inProgress: 0, notStarted: 0, blocked: 0 };
+      personMap[resp].total++;
+    });
+    total++;
+    if (item.status === 'Completed') { completed++; }
+    else if (item.status === 'In Progress') { inProgress++; }
+    else if (item.status === 'Blocked') { blocked++; }
+    else { notStarted++; }
+  });
+
+  Object.keys(personMap).forEach(name => {
+    raw.forEach(item => {
+      const assignees = item.responsible.split(',').map(s => s.trim());
+      if (assignees.includes(name)) {
+        const p = personMap[name];
+        if (item.status === 'Completed') p.completed++;
+        else if (item.status === 'In Progress') p.inProgress++;
+        else if (item.status === 'Blocked') p.blocked++;
+        else p.notStarted++;
+      }
+    });
+  });
+
+  STATE.personMap = personMap;
+  STATE.stats = { total, completed, inProgress, notStarted, blocked };
+
+  STATE.filtered = raw.slice();
+  STATE.page = 0;
+  STATE.sortKey = 'title';
+  STATE.sortAsc = true;
+
+  updateSummary();
+  renderKPI();
+  renderChart();
+  renderTable();
+}
+
+function updateSummary() {
+  const s = STATE.stats || { total: 0, completed: 0, inProgress: 0, notStarted: 0, blocked: 0 };
+  document.getElementById('statTotal').textContent = s.total;
+  document.getElementById('statCompleted').textContent = s.completed;
+  document.getElementById('statInProgress').textContent = s.inProgress;
+  document.getElementById('statNotStarted').textContent = s.notStarted;
+}
+
+function renderKPI() {
+  const grid = document.getElementById('kpiGrid');
+  const map = STATE.personMap || {};
+  const entries = Object.values(map);
+  if (!entries.length) { grid.innerHTML = '<p style="color:#888;grid-column:1/-1">No data to display.</p>'; return; }
+
+  entries.sort((a, b) => b.total - a.total);
+
+  grid.innerHTML = entries.map(p => {
+    const pct = p.total ? Math.round(p.completed / p.total * 100) : 0;
+    const color = pct >= 80 ? '#1e7e34' : pct >= 50 ? '#e67e22' : '#b71c1c';
+    return `<div class="kpi-card" style="border-left-color:${color}">
+      <div class="name">@${escHtml(p.name)}</div>
+      <div class="value">${p.completed} / ${p.total}</div>
+      <div class="sub">${pct}% &middot; ${p.inProgress} in prog &middot; ${p.blocked} blocked &middot; ${p.notStarted} not started</div>
+      <div class="bar-container"><div class="bar-fill" style="width:${pct}%;background:${color}"></div></div>
+    </div>`;
+  }).join('');
+}
+
+function renderChart() {
+  const map = STATE.personMap || {};
+  const stats = STATE.stats || {};
+  const entries = Object.values(map);
+
+  const labels = entries.map(p => '@' + p.name);
+  const completedData = entries.map(p => p.completed);
+  const inProgData = entries.map(p => p.inProgress);
+  const notStartedData = entries.map(p => p.notStarted);
+  const blockedData = entries.map(p => p.blocked);
+
+  const ctx1 = document.getElementById('chartPerson').getContext('2d');
+  if (STATE.kpiChart) STATE.kpiChart.destroy();
+  STATE.kpiChart = new Chart(ctx1, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Completed', data: completedData, backgroundColor: '#2e7d32', borderRadius: 3 },
+        { label: 'In Progress', data: inProgData, backgroundColor: '#f9a825', borderRadius: 3 },
+        { label: 'Blocked', data: blockedData, backgroundColor: '#e53935', borderRadius: 3 },
+        { label: 'Not Started', data: notStartedData, backgroundColor: '#bdbdbd', borderRadius: 3 },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, padding: 12 } } },
+      scales: {
+        x: { grid: { display: false } },
+        y: { beginAtZero: true, ticks: { stepSize: 1 } },
+      },
+    },
+  });
+
+  const ctx2 = document.getElementById('chartStatus').getContext('2d');
+  if (STATE.statusChart) STATE.statusChart.destroy();
+  STATE.statusChart = new Chart(ctx2, {
+    type: 'doughnut',
+    data: {
+      labels: ['Completed', 'In Progress', 'Blocked', 'Not Started'],
+      datasets: [{
+        data: [stats.completed, stats.inProgress, stats.blocked, stats.notStarted],
+        backgroundColor: ['#2e7d32', '#f9a825', '#e53935', '#bdbdbd'],
+        borderWidth: 0,
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      plugins: {
+        legend: { position: 'bottom', labels: { boxWidth: 12, padding: 12 } },
+      },
+    },
+  });
+}
+
+function renderTable() {
+  const filter = (document.getElementById('tableFilter').value || '').toLowerCase();
+  let items = STATE.filtered;
+  if (filter) {
+    items = items.filter(it =>
+      (it.title || '').toLowerCase().includes(filter) ||
+      (it.responsible || '').toLowerCase().includes(filter) ||
+      (it.status || '').toLowerCase().includes(filter) ||
+      (it.labels || []).some(l => l.toLowerCase().includes(filter))
+    );
+  }
+
+  const key = STATE.sortKey;
+  const asc = STATE.sortAsc;
+  items = items.slice().sort((a, b) => {
+    let va = (a[key] || '').toString().toLowerCase();
+    let vb = (b[key] || '').toString().toLowerCase();
+    if (key === 'completed') { va = a.status === 'Completed'; vb = b.status === 'Completed'; }
+    return va < vb ? (asc ? -1 : 1) : va > vb ? (asc ? 1 : -1) : 0;
+  });
+
+  const start = STATE.page * STATE.pageSize;
+  const pageItems = items.slice(start, start + STATE.pageSize);
+  const totalPages = Math.ceil(items.length / STATE.pageSize) || 1;
+
+  document.getElementById('pageInfo').textContent = `Page ${STATE.page + 1} of ${totalPages} (${items.length} items)`;
+  document.getElementById('prevBtn').disabled = STATE.page === 0;
+  document.getElementById('nextBtn').disabled = STATE.page >= totalPages - 1;
+
+  const tbody = document.getElementById('tableBody');
+  tbody.innerHTML = pageItems.map(item => {
+    const badgeClass = item.status === 'Completed' ? 'badge-completed' :
+      item.status === 'In Progress' ? 'badge-in-progress' :
+      item.status === 'Blocked' ? 'badge-blocked' : 'badge-not-started';
+    return `<tr>
+      <td><a href="${escHtml(item.url)}" target="_blank" style="color:#1a73e8;text-decoration:none">${escHtml(item.title)}</a></td>
+      <td>${escHtml(item.responsible)}</td>
+      <td><span class="badge ${badgeClass}">${escHtml(item.status)}</span></td>
+      <td>${item.status === 'Completed' ? '&#10003;' : '&#8212;'}</td>
+    </tr>`;
+  }).join('');
+}
+
+function sortBy(key) {
+  if (STATE.sortKey === key) STATE.sortAsc = !STATE.sortAsc;
+  else { STATE.sortKey = key; STATE.sortAsc = true; }
+  renderTable();
+}
+
+function prevPage() { if (STATE.page > 0) { STATE.page--; renderTable(); } }
+function nextPage() { STATE.page++; renderTable(); }
+
+function escHtml(s) {
+  if (s == null) return '';
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+(async function init() {
+  const cfg = loadConfig();
+  if (cfg.token && cfg.owner && cfg.repo) {
+    await refreshData();
+  } else {
+    document.getElementById('loadingText').innerHTML =
+      'Configure your GitHub repo in <a href="#" onclick="showConfig();return false" style="color:#1a73e8">Settings</a>, then click Refresh.';
+    document.getElementById('loadingIndicator').innerHTML =
+      '<p style="margin-top:20px;color:#888">No GitHub configuration found.</p>' +
+      '<p style="margin-top:12px"><button onclick="showConfig()" style="padding:10px 28px;background:#1a73e8;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:15px">Open Settings</button></p>';
+  }
+})();
+</script>
+</body>
+</html>
