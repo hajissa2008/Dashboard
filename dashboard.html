@@ -247,10 +247,10 @@ function norm(raw){
     var rr=f.Responsible||f.resp||f.Responsible_x0020_||f.ResponsibleList||f.field_8||'';
     var resp=rr.toString().trim()||'Unassigned';
     var fin=f.Finish||f.f||f.FinishDate||f.Finish_x0020_||f.field_6||null;
-    var aid=f.ActivityID||f.Activity_x0020_ID||f.field_1||'';
-    var ph=f.Phase||f.ph||f.Phase_x0020_||f.field_3||'';
-    if(!ph&&aid)ph=phFromId(aid);
-    return{id:itm.id,aid:aid,title:f.Title||f.field_2||'',ph:ph||'Other',st:st,prog:prog,resp:resp,fin:fin,ov:od(fin,st),dod:od(fin,st)?dod(fin):0}
+    var aid=f.Title||'';  /* Title IS the Activity ID in this list */
+    var name=f.field_1||f.field_2||'';
+    var ph=phFromId(aid);
+    return{id:itm.id,aid:aid,title:name,ph:ph||'Other',st:st,prog:prog,resp:resp,fin:fin,ov:od(fin,st),dod:od(fin,st)?dod(fin):0}
   })
 }
 
