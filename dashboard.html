@@ -440,7 +440,7 @@ function openPersonPopup(pName){
       '<th>Overdue</th>'+
     '</tr></thead><tbody>'+
     items.map(function(i){
-      var phc=PH_COL[i.ph]||'#8891b5',stc,i.st==='Done'?stc='st-done':i.st==='In Progress'?stc='st-wip':i.st==='For Inspection'?stc='st-fi':i.st==='Partially Inspected'?stc='st-pi':stc='st-ns';
+      var stc=i.st==='Done'?'st-done':i.st==='In Progress'?'st-wip':i.st==='For Inspection'?'st-fi':i.st==='Partially Inspected'?'st-pi':'st-ns';
       var stl=i.st==='Done'?'Done':i.st==='In Progress'?'WIP':i.st==='For Inspection'?'FI':i.st==='Partially Inspected'?'PI':'NS';
       return'<tr>'+
         '<td><span class="aid">'+esc(i.aid)+'</span></td>'+
