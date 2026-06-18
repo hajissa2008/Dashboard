@@ -189,10 +189,15 @@ h2 em{font-style:normal;font-size:11px;color:#5a6288;font-weight:400}
       <div class="gauge"><svg><circle class="bg" cx="40" cy="40" r="34"/><circle class="fg" cx="40" cy="40" r="34" stroke-dasharray="213.6" stroke-dashoffset="0" stroke="#4fc3f7"/></svg><div class="gval" id="gTotal">0</div></div>
       <div class="l">Total</div>
     </div>
-    <div class="kpi done" onclick="openKpiPopup('done')">
-      <div class="gauge"><svg><circle class="bg" cx="40" cy="40" r="34"/><circle class="fg" id="gDoneFg" cx="40" cy="40" r="34" stroke-dasharray="213.6" stroke-dashoffset="213.6"/></svg><div class="gval" id="gDone">0</div></div>
-      <div class="gpct" id="gDonePct">0%</div>
-      <div class="l">Done</div>
+    <div class="kpi overdue" onclick="openKpiPopup('ov')">
+      <div class="gauge"><svg><circle class="bg" cx="40" cy="40" r="34"/><circle class="fg" id="gOvFg" cx="40" cy="40" r="34" stroke-dasharray="213.6" stroke-dashoffset="213.6"/></svg><div class="gval" id="gOv">0</div></div>
+      <div class="gpct" id="gOvPct">0%</div>
+      <div class="l">Overdue</div>
+    </div>
+    <div class="kpi ns" onclick="openKpiPopup('ns')">
+      <div class="gauge"><svg><circle class="bg" cx="40" cy="40" r="34"/><circle class="fg" id="gNsFg" cx="40" cy="40" r="34" stroke-dasharray="213.6" stroke-dashoffset="213.6"/></svg><div class="gval" id="gNs">0</div></div>
+      <div class="gpct" id="gNsPct">0%</div>
+      <div class="l">Not Started</div>
     </div>
     <div class="kpi active" onclick="openKpiPopup('act')">
       <div class="gauge"><svg><circle class="bg" cx="40" cy="40" r="34"/><circle class="fg" id="gActiveFg" cx="40" cy="40" r="34" stroke-dasharray="213.6" stroke-dashoffset="213.6"/></svg><div class="gval" id="gActive">0</div></div>
@@ -209,15 +214,10 @@ h2 em{font-style:normal;font-size:11px;color:#5a6288;font-weight:400}
       <div class="gpct" id="gPiPct">0%</div>
       <div class="l">Partial Insp.</div>
     </div>
-    <div class="kpi ns" onclick="openKpiPopup('ns')">
-      <div class="gauge"><svg><circle class="bg" cx="40" cy="40" r="34"/><circle class="fg" id="gNsFg" cx="40" cy="40" r="34" stroke-dasharray="213.6" stroke-dashoffset="213.6"/></svg><div class="gval" id="gNs">0</div></div>
-      <div class="gpct" id="gNsPct">0%</div>
-      <div class="l">Not Started</div>
-    </div>
-    <div class="kpi overdue" onclick="openKpiPopup('ov')">
-      <div class="gauge"><svg><circle class="bg" cx="40" cy="40" r="34"/><circle class="fg" id="gOvFg" cx="40" cy="40" r="34" stroke-dasharray="213.6" stroke-dashoffset="213.6"/></svg><div class="gval" id="gOv">0</div></div>
-      <div class="gpct" id="gOvPct">0%</div>
-      <div class="l">Overdue</div>
+    <div class="kpi done" onclick="openKpiPopup('done')">
+      <div class="gauge"><svg><circle class="bg" cx="40" cy="40" r="34"/><circle class="fg" id="gDoneFg" cx="40" cy="40" r="34" stroke-dasharray="213.6" stroke-dashoffset="213.6"/></svg><div class="gval" id="gDone">0</div></div>
+      <div class="gpct" id="gDonePct">0%</div>
+      <div class="l">Done</div>
     </div>
   </div>
 
