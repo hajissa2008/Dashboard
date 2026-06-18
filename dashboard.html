@@ -23,15 +23,16 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#0b0e1
 .status.err{display:block;background:rgba(239,83,80,.12);color:#ef5350;border:1px solid rgba(239,83,80,.25)}
 .status.ok{display:block;background:rgba(102,187,106,.12);color:#66bb6a;border:1px solid rgba(102,187,106,.25)}
 
-/* Gauge KPI Row */
+/* Gauge KPIs */
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:24px}
-.kpi{background:linear-gradient(135deg,#131724,#181e30);border-radius:12px;padding:16px 12px;border:1px solid #1e2440;text-align:center;position:relative;overflow:hidden}
+.kpi{background:linear-gradient(135deg,#131724,#181e30);border-radius:12px;padding:16px 12px;border:1px solid #1e2440;text-align:center;position:relative;overflow:hidden;cursor:pointer;transition:all .2s}
+.kpi:hover{transform:translateY(-2px);border-color:#3a4166;box-shadow:0 4px 20px rgba(0,0,0,.3)}
 .kpi .gauge{width:80px;height:80px;margin:0 auto 8px;position:relative}
 .kpi .gauge svg{width:80px;height:80px;transform:rotate(-90deg)}
 .kpi .gauge svg circle{fill:none;stroke-width:6;cx:40;cy:40;r:34}
 .kpi .gauge .bg{stroke:#1e2440}
 .kpi .gauge .fg{stroke-linecap:round;transition:stroke-dashoffset 1.2s ease}
-.kpi .gval{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:22px;font-weight:700;line-height:1}
+.kpi .gval{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:22px;font-weight:700;line-height:1;pointer-events:none}
 .kpi .gpct{font-size:9px;color:#5a6288;margin-top:1px}
 .kpi .l{font-size:9px;text-transform:uppercase;letter-spacing:1px;color:#5a6288}
 .kpi.total .gval{color:#4fc3f7}
@@ -48,7 +49,8 @@ h2 em{font-style:normal;font-size:11px;color:#5a6288;font-weight:400}
 
 /* Phase Cards */
 .phase-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px;margin-bottom:24px}
-.phase{background:linear-gradient(135deg,#131724,#181e30);border-radius:10px;padding:14px 16px;border:1px solid #1e2440;border-left:3px solid #2a3150}
+.phase{background:linear-gradient(135deg,#131724,#181e30);border-radius:10px;padding:14px 16px;border:1px solid #1e2440;border-left:3px solid #2a3150;cursor:pointer;transition:all .2s}
+.phase:hover{transform:translateY(-2px);border-color:#3a4166;box-shadow:0 4px 20px rgba(0,0,0,.3)}
 .phase .ph{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;gap:4px}
 .phase .ph .nm{font-size:15px;font-weight:700;color:#fff}
 .phase .ph .ld{font-size:10px;color:#5a6288;background:rgba(255,255,255,.05);padding:2px 8px;border-radius:10px}
@@ -68,7 +70,7 @@ h2 em{font-style:normal;font-size:11px;color:#5a6288;font-weight:400}
 .phase .sleg .sn::before{background:#546e7a}
 .phase .pct{font-size:10px;color:#5a6288;text-align:right;margin-top:3px}
 
-/* Overdue Analysis */
+/* Overdue */
 .ov{background:rgba(239,83,80,.05);border-radius:10px;padding:16px 20px;margin-bottom:24px;border:1px solid rgba(239,83,80,.15)}
 .ov.hide{display:none}
 .ov h2{color:#ef5350}
@@ -78,7 +80,8 @@ h2 em{font-style:normal;font-size:11px;color:#5a6288;font-weight:400}
 .ov-stat .l{font-size:10px;color:#6a6a9a;text-transform:uppercase;letter-spacing:.5px}
 .ov-stat .s{font-size:10px;color:#6a6a9a;margin-top:1px}
 .ov-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:8px}
-.ov-item{background:rgba(239,83,80,.04);border-left:3px solid;border-radius:6px;padding:8px 12px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.ov-item{background:rgba(239,83,80,.04);border-left:3px solid;border-radius:6px;padding:8px 12px;display:flex;justify-content:space-between;align-items:center;gap:8px;cursor:pointer;transition:all .2s}
+.ov-item:hover{background:rgba(239,83,80,.08)}
 .ov-item .l{flex:1;min-width:0}
 .ov-item .l .id{font-size:9px;color:#6a6a9a;font-family:monospace}
 .ov-item .l .t{font-size:12px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -87,8 +90,6 @@ h2 em{font-style:normal;font-size:11px;color:#5a6288;font-weight:400}
 .ov-item .r{text-align:right;flex-shrink:0}
 .ov-item .r .d{font-size:20px;font-weight:700;line-height:1}
 .ov-item .r .dl{font-size:8px;text-transform:uppercase;color:#6a6a9a;letter-spacing:.5px}
-.ov-crit .r .d{color:#ef5350}.ov-warn .r .d{color:#ffa726}.ov-mild .r .d{color:#ffd54f}
-.ov-crit{border-left-color:#ef5350}.ov-warn{border-left-color:#ffa726}.ov-mild{border-left-color:#ffd54f}
 
 /* Charts */
 .g2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:24px}
@@ -98,7 +99,8 @@ h2 em{font-style:normal;font-size:11px;color:#5a6288;font-weight:400}
 
 /* Team */
 .people{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-bottom:16px}
-.person{background:linear-gradient(135deg,#131724,#181e30);border-radius:8px;padding:10px 12px;border:1px solid #1e2440;border-left:3px solid #2a3150}
+.person{background:linear-gradient(135deg,#131724,#181e30);border-radius:8px;padding:10px 12px;border:1px solid #1e2440;border-left:3px solid #2a3150;cursor:pointer;transition:all .2s}
+.person:hover{transform:translateY(-1px);border-color:#3a4166}
 .person .pn{font-size:11px;color:#8891b5;margin-bottom:1px}
 .person .pv{font-size:15px;font-weight:700;color:#fff}
 .person .ps{font-size:9px;color:#5a6288;margin-top:1px}
@@ -123,7 +125,49 @@ h2 em{font-style:normal;font-size:11px;color:#5a6288;font-weight:400}
 .loading .sp{width:32px;height:32px;border:3px solid #1e2440;border-top-color:#4fc3f7;border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 10px}
 @keyframes spin{to{transform:rotate(360deg)}}
 
-@media(max-width:800px){.g2{grid-template-columns:1fr}.content{padding:12px}.top{padding:10px 12px}}
+/* ===== Popup Modal ===== */
+.popup{display:none;position:fixed;inset:0;z-index:2000;align-items:center;justify-content:center}
+.popup.show{display:flex}
+.popup-back{position:absolute;inset:0;background:rgba(0,0,0,.8)}
+.popup-box{position:relative;background:#131724;border:1px solid #1e2440;border-radius:14px;width:92%;max-width:1100px;max-height:88vh;display:flex;flex-direction:column;animation:popIn .2s ease}
+@keyframes popIn{from{opacity:0;transform:scale(.95)}to{opacity:1;transform:scale(1)}}
+.popup-head{display:flex;justify-content:space-between;align-items:center;padding:16px 22px;border-bottom:1px solid #1e2440;flex-shrink:0}
+.popup-head h3{font-size:16px;font-weight:700;color:#fff;display:flex;align-items:center;gap:10px}
+.popup-head h3 .badge{font-size:10px;padding:2px 10px;border-radius:12px;font-weight:600}
+.popup-head .close{width:30px;height:30px;border:none;background:rgba(255,255,255,.06);border-radius:8px;color:#8891b5;font-size:18px;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center}
+.popup-head .close:hover{background:rgba(239,83,80,.2);color:#ef5350}
+.popup-body{flex:1;overflow-y:auto;padding:16px 22px 22px}
+.popup-body .summary{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:14px}
+.popup-body .summary .s-item{background:rgba(255,255,255,.03);border-radius:8px;padding:8px 14px;text-align:center;min-width:80px}
+.popup-body .summary .s-item .sv{font-size:18px;font-weight:700;color:#fff}
+.popup-body .summary .s-item .sl{font-size:9px;color:#5a6288;text-transform:uppercase;letter-spacing:.5px}
+.popup-body .popup-search{margin-bottom:10px}
+.popup-body .popup-search input{width:100%;padding:8px 12px;background:#0b0e17;border:1px solid #1e2440;border-radius:6px;color:#e8e8e8;font-size:13px;outline:none}
+.popup-body .popup-search input:focus{border-color:#4fc3f7}
+.popup-table{width:100%;border-collapse:collapse;font-size:12px}
+.popup-table th{padding:8px 10px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:#5a6288;border-bottom:1px solid #1e2440;cursor:pointer;user-select:none;white-space:nowrap}
+.popup-table th:hover{color:#8891b5}
+.popup-table th .sort{display:inline-block;width:12px;text-align:center;color:#5a6288;font-size:9px}
+.popup-table th .sort.asc{color:#4fc3f7}
+.popup-table th .sort.desc{color:#4fc3f7}
+.popup-table td{padding:7px 10px;border-bottom:1px solid rgba(30,36,64,.5);color:#b0b8d1;vertical-align:middle}
+.popup-table tr:hover td{background:rgba(255,255,255,.02)}
+.popup-table .aid{font-size:10px;color:#6a6a9a;font-family:monospace}
+.popup-table .title{font-weight:600;color:#fff}
+.popup-table .ph-cell{font-size:10px;padding:2px 6px;border-radius:8px;font-weight:600;white-space:nowrap}
+.popup-table .st-cell{font-size:10px;padding:2px 8px;border-radius:10px;font-weight:600;white-space:nowrap}
+.popup-table .st-done{background:rgba(102,187,106,.15);color:#66bb6a}
+.popup-table .st-wip{background:rgba(66,165,245,.15);color:#42a5f5}
+.popup-table .st-fi{background:rgba(171,71,188,.15);color:#ab47bc}
+.popup-table .st-pi{background:rgba(255,167,38,.15);color:#ffa726}
+.popup-table .st-ns{background:rgba(84,110,122,.15);color:#78909c}
+.popup-table .resp{color:#8891b5}
+.popup-table .ov-cell{font-weight:700}
+.popup-table .ov-yes,.popup-table .ov-days{color:#ef5350}
+.popup-table .ov-no{color:#5a6288}
+.popup-table .p-count{font-size:10px;color:#5a6288;text-align:center;padding:20px}
+
+@media(max-width:800px){.g2{grid-template-columns:1fr}.content{padding:12px}.top{padding:10px 12px}.popup-box{width:98%;max-height:95vh}.popup-body{padding:12px}.popup-table{font-size:11px}.popup-table th,.popup-table td{padding:5px 6px}}
 </style>
 </head>
 <body>
@@ -140,62 +184,57 @@ h2 em{font-style:normal;font-size:11px;color:#5a6288;font-weight:400}
 <div class="content">
   <div class="status" id="status"></div>
 
-  <!-- Gauge KPIs -->
   <div class="kpis" id="kpiRow" style="display:none">
-    <div class="kpi total">
+    <div class="kpi total" onclick="openKpiPopup('total')">
       <div class="gauge"><svg><circle class="bg" cx="40" cy="40" r="34"/><circle class="fg" cx="40" cy="40" r="34" stroke-dasharray="213.6" stroke-dashoffset="0" stroke="#4fc3f7"/></svg><div class="gval" id="gTotal">0</div></div>
       <div class="l">Total</div>
     </div>
-    <div class="kpi done">
+    <div class="kpi done" onclick="openKpiPopup('done')">
       <div class="gauge"><svg><circle class="bg" cx="40" cy="40" r="34"/><circle class="fg" id="gDoneFg" cx="40" cy="40" r="34" stroke-dasharray="213.6" stroke-dashoffset="213.6"/></svg><div class="gval" id="gDone">0</div></div>
       <div class="gpct" id="gDonePct">0%</div>
       <div class="l">Done</div>
     </div>
-    <div class="kpi active">
+    <div class="kpi active" onclick="openKpiPopup('act')">
       <div class="gauge"><svg><circle class="bg" cx="40" cy="40" r="34"/><circle class="fg" id="gActiveFg" cx="40" cy="40" r="34" stroke-dasharray="213.6" stroke-dashoffset="213.6"/></svg><div class="gval" id="gActive">0</div></div>
       <div class="gpct" id="gActivePct">0%</div>
       <div class="l">In Progress</div>
     </div>
-    <div class="kpi fi">
+    <div class="kpi fi" onclick="openKpiPopup('fi')">
       <div class="gauge"><svg><circle class="bg" cx="40" cy="40" r="34"/><circle class="fg" id="gFiFg" cx="40" cy="40" r="34" stroke-dasharray="213.6" stroke-dashoffset="213.6"/></svg><div class="gval" id="gFi">0</div></div>
       <div class="gpct" id="gFiPct">0%</div>
       <div class="l">For Insp.</div>
     </div>
-    <div class="kpi pi">
+    <div class="kpi pi" onclick="openKpiPopup('pi')">
       <div class="gauge"><svg><circle class="bg" cx="40" cy="40" r="34"/><circle class="fg" id="gPiFg" cx="40" cy="40" r="34" stroke-dasharray="213.6" stroke-dashoffset="213.6"/></svg><div class="gval" id="gPi">0</div></div>
       <div class="gpct" id="gPiPct">0%</div>
       <div class="l">Partial Insp.</div>
     </div>
-    <div class="kpi ns">
+    <div class="kpi ns" onclick="openKpiPopup('ns')">
       <div class="gauge"><svg><circle class="bg" cx="40" cy="40" r="34"/><circle class="fg" id="gNsFg" cx="40" cy="40" r="34" stroke-dasharray="213.6" stroke-dashoffset="213.6"/></svg><div class="gval" id="gNs">0</div></div>
       <div class="gpct" id="gNsPct">0%</div>
       <div class="l">Not Started</div>
     </div>
-    <div class="kpi overdue">
+    <div class="kpi overdue" onclick="openKpiPopup('ov')">
       <div class="gauge"><svg><circle class="bg" cx="40" cy="40" r="34"/><circle class="fg" id="gOvFg" cx="40" cy="40" r="34" stroke-dasharray="213.6" stroke-dashoffset="213.6"/></svg><div class="gval" id="gOv">0</div></div>
       <div class="gpct" id="gOvPct">0%</div>
       <div class="l">Overdue</div>
     </div>
   </div>
 
-  <!-- Phases -->
   <h2>&#9671; Phases <em id="phaseCount"></em></h2>
   <div class="phase-grid" id="phaseGrid"></div>
 
-  <!-- Overdue Analysis -->
   <div class="ov" id="ovBox">
     <h2>&#9888; Overdue Analysis <em id="ovCount"></em></h2>
     <div class="ov-strip" id="ovStrip"></div>
     <div class="ov-grid" id="ovGrid"></div>
   </div>
 
-  <!-- Charts -->
   <div class="g2" id="chartsRow" style="display:none">
     <div class="chart-box"><h3>Status Distribution</h3><canvas id="chStatus"></canvas></div>
     <div class="chart-box"><h3>Overdue by Person</h3><canvas id="chOverdue"></canvas></div>
   </div>
 
-  <!-- Team -->
   <h2>&#128101; Team <em id="personCount"></em></h2>
   <div class="people" id="personGrid"></div>
 
@@ -203,7 +242,18 @@ h2 em{font-style:normal;font-size:11px;color:#5a6288;font-weight:400}
   <div class="loading" id="loader"><div class="sp"></div><p id="loadText">Connecting...</p></div>
 </div>
 
-<!-- Config -->
+<!-- Popup -->
+<div class="popup" id="popup">
+  <div class="popup-back" onclick="closePopup()"></div>
+  <div class="popup-box">
+    <div class="popup-head">
+      <h3 id="popupTitle"></h3>
+      <button class="close" onclick="closePopup()">&#x2715;</button>
+    </div>
+    <div class="popup-body" id="popupBody"></div>
+  </div>
+</div>
+
 <div class="config" id="cfgBox">
   <div class="config-inner">
     <h3>SharePoint Configuration</h3>
@@ -229,25 +279,187 @@ var PH_COL={'P1':'#F59E0B','P2':'#3B82F6','P3':'#10B981','P4':'#EF4444','P5':'#F
 var PH_ORD=['P1','P2','P3','P4','P5'];
 var $={items:[],phases:{},stats:{total:0,done:0,act:0,fi:0,pi:0,ns:0,ov:0},people:{},phLeads:{},ch0:null,ch1:null,token:null,user:null,refInt:null};
 
+var CIRC=213.6;
 function esc(s){if(s==null)return'';var d=document.createElement('div');d.textContent=s;return d.innerHTML}
 function abbr(s){if(!s)return'';var m=s.match(/(.+)@/);return m?m[1]:s}
 function cd(s){if(!s)return null;var d=new Date(s);if(isNaN(d))return null;d.setHours(0,0,0,0);return d}
 function od(fin,st){if(!fin||!st||st==='Done')return false;var fd=cd(fin);if(!fd)return false;var td=new Date();td.setHours(0,0,0,0);return fd<td}
 function dod(fin){if(!fin)return 0;var fd=cd(fin);if(!fd)return 0;return Math.round((Date.now()-fd.getTime())/86400000)}
 function pct(a,b){return b?Math.round(a/b*100):0}
-
 function phFromId(aid){if(!aid)return '';var m=aid.match(/\.(P[1-5])(?:[\.\(_]|$)/i);return m?m[1].toUpperCase():''}
 function sortPh(n){return n.sort(function(a,b){var ia=PH_ORD.indexOf(a),ib=PH_ORD.indexOf(b);if(ia>=0&&ib>=0)return ia-ib;if(ia>=0)return -1;if(ib>=0)return 1;return a.localeCompare(b)})}
-
-/* Gauge helper: circumference = 2*PI*34 = 213.6 */
-var CIRC=213.6;
 function setGauge(id,pct){var off=CIRC-Math.min(pct,100)/100*CIRC;var el=document.getElementById(id);if(el)el.setAttribute('stroke-dashoffset',off)}
+function fmtDate(d){if(!d)return'&mdash;';try{return new Date(d).toLocaleDateString('en-GB')}catch(e){}return d}
 
+/* ===== Popup ===== */
+var POP={items:[],sortCol:'aid',sortDir:1,search:''};
+
+function closePopup(){document.getElementById('popup').classList.remove('show')}
+
+function popupSort(col){
+  if(POP.sortCol===col)POP.sortDir*=-1;else{POP.sortCol=col;POP.sortDir=1}
+  renderPopup()
+}
+
+function renderPopup(){
+  var items=POP.items,search=POP.search.toLowerCase();
+  if(search)items=items.filter(function(i){return(i.aid+' '+i.title+' '+i.resp+' '+i.ph+' '+i.st).toLowerCase().indexOf(search)>=0});
+  items=items.slice().sort(function(a,b){
+    var va=a[POP.sortCol],vb=b[POP.sortCol];
+    if(typeof va==='string')va=va.toLowerCase(),vb=vb.toLowerCase();
+    if(va<vb)return-1*POP.sortDir;if(va>vb)return 1*POP.sortDir;return 0
+  });
+  var title=document.getElementById('popupTitle'),body=document.getElementById('popupBody');
+  var type=POP.type||'';
+  var sc=function(s){var m={'total':'#4fc3f7','done':'#66bb6a','act':'#42a5f5','fi':'#ab47bc','pi':'#ffa726','ns':'#546e7a','ov':'#ef5350'};return m[s]||'#8891b5'};
+  var ln={'total':'All Activities','done':'Done','act':'In Progress','fi':'For Inspection','pi':'Partially Inspected','ns':'Not Started','ov':'Overdue'};
+  var color=sc(type);
+
+  var countDone=0,countOv=0;
+  items.forEach(function(i){if(i.st==='Done')countDone++;if(i.ov)countOv++});
+
+  title.innerHTML='<span style="color:'+color+'">&#9671;</span> '+esc(ln[type]||'Activities')+' <span class="badge" style="background:'+color+'22;color:'+color+'">'+items.length+' items</span>';
+
+  body.innerHTML=
+    '<div class="summary">'+
+      '<div class="s-item"><div class="sv">'+items.length+'</div><div class="sl">Total</div></div>'+
+      '<div class="s-item"><div class="sv" style="color:#66bb6a">'+countDone+'</div><div class="sl">Done</div></div>'+
+      '<div class="s-item"><div class="sv" style="color:#ef5350">'+countOv+'</div><div class="sl">Overdue</div></div>'+
+    '</div>'+
+    '<div class="popup-search"><input placeholder="Search activities..." oninput="POP.search=this.value;renderPopup()"></div>'+
+    '<table class="popup-table"><thead><tr>'+
+      '<th onclick="popupSort(\'aid\')">ID <span class="sort'+(POP.sortCol==='aid'?(POP.sortDir>0?' asc':' desc'):'')+'">'+(POP.sortCol==='aid'?(POP.sortDir>0?'&#9650;':'&#9660;'):'&#9654;')+'</span></th>'+
+      '<th onclick="popupSort(\'title\')">Name <span class="sort'+(POP.sortCol==='title'?(POP.sortDir>0?' asc':' desc'):'')+'">'+(POP.sortCol==='title'?(POP.sortDir>0?'&#9650;':'&#9660;'):'&#9654;')+'</span></th>'+
+      '<th onclick="popupSort(\'ph\')">Phase <span class="sort'+(POP.sortCol==='ph'?(POP.sortDir>0?' asc':' desc'):'')+'">'+(POP.sortCol==='ph'?(POP.sortDir>0?'&#9650;':'&#9660;'):'&#9654;')+'</span></th>'+
+      '<th onclick="popupSort(\'st\')">Status <span class="sort'+(POP.sortCol==='st'?(POP.sortDir>0?' asc':' desc'):'')+'">'+(POP.sortCol==='st'?(POP.sortDir>0?'&#9650;':'&#9660;'):'&#9654;')+'</span></th>'+
+      '<th onclick="popupSort(\'resp\')">Responsible <span class="sort'+(POP.sortCol==='resp'?(POP.sortDir>0?' asc':' desc'):'')+'">'+(POP.sortCol==='resp'?(POP.sortDir>0?'&#9650;':'&#9660;'):'&#9654;')+'</span></th>'+
+      '<th onclick="popupSort(\'fin\')">Due Date <span class="sort'+(POP.sortCol==='fin'?(POP.sortDir>0?' asc':' desc'):'')+'">'+(POP.sortCol==='fin'?(POP.sortDir>0?'&#9650;':'&#9660;'):'&#9654;')+'</span></th>'+
+      '<th onclick="popupSort(\'dod\')">Overdue <span class="sort'+(POP.sortCol==='dod'?(POP.sortDir>0?' asc':' desc'):'')+'">'+(POP.sortCol==='dod'?(POP.sortDir>0?'&#9650;':'&#9660;'):'&#9654;')+'</span></th>'+
+    '</tr></thead><tbody>'+
+    (items.length?items.map(function(i){
+      var phc=PH_COL[i.ph]||'#8891b5';
+      var stc,stl;
+      if(i.st==='Done'){stc='st-done';stl='Done'}
+      else if(i.st==='In Progress'){stc='st-wip';stl='WIP'}
+      else if(i.st==='For Inspection'){stc='st-fi';stl='FI'}
+      else if(i.st==='Partially Inspected'){stc='st-pi';stl='PI'}
+      else{stc='st-ns';stl='NS'}
+      var ovHtml=i.ov?'<span class="ov-days">'+i.dod+'d</span>':'<span class="ov-no">-</span>';
+      return'<tr>'+
+        '<td><span class="aid">'+esc(i.aid)+'</span></td>'+
+        '<td><span class="title">'+esc(i.title)+'</span></td>'+
+        '<td><span class="ph-cell" style="background:'+phc+'22;color:'+phc+'">'+esc(i.ph)+'</span></td>'+
+        '<td><span class="st-cell '+stc+'">'+stl+'</span></td>'+
+        '<td><span class="resp">'+esc(abbr(i.resp))+'</span></td>'+
+        '<td>'+fmtDate(i.fin)+'</td>'+
+        '<td class="ov-cell">'+ovHtml+'</td>'+
+      '</tr>'
+    }).join(''):'<tr><td colspan="7" class="p-count">No matching items</td></tr>')+
+    '</tbody></table>'
+}
+
+function openKpiPopup(type){
+  var items=$.items.slice();
+  if(type==='done')items=items.filter(function(i){return i.st==='Done'});
+  else if(type==='act')items=items.filter(function(i){return i.st==='In Progress'});
+  else if(type==='fi')items=items.filter(function(i){return i.st==='For Inspection'});
+  else if(type==='pi')items=items.filter(function(i){return i.st==='Partially Inspected'});
+  else if(type==='ns')items=items.filter(function(i){return i.st==='Not Started'});
+  else if(type==='ov')items=items.filter(function(i){return i.ov});
+  POP.items=items;POP.type=type;POP.sortCol='aid';POP.sortDir=1;POP.search='';
+  renderPopup();
+  document.getElementById('popup').classList.add('show')
+}
+
+function openPhasePopup(phName){
+  var items=$.items.filter(function(i){return i.ph===phName});
+  var phc=PH_COL[phName]||'#8891b5';
+  POP.items=items;POP.type='phase';POP.sortCol='aid';POP.sortDir=1;POP.search='';
+  var title=document.getElementById('popupTitle'),body=document.getElementById('popupBody');
+  var countDone=0,countOv=0;
+  items.forEach(function(i){if(i.st==='Done')countDone++;if(i.ov)countOv++});
+  title.innerHTML='<span style="color:'+phc+'">&#9671;</span> Phase '+esc(phName)+' <span class="badge" style="background:'+phc+'22;color:'+phc+'">'+items.length+' items</span>';
+  body.innerHTML=
+    '<div class="summary">'+
+      '<div class="s-item"><div class="sv" style="color:'+phc+'">'+items.length+'</div><div class="sl">Total</div></div>'+
+      '<div class="s-item"><div class="sv" style="color:#66bb6a">'+countDone+'</div><div class="sl">Done</div></div>'+
+      '<div class="s-item"><div class="sv" style="color:#ef5350">'+countOv+'</div><div class="sl">Overdue</div></div>'+
+    '</div>'+
+    '<div class="popup-search"><input placeholder="Search activities..." oninput="POP.search=this.value;renderPopup()"></div>'+
+    '<table class="popup-table"><thead><tr>'+
+      '<th onclick="popupSort(\'aid\')">ID <span class="sort'+(POP.sortCol==='aid'?(POP.sortDir>0?' asc':' desc'):'')+'">'+(POP.sortCol==='aid'?(POP.sortDir>0?'&#9650;':'&#9660;'):'&#9654;')+'</span></th>'+
+      '<th onclick="popupSort(\'title\')">Name <span class="sort'+(POP.sortCol==='title'?(POP.sortDir>0?' asc':' desc'):'')+'">'+(POP.sortCol==='title'?(POP.sortDir>0?'&#9650;':'&#9660;'):'&#9654;')+'</span></th>'+
+      '<th onclick="popupSort(\'st\')">Status <span class="sort'+(POP.sortCol==='st'?(POP.sortDir>0?' asc':' desc'):'')+'">'+(POP.sortCol==='st'?(POP.sortDir>0?'&#9650;':'&#9660;'):'&#9654;')+'</span></th>'+
+      '<th onclick="popupSort(\'resp\')">Responsible <span class="sort'+(POP.sortCol==='resp'?(POP.sortDir>0?' asc':' desc'):'')+'">'+(POP.sortCol==='resp'?(POP.sortDir>0?'&#9650;':'&#9660;'):'&#9654;')+'</span></th>'+
+      '<th onclick="popupSort(\'fin\')">Due Date <span class="sort'+(POP.sortCol==='fin'?(POP.sortDir>0?' asc':' desc'):'')+'">'+(POP.sortCol==='fin'?(POP.sortDir>0?'&#9650;':'&#9660;'):'&#9654;')+'</span></th>'+
+      '<th onclick="popupSort(\'dod\')">Overdue <span class="sort'+(POP.sortCol==='dod'?(POP.sortDir>0?' asc':' desc'):'')+'">'+(POP.sortCol==='dod'?(POP.sortDir>0?'&#9650;':'&#9660;'):'&#9654;')+'</span></th>'+
+    '</tr></thead><tbody>'+
+    (items.length?items.map(function(i){
+      var stc,stl;
+      if(i.st==='Done'){stc='st-done';stl='Done'}
+      else if(i.st==='In Progress'){stc='st-wip';stl='WIP'}
+      else if(i.st==='For Inspection'){stc='st-fi';stl='FI'}
+      else if(i.st==='Partially Inspected'){stc='st-pi';stl='PI'}
+      else{stc='st-ns';stl='NS'}
+      var ovHtml=i.ov?'<span class="ov-days">'+i.dod+'d</span>':'<span class="ov-no">-</span>';
+      return'<tr>'+
+        '<td><span class="aid">'+esc(i.aid)+'</span></td>'+
+        '<td><span class="title">'+esc(i.title)+'</span></td>'+
+        '<td><span class="st-cell '+stc+'">'+stl+'</span></td>'+
+        '<td><span class="resp">'+esc(abbr(i.resp))+'</span></td>'+
+        '<td>'+fmtDate(i.fin)+'</td>'+
+        '<td class="ov-cell">'+ovHtml+'</td>'+
+      '</tr>'
+    }).join(''):'<tr><td colspan="6" class="p-count">No items</td></tr>')+
+    '</tbody></table>';
+  document.getElementById('popup').classList.add('show')
+}
+
+function openPersonPopup(pName){
+  var nm=Object.keys($.people).filter(function(k){return k.toLowerCase().indexOf(pName.toLowerCase())>=0});
+  if(!nm.length)return;
+  var items=$.items.filter(function(i){return i.resp.toLowerCase().indexOf(nm[0].toLowerCase())>=0});
+  POP.items=items;POP.type='person';POP.sortCol='aid';POP.sortDir=1;POP.search='';
+  var title=document.getElementById('popupTitle'),body=document.getElementById('popupBody');
+  var countDone=0,countOv=0;
+  items.forEach(function(i){if(i.st==='Done')countDone++;if(i.ov)countOv++});
+  title.innerHTML='&#128101; '+esc(abbr(nm[0]))+' <span class="badge" style="background:rgba(255,255,255,.1);color:#8891b5">'+items.length+' items</span>';
+  body.innerHTML=
+    '<div class="summary">'+
+      '<div class="s-item"><div class="sv">'+items.length+'</div><div class="sl">Total</div></div>'+
+      '<div class="s-item"><div class="sv" style="color:#66bb6a">'+countDone+'</div><div class="sl">Done</div></div>'+
+      '<div class="s-item"><div class="sv" style="color:#ef5350">'+countOv+'</div><div class="sl">Overdue</div></div>'+
+    '</div>'+
+    '<div class="popup-search"><input placeholder="Search..." oninput="POP.search=this.value;renderPopup()"></div>'+
+    '<table class="popup-table"><thead><tr>'+
+      '<th onclick="popupSort(\'aid\')">ID <span class="sort'+(POP.sortCol==='aid'?(POP.sortDir>0?' asc':' desc'):'')+'">'+(POP.sortCol==='aid'?(POP.sortDir>0?'&#9650;':'&#9660;'):'&#9654;')+'</span></th>'+
+      '<th onclick="popupSort(\'title\')">Name <span class="sort'+(POP.sortCol==='title'?(POP.sortDir>0?' asc':' desc'):'')+'">'+(POP.sortCol==='title'?(POP.sortDir>0?'&#9650;':'&#9660;'):'&#9654;')+'</span></th>'+
+      '<th onclick="popupSort(\'ph\')">Phase <span class="sort'+(POP.sortCol==='ph'?(POP.sortDir>0?' asc':' desc'):'')+'">'+(POP.sortCol==='ph'?(POP.sortDir>0?'&#9650;':'&#9660;'):'&#9654;')+'</span></th>'+
+      '<th onclick="popupSort(\'st\')">Status <span class="sort'+(POP.sortCol==='st'?(POP.sortDir>0?' asc':' desc'):'')+'">'+(POP.sortCol==='st'?(POP.sortDir>0?'&#9650;':'&#9660;'):'&#9654;')+'</span></th>'+
+      '<th onclick="popupSort(\'fin\')">Due Date <span class="sort'+(POP.sortCol==='fin'?(POP.sortDir>0?' asc':' desc'):'')+'">'+(POP.sortCol==='fin'?(POP.sortDir>0?'&#9650;':'&#9660;'):'&#9654;')+'</span></th>'+
+      '<th>Overdue</th>'+
+    '</tr></thead><tbody>'+
+    items.map(function(i){
+      var phc=PH_COL[i.ph]||'#8891b5',stc,i.st==='Done'?stc='st-done':i.st==='In Progress'?stc='st-wip':i.st==='For Inspection'?stc='st-fi':i.st==='Partially Inspected'?stc='st-pi':stc='st-ns';
+      var stl=i.st==='Done'?'Done':i.st==='In Progress'?'WIP':i.st==='For Inspection'?'FI':i.st==='Partially Inspected'?'PI':'NS';
+      return'<tr>'+
+        '<td><span class="aid">'+esc(i.aid)+'</span></td>'+
+        '<td><span class="title">'+esc(i.title)+'</span></td>'+
+        '<td><span class="ph-cell" style="background:'+phc+'22;color:'+phc+'">'+esc(i.ph)+'</span></td>'+
+        '<td><span class="st-cell '+stc+'">'+stl+'</span></td>'+
+        '<td>'+fmtDate(i.fin)+'</td>'+
+        '<td class="ov-cell">'+(i.ov?'<span class="ov-days">'+i.dod+'d</span>':'<span class="ov-no">-</span>')+'</td>'+
+      '</tr>'
+    }).join('')+
+    '</tbody></table>';
+  document.getElementById('popup').classList.add('show')
+}
+
+/* ===== Config & Auth ===== */
 function cfg(){try{return JSON.parse(localStorage.getItem('spCfg'))||{}}catch(e){}return{}}
 function openCfg(){var c=cfg();document.getElementById('cfgBox').classList.add('show');document.getElementById('cSite').value=c.siteUrl||'https://sascontractingsa.sharepoint.com/sites/Alenshaiah';document.getElementById('cList').value=c.listName||'Maseel Activity'}
 function closeCfg(){document.getElementById('cfgBox').classList.remove('show')}
 function saveCfg(){var c={siteUrl:document.getElementById('cSite').value.trim(),listName:document.getElementById('cList').value.trim()};localStorage.setItem('spCfg',JSON.stringify(c));closeCfg();load()}
-
 function st(m,c){var e=document.getElementById('status');e.textContent=m;e.className='status '+(c||'err')}
 function sh(m){st(m,'ok');setTimeout(function(){document.getElementById('status').className='status'},4000)}
 
@@ -255,43 +467,30 @@ async function token(){
   var a=PCA.getAllAccounts();
   if(a.length){try{var r=await PCA.acquireTokenSilent({scopes:SCOPES,account:a[0]});if(r&&r.accessToken)return r.accessToken}catch(e){}}
   r=await PCA.loginPopup({scopes:SCOPES});
-  if(!r||!r.accessToken)throw Error('MSAL returned no access token');
-  return r.accessToken
+  if(!r||!r.accessToken)throw Error('MSAL returned no access token');return r.accessToken
 }
 async function auth(){
-  if($.token)return $.token;
-  var t=await token();
-  if(!t||t.split('.').length!==3)throw Error('Invalid token. Try signing out.');
-  $.token=t;
-  var r=await fetch('https://graph.microsoft.com/v1.0/me',{headers:{Authorization:'Bearer '+t}});
-  $.user=await r.json();
-  if($.user&&$.user.displayName){document.getElementById('userBox').style.display='flex';document.getElementById('userName').textContent=$.user.displayName}
+  if($.token)return $.token;var t=await token();
+  if(!t||t.split('.').length!==3)throw Error('Invalid token');
+  $.token=t;var r=await fetch('https://graph.microsoft.com/v1.0/me',{headers:{Authorization:'Bearer '+t}});
+  $.user=await r.json();if($.user&&$.user.displayName){document.getElementById('userBox').style.display='flex';document.getElementById('userName').textContent=$.user.displayName}
   return $.token
 }
 function logout(){PCA.getAllAccounts().forEach(function(a){PCA.logoutPopup({account:a}).catch(function(){})});$.token=null;$.user=null;document.getElementById('userBox').style.display='none';if($.refInt){clearInterval($.refInt);$.refInt=null}}
 
 async function siteInfo(tok,url){
-  var m=url.match(/https:\/\/([^\/]+)\/sites\/([^\/]+)/);
-  if(!m)throw Error('Invalid site URL');
+  var m=url.match(/https:\/\/([^\/]+)\/sites\/([^\/]+)/);if(!m)throw Error('Invalid site URL');
   var r=await fetch('https://graph.microsoft.com/v1.0/sites/'+m[1]+':/sites/'+m[2],{headers:{Authorization:'Bearer '+tok}});
-  if(!r.ok)throw Error('Site not found.');
-  return await r.json()
+  if(!r.ok)throw Error('Site not found.');return await r.json()
 }
 async function listInfo(tok,sid,name){
   var r=await fetch('https://graph.microsoft.com/v1.0/sites/'+sid+'/lists?$search="'+encodeURIComponent(name)+'"',{headers:{Authorization:'Bearer '+tok}});
-  if(!r.ok)throw Error('Failed to search lists');
-  var d=await r.json(),lst=d.value.find(function(l){return l.displayName===name||l.name===name});
-  if(!lst)throw Error('List "'+name+'" not found.');
-  return lst
+  if(!r.ok)throw Error('Failed to search lists');var d=await r.json(),lst=d.value.find(function(l){return l.displayName===name||l.name===name});
+  if(!lst)throw Error('List "'+name+'" not found.');return lst
 }
 async function fetchItems(tok,sid,lid){
   var all=[],next='https://graph.microsoft.com/v1.0/sites/'+sid+'/lists/'+lid+'/items?expand=fields&$top=5000';
-  while(next){
-    var r=await fetch(next,{headers:{Authorization:'Bearer '+tok}});
-    if(r.status===429){await new Promise(function(r){setTimeout(r,30000)});continue}
-    if(!r.ok)throw Error('Failed to fetch items');
-    var d=await r.json();all=all.concat(d.value);next=d['@odata.nextLink']||null
-  }
+  while(next){var r=await fetch(next,{headers:{Authorization:'Bearer '+tok}});if(r.status===429){await new Promise(function(r){setTimeout(r,30000)});continue}if(!r.ok)throw Error('Failed to fetch items');var d=await r.json();all=all.concat(d.value);next=d['@odata.nextLink']||null}
   return all
 }
 
@@ -308,9 +507,7 @@ function norm(raw){
     var rr=f.Responsible||f.resp||f.Responsible_x0020_||f.ResponsibleList||f.field_8||'';
     var resp=rr.toString().trim()||'Unassigned';
     var fin=f.Finish||f.f||f.FinishDate||f.Finish_x0020_||f.field_6||null;
-    var aid=f.Title||'';
-    var name=f.field_1||f.field_2||'';
-    var ph=phFromId(aid);
+    var aid=f.Title||'';var name=f.field_1||f.field_2||'';var ph=phFromId(aid);
     return{id:itm.id,aid:aid,title:name,ph:ph||'Other',st:st,prog:prog,resp:resp,fin:fin,ov:od(fin,st),dod:od(fin,st)?dod(fin):0}
   })
 }
@@ -319,19 +516,14 @@ function proc(items){
   var ph={},pm={},phLeads={},total=0,done=0,act=0,fi=0,pi=0,ns=0,ov=0;
   items.forEach(function(itm){
     total++;
-    if(itm.st==='Done')done++;
-    else if(itm.st==='For Inspection')fi++;
-    else if(itm.st==='Partially Inspected')pi++;
-    else if(itm.st==='In Progress')act++;
-    else ns++;
+    if(itm.st==='Done')done++;else if(itm.st==='For Inspection')fi++;else if(itm.st==='Partially Inspected')pi++;else if(itm.st==='In Progress')act++;else ns++;
     if(itm.ov)ov++;
     var p=itm.ph||'Other';
     if(!ph[p])ph[p]={name:p,total:0,done:0,act:0,fi:0,pi:0,ns:0,ov:0,respCount:{}};
     var q=ph[p];q.total++;q.done+=itm.st==='Done'?1:0;q.act+=itm.st==='In Progress'?1:0;
     q.fi+=itm.st==='For Inspection'?1:0;q.pi+=itm.st==='Partially Inspected'?1:0;
     q.ns+=itm.st==='Not Started'?1:0;q.ov+=itm.ov?1:0;
-    var rKey=abbr(itm.resp).toLowerCase();
-    q.respCount[rKey]=(q.respCount[rKey]||0)+1;
+    var rKey=abbr(itm.resp).toLowerCase();q.respCount[rKey]=(q.respCount[rKey]||0)+1;
     var names=itm.resp.split(/[,/]/).map(function(s){return s.trim()}).filter(Boolean);
     if(!names.length)names.push('Unassigned');
     names.forEach(function(n){if(!pm[n])pm[n]={name:n,total:0,done:0,ov:0};pm[n].total++;if(itm.st==='Done')pm[n].done++;if(itm.ov)pm[n].ov++})
@@ -344,26 +536,13 @@ function rndr(){
   var ps=$.phases,st=$.stats,pm=$.people;
   document.getElementById('kpiRow').style.display='grid';
   document.getElementById('gTotal').textContent=st.total;
-  document.getElementById('gDone').textContent=st.done;
-  document.getElementById('gDonePct').textContent=pct(st.done,st.total)+'%';
-  setGauge('gDoneFg',pct(st.done,st.total));
-  document.getElementById('gActive').textContent=st.act;
-  document.getElementById('gActivePct').textContent=pct(st.act,st.total)+'%';
-  setGauge('gActiveFg',pct(st.act,st.total));
-  document.getElementById('gFi').textContent=st.fi;
-  document.getElementById('gFiPct').textContent=pct(st.fi,st.total)+'%';
-  setGauge('gFiFg',pct(st.fi,st.total));
-  document.getElementById('gPi').textContent=st.pi;
-  document.getElementById('gPiPct').textContent=pct(st.pi,st.total)+'%';
-  setGauge('gPiFg',pct(st.pi,st.total));
-  document.getElementById('gNs').textContent=st.ns;
-  document.getElementById('gNsPct').textContent=pct(st.ns,st.total)+'%';
-  setGauge('gNsFg',pct(st.ns,st.total));
-  document.getElementById('gOv').textContent=st.ov;
-  document.getElementById('gOvPct').textContent=pct(st.ov,st.total-st.done)+'% of active';
-  setGauge('gOvFg',pct(st.ov,st.total-st.done));
+  document.getElementById('gDone').textContent=st.done;document.getElementById('gDonePct').textContent=pct(st.done,st.total)+'%';setGauge('gDoneFg',pct(st.done,st.total));
+  document.getElementById('gActive').textContent=st.act;document.getElementById('gActivePct').textContent=pct(st.act,st.total)+'%';setGauge('gActiveFg',pct(st.act,st.total));
+  document.getElementById('gFi').textContent=st.fi;document.getElementById('gFiPct').textContent=pct(st.fi,st.total)+'%';setGauge('gFiFg',pct(st.fi,st.total));
+  document.getElementById('gPi').textContent=st.pi;document.getElementById('gPiPct').textContent=pct(st.pi,st.total)+'%';setGauge('gPiFg',pct(st.pi,st.total));
+  document.getElementById('gNs').textContent=st.ns;document.getElementById('gNsPct').textContent=pct(st.ns,st.total)+'%';setGauge('gNsFg',pct(st.ns,st.total));
+  document.getElementById('gOv').textContent=st.ov;document.getElementById('gOvPct').textContent=pct(st.ov,st.total-st.done)+'% of active';setGauge('gOvFg',pct(st.ov,st.total-st.done));
 
-  /* Phases */
   var pn=sortPh(Object.keys(ps));
   document.getElementById('phaseCount').textContent='('+pn.length+')';
   document.getElementById('phaseGrid').innerHTML=pn.map(function(n){
@@ -371,18 +550,15 @@ function rndr(){
     var bg;if(p.ov>0)bg='crit';else if(pd>=80)bg='ok';else if(pd>=50)bg='warn';else bg='crit';
     var lb;if(p.ov>0)lb=p.ov+' Overdue';else if(pd>=80)lb='On Track';else if(pd>=50)lb='At Risk';else lb='Behind';
     var lead=$.phLeads[n]||'';
-    return'<div class="phase" style="border-left-color:'+bc+'"><div class="ph"><div class="nm" style="color:'+bc+'">'+esc(n)+'</div>'+(lead?'<div class="ld">'+esc(lead)+'</div>':'')+'<div class="bdg '+bg+'">'+lb+'</div></div>'+
+    return'<div class="phase" onclick="openPhasePopup(\''+n+'\')" style="border-left-color:'+bc+'"><div class="ph"><div class="nm" style="color:'+bc+'">'+esc(n)+'</div>'+(lead?'<div class="ld">'+esc(lead)+'</div>':'')+'<div class="bdg '+bg+'">'+lb+'</div></div>'+
       '<div class="sbar"><div class="sd" style="width:'+pct(p.done,p.total)+'%"></div><div class="sa" style="width:'+pct(p.act,p.total)+'%"></div><div class="sf" style="width:'+pct(p.fi,p.total)+'%"></div><div class="sp" style="width:'+pct(p.pi,p.total)+'%"></div><div class="sn" style="width:'+pct(p.ns,p.total)+'%"></div></div>'+
       '<div class="sleg"><sp class="sd">Done '+p.done+'</sp><sp class="sa">WIP '+p.act+'</sp><sp class="sf">FI '+p.fi+'</sp><sp class="sp">PI '+p.pi+'</sp><sp class="sn">NS '+p.ns+'</sp></div>'+
       '<div class="pct">'+pd+'% &middot; '+p.ov+' overdue</div></div>'
   }).join('');
 
-  /* Overdue Analysis */
   var ovs=$.items.filter(function(i){return i.ov}).sort(function(a,b){return b.dod-a.dod});
   document.getElementById('ovBox').className='ov'+(ovs.length?'':' hide');
   document.getElementById('ovCount').textContent='('+ovs.length+')';
-
-  /* Overdue stats strip */
   var ovByPh={},ovByPers={},totalOvDays=0;
   ovs.forEach(function(i){totalOvDays+=i.dod;var ph=i.ph||'Other';ovByPh[ph]=(ovByPh[ph]||0)+1;var p=abbr(i.resp).toLowerCase();ovByPers[p]=(ovByPers[p]||0)+1});
   var worstPh=Object.keys(ovByPh).sort(function(a,b){return ovByPh[b]-ovByPh[a]}).slice(0,3);
@@ -394,59 +570,48 @@ function rndr(){
     (worstPh.length?'<div class="ov-stat"><div class="n">'+worstPh.map(function(p){return ovByPh[p]+' '+p}).join(' &middot; ')+'</div><div class="l">Most Overdue Phases</div></div>':'')+
     (worstPers.length?'<div class="ov-stat"><div class="n">'+worstPers.map(function(p){return ovByPers[p]+' '+esc(p)}).join(' &middot; ')+'</div><div class="l">Most Overdue Persons</div></div>':'');
 
-  /* Overdue items grid */
   document.getElementById('ovGrid').innerHTML=ovs.map(function(itm){
-    var d=itm.dod,cls=d>30?'ov-crit':d>14?'ov-warn':'ov-mild';
-    var phc=PH_COL[itm.ph]||'#ef5350';
-    return'<div class="ov-item '+cls+'"><div class="l"><div class="id">'+esc(itm.aid)+'</div><div class="t">'+esc(itm.title)+'</div><div class="m"><span class="ph-tag" style="background:'+phc+'22;color:'+phc+'">'+esc(itm.ph)+'</span> '+esc(abbr(itm.resp))+' &middot; Due '+new Date(itm.fin).toLocaleDateString('en-GB')+'</div></div><div class="r"><div class="d">'+d+'</div><div class="dl">days</div></div></div>'
+    var d=itm.dod,cls=d>30?'ov-crit':d>14?'ov-warn':'ov-mild',phc=PH_COL[itm.ph]||'#ef5350';
+    return'<div class="ov-item '+cls+'" onclick="openKpiPopup(\'ov\')"><div class="l"><div class="id">'+esc(itm.aid)+'</div><div class="t">'+esc(itm.title)+'</div><div class="m"><span class="ph-tag" style="background:'+phc+'22;color:'+phc+'">'+esc(itm.ph)+'</span> '+esc(abbr(itm.resp))+' &middot; Due '+new Date(itm.fin).toLocaleDateString('en-GB')+'</div></div><div class="r"><div class="d">'+d+'</div><div class="dl">days</div></div></div>'
   }).join('');
 
-  /* Charts */
   document.getElementById('chartsRow').style.display='grid';
   var c1=document.getElementById('chStatus').getContext('2d');
   if($.ch0)$.ch0.destroy();
   $.ch0=new Chart(c1,{type:'doughnut',data:{labels:['Done','In Progress','For Insp.','Partial Insp.','Not Started'],datasets:[{data:[st.done,st.act,st.fi,st.pi,st.ns],backgroundColor:['#66bb6a','#42a5f5','#ab47bc','#ffa726','#546e7a'],borderWidth:0}]},options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{position:'bottom',labels:{color:'#8891b5',boxWidth:12,padding:10}}}}});
 
-  /* Overdue by person chart */
   var pe2=Object.values(pm).filter(function(p){return p.ov>0}).sort(function(a,b){return b.ov-a.ov});
   if(pe2.length<3)pe2=Object.values(pm).filter(function(p){return p.total>0}).sort(function(a,b){return b.total-a.total}).slice(0,5);
   var c2=document.getElementById('chOverdue').getContext('2d');
   if($.ch1)$.ch1.destroy();
   $.ch1=new Chart(c2,{type:'bar',data:{labels:pe2.map(function(p){return abbr(p.name)}),datasets:[{label:'Overdue',data:pe2.map(function(p){return p.ov}),backgroundColor:'#ef5350',borderRadius:2},{label:'Done',data:pe2.map(function(p){return p.done}),backgroundColor:'#66bb6a',borderRadius:2}]},options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{position:'bottom',labels:{color:'#8891b5',boxWidth:12,padding:10}}},scales:{x:{grid:{display:false},ticks:{color:'#5a6288',maxRotation:45}},y:{beginAtZero:true,ticks:{color:'#5a6288',stepSize:1}}}}});
 
-  /* Team */
   var pe=Object.values(pm).filter(function(p){return p.total>0}).sort(function(a,b){return b.total-a.total});
   document.getElementById('personGrid').innerHTML=pe.map(function(p){
     var pd=pct(p.done,p.total),co=p.ov?'#ef5350':pd>=80?'#66bb6a':pd>=50?'#ffa726':'#5a6288';
-    return'<div class="person" style="border-left-color:'+co+'"><div class="pn">'+esc(abbr(p.name))+'</div><div class="pv">'+p.done+'/'+p.total+'</div><div class="ps">'+pd+'% done'+(p.ov?' &middot; <span class="ox">'+p.ov+' overdue</span>':'')+'</div></div>'
+    return'<div class="person" onclick="openPersonPopup(\''+esc(abbr(p.name))+'\')" style="border-left-color:'+co+'"><div class="pn">'+esc(abbr(p.name))+'</div><div class="pv">'+p.done+'/'+p.total+'</div><div class="ps">'+pd+'% done'+(p.ov?' &middot; <span class="ox">'+p.ov+' overdue</span>':'')+'</div></div>'
   }).join('');
   document.getElementById('personCount').textContent='('+pe.length+')';
 
-  var now=new Date();
-  document.getElementById('lastUpd').textContent='Updated: '+now.toLocaleString();
-  document.getElementById('refreshInfo').innerHTML='Auto-refresh every 30 min &middot; Next: '+new Date(now.getTime()+1800000).toLocaleTimeString();
+  var now=new Date();document.getElementById('lastUpd').textContent='Updated: '+now.toLocaleString();
+  document.getElementById('refreshInfo').innerHTML='Auto-refresh every 30 min &middot; Next: '+new Date(now.getTime()+1800000).toLocaleTimeString()
 }
 
 async function load(silent){
   document.getElementById('status').className='status';
   var ld=document.getElementById('loader'),tx=document.getElementById('loadText');
   if(!silent){ld.style.display='block';tx.textContent='Starting...'}
-  var c=cfg();
-  if(!c.siteUrl||!c.listName){if(!silent){ld.style.display='none';st('Configure SharePoint first.');openCfg()}return}
+  var c=cfg();if(!c.siteUrl||!c.listName){if(!silent){ld.style.display='none';st('Configure SharePoint first.');openCfg()}return}
   try{
     if(!silent){tx.textContent='Signing in...'};await auth();
     if(!silent){tx.textContent='Finding site...'};var si=await siteInfo($.token,c.siteUrl);
     if(!silent){tx.textContent='Finding list...'};var li=await listInfo($.token,si.id,c.listName);
     if(!silent){tx.textContent='Loading data...'};var raw=await fetchItems($.token,si.id,li.id);
     if(!silent){tx.textContent='Processing...'};var its=norm(raw);
-    if(!silent)console.log('Raw items:',raw.length,'Normalized:',its.length,'Sample:',JSON.stringify(its.slice(0,2)));
     if(!its.length)throw Error('No items found');
     proc(its);if(!silent)ld.style.display='none';rndr();
     if(!silent)sh('Loaded '+its.length+' activities');
-    if(!silent){
-      if($.refInt)clearInterval($.refInt);
-      $.refInt=setInterval(function(){load(true)},1800000);
-    }
+    if(!silent){if($.refInt)clearInterval($.refInt);$.refInt=setInterval(function(){load(true)},1800000)}
   }catch(e){if(!silent){ld.style.display='none';st(e.message);$.items=[];rndr()}}
 }
 
