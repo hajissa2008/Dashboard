@@ -189,7 +189,8 @@ h2 em{font-style:normal;font-size:11px;color:#5a6288;font-weight:400}
 
   <div class="kpis" id="kpiRow" style="display:none">
     <div class="kpi total" onclick="openKpiPopup('total')">
-      <div class="gauge"><svg><circle class="bg" cx="40" cy="40" r="34"/><circle class="fg" cx="40" cy="40" r="34" stroke-dasharray="213.6" stroke-dashoffset="0" stroke="#4fc3f7"/></svg><div class="gval" id="gTotal">0</div></div>
+      <div class="gauge"><svg><circle class="bg" cx="40" cy="40" r="34"/><circle class="fg" id="gTotalFg" cx="40" cy="40" r="34" stroke-dasharray="213.6" stroke-dashoffset="213.6" stroke="#4fc3f7"/></svg><div class="gval" id="gTotal">0</div></div>
+      <div class="gpct" id="gTotalPct">0%</div>
       <div class="l">Total</div>
     </div>
     <div class="kpi overdue" onclick="openKpiPopup('ov')">
@@ -538,7 +539,7 @@ function proc(items){
 function rndr(){
   var ps=$.phases,st=$.stats,pm=$.people;
   document.getElementById('kpiRow').style.display='grid';
-  document.getElementById('gTotal').textContent=st.total;
+  document.getElementById('gTotal').textContent=st.total;document.getElementById('gTotalPct').textContent=pct(st.done,st.total)+'%';setGauge('gTotalFg',pct(st.done,st.total));
   document.getElementById('gDone').textContent=st.done;document.getElementById('gDonePct').textContent=pct(st.done,st.total)+'%';setGauge('gDoneFg',pct(st.done,st.total));
   document.getElementById('gActive').textContent=st.act;document.getElementById('gActivePct').textContent=pct(st.act,st.total)+'%';setGauge('gActiveFg',pct(st.act,st.total));
   document.getElementById('gFi').textContent=st.fi;document.getElementById('gFiPct').textContent=pct(st.fi,st.total)+'%';setGauge('gFiFg',pct(st.fi,st.total));
@@ -581,7 +582,7 @@ function rndr(){
   document.getElementById('chartsRow').style.display='grid';
   var c1=document.getElementById('chStatus').getContext('2d');
   if($.ch0)$.ch0.destroy();
-  $.ch0=new Chart(c1,{type:'doughnut',data:{labels:['Done','In Progress','For Insp.','Partial Insp.','Not Started'],datasets:[{data:[st.done,st.act,st.fi,st.pi,st.ns],backgroundColor:['#66bb6a','#42a5f5','#ab47bc','#ffa726','#546e7a'],borderWidth:0}]},options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{position:'bottom',labels:{color:'#8891b5',boxWidth:12,padding:10}}}}});
+  $.ch0=new Chart(c1,{type:'doughnut',data:{labels:['Done ('+st.done+')','In Progress ('+st.act+')','For Insp. ('+st.fi+')','Partial Insp. ('+st.pi+')','Not Started ('+st.ns+')'],datasets:[{data:[st.done,st.act,st.fi,st.pi,st.ns],backgroundColor:['#66bb6a','#42a5f5','#ab47bc','#ffa726','#546e7a'],borderWidth:0}]},options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{position:'bottom',labels:{color:'#8891b5',boxWidth:12,padding:10}}},cutout:'65%'},plugins:[{id:'centerText',beforeDraw:function(c){var w=c.chart.width,h=c.chart.height,ctx=c.chart.ctx;ctx.save();var p=pct(st.done,st.total);ctx.textAlign='center';ctx.textBaseline='middle';ctx.font='bold 28px Inter,sans-serif';ctx.fillStyle='#e8eaf0';ctx.fillText(p+'%',w/2,h/2-8);ctx.font='12px Inter,sans-serif';ctx.fillStyle='#5a6288';ctx.fillText(st.done+' / '+st.total,w/2,h/2+18);ctx.restore()}}]});
 
   var pe2=Object.values(pm).filter(function(p){return p.ov>0}).sort(function(a,b){return b.ov-a.ov});
   if(pe2.length<3)pe2=Object.values(pm).filter(function(p){return p.total>0}).sort(function(a,b){return b.total-a.total}).slice(0,5);
