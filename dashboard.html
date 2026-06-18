@@ -9,10 +9,9 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#0b0e17;color:#e8e8e8;min-height:100vh}
-::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{#131724}::-webkit-scrollbar-thumb{background:#2a3150;border-radius:3px}
+::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:#131724}::-webkit-scrollbar-thumb{background:#2a3150;border-radius:3px}
 .top{background:linear-gradient(135deg,#131724,#0a0f1e);border-bottom:1px solid #1e2440;padding:14px 32px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px}
 .top h1{font-size:20px;font-weight:700;color:#fff;display:flex;align-items:center;gap:10px}
-.top h1 svg{width:22px;height:22px}
 .top h1 span{color:#4fc3f7}
 .top-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .top-actions button{padding:6px 14px;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;transition:all .2s}
@@ -23,68 +22,93 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#0b0e1
 .status{display:none;padding:10px 14px;border-radius:6px;margin-bottom:14px;font-size:13px}
 .status.err{display:block;background:rgba(239,83,80,.12);color:#ef5350;border:1px solid rgba(239,83,80,.25)}
 .status.ok{display:block;background:rgba(102,187,106,.12);color:#66bb6a;border:1px solid rgba(102,187,106,.25)}
-.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:20px}
-.kpi{background:linear-gradient(135deg,#131724,#181e30);border-radius:10px;padding:14px 16px;border:1px solid #1e2440;position:relative;overflow:hidden}
-.kpi .bar{position:absolute;top:0;left:0;width:100%;height:3px}
-.kpi .l{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#5a6288;margin-bottom:2px}
-.kpi .n{font-size:26px;font-weight:700;line-height:1.1}
-.kpi .s{font-size:10px;color:#5a6288;margin-top:2px}
-.kpi.total .bar,.kpi.total .n{background:#4fc3f7;color:#4fc3f7}
-.kpi.done .bar,.kpi.done .n{background:#66bb6a;color:#66bb6a}
-.kpi.active .bar,.kpi.active .n{background:#42a5f5;color:#42a5f5}
-.kpi.fi .bar,.kpi.fi .n{background:#ab47bc;color:#ab47bc}
-.kpi.pi .bar,.kpi.pi .n{background:#ffa726;color:#ffa726}
-.kpi.ns .bar,.kpi.ns .n{background:#546e7a;color:#546e7a}
-.kpi.overdue .bar{background:#ef5350}
-.kpi.overdue .n{color:#ef5350;animation:blink 1.2s ease-in-out infinite}
-.kpi.overdue .l{color:#ef5350}
-@keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+
+/* Gauge KPI Row */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:24px}
+.kpi{background:linear-gradient(135deg,#131724,#181e30);border-radius:12px;padding:16px 12px;border:1px solid #1e2440;text-align:center;position:relative;overflow:hidden}
+.kpi .gauge{width:80px;height:80px;margin:0 auto 8px;position:relative}
+.kpi .gauge svg{width:80px;height:80px;transform:rotate(-90deg)}
+.kpi .gauge svg circle{fill:none;stroke-width:6;cx:40;cy:40;r:34}
+.kpi .gauge .bg{stroke:#1e2440}
+.kpi .gauge .fg{stroke-linecap:round;transition:stroke-dashoffset 1.2s ease}
+.kpi .gval{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:22px;font-weight:700;line-height:1}
+.kpi .gpct{font-size:9px;color:#5a6288;margin-top:1px}
+.kpi .l{font-size:9px;text-transform:uppercase;letter-spacing:1px;color:#5a6288}
+.kpi.total .gval{color:#4fc3f7}
+.kpi.done .fg{stroke:#66bb6a}.kpi.done .gval{color:#66bb6a}
+.kpi.active .fg{stroke:#42a5f5}.kpi.active .gval{color:#42a5f5}
+.kpi.fi .fg{stroke:#ab47bc}.kpi.fi .gval{color:#ab47bc}
+.kpi.pi .fg{stroke:#ffa726}.kpi.pi .gval{color:#ffa726}
+.kpi.ns .fg{stroke:#546e7a}.kpi.ns .gval{color:#546e7a}
+.kpi.overdue .fg{stroke:#ef5350}.kpi.overdue .gval{color:#ef5350;animation:blink 1.2s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+
 h2{font-size:13px;font-weight:600;color:#8891b5;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;display:flex;align-items:center;gap:8px}
 h2 em{font-style:normal;font-size:11px;color:#5a6288;font-weight:400}
-.row-2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px}
-.phase-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px;margin-bottom:20px}
-.phase{background:linear-gradient(135deg,#131724,#181e30);border-radius:8px;padding:14px 16px;border:1px solid #1e2440;border-left:3px solid #2a3150}
+
+/* Phase Cards */
+.phase-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px;margin-bottom:24px}
+.phase{background:linear-gradient(135deg,#131724,#181e30);border-radius:10px;padding:14px 16px;border:1px solid #1e2440;border-left:3px solid #2a3150}
 .phase .ph{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;gap:4px}
-.phase .ph .name{font-size:15px;font-weight:700;color:#fff}
-.phase .ph .lead{font-size:10px;color:#5a6288;background:rgba(255,255,255,.05);padding:2px 8px;border-radius:10px}
-.phase .ph .badge{font-size:9px;padding:2px 8px;border-radius:12px;font-weight:600;text-transform:uppercase}
-.phase .ph .badge.ok{background:rgba(102,187,106,.15);color:#66bb6a}
-.phase .ph .badge.warn{background:rgba(255,167,38,.15);color:#ffa726}
-.phase .ph .badge.crit{background:rgba(239,83,80,.15);color:#ef5350}
-.phase .sbar{display:flex;gap:4px;height:6px;border-radius:3px;overflow:hidden;margin-bottom:6px}
-.phase .sbar div{transition:width .8s}
+.phase .ph .nm{font-size:15px;font-weight:700;color:#fff}
+.phase .ph .ld{font-size:10px;color:#5a6288;background:rgba(255,255,255,.05);padding:2px 8px;border-radius:10px}
+.phase .ph .bdg{font-size:9px;padding:2px 8px;border-radius:12px;font-weight:600;text-transform:uppercase}
+.phase .ph .bdg.ok{background:rgba(102,187,106,.15);color:#66bb6a}
+.phase .ph .bdg.warn{background:rgba(255,167,38,.15);color:#ffa726}
+.phase .ph .bdg.crit{background:rgba(239,83,80,.15);color:#ef5350}
+.phase .sbar{display:flex;gap:3px;height:6px;border-radius:3px;overflow:hidden;margin-bottom:6px}
+.phase .sbar div{transition:width .8s;min-width:2px}
 .phase .sbar .sd{background:#66bb6a}.phase .sbar .sa{background:#42a5f5}.phase .sbar .sf{background:#ab47bc}
 .phase .sbar .sp{background:#ffa726}.phase .sbar .sn{background:#546e7a}
-.phase .sleg{display:flex;flex-wrap:wrap;gap:4px 10px;font-size:9px;color:#5a6288;margin-bottom:4px}
-.phase .sleg span{display:flex;align-items:center;gap:3px}
-.phase .sleg span::before{content:'';width:7px;height:7px;border-radius:2px;display:inline-block}
+.phase .sleg{display:flex;flex-wrap:wrap;gap:3px 8px;font-size:9px;color:#5a6288}
+.phase .sleg sp{display:flex;align-items:center;gap:3px}
+.phase .sleg sp::before{content:'';width:6px;height:6px;border-radius:2px;display:inline-block}
 .phase .sleg .sd::before{background:#66bb6a}.phase .sleg .sa::before{background:#42a5f5}
 .phase .sleg .sf::before{background:#ab47bc}.phase .sleg .sp::before{background:#ffa726}
 .phase .sleg .sn::before{background:#546e7a}
-.phase .pct{font-size:10px;color:#5a6288;text-align:right;margin-top:2px}
-.ov{background:rgba(239,83,80,.05);border-radius:8px;padding:12px 16px;margin-bottom:20px;border:1px solid rgba(239,83,80,.15)}
+.phase .pct{font-size:10px;color:#5a6288;text-align:right;margin-top:3px}
+
+/* Overdue Analysis */
+.ov{background:rgba(239,83,80,.05);border-radius:10px;padding:16px 20px;margin-bottom:24px;border:1px solid rgba(239,83,80,.15)}
 .ov.hide{display:none}
-.ov-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:8px}
-.ov-item{background:rgba(239,83,80,.04);border-left:3px solid #ef5350;border-radius:6px;padding:8px 12px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.ov h2{color:#ef5350}
+.ov-strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:14px}
+.ov-stat{background:rgba(239,83,80,.06);border-radius:8px;padding:10px 14px;border-left:3px solid #ef5350}
+.ov-stat .n{font-size:20px;font-weight:700;color:#ef5350}
+.ov-stat .l{font-size:10px;color:#6a6a9a;text-transform:uppercase;letter-spacing:.5px}
+.ov-stat .s{font-size:10px;color:#6a6a9a;margin-top:1px}
+.ov-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:8px}
+.ov-item{background:rgba(239,83,80,.04);border-left:3px solid;border-radius:6px;padding:8px 12px;display:flex;justify-content:space-between;align-items:center;gap:8px}
 .ov-item .l{flex:1;min-width:0}
-.ov-item .l .id{font-size:9px;color:#ef5350;font-family:monospace}
+.ov-item .l .id{font-size:9px;color:#6a6a9a;font-family:monospace}
 .ov-item .l .t{font-size:12px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.ov-item .l .m{font-size:10px;color:#6a6a9a;margin-top:1px}
+.ov-item .l .m{font-size:10px;color:#6a6a9a;margin-top:1px;display:flex;flex-wrap:wrap;gap:4px}
+.ov-item .l .m .ph-tag{font-size:8px;padding:1px 5px;border-radius:8px;font-weight:600}
 .ov-item .r{text-align:right;flex-shrink:0}
-.ov-item .r .d{font-size:18px;font-weight:700;color:#ef5350;line-height:1}
+.ov-item .r .d{font-size:20px;font-weight:700;line-height:1}
 .ov-item .r .dl{font-size:8px;text-transform:uppercase;color:#6a6a9a;letter-spacing:.5px}
+.ov-crit .r .d{color:#ef5350}.ov-warn .r .d{color:#ffa726}.ov-mild .r .d{color:#ffd54f}
+.ov-crit{border-left-color:#ef5350}.ov-warn{border-left-color:#ffa726}.ov-mild{border-left-color:#ffd54f}
+
+/* Charts */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:24px}
 .chart-box{background:linear-gradient(135deg,#131724,#181e30);border-radius:10px;padding:16px;border:1px solid #1e2440}
 .chart-box h3{font-size:11px;color:#5a6288;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px}
 .chart-box canvas{max-height:220px}
+
+/* Team */
 .people{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-bottom:16px}
 .person{background:linear-gradient(135deg,#131724,#181e30);border-radius:8px;padding:10px 12px;border:1px solid #1e2440;border-left:3px solid #2a3150}
 .person .pn{font-size:11px;color:#8891b5;margin-bottom:1px}
 .person .pv{font-size:15px;font-weight:700;color:#fff}
 .person .ps{font-size:9px;color:#5a6288;margin-top:1px}
-.person .ps .ov{color:#ef5350;font-weight:600}
+.person .ps .ox{color:#ef5350;font-weight:600}
+
+/* Footer */
 .meta{font-size:10px;color:#3a4166;text-align:right;margin-top:12px;padding-top:12px;border-top:1px solid #131724;display:flex;justify-content:space-between}
 .meta .rfs{color:#4a5274}
-.meta .rfs.ok{color:#66bb6a}
+
+/* Config Modal */
 .config{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:1000;align-items:center;justify-content:center}
 .config.show{display:flex}
 .config-inner{background:#131724;border:1px solid #1e2440;border-radius:12px;padding:24px;max-width:420px;width:90%}
@@ -96,18 +120,16 @@ h2 em{font-style:normal;font-size:11px;color:#5a6288;font-weight:400}
 .cf .h{font-size:9px;color:#3a4166;margin-top:2px}
 .ca{display:flex;gap:8px;margin-top:12px}
 .loading{text-align:center;padding:80px 20px;color:#5a6288}
-.loading .sp{width:32px;height:32px;border:3px solid #1e2440;border-top-color:#4fc3f7;border-radius:50%;animation:sp .7s linear infinite;margin:0 auto 10px}
-@keyframes sp{to{transform:rotate(360deg)}}
-@media(max-width:800px){.row-2{grid-template-columns:1fr}.content{padding:12px}.top{padding:10px 12px}}
+.loading .sp{width:32px;height:32px;border:3px solid #1e2440;border-top-color:#4fc3f7;border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 10px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+@media(max-width:800px){.g2{grid-template-columns:1fr}.content{padding:12px}.top{padding:10px 12px}}
 </style>
 </head>
 <body>
 
 <div class="top">
-  <h1>
-    <svg viewBox="0 0 24 24" fill="none" stroke="#4fc3f7" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-    <span>Maseel</span> Executive Dashboard
-  </h1>
+  <h1><span>Maseel</span> Executive Dashboard</h1>
   <div class="top-actions">
     <span class="user" id="userBox" style="display:none"><span id="userName"></span></span>
     <button class="btn-ghost" onclick="openCfg()">&#9881;</button>
@@ -117,36 +139,71 @@ h2 em{font-style:normal;font-size:11px;color:#5a6288;font-weight:400}
 
 <div class="content">
   <div class="status" id="status"></div>
+
+  <!-- Gauge KPIs -->
   <div class="kpis" id="kpiRow" style="display:none">
-    <div class="kpi total"><div class="bar"></div><div class="l">Total</div><div class="n" id="kTotal">0</div></div>
-    <div class="kpi done"><div class="bar"></div><div class="l">Done</div><div class="n" id="kDone">0</div><div class="s" id="kPct">0%</div></div>
-    <div class="kpi active"><div class="bar"></div><div class="l">In Progress</div><div class="n" id="kActive">0</div></div>
-    <div class="kpi fi"><div class="bar"></div><div class="l">For Insp.</div><div class="n" id="kFi">0</div></div>
-    <div class="kpi pi"><div class="bar"></div><div class="l">Partial Insp.</div><div class="n" id="kPi">0</div></div>
-    <div class="kpi ns"><div class="bar"></div><div class="l">Not Started</div><div class="n" id="kNs">0</div></div>
-    <div class="kpi overdue"><div class="bar"></div><div class="l">Overdue</div><div class="n" id="kOverdue">0</div></div>
+    <div class="kpi total">
+      <div class="gauge"><svg><circle class="bg" cx="40" cy="40" r="34"/><circle class="fg" cx="40" cy="40" r="34" stroke-dasharray="213.6" stroke-dashoffset="0" stroke="#4fc3f7"/></svg><div class="gval" id="gTotal">0</div></div>
+      <div class="l">Total</div>
+    </div>
+    <div class="kpi done">
+      <div class="gauge"><svg><circle class="bg" cx="40" cy="40" r="34"/><circle class="fg" id="gDoneFg" cx="40" cy="40" r="34" stroke-dasharray="213.6" stroke-dashoffset="213.6"/></svg><div class="gval" id="gDone">0</div></div>
+      <div class="gpct" id="gDonePct">0%</div>
+      <div class="l">Done</div>
+    </div>
+    <div class="kpi active">
+      <div class="gauge"><svg><circle class="bg" cx="40" cy="40" r="34"/><circle class="fg" id="gActiveFg" cx="40" cy="40" r="34" stroke-dasharray="213.6" stroke-dashoffset="213.6"/></svg><div class="gval" id="gActive">0</div></div>
+      <div class="gpct" id="gActivePct">0%</div>
+      <div class="l">In Progress</div>
+    </div>
+    <div class="kpi fi">
+      <div class="gauge"><svg><circle class="bg" cx="40" cy="40" r="34"/><circle class="fg" id="gFiFg" cx="40" cy="40" r="34" stroke-dasharray="213.6" stroke-dashoffset="213.6"/></svg><div class="gval" id="gFi">0</div></div>
+      <div class="gpct" id="gFiPct">0%</div>
+      <div class="l">For Insp.</div>
+    </div>
+    <div class="kpi pi">
+      <div class="gauge"><svg><circle class="bg" cx="40" cy="40" r="34"/><circle class="fg" id="gPiFg" cx="40" cy="40" r="34" stroke-dasharray="213.6" stroke-dashoffset="213.6"/></svg><div class="gval" id="gPi">0</div></div>
+      <div class="gpct" id="gPiPct">0%</div>
+      <div class="l">Partial Insp.</div>
+    </div>
+    <div class="kpi ns">
+      <div class="gauge"><svg><circle class="bg" cx="40" cy="40" r="34"/><circle class="fg" id="gNsFg" cx="40" cy="40" r="34" stroke-dasharray="213.6" stroke-dashoffset="213.6"/></svg><div class="gval" id="gNs">0</div></div>
+      <div class="gpct" id="gNsPct">0%</div>
+      <div class="l">Not Started</div>
+    </div>
+    <div class="kpi overdue">
+      <div class="gauge"><svg><circle class="bg" cx="40" cy="40" r="34"/><circle class="fg" id="gOvFg" cx="40" cy="40" r="34" stroke-dasharray="213.6" stroke-dashoffset="213.6"/></svg><div class="gval" id="gOv">0</div></div>
+      <div class="gpct" id="gOvPct">0%</div>
+      <div class="l">Overdue</div>
+    </div>
   </div>
 
-  <h2><svg viewBox="0 0 24 24" fill="none" stroke="#8891b5" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>Phases <em id="phaseCount"></em></h2>
+  <!-- Phases -->
+  <h2>&#9671; Phases <em id="phaseCount"></em></h2>
   <div class="phase-grid" id="phaseGrid"></div>
 
+  <!-- Overdue Analysis -->
   <div class="ov" id="ovBox">
-    <h2 style="color:#ef5350"><svg viewBox="0 0 24 24" fill="none" stroke="#ef5350" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>Overdue Activities <em id="ovCount"></em></h2>
+    <h2>&#9888; Overdue Analysis <em id="ovCount"></em></h2>
+    <div class="ov-strip" id="ovStrip"></div>
     <div class="ov-grid" id="ovGrid"></div>
   </div>
 
-  <div class="row-2" id="chartsRow" style="display:none">
+  <!-- Charts -->
+  <div class="g2" id="chartsRow" style="display:none">
     <div class="chart-box"><h3>Status Distribution</h3><canvas id="chStatus"></canvas></div>
-    <div class="chart-box"><h3>Completion by Person</h3><canvas id="chPerson"></canvas></div>
+    <div class="chart-box"><h3>Overdue by Person</h3><canvas id="chOverdue"></canvas></div>
   </div>
 
-  <h2><svg viewBox="0 0 24 24" fill="none" stroke="#8891b5" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>Team <em id="personCount"></em></h2>
+  <!-- Team -->
+  <h2>&#128101; Team <em id="personCount"></em></h2>
   <div class="people" id="personGrid"></div>
 
   <div class="meta"><span class="rfs" id="refreshInfo"></span><span id="lastUpd"></span></div>
   <div class="loading" id="loader"><div class="sp"></div><p id="loadText">Connecting...</p></div>
 </div>
 
+<!-- Config -->
 <div class="config" id="cfgBox">
   <div class="config-inner">
     <h3>SharePoint Configuration</h3>
@@ -181,6 +238,10 @@ function pct(a,b){return b?Math.round(a/b*100):0}
 
 function phFromId(aid){if(!aid)return '';var m=aid.match(/\.(P[1-5])(?:[\.\(_]|$)/i);return m?m[1].toUpperCase():''}
 function sortPh(n){return n.sort(function(a,b){var ia=PH_ORD.indexOf(a),ib=PH_ORD.indexOf(b);if(ia>=0&&ib>=0)return ia-ib;if(ia>=0)return -1;if(ib>=0)return 1;return a.localeCompare(b)})}
+
+/* Gauge helper: circumference = 2*PI*34 = 213.6 */
+var CIRC=213.6;
+function setGauge(id,pct){var off=CIRC-Math.min(pct,100)/100*CIRC;var el=document.getElementById(id);if(el)el.setAttribute('stroke-dashoffset',off)}
 
 function cfg(){try{return JSON.parse(localStorage.getItem('spCfg'))||{}}catch(e){}return{}}
 function openCfg(){var c=cfg();document.getElementById('cfgBox').classList.add('show');document.getElementById('cSite').value=c.siteUrl||'https://sascontractingsa.sharepoint.com/sites/Alenshaiah';document.getElementById('cList').value=c.listName||'Maseel Activity'}
@@ -247,7 +308,7 @@ function norm(raw){
     var rr=f.Responsible||f.resp||f.Responsible_x0020_||f.ResponsibleList||f.field_8||'';
     var resp=rr.toString().trim()||'Unassigned';
     var fin=f.Finish||f.f||f.FinishDate||f.Finish_x0020_||f.field_6||null;
-    var aid=f.Title||'';  /* Title IS the Activity ID in this list */
+    var aid=f.Title||'';
     var name=f.field_1||f.field_2||'';
     var ph=phFromId(aid);
     return{id:itm.id,aid:aid,title:name,ph:ph||'Other',st:st,prog:prog,resp:resp,fin:fin,ov:od(fin,st),dod:od(fin,st)?dod(fin):0}
@@ -282,15 +343,27 @@ function proc(items){
 function rndr(){
   var ps=$.phases,st=$.stats,pm=$.people;
   document.getElementById('kpiRow').style.display='grid';
-  document.getElementById('kTotal').textContent=st.total;
-  document.getElementById('kDone').textContent=st.done;
-  document.getElementById('kPct').textContent=pct(st.done,st.total)+'%';
-  document.getElementById('kActive').textContent=st.act;
-  document.getElementById('kFi').textContent=st.fi;
-  document.getElementById('kPi').textContent=st.pi;
-  document.getElementById('kNs').textContent=st.ns;
-  document.getElementById('kOverdue').textContent=st.ov;
+  document.getElementById('gTotal').textContent=st.total;
+  document.getElementById('gDone').textContent=st.done;
+  document.getElementById('gDonePct').textContent=pct(st.done,st.total)+'%';
+  setGauge('gDoneFg',pct(st.done,st.total));
+  document.getElementById('gActive').textContent=st.act;
+  document.getElementById('gActivePct').textContent=pct(st.act,st.total)+'%';
+  setGauge('gActiveFg',pct(st.act,st.total));
+  document.getElementById('gFi').textContent=st.fi;
+  document.getElementById('gFiPct').textContent=pct(st.fi,st.total)+'%';
+  setGauge('gFiFg',pct(st.fi,st.total));
+  document.getElementById('gPi').textContent=st.pi;
+  document.getElementById('gPiPct').textContent=pct(st.pi,st.total)+'%';
+  setGauge('gPiFg',pct(st.pi,st.total));
+  document.getElementById('gNs').textContent=st.ns;
+  document.getElementById('gNsPct').textContent=pct(st.ns,st.total)+'%';
+  setGauge('gNsFg',pct(st.ns,st.total));
+  document.getElementById('gOv').textContent=st.ov;
+  document.getElementById('gOvPct').textContent=pct(st.ov,st.total-st.done)+'% of active';
+  setGauge('gOvFg',pct(st.ov,st.total-st.done));
 
+  /* Phases */
   var pn=sortPh(Object.keys(ps));
   document.getElementById('phaseCount').textContent='('+pn.length+')';
   document.getElementById('phaseGrid').innerHTML=pn.map(function(n){
@@ -298,32 +371,54 @@ function rndr(){
     var bg;if(p.ov>0)bg='crit';else if(pd>=80)bg='ok';else if(pd>=50)bg='warn';else bg='crit';
     var lb;if(p.ov>0)lb=p.ov+' Overdue';else if(pd>=80)lb='On Track';else if(pd>=50)lb='At Risk';else lb='Behind';
     var lead=$.phLeads[n]||'';
-    return'<div class="phase" style="border-left-color:'+bc+'"><div class="ph"><div class="name" style="color:'+bc+'">'+esc(n)+'</div>'+(lead?'<div class="lead">'+esc(lead)+'</div>':'')+'<div class="badge '+bg+'">'+lb+'</div></div>'+
+    return'<div class="phase" style="border-left-color:'+bc+'"><div class="ph"><div class="nm" style="color:'+bc+'">'+esc(n)+'</div>'+(lead?'<div class="ld">'+esc(lead)+'</div>':'')+'<div class="bdg '+bg+'">'+lb+'</div></div>'+
       '<div class="sbar"><div class="sd" style="width:'+pct(p.done,p.total)+'%"></div><div class="sa" style="width:'+pct(p.act,p.total)+'%"></div><div class="sf" style="width:'+pct(p.fi,p.total)+'%"></div><div class="sp" style="width:'+pct(p.pi,p.total)+'%"></div><div class="sn" style="width:'+pct(p.ns,p.total)+'%"></div></div>'+
-      '<div class="sleg"><span class="sd">Done '+p.done+'</span><span class="sa">WIP '+p.act+'</span><span class="sf">FI '+p.fi+'</span><span class="sp">PI '+p.pi+'</span><span class="sn">NS '+p.ns+'</span></div>'+
-      '<div class="pct">'+pd+'% complete &middot; '+p.ov+' overdue</div></div>'
+      '<div class="sleg"><sp class="sd">Done '+p.done+'</sp><sp class="sa">WIP '+p.act+'</sp><sp class="sf">FI '+p.fi+'</sp><sp class="sp">PI '+p.pi+'</sp><sp class="sn">NS '+p.ns+'</sp></div>'+
+      '<div class="pct">'+pd+'% &middot; '+p.ov+' overdue</div></div>'
   }).join('');
 
+  /* Overdue Analysis */
   var ovs=$.items.filter(function(i){return i.ov}).sort(function(a,b){return b.dod-a.dod});
   document.getElementById('ovBox').className='ov'+(ovs.length?'':' hide');
   document.getElementById('ovCount').textContent='('+ovs.length+')';
+
+  /* Overdue stats strip */
+  var ovByPh={},ovByPers={},totalOvDays=0;
+  ovs.forEach(function(i){totalOvDays+=i.dod;var ph=i.ph||'Other';ovByPh[ph]=(ovByPh[ph]||0)+1;var p=abbr(i.resp).toLowerCase();ovByPers[p]=(ovByPers[p]||0)+1});
+  var worstPh=Object.keys(ovByPh).sort(function(a,b){return ovByPh[b]-ovByPh[a]}).slice(0,3);
+  var worstPers=Object.keys(ovByPers).sort(function(a,b){return ovByPers[b]-ovByPers[a]}).slice(0,3);
+  var maxDod=ovs.length?ovs[0].dod:0;
+  document.getElementById('ovStrip').innerHTML=
+    '<div class="ov-stat"><div class="n">'+ovs.length+'</div><div class="l">Total Overdue</div><div class="s">'+totalOvDays+' cumulative days</div></div>'+
+    '<div class="ov-stat"><div class="n">'+maxDod+'</div><div class="l">Worst (days)</div></div>'+
+    (worstPh.length?'<div class="ov-stat"><div class="n">'+worstPh.map(function(p){return ovByPh[p]+' '+p}).join(' &middot; ')+'</div><div class="l">Most Overdue Phases</div></div>':'')+
+    (worstPers.length?'<div class="ov-stat"><div class="n">'+worstPers.map(function(p){return ovByPers[p]+' '+esc(p)}).join(' &middot; ')+'</div><div class="l">Most Overdue Persons</div></div>':'');
+
+  /* Overdue items grid */
   document.getElementById('ovGrid').innerHTML=ovs.map(function(itm){
-    var d=itm.dod,sc=d>30?'#ef5350':d>14?'#ffa726':'#ffd54f',phc=PH_COL[itm.ph]||'#ef5350';
-    return'<div class="ov-item" style="border-left-color:'+sc+'"><div class="l"><div class="id">'+esc(itm.aid)+'</div><div class="t">'+esc(itm.title)+'</div><div class="m"><span style="color:'+phc+'">'+esc(itm.ph)+'</span> &middot; '+esc(abbr(itm.resp))+' &middot; '+new Date(itm.fin).toLocaleDateString('en-GB')+'</div></div><div class="r"><div class="d">'+d+'</div><div class="dl">days</div></div></div>'
+    var d=itm.dod,cls=d>30?'ov-crit':d>14?'ov-warn':'ov-mild';
+    var phc=PH_COL[itm.ph]||'#ef5350';
+    return'<div class="ov-item '+cls+'"><div class="l"><div class="id">'+esc(itm.aid)+'</div><div class="t">'+esc(itm.title)+'</div><div class="m"><span class="ph-tag" style="background:'+phc+'22;color:'+phc+'">'+esc(itm.ph)+'</span> '+esc(abbr(itm.resp))+' &middot; Due '+new Date(itm.fin).toLocaleDateString('en-GB')+'</div></div><div class="r"><div class="d">'+d+'</div><div class="dl">days</div></div></div>'
   }).join('');
 
+  /* Charts */
   document.getElementById('chartsRow').style.display='grid';
   var c1=document.getElementById('chStatus').getContext('2d');
   if($.ch0)$.ch0.destroy();
   $.ch0=new Chart(c1,{type:'doughnut',data:{labels:['Done','In Progress','For Insp.','Partial Insp.','Not Started'],datasets:[{data:[st.done,st.act,st.fi,st.pi,st.ns],backgroundColor:['#66bb6a','#42a5f5','#ab47bc','#ffa726','#546e7a'],borderWidth:0}]},options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{position:'bottom',labels:{color:'#8891b5',boxWidth:12,padding:10}}}}});
-  var pe=Object.values(pm).filter(function(p){return p.total>0}).sort(function(a,b){return b.total-a.total});
-  var c2=document.getElementById('chPerson').getContext('2d');
-  if($.ch1)$.ch1.destroy();
-  $.ch1=new Chart(c2,{type:'bar',data:{labels:pe.map(function(p){return abbr(p.name)}),datasets:[{label:'Done',data:pe.map(function(p){return p.done}),backgroundColor:'#66bb6a',borderRadius:2},{label:'Overdue',data:pe.map(function(p){return p.ov}),backgroundColor:'#ef5350',borderRadius:2},{label:'Other',data:pe.map(function(p){return p.total-p.done-p.ov}),backgroundColor:'#546e7a',borderRadius:2}]},options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{position:'bottom',labels:{color:'#8891b5',boxWidth:12,padding:10}}},scales:{x:{grid:{display:false},ticks:{color:'#5a6288',maxRotation:45}},y:{beginAtZero:true,ticks:{color:'#5a6288',stepSize:1}}}}});
 
+  /* Overdue by person chart */
+  var pe2=Object.values(pm).filter(function(p){return p.ov>0}).sort(function(a,b){return b.ov-a.ov});
+  if(pe2.length<3)pe2=Object.values(pm).filter(function(p){return p.total>0}).sort(function(a,b){return b.total-a.total}).slice(0,5);
+  var c2=document.getElementById('chOverdue').getContext('2d');
+  if($.ch1)$.ch1.destroy();
+  $.ch1=new Chart(c2,{type:'bar',data:{labels:pe2.map(function(p){return abbr(p.name)}),datasets:[{label:'Overdue',data:pe2.map(function(p){return p.ov}),backgroundColor:'#ef5350',borderRadius:2},{label:'Done',data:pe2.map(function(p){return p.done}),backgroundColor:'#66bb6a',borderRadius:2}]},options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{position:'bottom',labels:{color:'#8891b5',boxWidth:12,padding:10}}},scales:{x:{grid:{display:false},ticks:{color:'#5a6288',maxRotation:45}},y:{beginAtZero:true,ticks:{color:'#5a6288',stepSize:1}}}}});
+
+  /* Team */
+  var pe=Object.values(pm).filter(function(p){return p.total>0}).sort(function(a,b){return b.total-a.total});
   document.getElementById('personGrid').innerHTML=pe.map(function(p){
     var pd=pct(p.done,p.total),co=p.ov?'#ef5350':pd>=80?'#66bb6a':pd>=50?'#ffa726':'#5a6288';
-    return'<div class="person" style="border-left-color:'+co+'"><div class="pn">'+esc(abbr(p.name))+'</div><div class="pv">'+p.done+'/'+p.total+'</div><div class="ps">'+pd+'% done'+(p.ov?' &middot; <span class="ov">'+p.ov+' overdue</span>':'')+'</div></div>'
+    return'<div class="person" style="border-left-color:'+co+'"><div class="pn">'+esc(abbr(p.name))+'</div><div class="pv">'+p.done+'/'+p.total+'</div><div class="ps">'+pd+'% done'+(p.ov?' &middot; <span class="ox">'+p.ov+' overdue</span>':'')+'</div></div>'
   }).join('');
   document.getElementById('personCount').textContent='('+pe.length+')';
 
@@ -347,7 +442,7 @@ async function load(silent){
     if(!silent)console.log('Raw items:',raw.length,'Normalized:',its.length,'Sample:',JSON.stringify(its.slice(0,2)));
     if(!its.length)throw Error('No items found');
     proc(its);if(!silent)ld.style.display='none';rndr();
-    if(!silent)sh('Loaded '+its.length+' activities ('+its.filter(function(x){return x.st!=='Not Started'}).length+' active)');
+    if(!silent)sh('Loaded '+its.length+' activities');
     if(!silent){
       if($.refInt)clearInterval($.refInt);
       $.refInt=setInterval(function(){load(true)},1800000);
