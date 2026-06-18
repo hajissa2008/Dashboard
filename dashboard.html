@@ -32,8 +32,9 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#0b0e1
 .kpi.total .bar,.kpi.total .n{background:#4fc3f7;color:#4fc3f7}
 .kpi.done .bar,.kpi.done .n{background:#66bb6a;color:#66bb6a}
 .kpi.active .bar,.kpi.active .n{background:#42a5f5;color:#42a5f5}
-.kpi.overdue .bar,.kpi.overdue .n{background:#ef5350;color:#ef5350}
-.kpi.ok .bar,.kpi.ok .n{background:#ffa726;color:#ffa726}
+.kpi.fi .bar,.kpi.fi .n{background:#ab47bc;color:#ab47bc}
+.kpi.pi .bar,.kpi.pi .n{background:#ffa726;color:#ffa726}
+.kpi.ns .bar,.kpi.ns .n{background:#546e7a;color:#546e7a}
 h2{font-size:13px;font-weight:600;color:#8891b5;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;display:flex;align-items:center;gap:8px}
 h2 em{font-style:normal;font-size:11px;color:#5a6288;font-weight:400}
 h2 svg{width:16px;height:16px;opacity:.6}
@@ -111,11 +112,12 @@ h2 svg{width:16px;height:16px;opacity:.6}
 <div class="content">
   <div class="status" id="status"></div>
   <div class="kpis" id="kpiRow" style="display:none">
-    <div class="kpi total"><div class="bar"></div><div class="l">Total Activities</div><div class="n" id="kTotal">0</div></div>
-    <div class="kpi done"><div class="bar"></div><div class="l">Completed</div><div class="n" id="kDone">0</div><div class="s" id="kPct">0%</div></div>
+    <div class="kpi total"><div class="bar"></div><div class="l">Total</div><div class="n" id="kTotal">0</div></div>
+    <div class="kpi done"><div class="bar"></div><div class="l">Done</div><div class="n" id="kDone">0</div><div class="s" id="kPct">0%</div></div>
     <div class="kpi active"><div class="bar"></div><div class="l">In Progress</div><div class="n" id="kActive">0</div></div>
-    <div class="kpi overdue"><div class="bar"></div><div class="l">Overdue</div><div class="n" id="kOverdue">0</div><div class="s" id="kOverPct">0% of active</div></div>
-    <div class="kpi ok"><div class="bar"></div><div class="l">Completion Rate</div><div class="n" id="kRate">0%</div></div>
+    <div class="kpi fi"><div class="bar"></div><div class="l">For Insp.</div><div class="n" id="kFi">0</div></div>
+    <div class="kpi pi"><div class="bar"></div><div class="l">Partial Insp.</div><div class="n" id="kPi">0</div></div>
+    <div class="kpi ns"><div class="bar"></div><div class="l">Not Started</div><div class="n" id="kNs">0</div></div>
   </div>
 
   <h2><svg viewBox="0 0 24 24" fill="none" stroke="#8891b5" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>Phases <em id="phaseCount"></em></h2>
@@ -159,8 +161,9 @@ const CLIENT_ID='1b3e37d8-0ba9-44b2-9033-68e4d8068a87', TENANT_ID='684547e2-bb8b
 const SCOPES=['User.Read','openid','profile','https://graph.microsoft.com/Sites.ReadWrite.All'];
 const PCA=new msal.PublicClientApplication({auth:{clientId:CLIENT_ID,authority:'https://login.microsoftonline.com/'+TENANT_ID},cache:{cacheLocation:'localStorage'}});
 
-const PH_COL={'MOB':'#6B7280','SD':'#8B5CF6','P1':'#F59E0B','P2':'#3B82F6','P3':'#10B981','P4':'#EF4444','P5':'#F97316','ML':'#EC4899'};
-const PH_ORD=['MOB','SD','P1','P2','P3','P4','P5','ML'];
+const PH_COL={'P1':'#F59E0B','P2':'#3B82F6','P3':'#10B981','P4':'#EF4444','P5':'#F97316'};
+const PH_ORD=['P1','P2','P3','P4','P5'];
+function detectPhase(aid){if(!aid)return'';var m=aid.match(/\.(P[1-5])\./i);return m?m[1].toUpperCase():''}
 const S={items:[],phases:{},stats:{},people:{},ch:null};
 
 function esc(s){if(s==null)return'';var d=document.createElement('div');d.textContent=s;return d.innerHTML}
@@ -232,8 +235,8 @@ function norm(raw){
     else if(sr.indexOf('in progress')>=0||sr==='inprogress'||sr==='wip')st='In Progress';
     var pr=f.Progress||f.pc||f.field_16||null,prog=pr!=null?parseFloat(pr):(st==='Done'?100:0);
     var rr=f.Responsible||f.resp||f.ResponsibleList||f.field_8||'',resp=rr.toString().trim()||'Unassigned';
-    var fin=f.Finish||f.f||f.FinishDate||f.field_6||null;
-    return{id:itm.id,aid:f.ActivityID||f.field_1||'',title:f.Title||f.field_2||'',ph:f.Phase||f.ph||f.field_3||'',st:st,prog:prog,resp:resp,fin:fin,ov:od(fin,st),dod:od(fin,st)?dod(fin):0}
+    var fin=f.Finish||f.f||f.FinishDate||f.field_6||null,aid=f.ActivityID||f.field_1||'';
+    return{id:itm.id,aid:aid,title:f.Title||f.field_2||'',ph:detectPhase(aid)||'Other',st:st,prog:prog,resp:resp,fin:fin,ov:od(fin,st),dod:od(fin,st)?dod(fin):0}
   })
 }
 
@@ -263,10 +266,10 @@ function rndr(){
   document.getElementById('kTotal').textContent=st.total;
   document.getElementById('kDone').textContent=st.done;
   document.getElementById('kPct').textContent=pct(st.done,st.total)+'%';
-  document.getElementById('kActive').textContent=st.act+st.fi+st.pi;
-  document.getElementById('kOverdue').textContent=st.ov;
-  document.getElementById('kOverPct').textContent=pct(st.ov,st.total-st.done)+'% of active';
-  document.getElementById('kRate').textContent=pct(st.done,st.total)+'%';
+  document.getElementById('kActive').textContent=st.act;
+  document.getElementById('kFi').textContent=st.fi;
+  document.getElementById('kPi').textContent=st.pi;
+  document.getElementById('kNs').textContent=st.ns;
 
   var pn=spp(Object.keys(ps));
   document.getElementById('phaseCount').textContent='('+pn.length+')';
