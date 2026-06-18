@@ -161,7 +161,7 @@ const PCA=new msal.PublicClientApplication({auth:{clientId:CLIENT_ID,authority:'
 
 const PH_COL={'P1':'#F59E0B','P2':'#3B82F6','P3':'#10B981','P4':'#EF4444','P5':'#F97316'};
 const PH_ORD=['P1','P2','P3','P4','P5'];
-function detectPhase(aid){if(!aid)return'';var m=aid.match(/\.(P[1-5])\./);return m?m[1]:''}
+function detectPhase(aid){if(!aid)return'';var m=aid.match(/\.(P[1-5])\./i);return m?m[1].toUpperCase():''}
 const S={items:[],phases:{},stats:{},people:{},ch:null};
 
 function esc(s){if(s==null)return'';var d=document.createElement('div');d.textContent=s;return d.innerHTML}
@@ -234,7 +234,7 @@ function norm(raw){
     var pr=f.Progress||f.pc||f.field_16||null,prog=pr!=null?parseFloat(pr):(st==='Done'?100:0);
     var rr=f.Responsible||f.resp||f.ResponsibleList||f.field_8||'',resp=rr.toString().trim()||'Unassigned';
     var fin=f.Finish||f.f||f.FinishDate||f.field_6||null,aid=f.ActivityID||f.field_1||'';
-    return{id:itm.id,aid:aid,title:f.Title||f.field_2||'',ph:f.Phase||f.ph||f.field_3||detectPhase(aid),st:st,prog:prog,resp:resp,fin:fin,ov:od(fin,st),dod:od(fin,st)?dod(fin):0}
+    return{id:itm.id,aid:aid,title:f.Title||f.field_2||'',ph:detectPhase(aid)||'Other',st:st,prog:prog,resp:resp,fin:fin,ov:od(fin,st),dod:od(fin,st)?dod(fin):0}
   })
 }
 
