@@ -98,7 +98,7 @@ h2 em{font-style:normal;font-size:11px;color:#5a6288;font-weight:400}
 .chart-box canvas{max-height:220px}
 
 /* Team */
-.people{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-bottom:16px}
+.people{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px;margin-bottom:24px}
 .person{background:linear-gradient(135deg,#131724,#181e30);border-radius:8px;padding:10px 12px;border:1px solid #1e2440;border-left:3px solid #2a3150;cursor:pointer;transition:all .2s}
 .person:hover{transform:translateY(-1px);border-color:#3a4166}
 .person .pn{font-size:11px;color:#8891b5;margin-bottom:1px}
@@ -224,6 +224,9 @@ h2 em{font-style:normal;font-size:11px;color:#5a6288;font-weight:400}
   <h2>&#9671; Phases <em id="phaseCount"></em></h2>
   <div class="phase-grid" id="phaseGrid"></div>
 
+  <h2>&#128101; Team <em id="personCount"></em></h2>
+  <div class="people" id="personGrid"></div>
+
   <div class="ov" id="ovBox">
     <h2>&#9888; Overdue Analysis <em id="ovCount"></em></h2>
     <div class="ov-strip" id="ovStrip"></div>
@@ -234,9 +237,6 @@ h2 em{font-style:normal;font-size:11px;color:#5a6288;font-weight:400}
     <div class="chart-box"><h3>Status Distribution</h3><canvas id="chStatus"></canvas></div>
     <div class="chart-box"><h3>Overdue by Person</h3><canvas id="chOverdue"></canvas></div>
   </div>
-
-  <h2>&#128101; Team <em id="personCount"></em></h2>
-  <div class="people" id="personGrid"></div>
 
   <div class="meta"><span class="rfs" id="refreshInfo"></span><span id="lastUpd"></span></div>
   <div class="loading" id="loader"><div class="sp"></div><p id="loadText">Connecting...</p></div>
