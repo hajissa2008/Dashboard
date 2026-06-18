@@ -286,7 +286,7 @@ function cd(s){if(!s)return null;var d=new Date(s);if(isNaN(d))return null;d.set
 function od(fin,st){if(!fin||!st||st==='Done')return false;var fd=cd(fin);if(!fd)return false;var td=new Date();td.setHours(0,0,0,0);return fd<td}
 function dod(fin){if(!fin)return 0;var fd=cd(fin);if(!fd)return 0;return Math.round((Date.now()-fd.getTime())/86400000)}
 function pct(a,b){return b?Math.round(a/b*100):0}
-function phFromId(aid){if(!aid)return '';var m=aid.match(/\.(P[1-5])(?:[\.\(_]|$)/i);return m?m[1].toUpperCase():''}
+function phFromName(name){if(!name)return '';var m=name.match(/ph0([1-5])/i);return m?'P'+m[1]:''}
 function sortPh(n){return n.sort(function(a,b){var ia=PH_ORD.indexOf(a),ib=PH_ORD.indexOf(b);if(ia>=0&&ib>=0)return ia-ib;if(ia>=0)return -1;if(ib>=0)return 1;return a.localeCompare(b)})}
 function setGauge(id,pct){var off=CIRC-Math.min(pct,100)/100*CIRC;var el=document.getElementById(id);if(el)el.setAttribute('stroke-dashoffset',off)}
 function fmtDate(d){if(!d)return'&mdash;';try{return new Date(d).toLocaleDateString('en-GB')}catch(e){}return d}
@@ -507,8 +507,8 @@ function norm(raw){
     var rr=f.Responsible||f.resp||f.Responsible_x0020_||f.ResponsibleList||f.field_8||'';
     var resp=rr.toString().trim()||'Unassigned';
     var fin=f.Finish||f.f||f.FinishDate||f.Finish_x0020_||f.field_6||null;
-    var aid=f.Title||'';var name=f.field_1||f.field_2||'';var ph=phFromId(aid);
-    return{id:itm.id,aid:aid,title:name,ph:ph||'Other',st:st,prog:prog,resp:resp,fin:fin,ov:od(fin,st),dod:od(fin,st)?dod(fin):0}
+    var aid=f.Title||'';var name=f.field_1||f.field_2||'';var ph=phFromName(name);
+    return{id:itm.id,aid:aid,title:name,ph:ph,st:st,prog:prog,resp:resp,fin:fin,ov:od(fin,st),dod:od(fin,st)?dod(fin):0}
   })
 }
 
@@ -518,7 +518,7 @@ function proc(items){
     total++;
     if(itm.st==='Done')done++;else if(itm.st==='For Inspection')fi++;else if(itm.st==='Partially Inspected')pi++;else if(itm.st==='In Progress')act++;else ns++;
     if(itm.ov)ov++;
-    var p=itm.ph||'Other';
+    var p=itm.ph;if(!p)return;
     if(!ph[p])ph[p]={name:p,total:0,done:0,act:0,fi:0,pi:0,ns:0,ov:0,respCount:{}};
     var q=ph[p];q.total++;q.done+=itm.st==='Done'?1:0;q.act+=itm.st==='In Progress'?1:0;
     q.fi+=itm.st==='For Inspection'?1:0;q.pi+=itm.st==='Partially Inspected'?1:0;
