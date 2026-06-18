@@ -163,7 +163,7 @@ const PCA=new msal.PublicClientApplication({auth:{clientId:CLIENT_ID,authority:'
 
 const PH_COL={'P1':'#F59E0B','P2':'#3B82F6','P3':'#10B981','P4':'#EF4444','P5':'#F97316'};
 const PH_ORD=['P1','P2','P3','P4','P5'];
-function detectPhase(aid){if(!aid)return'';var m=aid.match(/\.(P[1-5])\./i);return m?m[1].toUpperCase():''}
+function detectPhase(aid){if(!aid)return'';var m=aid.match(/\.(P[1-5])(?:[\.\(_]|$)/i);return m?m[1].toUpperCase():''}
 const S={items:[],phases:{},stats:{},people:{},ch:null};
 
 function esc(s){if(s==null)return'';var d=document.createElement('div');d.textContent=s;return d.innerHTML}
