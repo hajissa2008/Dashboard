@@ -516,13 +516,18 @@ async function fetchItems(tok,sid,lid){
 }
 
 async function resolveNames(tok,items){
-  var emails={},map={};
-  items.forEach(function(i){var e=i.resp.trim().toLowerCase();if(e&&e!=='unassigned'&&e.indexOf('@')>=0)emails[e]=1});
-  var keys=Object.keys(emails);
+  var names={},map={};
+  items.forEach(function(i){var e=i.resp.trim().toLowerCase();if(e&&e!=='unassigned')names[e]=1});
+  var keys=Object.keys(names);
   for(var i=0;i<keys.length;i++){
     try{
-      var r=await fetch('https://graph.microsoft.com/v1.0/users/'+encodeURIComponent(keys[i])+'?$select=displayName',{headers:{Authorization:'Bearer '+tok}});
-      if(r.ok){var d=await r.json();if(d&&d.displayName)map[keys[i]]=d.displayName}
+      var val=keys[i],r;
+      if(val.indexOf('@')>=0){
+        r=await fetch('https://graph.microsoft.com/v1.0/users/'+encodeURIComponent(val)+'?$select=displayName',{headers:{Authorization:'Bearer '+tok}});
+      }else{
+        r=await fetch("https://graph.microsoft.com/v1.0/users?$filter=startswith(mail,'"+val+"') or startswith(userPrincipalName,'"+val+"')&$select=displayName&$top=1",{headers:{Authorization:'Bearer '+tok}});
+      }
+      if(r.ok){var d=await r.json();if(d.value&&d.value.length)d=d.value[0];if(d&&d.displayName)map[val]=d.displayName}
     }catch(e){}
   }
   items.forEach(function(i){var e=i.resp.trim().toLowerCase();if(map[e])i.resp=map[e]});
