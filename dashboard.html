@@ -515,6 +515,20 @@ async function fetchItems(tok,sid,lid){
   return all
 }
 
+async function resolveNames(tok,items){
+  var emails={},map={};
+  items.forEach(function(i){var e=i.resp.trim().toLowerCase();if(e&&e!=='unassigned'&&e.indexOf('@')>=0)emails[e]=1});
+  var keys=Object.keys(emails);
+  for(var i=0;i<keys.length;i++){
+    try{
+      var r=await fetch('https://graph.microsoft.com/v1.0/users/'+encodeURIComponent(keys[i])+'?$select=displayName',{headers:{Authorization:'Bearer '+tok}});
+      if(r.ok){var d=await r.json();if(d&&d.displayName)map[keys[i]]=d.displayName}
+    }catch(e){}
+  }
+  items.forEach(function(i){var e=i.resp.trim().toLowerCase();if(map[e])i.resp=map[e]});
+  return items
+}
+
 function norm(raw){
   if(raw.length&&raw[0].fields)console.log('Fields:',Object.keys(raw[0].fields).join(', '));
   return raw.map(function(itm){
@@ -639,6 +653,7 @@ async function load(silent){
     if(!silent){tx.textContent='Finding list...'};var li=await listInfo($.token,si.id,c.listName);
     if(!silent){tx.textContent='Loading data...'};var raw=await fetchItems($.token,si.id,li.id);
     if(!silent){tx.textContent='Processing...'};var its=norm(raw);
+    if(!silent){tx.textContent='Resolving names...'};its=await resolveNames($.token,its);
     if(!its.length)throw Error('No items found');
     proc(its);if(!silent)ld.style.display='none';rndr();
     if(!silent)sh('Loaded '+its.length+' activities');
