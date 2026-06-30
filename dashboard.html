@@ -75,13 +75,19 @@ h2 em{font-style:normal;font-size:12px;color:#8891b5;font-weight:400}
 .ov{background:rgba(239,83,80,.05);border-radius:10px;padding:16px 20px;margin-bottom:24px;border:1px solid rgba(239,83,80,.15)}
 .ov.hide{display:none}
 .ov h2{color:#ef5350}
-.ov-strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:14px}
-.ov-stat{background:rgba(239,83,80,.06);border-radius:8px;padding:10px 14px;border-left:3px solid #ef5350}
-.ov-stat .n{font-size:22px;font-weight:700;color:#ef5350}
-.ov-stat .l{font-size:11px;color:#8891b5;text-transform:uppercase;letter-spacing:.5px}
-.ov-stat .s{font-size:11px;color:#8891b5;margin-top:1px}
-.ov-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:8px}
-.ov-item{background:rgba(239,83,80,.04);border-left:3px solid;border-radius:6px;padding:8px 12px;display:flex;justify-content:space-between;align-items:center;gap:8px;cursor:pointer;transition:all .2s}
+.ov-summary{display:flex;gap:10px;margin-bottom:14px}
+.ov-metric{flex:1;background:rgba(239,83,80,.06);border-radius:8px;padding:10px 14px;text-align:center;border:1px solid rgba(239,83,80,.12)}
+.ov-metric .n{font-size:26px;font-weight:700;color:#ef5350;display:block;line-height:1.1}
+.ov-metric .l{font-size:10px;color:#8891b5;text-transform:uppercase;letter-spacing:.5px;margin-top:2px}
+.ov-breakdown{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+.ov-breakdown h4{font-size:11px;color:#8891b5;text-transform:uppercase;letter-spacing:.5px;margin:0 0 8px}
+.ov-bar-row{display:flex;align-items:center;gap:6px;margin-bottom:4px}
+.ov-bar-row .lbl{font-size:10px;font-weight:600;color:#a0a8c8;width:55px;flex-shrink:0;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ov-bar-wrap{flex:1;height:16px;background:rgba(239,83,80,.08);border-radius:8px;overflow:hidden}
+.ov-bar{height:100%;border-radius:8px;transition:width .6s ease;min-width:0;display:flex;align-items:center;justify-content:flex-end;padding:0 5px;font-size:9px;font-weight:700;color:#fff;line-height:16px}
+.ov-bar-row .cnt{font-size:11px;font-weight:700;color:#ef5350;width:14px;text-align:left}
+.ov-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:6px}
+.ov-item{background:rgba(239,83,80,.03);border-left:3px solid;border-radius:6px;padding:8px 12px;display:flex;justify-content:space-between;align-items:center;gap:8px;cursor:pointer;transition:all .2s}
 .ov-item:hover{background:rgba(239,83,80,.08)}
 .ov-item .l{flex:1;min-width:0}
 .ov-item .l .id{font-size:10px;color:#8891b5;font-family:monospace}
@@ -240,7 +246,11 @@ h2 em{font-style:normal;font-size:12px;color:#8891b5;font-weight:400}
 
   <div class="ov" id="ovBox">
     <h2>&#9888; Overdue Analysis <em id="ovCount"></em></h2>
-    <div class="ov-strip" id="ovStrip"></div>
+    <div class="ov-summary" id="ovSummary"></div>
+    <div class="ov-breakdown" id="ovBreakdown">
+      <div><h4>Overdue by Phase</h4><div id="ovPhBars"></div></div>
+      <div><h4>Overdue by Person</h4><div id="ovPersonBars"></div></div>
+    </div>
     <div class="ov-grid" id="ovGrid"></div>
   </div>
 
@@ -590,18 +600,29 @@ function rndr(){
   document.getElementById('ovCount').textContent='('+ovs.length+')';
   var ovByPh={},ovByPers={},totalOvDays=0;
   ovs.forEach(function(i){totalOvDays+=i.dod;var ph=i.ph||'Other';ovByPh[ph]=(ovByPh[ph]||0)+1;var p=abbr(i.resp).toLowerCase();ovByPers[p]=(ovByPers[p]||0)+1});
-  var worstPh=Object.keys(ovByPh).sort(function(a,b){return ovByPh[b]-ovByPh[a]}).slice(0,3);
-  var worstPers=Object.keys(ovByPers).sort(function(a,b){return ovByPers[b]-ovByPers[a]}).slice(0,3);
+  var sortedPh=Object.keys(ovByPh).sort(function(a,b){return ovByPh[b]-ovByPh[a]});
+  var sortedPers=Object.keys(ovByPers).sort(function(a,b){return ovByPers[b]-ovByPers[a]});
   var maxDod=ovs.length?ovs[0].dod:0;
-  document.getElementById('ovStrip').innerHTML=
-    '<div class="ov-stat"><div class="n">'+ovs.length+'</div><div class="l">Total Overdue</div><div class="s">'+totalOvDays+' cumulative days</div></div>'+
-    '<div class="ov-stat"><div class="n">'+maxDod+'</div><div class="l">Worst (days)</div></div>'+
-    (worstPh.length?'<div class="ov-stat"><div class="n">'+worstPh.map(function(p){return ovByPh[p]+' '+p}).join(' &middot; ')+'</div><div class="l">Most Overdue Phases</div></div>':'')+
-    (worstPers.length?'<div class="ov-stat"><div class="n">'+worstPers.map(function(p){return ovByPers[p]+' '+esc(p)}).join(' &middot; ')+'</div><div class="l">Most Overdue Persons</div></div>':'');
+  var phMax=sortedPh.length?ovByPh[sortedPh[0]]:1,persMax=sortedPers.length?ovByPers[sortedPers[0]]:1;
+
+  document.getElementById('ovSummary').innerHTML=
+    '<div class="ov-metric"><span class="n">'+ovs.length+'</span><span class="l">Items Overdue</span></div>'+
+    '<div class="ov-metric"><span class="n">'+totalOvDays+'</span><span class="l">Cumulative Days</span></div>'+
+    '<div class="ov-metric"><span class="n">'+maxDod+'</span><span class="l">Worst (days)</span></div>';
+
+  document.getElementById('ovPhBars').innerHTML=sortedPh.map(function(ph){
+    var cnt=ovByPh[ph],wp=cnt/phMax*100,col=PH_COL[ph]||'#ef5350';
+    return'<div class="ov-bar-row"><span class="lbl">'+ph+'</span><div class="ov-bar-wrap"><div class="ov-bar" style="width:'+wp+'%;background:'+col+'">'+(wp>15?cnt:'')+'</div></div><span class="cnt">'+cnt+'</span></div>'
+  }).join('');
+
+  document.getElementById('ovPersonBars').innerHTML=sortedPers.map(function(p){
+    var cnt=ovByPers[p],wp=cnt/persMax*100;
+    return'<div class="ov-bar-row"><span class="lbl">'+esc(p)+'</span><div class="ov-bar-wrap"><div class="ov-bar" style="width:'+wp+'%;background:#ef5350">'+(wp>15?cnt:'')+'</div></div><span class="cnt">'+cnt+'</span></div>'
+  }).join('');
 
   document.getElementById('ovGrid').innerHTML=ovs.map(function(itm){
-    var d=itm.dod,cls=d>30?'ov-crit':d>14?'ov-warn':'ov-mild',phc=PH_COL[itm.ph]||'#ef5350';
-    return'<div class="ov-item '+cls+'" onclick="openKpiPopup(\'ov\')"><div class="l"><div class="id">'+esc(itm.aid)+'</div><div class="t">'+esc(itm.title)+'</div><div class="m"><span class="ph-tag" style="background:'+phc+'22;color:'+phc+'">'+esc(itm.ph)+'</span> '+esc(abbr(itm.resp))+' &middot; Due '+new Date(itm.fin).toLocaleDateString('en-GB')+'</div></div><div class="r"><div class="d">'+d+'</div><div class="dl">days</div></div></div>'
+    var d=itm.dod,phc=PH_COL[itm.ph]||'#ef5350';
+    return'<div class="ov-item" style="border-left-color:'+phc+'" onclick="openKpiPopup(\'ov\')"><div class="l"><div class="id">'+esc(itm.aid)+'</div><div class="t">'+esc(itm.title)+'</div><div class="m"><span class="ph-tag" style="background:'+phc+'22;color:'+phc+'">'+esc(itm.ph)+'</span> '+esc(abbr(itm.resp))+' &middot; Due '+new Date(itm.fin).toLocaleDateString('en-GB')+'</div></div><div class="r"><div class="d">'+d+'</div><div class="dl">days</div></div></div>'
   }).join('');
 
   document.getElementById('chartsRow').style.display='grid';
