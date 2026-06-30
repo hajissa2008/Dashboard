@@ -545,8 +545,10 @@ function norm(raw){
     else if(sr.indexOf('partially')>=0||sr==='partinsp'||sr==='pi')st='Partially Inspected';
     else if(sr.indexOf('in progress')>=0||sr==='inprogress'||sr==='wip'||sr==='ip'||sr==='progress')st='In Progress';
     var pr=f.Progress||f.pc||f.Progress_x0020_||f.field_16||null,prog=pr!=null?parseFloat(pr):(st==='ACC Done'||st==='SDC Done'?100:0);
-    var rr=f.Responsible||f.resp||f.Responsible_x0020_||f.ResponsibleList||f.field_8||'';
-    var resp=rr.toString().trim()||'Unassigned';
+    var rawResp=f.Responsible||f.resp||f.Responsible_x0020_||f.ResponsibleList||f.field_8||'';
+    var rr=typeof rawResp==='object'&&rawResp!==null?(rawResp.Email||rawResp.Title||rawResp.LookupValue||''):rawResp;
+    var resp=(rr.toString().trim()||'Unassigned').replace(/^.+\\([^\\|]+)$/,'$1').replace(/^.+\|([^|]+)$/,'$1');
+
     var fin=f.Finish||f.f||f.FinishDate||f.Finish_x0020_||f.field_6||null;
     var aid=f.Title||'';var name=f.field_1||f.field_2||'';var ph=phFromName(name);
     return{id:itm.id,aid:aid,title:name,ph:ph,st:st,prog:prog,resp:resp,fin:fin,ov:od(fin,st),dod:od(fin,st)?dod(fin):0}
