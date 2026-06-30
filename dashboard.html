@@ -515,27 +515,7 @@ async function fetchItems(tok,sid,lid){
   return all
 }
 
-async function resolveNames(tok,items){
-  var names={},map={};
-  items.forEach(function(i){var e=i.resp.trim().toLowerCase();if(e&&e!=='unassigned')names[e]=1});
-  var keys=Object.keys(names);
-  for(var i=0;i<keys.length;i++){
-    try{
-      var val=keys[i],r;
-      if(val.indexOf('@')>=0){
-        r=await fetch('https://graph.microsoft.com/v1.0/users/'+encodeURIComponent(val)+'?$select=displayName',{headers:{Authorization:'Bearer '+tok}});
-      }else{
-        r=await fetch("https://graph.microsoft.com/v1.0/users?$filter=startswith(mail,'"+val+"') or startswith(userPrincipalName,'"+val+"')&$select=displayName&$top=1",{headers:{Authorization:'Bearer '+tok}});
-      }
-      if(r.ok){var d=await r.json();if(d.value&&d.value.length)d=d.value[0];if(d&&d.displayName)map[val]=d.displayName}
-    }catch(e){}
-  }
-  items.forEach(function(i){var e=i.resp.trim().toLowerCase();if(map[e])i.resp=map[e]});
-  return items
-}
-
 function norm(raw){
-  if(raw.length&&raw[0].fields)console.log('Fields:',Object.keys(raw[0].fields).join(', '));
   return raw.map(function(itm){
     var f=itm.fields||{},sr=(f.Status||f.st||f.Status_x0020_||f.field_10||'').toString().trim().toLowerCase(),st='Not Started';
     if(!sr);
@@ -546,9 +526,12 @@ function norm(raw){
     else if(sr.indexOf('in progress')>=0||sr==='inprogress'||sr==='wip'||sr==='ip'||sr==='progress')st='In Progress';
     var pr=f.Progress||f.pc||f.Progress_x0020_||f.field_16||null,prog=pr!=null?parseFloat(pr):(st==='ACC Done'||st==='SDC Done'?100:0);
     var rawResp=f.Responsible||f.resp||f.Responsible_x0020_||f.ResponsibleList||f.field_8||'';
-    if(typeof rawResp==='object'&&rawResp!==null)console.log('Resp obj:',JSON.stringify(rawResp));
-    var rr=typeof rawResp==='object'&&rawResp!==null?(rawResp.Email||rawResp.Title||rawResp.LookupValue||rawResp.Name||rawResp.DisplayName||rawResp.Value||''):rawResp;
-    var resp=(rr.toString().trim()||'Unassigned').replace(/^.+\\([^\\|]+)$/,'$1').replace(/^.+\|([^|]+)$/,'$1');
+    var rr='';
+    if(typeof rawResp==='object'&&rawResp!==null){
+      if(Array.isArray(rawResp)&&rawResp.length)rawResp=rawResp[0];
+      rr=rawResp.LookupValue||rawResp.Email||'';
+    }else{rr=rawResp}
+    var resp=rr.toString().trim()||'Unassigned';
 
     var fin=f.Finish||f.f||f.FinishDate||f.Finish_x0020_||f.field_6||null;
     var aid=f.Title||'';var name=f.field_1||f.field_2||'';var ph=phFromName(name);
@@ -661,7 +644,6 @@ async function load(silent){
     if(!silent){tx.textContent='Finding list...'};var li=await listInfo($.token,si.id,c.listName);
     if(!silent){tx.textContent='Loading data...'};var raw=await fetchItems($.token,si.id,li.id);
     if(!silent){tx.textContent='Processing...'};var its=norm(raw);
-    if(!silent){tx.textContent='Resolving names...'};its=await resolveNames($.token,its);
     if(!its.length)throw Error('No items found');
     proc(its);if(!silent)ld.style.display='none';rndr();
     if(!silent)sh('Loaded '+its.length+' activities');
