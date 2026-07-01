@@ -78,12 +78,14 @@ h2 em{font-style:normal;font-size:12px;color:#8891b5;font-weight:400}
 .ov.hide{display:none}
 .ov h2{color:#ef5350}
 .ov-summary{display:flex;gap:10px;margin-bottom:14px}
-.ov-metric{flex:1;background:rgba(239,83,80,.06);border-radius:8px;padding:10px 14px;text-align:center;border:1px solid rgba(239,83,80,.12)}
+.ov-metric{flex:1;background:rgba(239,83,80,.06);border-radius:8px;padding:10px 14px;text-align:center;border:1px solid rgba(239,83,80,.12);cursor:pointer;transition:all .2s}
+.ov-metric:hover{background:rgba(239,83,80,.1);border-color:rgba(239,83,80,.25)}
 .ov-metric .n{font-size:26px;font-weight:700;color:#ef5350;display:block;line-height:1.1}
 .ov-metric .l{font-size:10px;color:#8891b5;text-transform:uppercase;letter-spacing:.5px;margin-top:2px}
 .ov-breakdown{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
 .ov-breakdown h4{font-size:11px;color:#8891b5;text-transform:uppercase;letter-spacing:.5px;margin:0 0 8px}
-.ov-bar-row{display:flex;align-items:center;gap:6px;margin-bottom:4px}
+.ov-bar-row{display:flex;align-items:center;gap:6px;margin-bottom:4px;cursor:pointer;border-radius:4px;padding:2px 4px;transition:background .2s}
+.ov-bar-row:hover{background:rgba(239,83,80,.08)}
 .ov-bar-row .lbl{font-size:10px;font-weight:600;color:#a0a8c8;width:55px;flex-shrink:0;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ov-bar-wrap{flex:1;height:16px;background:rgba(239,83,80,.08);border-radius:8px;overflow:hidden}
 .ov-bar{height:100%;border-radius:8px;transition:width .6s ease;min-width:0;display:flex;align-items:center;justify-content:flex-end;padding:0 5px;font-size:9px;font-weight:700;color:#fff;line-height:16px}
@@ -165,6 +167,7 @@ h2 em{font-style:normal;font-size:12px;color:#8891b5;font-weight:400}
 .popup-table .title{font-weight:600;color:#fff}
 .popup-table .ph-cell{font-size:11px;padding:2px 6px;border-radius:8px;font-weight:600;white-space:nowrap}
 .popup-table .st-cell{font-size:11px;padding:2px 8px;border-radius:10px;font-weight:600;white-space:nowrap}
+.popup-table .prog{font-size:12px;font-weight:600;color:#8891b5}
 .popup-table .st-done{background:rgba(102,187,106,.15);color:#66bb6a}
 .popup-table .st-wip{background:rgba(66,165,245,.15);color:#42a5f5}
 .popup-table .st-fi{background:rgba(171,71,188,.15);color:#ab47bc}
@@ -322,7 +325,7 @@ function popupSort(col){
 
 function renderPopup(){
   var items=POP.items,search=POP.search.toLowerCase();
-  if(search)items=items.filter(function(i){return(i.aid+' '+i.title+' '+i.resp+' '+i.ph+' '+i.st).toLowerCase().indexOf(search)>=0});
+  if(search)items=items.filter(function(i){return(i.aid+' '+i.title+' '+i.resp+' '+i.ph+' '+i.st+' '+i.prog).toLowerCase().indexOf(search)>=0});
   items=items.slice().sort(function(a,b){
     var va=a[POP.sortCol],vb=b[POP.sortCol];
     if(typeof va==='string')va=va.toLowerCase(),vb=vb.toLowerCase();
@@ -352,6 +355,7 @@ function renderPopup(){
       '<th onclick="popupSort(\'title\')">Name <span class="sort'+(POP.sortCol==='title'?(POP.sortDir>0?' asc':' desc'):'')+'">'+(POP.sortCol==='title'?(POP.sortDir>0?'&#9650;':'&#9660;'):'&#9654;')+'</span></th>'+
       '<th onclick="popupSort(\'ph\')">Phase <span class="sort'+(POP.sortCol==='ph'?(POP.sortDir>0?' asc':' desc'):'')+'">'+(POP.sortCol==='ph'?(POP.sortDir>0?'&#9650;':'&#9660;'):'&#9654;')+'</span></th>'+
       '<th onclick="popupSort(\'st\')">Status <span class="sort'+(POP.sortCol==='st'?(POP.sortDir>0?' asc':' desc'):'')+'">'+(POP.sortCol==='st'?(POP.sortDir>0?'&#9650;':'&#9660;'):'&#9654;')+'</span></th>'+
+      '<th>Prog.</th>'+
       '<th onclick="popupSort(\'resp\')">Responsible <span class="sort'+(POP.sortCol==='resp'?(POP.sortDir>0?' asc':' desc'):'')+'">'+(POP.sortCol==='resp'?(POP.sortDir>0?'&#9650;':'&#9660;'):'&#9654;')+'</span></th>'+
       '<th onclick="popupSort(\'fin\')">Due Date <span class="sort'+(POP.sortCol==='fin'?(POP.sortDir>0?' asc':' desc'):'')+'">'+(POP.sortCol==='fin'?(POP.sortDir>0?'&#9650;':'&#9660;'):'&#9654;')+'</span></th>'+
       '<th onclick="popupSort(\'dod\')">Overdue <span class="sort'+(POP.sortCol==='dod'?(POP.sortDir>0?' asc':' desc'):'')+'">'+(POP.sortCol==='dod'?(POP.sortDir>0?'&#9650;':'&#9660;'):'&#9654;')+'</span></th>'+
@@ -371,11 +375,12 @@ function renderPopup(){
         '<td><span class="title">'+esc(i.title)+'</span></td>'+
         '<td><span class="ph-cell" style="background:'+phc+'22;color:'+phc+'">'+esc(i.ph)+'</span></td>'+
         '<td><span class="st-cell '+stc+'">'+stl+'</span></td>'+
+        '<td><span class="prog">'+i.prog+'%</span></td>'+
         '<td><span class="resp">'+esc(abbr(i.resp))+'</span></td>'+
         '<td>'+fmtDate(i.fin)+'</td>'+
         '<td class="ov-cell">'+ovHtml+'</td>'+
       '</tr>'
-    }).join(''):'<tr><td colspan="7" class="p-count">No matching items</td></tr>')+
+    }).join(''):'<tr><td colspan="8" class="p-count">No matching items</td></tr>')+
     '</tbody></table>'
 }
 
@@ -413,6 +418,7 @@ function openPhasePopup(phName){
       '<th onclick="popupSort(\'aid\')">ID <span class="sort'+(POP.sortCol==='aid'?(POP.sortDir>0?' asc':' desc'):'')+'">'+(POP.sortCol==='aid'?(POP.sortDir>0?'&#9650;':'&#9660;'):'&#9654;')+'</span></th>'+
       '<th onclick="popupSort(\'title\')">Name <span class="sort'+(POP.sortCol==='title'?(POP.sortDir>0?' asc':' desc'):'')+'">'+(POP.sortCol==='title'?(POP.sortDir>0?'&#9650;':'&#9660;'):'&#9654;')+'</span></th>'+
       '<th onclick="popupSort(\'st\')">Status <span class="sort'+(POP.sortCol==='st'?(POP.sortDir>0?' asc':' desc'):'')+'">'+(POP.sortCol==='st'?(POP.sortDir>0?'&#9650;':'&#9660;'):'&#9654;')+'</span></th>'+
+      '<th>Prog.</th>'+
       '<th onclick="popupSort(\'resp\')">Responsible <span class="sort'+(POP.sortCol==='resp'?(POP.sortDir>0?' asc':' desc'):'')+'">'+(POP.sortCol==='resp'?(POP.sortDir>0?'&#9650;':'&#9660;'):'&#9654;')+'</span></th>'+
       '<th onclick="popupSort(\'fin\')">Due Date <span class="sort'+(POP.sortCol==='fin'?(POP.sortDir>0?' asc':' desc'):'')+'">'+(POP.sortCol==='fin'?(POP.sortDir>0?'&#9650;':'&#9660;'):'&#9654;')+'</span></th>'+
       '<th onclick="popupSort(\'dod\')">Overdue <span class="sort'+(POP.sortCol==='dod'?(POP.sortDir>0?' asc':' desc'):'')+'">'+(POP.sortCol==='dod'?(POP.sortDir>0?'&#9650;':'&#9660;'):'&#9654;')+'</span></th>'+
@@ -430,11 +436,12 @@ function openPhasePopup(phName){
         '<td><span class="aid">'+esc(i.aid)+'</span></td>'+
         '<td><span class="title">'+esc(i.title)+'</span></td>'+
         '<td><span class="st-cell '+stc+'">'+stl+'</span></td>'+
+        '<td><span class="prog">'+i.prog+'%</span></td>'+
         '<td><span class="resp">'+esc(abbr(i.resp))+'</span></td>'+
         '<td>'+fmtDate(i.fin)+'</td>'+
         '<td class="ov-cell">'+ovHtml+'</td>'+
       '</tr>'
-    }).join(''):'<tr><td colspan="6" class="p-count">No items</td></tr>')+
+    }).join(''):'<tr><td colspan="7" class="p-count">No items</td></tr>')+
     '</tbody></table>';
   document.getElementById('popup').classList.add('show')
 }
@@ -461,17 +468,20 @@ function openPersonPopup(pName){
       '<th onclick="popupSort(\'title\')">Name <span class="sort'+(POP.sortCol==='title'?(POP.sortDir>0?' asc':' desc'):'')+'">'+(POP.sortCol==='title'?(POP.sortDir>0?'&#9650;':'&#9660;'):'&#9654;')+'</span></th>'+
       '<th onclick="popupSort(\'ph\')">Phase <span class="sort'+(POP.sortCol==='ph'?(POP.sortDir>0?' asc':' desc'):'')+'">'+(POP.sortCol==='ph'?(POP.sortDir>0?'&#9650;':'&#9660;'):'&#9654;')+'</span></th>'+
       '<th onclick="popupSort(\'st\')">Status <span class="sort'+(POP.sortCol==='st'?(POP.sortDir>0?' asc':' desc'):'')+'">'+(POP.sortCol==='st'?(POP.sortDir>0?'&#9650;':'&#9660;'):'&#9654;')+'</span></th>'+
+      '<th>Prog.</th>'+
       '<th onclick="popupSort(\'fin\')">Due Date <span class="sort'+(POP.sortCol==='fin'?(POP.sortDir>0?' asc':' desc'):'')+'">'+(POP.sortCol==='fin'?(POP.sortDir>0?'&#9650;':'&#9660;'):'&#9654;')+'</span></th>'+
       '<th>Overdue</th>'+
     '</tr></thead><tbody>'+
     items.map(function(i){
       var stc=i.st==='ACC Done'?'st-done':i.st==='SDC Done'?'st-sdc':i.st==='In Progress'?'st-wip':i.st==='For Inspection'?'st-fi':i.st==='Partially Inspected'?'st-pi':'st-ns';
       var stl=i.st==='ACC Done'?'ACC':i.st==='SDC Done'?'SDC':i.st==='In Progress'?'WIP':i.st==='For Inspection'?'FI':i.st==='Partially Inspected'?'PI':'NS';
+      var ppc=PH_COL[i.ph]||'#8891b5';
       return'<tr>'+
         '<td><span class="aid">'+esc(i.aid)+'</span></td>'+
         '<td><span class="title">'+esc(i.title)+'</span></td>'+
-        '<td><span class="ph-cell" style="background:'+phc+'22;color:'+phc+'">'+esc(i.ph)+'</span></td>'+
+        '<td><span class="ph-cell" style="background:'+ppc+'22;color:'+ppc+'">'+esc(i.ph)+'</span></td>'+
         '<td><span class="st-cell '+stc+'">'+stl+'</span></td>'+
+        '<td><span class="prog">'+i.prog+'%</span></td>'+
         '<td>'+fmtDate(i.fin)+'</td>'+
         '<td class="ov-cell">'+(i.ov?'<span class="ov-days">'+i.dod+'d</span>':'<span class="ov-no">-</span>')+'</td>'+
       '</tr>'
@@ -600,18 +610,18 @@ function rndr(){
   var phMax=sortedPh.length?ovByPh[sortedPh[0]]:1,persMax=sortedPers.length?ovByPers[sortedPers[0]]:1;
 
   document.getElementById('ovSummary').innerHTML=
-    '<div class="ov-metric"><span class="n">'+ovs.length+'</span><span class="l">Items Overdue</span></div>'+
-    '<div class="ov-metric"><span class="n">'+totalOvDays+'</span><span class="l">Cumulative Days</span></div>'+
-    '<div class="ov-metric"><span class="n">'+maxDod+'</span><span class="l">Worst (days)</span></div>';
+    '<div class="ov-metric" onclick="openKpiPopup(\'ov\')"><span class="n">'+ovs.length+'</span><span class="l">Items Overdue</span></div>'+
+    '<div class="ov-metric" onclick="openKpiPopup(\'ov\')"><span class="n">'+totalOvDays+'</span><span class="l">Cumulative Days</span></div>'+
+    '<div class="ov-metric" onclick="openKpiPopup(\'ov\')"><span class="n">'+maxDod+'</span><span class="l">Worst (days)</span></div>';
 
   document.getElementById('ovPhBars').innerHTML=sortedPh.map(function(ph){
     var cnt=ovByPh[ph],wp=cnt/phMax*100,col=PH_COL[ph]||'#ef5350';
-    return'<div class="ov-bar-row"><span class="lbl">'+ph+'</span><div class="ov-bar-wrap"><div class="ov-bar" style="width:'+wp+'%;background:'+col+'">'+(wp>15?cnt:'')+'</div></div><span class="cnt">'+cnt+'</span></div>'
+    return'<div class="ov-bar-row" onclick="openPhasePopup(\''+esc(ph)+'\')"><span class="lbl">'+ph+'</span><div class="ov-bar-wrap"><div class="ov-bar" style="width:'+wp+'%;background:'+col+'">'+(wp>15?cnt:'')+'</div></div><span class="cnt">'+cnt+'</span></div>'
   }).join('');
 
   document.getElementById('ovPersonBars').innerHTML=sortedPers.map(function(p){
     var cnt=ovByPers[p],wp=cnt/persMax*100;
-    return'<div class="ov-bar-row"><span class="lbl">'+esc(p)+'</span><div class="ov-bar-wrap"><div class="ov-bar" style="width:'+wp+'%;background:#ef5350">'+(wp>15?cnt:'')+'</div></div><span class="cnt">'+cnt+'</span></div>'
+    return'<div class="ov-bar-row" onclick="openPersonPopup(\''+esc(p)+'\')"><span class="lbl">'+esc(p)+'</span><div class="ov-bar-wrap"><div class="ov-bar" style="width:'+wp+'%;background:#ef5350">'+(wp>15?cnt:'')+'</div></div><span class="cnt">'+cnt+'</span></div>'
   }).join('');
 
   document.getElementById('ovGrid').innerHTML=ovs.map(function(itm){
@@ -622,7 +632,7 @@ function rndr(){
   document.getElementById('chartsRow').style.display='grid';
   var c1=document.getElementById('chStatus').getContext('2d');
   if($.ch0)$.ch0.destroy();
-  $.ch0=new Chart(c1,{type:'doughnut',data:{labels:['ACC Done ('+st.done+')','SDC Done ('+st.sdc+')','In Progress ('+st.act+')','For Insp. ('+st.fi+')','Partial Insp. ('+st.pi+')','Not Started ('+st.ns+')'],datasets:[{data:[st.done,st.sdc,st.act,st.fi,st.pi,st.ns],backgroundColor:['#66bb6a','#26c6da','#42a5f5','#ab47bc','#ffa726','#546e7a'],borderWidth:0}]},options:{responsive:true,maintainAspectRatio:true,cutout:'70%',plugins:{legend:{position:'bottom',labels:{color:'#8891b5',boxWidth:12,padding:10}}}}});
+  $.ch0=new Chart(c1,{type:'doughnut',data:{labels:['ACC Done ('+st.done+')','SDC Done ('+st.sdc+')','In Progress ('+st.act+')','For Insp. ('+st.fi+')','Partial Insp. ('+st.pi+')','Not Started ('+st.ns+')'],datasets:[{data:[st.done,st.sdc,st.act,st.fi,st.pi,st.ns],backgroundColor:['#66bb6a','#26c6da','#42a5f5','#ab47bc','#ffa726','#546e7a'],borderWidth:0}]},options:{responsive:true,maintainAspectRatio:true,cutout:'70%',plugins:{legend:{position:'bottom',labels:{color:'#8891b5',boxWidth:12,padding:10}}}},onClick:function(e,els){if(els.length){var tps=['done','sdc','act','fi','pi','ns'];openKpiPopup(tps[els[0].index])}}});
   var chBox=c1.canvas.parentElement;var ce=document.getElementById('chCenter');if(!ce){ce=document.createElement('div');ce.id='chCenter';ce.style.cssText='position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none';chBox.style.position='relative';chBox.appendChild(ce)}ce.innerHTML='<div style="font:bold 28px Inter,sans-serif;color:#e8eaf0">'+pct(totDone,st.total)+'%</div><div style="font:13px Inter,sans-serif;color:#5a6288">'+totDone+' / '+st.total+'</div>';
 
   var phLabels=PH_ORD.filter(function(n){return ps[n]});var cumDone=[],cumTotal=[],cumPct=[],dAcc=0,tAcc=0;phLabels.forEach(function(n){dAcc+=ps[n].done+ps[n].sdc;tAcc+=ps[n].total;cumDone.push(dAcc);cumTotal.push(tAcc);cumPct.push(pct(dAcc,tAcc))});
@@ -635,7 +645,7 @@ function rndr(){
   if(pe2.length<3)pe2=Object.values(pm).filter(function(p){return p.total>0}).sort(function(a,b){return b.total-a.total}).slice(0,5);
   var c2=document.getElementById('chOverdue').getContext('2d');
   if($.ch1)$.ch1.destroy();
-  $.ch1=new Chart(c2,{type:'bar',data:{labels:pe2.map(function(p){return abbr(p.name)}),datasets:[{label:'Overdue',data:pe2.map(function(p){return p.ov}),backgroundColor:'#ef5350',borderRadius:2},{label:'ACC Done',data:pe2.map(function(p){return p.done}),backgroundColor:'#66bb6a',borderRadius:2}]},options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{position:'bottom',labels:{color:'#8891b5',boxWidth:12,padding:10}}}},scales:{x:{grid:{display:false},ticks:{color:'#5a6288',maxRotation:45}},y:{beginAtZero:true,ticks:{color:'#5a6288',stepSize:1}}}});
+  $.ch1=new Chart(c2,{type:'bar',data:{labels:pe2.map(function(p){return abbr(p.name)}),datasets:[{label:'Overdue',data:pe2.map(function(p){return p.ov}),backgroundColor:'#ef5350',borderRadius:2},{label:'ACC Done',data:pe2.map(function(p){return p.done}),backgroundColor:'#66bb6a',borderRadius:2}]},options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{position:'bottom',labels:{color:'#8891b5',boxWidth:12,padding:10}}}},scales:{x:{grid:{display:false},ticks:{color:'#5a6288',maxRotation:45}},y:{beginAtZero:true,ticks:{color:'#5a6288',stepSize:1}}},onClick:function(e,els){if(els.length)openPersonPopup(abbr(pe2[els[0].index].name))}});
 
   var pe=Object.values(pm).filter(function(p){return p.total>0}).sort(function(a,b){return b.total-a.total});
   document.getElementById('personGrid').innerHTML=pe.map(function(p){
