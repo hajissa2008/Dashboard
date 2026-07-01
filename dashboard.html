@@ -24,25 +24,27 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#0b0e1
 .status.ok{display:block;background:rgba(102,187,106,.12);color:#66bb6a;border:1px solid rgba(102,187,106,.25)}
 
 /* Gauge KPIs */
-.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:24px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:24px}
 .kpi{background:linear-gradient(135deg,#131724,#181e30);border-radius:12px;padding:16px 12px;border:1px solid #1e2440;text-align:center;position:relative;overflow:hidden;cursor:pointer;transition:all .2s}
 .kpi:hover{transform:translateY(-2px);border-color:#3a4166;box-shadow:0 4px 20px rgba(0,0,0,.3)}
-.kpi .gauge{width:80px;height:80px;margin:0 auto 8px;position:relative}
-.kpi .gauge svg{width:80px;height:80px;transform:rotate(-90deg)}
-.kpi .gauge svg circle{fill:none;stroke-width:6;cx:40;cy:40;r:34}
-.kpi .gauge .bg{stroke:#1e2440}
+.kpi .gauge{width:100px;height:100px;margin:0 auto 6px;position:relative}
+.kpi .gauge svg{width:100px;height:100px;transform:rotate(-90deg)}
+.kpi .gauge svg circle{fill:none;stroke-width:7;cx:50;cy:50;r:40}
+.kpi .gauge svg circle.track{stroke-width:5;opacity:.12}
+.kpi .gauge svg circle.glow{stroke-width:18;opacity:.06}
 .kpi .gauge .fg{stroke-linecap:round;transition:stroke-dashoffset 1.2s ease}
-.kpi .gval{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:24px;font-weight:700;line-height:1;pointer-events:none}
-.kpi .gpct{font-size:10px;color:#8891b5;margin-top:1px}
+.kpi .gval{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none;text-align:center;line-height:1.2}
+.kpi .gval .num{font-size:28px;font-weight:700;display:block}
+.kpi .gval .pct{font-size:10px;opacity:.6;display:block;margin-top:-2px}
 .kpi .l{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#8891b5}
-.kpi.total .gval{color:#4fc3f7}
-.kpi.done .fg{stroke:#66bb6a}.kpi.done .gval{color:#66bb6a}
-.kpi.active .fg{stroke:#42a5f5}.kpi.active .gval{color:#42a5f5}
-.kpi.fi .fg{stroke:#ab47bc}.kpi.fi .gval{color:#ab47bc}
-.kpi.pi .fg{stroke:#ffa726}.kpi.pi .gval{color:#ffa726}
-.kpi.ns .fg{stroke:#546e7a}.kpi.ns .gval{color:#546e7a}
-.kpi.sdc .fg{stroke:#26c6da}.kpi.sdc .gval{color:#26c6da}
-.kpi.overdue .fg{stroke:#ef5350}.kpi.overdue .gval{color:#ef5350;animation:blink 1.2s ease-in-out infinite}
+.kpi.total .track{stroke:#4fc3f7}.kpi.total .glow{stroke:#4fc3f7}.kpi.total .fg{stroke:#4fc3f7}.kpi.total .gval .num{color:#4fc3f7}
+.kpi.done .track{stroke:#66bb6a}.kpi.done .glow{stroke:#66bb6a}.kpi.done .fg{stroke:#66bb6a}.kpi.done .gval .num{color:#66bb6a}
+.kpi.sdc .track{stroke:#26c6da}.kpi.sdc .glow{stroke:#26c6da}.kpi.sdc .fg{stroke:#26c6da}.kpi.sdc .gval .num{color:#26c6da}
+.kpi.active .track{stroke:#42a5f5}.kpi.active .glow{stroke:#42a5f5}.kpi.active .fg{stroke:#42a5f5}.kpi.active .gval .num{color:#42a5f5}
+.kpi.fi .track{stroke:#ab47bc}.kpi.fi .glow{stroke:#ab47bc}.kpi.fi .fg{stroke:#ab47bc}.kpi.fi .gval .num{color:#ab47bc}
+.kpi.pi .track{stroke:#ffa726}.kpi.pi .glow{stroke:#ffa726}.kpi.pi .fg{stroke:#ffa726}.kpi.pi .gval .num{color:#ffa726}
+.kpi.ns .track{stroke:#546e7a}.kpi.ns .glow{stroke:#546e7a}.kpi.ns .fg{stroke:#546e7a}.kpi.ns .gval .num{color:#546e7a}
+.kpi.overdue .track{stroke:#ef5350}.kpi.overdue .glow{stroke:#ef5350}.kpi.overdue .fg{stroke:#ef5350}.kpi.overdue .gval .num{color:#ef5350;animation:blink 1.2s ease-in-out infinite}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
 
 h2{font-size:14px;font-weight:600;color:#8891b5;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;display:flex;align-items:center;gap:8px}
@@ -197,43 +199,35 @@ h2 em{font-style:normal;font-size:12px;color:#8891b5;font-weight:400}
 
   <div class="kpis" id="kpiRow" style="display:none">
     <div class="kpi total" onclick="openKpiPopup('total')">
-      <div class="gauge"><svg><circle class="bg" cx="40" cy="40" r="34"/><circle class="fg" id="gTotalFg" cx="40" cy="40" r="34" stroke-dasharray="213.6" stroke-dashoffset="213.6" stroke="#4fc3f7"/></svg><div class="gval" id="gTotal">0</div></div>
-      <div class="gpct" id="gTotalPct">0%</div>
+      <div class="gauge"><svg viewBox="0 0 100 100"><circle class="track" cx="50" cy="50" r="40"/><circle class="glow" cx="50" cy="50" r="40"/><circle class="fg" id="gTotalFg" cx="50" cy="50" r="40" stroke-dasharray="251.33" stroke-dashoffset="251.33"/></svg><div class="gval" id="gTotal"><span class="num">0</span><span class="pct">0%</span></div></div>
       <div class="l">Total</div>
     </div>
     <div class="kpi overdue" onclick="openKpiPopup('ov')">
-      <div class="gauge"><svg><circle class="bg" cx="40" cy="40" r="34"/><circle class="fg" id="gOvFg" cx="40" cy="40" r="34" stroke-dasharray="213.6" stroke-dashoffset="213.6"/></svg><div class="gval" id="gOv">0</div></div>
-      <div class="gpct" id="gOvPct">0%</div>
+      <div class="gauge"><svg viewBox="0 0 100 100"><circle class="track" cx="50" cy="50" r="40"/><circle class="glow" cx="50" cy="50" r="40"/><circle class="fg" id="gOvFg" cx="50" cy="50" r="40" stroke-dasharray="251.33" stroke-dashoffset="251.33"/></svg><div class="gval" id="gOv"><span class="num">0</span><span class="pct">0%</span></div></div>
       <div class="l">Overdue</div>
     </div>
     <div class="kpi ns" onclick="openKpiPopup('ns')">
-      <div class="gauge"><svg><circle class="bg" cx="40" cy="40" r="34"/><circle class="fg" id="gNsFg" cx="40" cy="40" r="34" stroke-dasharray="213.6" stroke-dashoffset="213.6"/></svg><div class="gval" id="gNs">0</div></div>
-      <div class="gpct" id="gNsPct">0%</div>
+      <div class="gauge"><svg viewBox="0 0 100 100"><circle class="track" cx="50" cy="50" r="40"/><circle class="glow" cx="50" cy="50" r="40"/><circle class="fg" id="gNsFg" cx="50" cy="50" r="40" stroke-dasharray="251.33" stroke-dashoffset="251.33"/></svg><div class="gval" id="gNs"><span class="num">0</span><span class="pct">0%</span></div></div>
       <div class="l">Not Started</div>
     </div>
     <div class="kpi active" onclick="openKpiPopup('act')">
-      <div class="gauge"><svg><circle class="bg" cx="40" cy="40" r="34"/><circle class="fg" id="gActiveFg" cx="40" cy="40" r="34" stroke-dasharray="213.6" stroke-dashoffset="213.6"/></svg><div class="gval" id="gActive">0</div></div>
-      <div class="gpct" id="gActivePct">0%</div>
+      <div class="gauge"><svg viewBox="0 0 100 100"><circle class="track" cx="50" cy="50" r="40"/><circle class="glow" cx="50" cy="50" r="40"/><circle class="fg" id="gActiveFg" cx="50" cy="50" r="40" stroke-dasharray="251.33" stroke-dashoffset="251.33"/></svg><div class="gval" id="gActive"><span class="num">0</span><span class="pct">0%</span></div></div>
       <div class="l">In Progress</div>
     </div>
     <div class="kpi fi" onclick="openKpiPopup('fi')">
-      <div class="gauge"><svg><circle class="bg" cx="40" cy="40" r="34"/><circle class="fg" id="gFiFg" cx="40" cy="40" r="34" stroke-dasharray="213.6" stroke-dashoffset="213.6"/></svg><div class="gval" id="gFi">0</div></div>
-      <div class="gpct" id="gFiPct">0%</div>
+      <div class="gauge"><svg viewBox="0 0 100 100"><circle class="track" cx="50" cy="50" r="40"/><circle class="glow" cx="50" cy="50" r="40"/><circle class="fg" id="gFiFg" cx="50" cy="50" r="40" stroke-dasharray="251.33" stroke-dashoffset="251.33"/></svg><div class="gval" id="gFi"><span class="num">0</span><span class="pct">0%</span></div></div>
       <div class="l">For Insp.</div>
     </div>
     <div class="kpi pi" onclick="openKpiPopup('pi')">
-      <div class="gauge"><svg><circle class="bg" cx="40" cy="40" r="34"/><circle class="fg" id="gPiFg" cx="40" cy="40" r="34" stroke-dasharray="213.6" stroke-dashoffset="213.6"/></svg><div class="gval" id="gPi">0</div></div>
-      <div class="gpct" id="gPiPct">0%</div>
+      <div class="gauge"><svg viewBox="0 0 100 100"><circle class="track" cx="50" cy="50" r="40"/><circle class="glow" cx="50" cy="50" r="40"/><circle class="fg" id="gPiFg" cx="50" cy="50" r="40" stroke-dasharray="251.33" stroke-dashoffset="251.33"/></svg><div class="gval" id="gPi"><span class="num">0</span><span class="pct">0%</span></div></div>
       <div class="l">Partial Insp.</div>
     </div>
     <div class="kpi done" onclick="openKpiPopup('done')">
-      <div class="gauge"><svg><circle class="bg" cx="40" cy="40" r="34"/><circle class="fg" id="gDoneFg" cx="40" cy="40" r="34" stroke-dasharray="213.6" stroke-dashoffset="213.6"/></svg><div class="gval" id="gDone">0</div></div>
-      <div class="gpct" id="gDonePct">0%</div>
+      <div class="gauge"><svg viewBox="0 0 100 100"><circle class="track" cx="50" cy="50" r="40"/><circle class="glow" cx="50" cy="50" r="40"/><circle class="fg" id="gDoneFg" cx="50" cy="50" r="40" stroke-dasharray="251.33" stroke-dashoffset="251.33"/></svg><div class="gval" id="gDone"><span class="num">0</span><span class="pct">0%</span></div></div>
       <div class="l">ACC Done</div>
     </div>
     <div class="kpi sdc" onclick="openKpiPopup('sdc')">
-      <div class="gauge"><svg><circle class="bg" cx="40" cy="40" r="34"/><circle class="fg" id="gSdcFg" cx="40" cy="40" r="34" stroke-dasharray="213.6" stroke-dashoffset="213.6"/></svg><div class="gval" id="gSdc">0</div></div>
-      <div class="gpct" id="gSdcPct">0%</div>
+      <div class="gauge"><svg viewBox="0 0 100 100"><circle class="track" cx="50" cy="50" r="40"/><circle class="glow" cx="50" cy="50" r="40"/><circle class="fg" id="gSdcFg" cx="50" cy="50" r="40" stroke-dasharray="251.33" stroke-dashoffset="251.33"/></svg><div class="gval" id="gSdc"><span class="num">0</span><span class="pct">0%</span></div></div>
       <div class="l">SDC Done</div>
     </div>
   </div>
@@ -304,7 +298,7 @@ var PH_COL={'P1':'#F59E0B','P2':'#3B82F6','P3':'#10B981','P4':'#EF4444','P5':'#F
 var PH_ORD=['P1','P2','P3','P4','P5'];
 var $={items:[],phases:{},stats:{total:0,done:0,sdc:0,act:0,fi:0,pi:0,ns:0,ov:0},people:{},phLeads:{},ch0:null,ch1:null,token:null,user:null,refInt:null};
 
-var CIRC=213.6;
+var CIRC=251.33;
 function esc(s){if(s==null)return'';var d=document.createElement('div');d.textContent=s;return d.innerHTML}
 function abbr(s){if(!s)return'';var m=s.match(/(.+)@/);return m?m[1]:s}
 function cd(s){if(!s)return null;var d=new Date(s);if(isNaN(d))return null;d.setHours(0,0,0,0);return d}
@@ -573,14 +567,14 @@ function rndr(){
   var ps=$.phases,st=$.stats,pm=$.people;
   document.getElementById('kpiRow').style.display='grid';
   var totDone=st.done+st.sdc;
-  document.getElementById('gTotal').textContent=st.total;document.getElementById('gTotalPct').textContent=pct(totDone,st.total)+'%';setGauge('gTotalFg',pct(totDone,st.total));
-  document.getElementById('gDone').textContent=st.done;document.getElementById('gDonePct').textContent=pct(st.done,st.total)+'%';setGauge('gDoneFg',pct(st.done,st.total));
-  document.getElementById('gSdc').textContent=st.sdc;document.getElementById('gSdcPct').textContent=pct(st.sdc,st.total)+'%';setGauge('gSdcFg',pct(st.sdc,st.total));
-  document.getElementById('gActive').textContent=st.act;document.getElementById('gActivePct').textContent=pct(st.act,st.total)+'%';setGauge('gActiveFg',pct(st.act,st.total));
-  document.getElementById('gFi').textContent=st.fi;document.getElementById('gFiPct').textContent=pct(st.fi,st.total)+'%';setGauge('gFiFg',pct(st.fi,st.total));
-  document.getElementById('gPi').textContent=st.pi;document.getElementById('gPiPct').textContent=pct(st.pi,st.total)+'%';setGauge('gPiFg',pct(st.pi,st.total));
-  document.getElementById('gNs').textContent=st.ns;document.getElementById('gNsPct').textContent=pct(st.ns,st.total)+'%';setGauge('gNsFg',pct(st.ns,st.total));
-  document.getElementById('gOv').textContent=st.ov;document.getElementById('gOvPct').textContent=pct(st.ov,st.total-totDone)+'% of active';setGauge('gOvFg',pct(st.ov,st.total-totDone));
+  document.getElementById('gTotal').innerHTML='<span class="num">'+st.total+'</span><span class="pct">'+pct(totDone,st.total)+'%</span>';setGauge('gTotalFg',pct(totDone,st.total));
+  document.getElementById('gDone').innerHTML='<span class="num">'+st.done+'</span><span class="pct">'+pct(st.done,st.total)+'%</span>';setGauge('gDoneFg',pct(st.done,st.total));
+  document.getElementById('gSdc').innerHTML='<span class="num">'+st.sdc+'</span><span class="pct">'+pct(st.sdc,st.total)+'%</span>';setGauge('gSdcFg',pct(st.sdc,st.total));
+  document.getElementById('gActive').innerHTML='<span class="num">'+st.act+'</span><span class="pct">'+pct(st.act,st.total)+'%</span>';setGauge('gActiveFg',pct(st.act,st.total));
+  document.getElementById('gFi').innerHTML='<span class="num">'+st.fi+'</span><span class="pct">'+pct(st.fi,st.total)+'%</span>';setGauge('gFiFg',pct(st.fi,st.total));
+  document.getElementById('gPi').innerHTML='<span class="num">'+st.pi+'</span><span class="pct">'+pct(st.pi,st.total)+'%</span>';setGauge('gPiFg',pct(st.pi,st.total));
+  document.getElementById('gNs').innerHTML='<span class="num">'+st.ns+'</span><span class="pct">'+pct(st.ns,st.total)+'%</span>';setGauge('gNsFg',pct(st.ns,st.total));
+  document.getElementById('gOv').innerHTML='<span class="num">'+st.ov+'</span><span class="pct">'+pct(st.ov,st.total-totDone)+'% of active</span>';setGauge('gOvFg',pct(st.ov,st.total-totDone));
 
   var pn=sortPh(Object.keys(ps));
   document.getElementById('phaseCount').textContent='('+pn.length+')';
