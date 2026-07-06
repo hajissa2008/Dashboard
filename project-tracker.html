@@ -262,6 +262,14 @@ body.dark th .sort-arrow{color:var(--text-secondary)}
       </select>
       <div class="hint">REST API uses your existing SharePoint session for auth.</div>
 
+      <label>CORS Proxy URL (for cross-origin, e.g. GitHub Pages)</label>
+      <input type="text" id="cfg-proxy" placeholder="https://your-proxy.herokuapp.com/">
+      <div class="hint">Leave empty when deployed on SharePoint. For external hosting, use a CORS proxy that forwards requests (e.g. a Cloudflare Worker or cors-anywhere instance).</div>
+
+      <label>Bearer Token (for proxy auth, optional)</label>
+      <input type="password" id="cfg-token" placeholder="Paste your SharePoint access token">
+      <div class="hint">Only needed when using a proxy. Get a token from Azure AD or your SharePoint site.</div>
+
       <label>SharePoint List Link (paste any shared link)</label>
       <input type="text" id="cfg-link" placeholder="https://...sharepoint.com/:l:/g/personal/...">
       <div class="hint">Paste your SharePoint list sharing link — the site URL will be extracted automatically.</div>
@@ -292,6 +300,14 @@ body.dark th .sort-arrow{color:var(--text-secondary)}
       <label>List Name</label>
       <input type="text" id="cfg-eng-list" placeholder="Shop Drawing Status">
       <div class="hint">Display name of the Shop Drawing Status list.</div>
+
+      <label>CORS Proxy URL (for cross-origin)</label>
+      <input type="text" id="cfg-eng-proxy" placeholder="https://your-proxy.herokuapp.com/">
+      <div class="hint">Same proxy as above if using one.</div>
+
+      <label>Bearer Token (for proxy auth)</label>
+      <input type="password" id="cfg-eng-token" placeholder="Paste your SharePoint access token">
+      <div class="hint">Required when using a proxy from external hosting.</div>
 
       <div style="display:flex;gap:8px">
         <button class="btn btn-primary" onclick="connectToEngineering()">🔌 Connect</button>
@@ -483,8 +499,12 @@ let DATA = [...DEMO_DATA];
 let dataSource = 'demo'; // 'demo' | 'sp-live' | 'sp-error'
 let spSiteUrl = '';
 let spListName = '';
+let spProxyUrl = '';
+let spBearerToken = '';
 let engSiteUrl = '';
 let engListName = '';
+let engProxyUrl = '';
+let engBearerToken = '';
 let engDATA = [];
 let engConnected = false;
 
@@ -550,10 +570,23 @@ function extractSiteFromLink(link){
 }
 
 // ======================== SHAREPOINT API ========================
+function apiFetch(url, proxy, token){
+    const opts = { method:'GET', headers:{'Accept':'application/json;odata=verbose'} };
+    if(proxy){
+        url = proxy.replace(/\/+$/,'') + '/' + encodeURIComponent(url);
+        if(token) opts.headers['Authorization'] = 'Bearer ' + token;
+    }else{
+        opts.credentials = 'include';
+    }
+    return fetch(url, opts);
+}
+
 async function connectToSharePoint(){
     const site=document.getElementById('cfg-site').value.trim();
     const list=document.getElementById('cfg-list').value.trim();
     const link=document.getElementById('cfg-link').value.trim();
+    const proxy=document.getElementById('cfg-proxy').value.trim();
+    const token=document.getElementById('cfg-token').value.trim();
 
     let finalSite=site, finalList=list;
 
@@ -574,9 +607,9 @@ async function connectToSharePoint(){
         return;
     }
 
-    // Detect if running as local file (REST API won't work due to CORS)
-    if(location.protocol==='file:'){
-        showConnStatus('⚠ Cannot connect from local file. Upload this HTML to SharePoint (e.g. Site Pages library) and open it from there, or use a CORS browser extension for testing.','disconnected');
+    // Detect if running as local file (REST API won't work due to CORS w/o proxy)
+    if(location.protocol==='file:'&&!proxy){
+        showConnStatus('⚠ Cannot connect from local file. Use a CORS proxy URL below, upload to SharePoint, or use a CORS browser extension.','disconnected');
         return;
     }
 
@@ -588,11 +621,7 @@ async function connectToSharePoint(){
         const listName=encodeURIComponent(finalList);
         const apiUrl=`${siteUrl}/_api/web/lists/getbytitle('${listName}')/items?$top=500`;
 
-        const resp=await fetch(apiUrl,{
-            method:'GET',
-            headers:{'Accept':'application/json;odata=verbose'},
-            credentials:'include'
-        });
+        const resp=await apiFetch(apiUrl, proxy, token);
 
         if(!resp.ok)throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
 
@@ -644,9 +673,13 @@ async function connectToSharePoint(){
         spListName=finalList;
         dataSource='sp-live';
 
+        spProxyUrl=proxy; spBearerToken=token;
+
         // Save config
         storage.setItem('pmt-site',siteUrl);
         storage.setItem('pmt-list',finalList);
+        if(proxy)storage.setItem('pmt-proxy',proxy);
+        if(token)storage.setItem('pmt-token',token);
 
         showConnStatus(`Connected! Loaded ${DATA.length} items from "${finalList}".`,'connected');
         updateBadge();
@@ -673,12 +706,14 @@ function useDemoData(){
 async function connectToEngineering(){
     const site=document.getElementById('cfg-eng-site').value.trim();
     const list=document.getElementById('cfg-eng-list').value.trim()||'Shop Drawing Status';
+    const proxy=document.getElementById('cfg-eng-proxy').value.trim();
+    const token=document.getElementById('cfg-eng-token').value.trim();
     if(!site){
         showEngConnStatus('Enter the SharePoint site URL for the Shop Drawing list.','disconnected');
         return;
     }
-    if(location.protocol==='file:'){
-        showEngConnStatus('⚠ Cannot connect from local file. Upload this HTML to SharePoint and open from there.','disconnected');
+    if(location.protocol==='file:'&&!proxy){
+        showEngConnStatus('⚠ Cannot connect from local file. Use a CORS proxy or upload to SharePoint.','disconnected');
         return;
     }
     showEngConnStatus('Connecting to Shop Drawing list...','loading');
@@ -686,9 +721,7 @@ async function connectToEngineering(){
         const siteUrl=site.replace(/\/+$/,'');
         const listName=encodeURIComponent(list);
         const apiUrl=`${siteUrl}/_api/web/lists/getbytitle('${listName}')/items?$top=500`;
-        const resp=await fetch(apiUrl,{
-            method:'GET',headers:{'Accept':'application/json;odata=verbose'},credentials:'include'
-        });
+        const resp=await apiFetch(apiUrl, proxy, token);
         if(!resp.ok)throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
         const json=await resp.json();
         const items=json.d.results;
@@ -726,9 +759,13 @@ async function connectToEngineering(){
         });
         engSiteUrl=siteUrl;
         engListName=list;
+        engProxyUrl=proxy;
+        engBearerToken=token;
         engConnected=true;
-        localStorage.setItem('pmt-eng-site',siteUrl);
-        localStorage.setItem('pmt-eng-list',list);
+        storage.setItem('pmt-eng-site',siteUrl);
+        storage.setItem('pmt-eng-list',list);
+        if(proxy)storage.setItem('pmt-eng-proxy',proxy);
+        if(token)storage.setItem('pmt-eng-token',token);
         showEngConnStatus(`Connected! Loaded ${engDATA.length} shop drawings from "${list}".`,'connected');
         updateEngBadge();
         if(currentView==='engineering')renderCurrent();
@@ -801,6 +838,8 @@ function openSettings(){
     closeEngSettings();
     if(spSiteUrl)document.getElementById('cfg-site').value=spSiteUrl;
     if(spListName)document.getElementById('cfg-list').value=spListName;
+    if(spProxyUrl)document.getElementById('cfg-proxy').value=spProxyUrl;
+    if(spBearerToken)document.getElementById('cfg-token').value=spBearerToken;
     document.getElementById('cfg-mode').value=dataSource==='demo'?'demo':'rest';
     document.getElementById('settings-overlay').classList.add('show');
     document.getElementById('settings-panel').classList.add('open');
@@ -813,6 +852,8 @@ function openEngSettings(){
     closeSettings();
     if(engSiteUrl)document.getElementById('cfg-eng-site').value=engSiteUrl;
     if(engListName)document.getElementById('cfg-eng-list').value=engListName;
+    if(engProxyUrl)document.getElementById('cfg-eng-proxy').value=engProxyUrl;
+    if(engBearerToken)document.getElementById('cfg-eng-token').value=engBearerToken;
     document.getElementById('eng-settings-overlay').classList.add('show');
     document.getElementById('eng-settings-panel').classList.add('open');
 }
@@ -1079,17 +1120,25 @@ function toggleDark(){
         document.body.classList.add('dark');
         document.getElementById('dark-toggle').textContent='☀️';
     }
-    // Restore engineering config
-    const engSavedSite=localStorage.getItem('pmt-eng-site');
-    const engSavedList=localStorage.getItem('pmt-eng-list');
-    if(engSavedSite)document.getElementById('cfg-eng-site').value=engSavedSite;
-    if(engSavedList)document.getElementById('cfg-eng-list').value=engSavedList;
     // Restore saved config
-    const savedSite=localStorage.getItem('pmt-site');
-    const savedList=localStorage.getItem('pmt-list');
+    const savedProxy=storage.getItem('pmt-proxy');
+    const savedToken=storage.getItem('pmt-token');
+    const savedSite=storage.getItem('pmt-site');
+    const savedList=storage.getItem('pmt-list');
+    if(savedProxy)document.getElementById('cfg-proxy').value=savedProxy;
+    if(savedToken)document.getElementById('cfg-token').value=savedToken;
     if(savedSite)document.getElementById('cfg-site').value=savedSite;
     if(savedList)document.getElementById('cfg-list').value=savedList;
     if(document.getElementById('cfg-link'))document.getElementById('cfg-link').value='https://sascontractingsa-my.sharepoint.com/:l:/g/personal/m_hajissa_alenshaiah_com/JAB0SL2Dg68dR4O0jC1UxIc1AdT1ZhpFsFXSzoRpZuLNvbI?e=c6RN2T';
+    // Restore engineering config
+    const engSavedSite=storage.getItem('pmt-eng-site');
+    const engSavedList=storage.getItem('pmt-eng-list');
+    const engSavedProxy=storage.getItem('pmt-eng-proxy');
+    const engSavedToken=storage.getItem('pmt-eng-token');
+    if(engSavedSite)document.getElementById('cfg-eng-site').value=engSavedSite;
+    if(engSavedList)document.getElementById('cfg-eng-list').value=engSavedList;
+    if(engSavedProxy)document.getElementById('cfg-eng-proxy').value=engSavedProxy;
+    if(engSavedToken)document.getElementById('cfg-eng-token').value=engSavedToken;
     // Pre-fill engineering site URL if not saved
     if(!engSavedSite&&document.getElementById('cfg-eng-site')){
         document.getElementById('cfg-eng-site').value='https://sascontractingsa.sharepoint.com/sites/Alenshaiah';
