@@ -591,6 +591,19 @@ async function fetchSPListItems(siteUrl, listName){
         }
         const json = await resp.json();
         // Graph API returns { value: [ { id, fields: { Title, ... } } ] }
+        if(json.value&&json.value.length>0){
+            const keys = Object.keys(json.value[0].fields||{});
+            console.log('[SP] First item keys:', keys);
+            console.log('[SP] First item sample:', JSON.stringify(json.value[0].fields).substring(0,500));
+            // Show field names on page for easy copy-paste
+            const connEl=document.getElementById('conn-status');
+            if(connEl){
+                const fieldList = keys.slice(0,40).join(', ');
+                connEl.innerHTML = '✅ Connected. Fields found: <code style="font-size:10px">' + fieldList + '</code>';
+                connEl.className = 'connection-status connected';
+                connEl.style.display = 'block';
+            }
+        }
         return (json.value || []).map(item => ({ ...item.fields, ID: item.id }));
     }else{
         // Fallback: SharePoint REST via CORS proxy
