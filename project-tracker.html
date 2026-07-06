@@ -266,6 +266,13 @@ body.dark th .sort-arrow{color:var(--text-secondary)}
         <label>Client ID</label>
         <input type="text" id="cfg-client" value="04f83c11-e51c-4a8a-be86-9e3a49f3e952">
         <div class="hint">From the same app registration.</div>
+
+        <div id="redirect-uri-box" style="background:var(--yellow-light);border-radius:4px;padding:8px;margin-top:8px;font-size:11px;line-height:1.4">
+          <strong>⚠️ Required:</strong> Add this exact URL in Azure AD → Authentication → <strong>Single-page application (SPA)</strong> redirect URIs:
+          <div style="font-family:monospace;background:var(--white);padding:6px 8px;border-radius:3px;margin-top:4px;word-break:break-all" id="redirect-uri-display"></div>
+          <div style="margin-top:4px;color:var(--text-secondary)">Also enable <strong>Allow public client flows</strong> → <strong>Yes</strong>.</div>
+        </div>
+
         <div style="display:flex;gap:8px;margin-top:4px">
           <button class="btn btn-primary" onclick="loginSP()" id="settings-login-btn">🔑 Sign In</button>
           <button class="btn btn-outline" onclick="saveAuthConfig()">💾 Save</button>
@@ -908,6 +915,16 @@ function openSettings(){
     const client=storage.getItem('pmt-client');
     if(tenant)document.getElementById('cfg-tenant').value=tenant;
     if(client)document.getElementById('cfg-client').value=client;
+    // Show the redirect URI that must be registered in Azure AD
+    const uriEl=document.getElementById('redirect-uri-display');
+    if(uriEl){
+        const redirectUri = location.origin + location.pathname;
+        uriEl.textContent = redirectUri;
+        // Check if it looks like a valid URL to register
+        const isConfigOk = redirectUri.startsWith('https://') && !redirectUri.includes('file:');
+        uriEl.style.background = isConfigOk ? 'var(--white)' : 'var(--red-light)';
+        uriEl.title = isConfigOk ? 'Register this in Azure AD' : '⚠ Deploy to a web server first (not local file)';
+    }
     buildViewConfigsUI();
     // Update auth status in settings
     const statusEl=document.getElementById('settings-auth-status');
@@ -1204,14 +1221,24 @@ function initMsal(){
     const tenant = storage.getItem('pmt-tenant') || document.getElementById('cfg-tenant').value.trim();
     const client = storage.getItem('pmt-client') || document.getElementById('cfg-client').value.trim();
     if(!tenant||!client) return false;
+    const redirectUri = location.origin + location.pathname;
+    console.log('[MSAL] Config — tenant:', tenant, 'client:', client, 'redirectUri:', redirectUri);
     msalApp = new msal.PublicClientApplication({
         auth:{
             clientId: client,
             authority: 'https://login.microsoftonline.com/' + tenant,
-            redirectUri: location.origin + location.pathname
+            redirectUri: redirectUri
         },
         cache:{ cacheLocation: 'localStorage' },
-        system:{ allowNativeBroker: false }
+        system:{
+            allowNativeBroker: false,
+            loggerOptions: {
+                loggerCallback: (level, message, containsPii) => {
+                    if(!containsPii) console.log('[MSAL]', message);
+                },
+                piiLoggingEnabled: false
+            }
+        }
     });
     return true;
 }
@@ -1343,7 +1370,20 @@ function toggleDark(){
                         .then(r=>{ spUser=r.account; spToken=r.accessToken; updateAuthUI(); })
                         .catch(()=>{ updateAuthUI(); });
                 }
-            }).catch(()=>{ updateAuthUI(); });
+            }).catch(e=>{
+                console.error('[MSAL] handleRedirectPromise error:', e.message);
+                const st=document.getElementById('settings-auth-status');
+                if(st){
+                    const uri = location.origin + location.pathname;
+                    st.innerHTML = '❌ Azure AD rejected login. Check settings:<br>' +
+                        '1. Redirect URI: <code>' + uri + '</code> must be <strong>SPA</strong> type<br>' +
+                        '2. API permissions: <strong>Sites.ReadWrite.All</strong>, <strong>User.Read</strong><br>' +
+                        '3. "Allow public client flows" = <strong>Yes</strong><br>' +
+                        '<span style="font-size:10px">Error: ' + (e.message||'').substring(0,100) + '</span>';
+                    st.style.color='var(--red)';
+                }
+                updateAuthUI();
+            });
         }else{ updateAuthUI(); }
     }else{
         updateAuthUI();
