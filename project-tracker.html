@@ -576,8 +576,8 @@ function graphListUrl(siteUrl, listName){
     const path = siteToGraphPath(siteUrl);
     return `https://graph.microsoft.com/v1.0/sites/${path}:/lists/${encodeURIComponent(listName)}`;
 }
-function graphListItemsUrl(siteUrl, listName){
-    return graphListUrl(siteUrl, listName) + `/items?$top=500&expand=fields`;
+function graphListItemsUrl(siteUrl, listName, top=5000){
+    return graphListUrl(siteUrl, listName) + `/items?$top=${top}&expand=fields`;
 }
 function graphListColumnsUrl(siteUrl, listName){
     return graphListUrl(siteUrl, listName) + `/columns`;
@@ -610,28 +610,34 @@ async function fetchColumnNames(siteUrl, listName){
 
 async function fetchSPListItems(siteUrl, listName){
     if(spToken){
-        // Use Microsoft Graph API
-        const url = graphListItemsUrl(siteUrl, listName);
-        console.log('[SP] Fetching:', url);
-        const resp = await fetch(url, {
-            headers: { 'Authorization': 'Bearer ' + spToken, 'Accept': 'application/json' }
-        });
-        if(!resp.ok){
-            const body = await resp.text().catch(()=>'');
-            throw new Error(`HTTP ${resp.status}: ${resp.statusText}. URL: ${url}. Response: ${body.substring(0,200)}`);
-        }
-        const json = await resp.json();
-        // Fetch column definitions to rename field_N -> displayName
+        // Fetch column definitions once
         if(!columnNameMap) columnNameMap = await fetchColumnNames(siteUrl, listName);
         const rename = columnNameMap || {};
 
-        if(json.value&&json.value.length>0){
-            const raw = json.value[0].fields||{};
-            const keys = Object.keys(raw);
-            console.log('[SP] First item keys:', keys);
-            console.log('[SP] First item sample:', JSON.stringify(raw).substring(0,1500));
+        // Fetch all pages of items
+        let allItems = [], nextUrl = graphListItemsUrl(siteUrl, listName);
+        let page = 0;
+        while(nextUrl){
+            page++;
+            console.log('[SP] Page ' + page + ':', nextUrl);
+            const resp = await fetch(nextUrl, {
+                headers: { 'Authorization': 'Bearer ' + spToken, 'Accept': 'application/json' }
+            });
+            if(!resp.ok){
+                const body = await resp.text().catch(()=>'');
+                throw new Error(`HTTP ${resp.status}: ${resp.statusText}. Page ${page}. ${body.substring(0,200)}`);
+            }
+            const json = await resp.json();
+            if(json.value) allItems = allItems.concat(json.value);
+            nextUrl = json['@odata.nextLink'] || null;
         }
-        return (json.value || []).map(item => {
+        console.log('[SP] Total items fetched:', allItems.length);
+
+        if(allItems.length>0){
+            const raw = allItems[0].fields||{};
+            console.log('[SP] First item keys:', Object.keys(raw));
+        }
+        return allItems.map(item => {
             const fields = {};
             for(const [k,v] of Object.entries(item.fields||{})){
                 fields[rename[k] || k] = v;
