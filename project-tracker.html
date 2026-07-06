@@ -1334,15 +1334,15 @@ function toggleDark(){
 
     if(savedTenant&&savedClient&&!location.origin.includes('.sharepoint.com')){
         initMsal();
-        msalApp.handleRedirectPromise().then(resp=>{
+        msalApp.handleRedirectPromise().then(async resp=>{
             if(resp&&resp.account){
                 spUser = resp.account;
-                spToken = resp.accessToken;
+                await getTokenSP();
                 updateAuthUI();
             }else if(!isPopup){
                 // Try silent sso (only in main window)
                 msalApp.ssoSilent({ scopes: SP_SCOPES })
-                    .then(r=>{ spUser=r.account; spToken=r.accessToken; updateAuthUI(); })
+                    .then(async r=>{ spUser=r.account; spToken=r.accessToken; updateAuthUI(); })
                     .catch(()=>{ document.getElementById('login-btn').style.display=''; });
             }
         }).catch(()=>{
@@ -1356,6 +1356,8 @@ function toggleDark(){
         updateCounts();
         updateBadge();
         VIEW_KEYS.forEach(v=>updateViewNavDot(v));
+        // Auto-show demo data if nothing loaded yet
+        if(DATA.length===0&&DEMO_DATA.length>0){ DATA=[...DEMO_DATA]; dataSource='demo'; }
         renderDashboard();
     }
 })();
