@@ -196,25 +196,22 @@ body.dark th .sort-arrow{color:var(--text-secondary)}
       <span class="icon">📦</span> Procurement <span class="count" id="count-procurement">0</span>
     </a>
     <a class="nav-item" data-view="engineering" onclick="switchView('engineering')">
-      <span class="icon">📐</span> Engineering <span class="count" id="count-engineering">0</span>
-    </a>
-    <a class="nav-item" onclick="openEngSettings()" style="padding-left:38px;font-size:12px">
-      <span class="icon">📋</span> Shop Drawing Source <span class="status-dot" id="eng-conn-dot"></span>
+      <span class="icon">📐</span> Engineering <span class="count" id="count-engineering">0</span><span class="status-dot" id="dot-engineering" style="display:inline-block;vertical-align:middle;margin-left:4px"></span>
     </a>
     <a class="nav-item" data-view="construction" onclick="switchView('construction')">
-      <span class="icon">🏗️</span> Construction <span class="count" id="count-construction">0</span>
+      <span class="icon">🏗️</span> Construction <span class="count" id="count-construction">0</span><span class="status-dot" id="dot-construction" style="display:inline-block;vertical-align:middle;margin-left:4px"></span>
     </a>
     <a class="nav-item" data-view="cost" onclick="switchView('cost')">
-      <span class="icon">💰</span> Cost Control <span class="count" id="count-cost">0</span>
+      <span class="icon">💰</span> Cost Control <span class="count" id="count-cost">0</span><span class="status-dot" id="dot-cost" style="display:inline-block;vertical-align:middle;margin-left:4px"></span>
     </a>
     <a class="nav-item" data-view="planning" onclick="switchView('planning')">
-      <span class="icon">📅</span> Planning <span class="count" id="count-planning">0</span>
+      <span class="icon">📅</span> Planning <span class="count" id="count-planning">0</span><span class="status-dot" id="dot-planning" style="display:inline-block;vertical-align:middle;margin-left:4px"></span>
     </a>
     <a class="nav-item" data-view="qaqc" onclick="switchView('qaqc')">
-      <span class="icon">✅</span> QA/QC <span class="count" id="count-qaqc">0</span>
+      <span class="icon">✅</span> QA/QC <span class="count" id="count-qaqc">0</span><span class="status-dot" id="dot-qaqc" style="display:inline-block;vertical-align:middle;margin-left:4px"></span>
     </a>
     <a class="nav-item" data-view="hse" onclick="switchView('hse')">
-      <span class="icon">🛡️</span> HSE <span class="count" id="count-hse">0</span>
+      <span class="icon">🛡️</span> HSE <span class="count" id="count-hse">0</span><span class="status-dot" id="dot-hse" style="display:inline-block;vertical-align:middle;margin-left:4px"></span>
     </a>
     <div class="nav-section">Data Source</div>
     <a class="nav-item" onclick="openSettings()">
@@ -271,11 +268,11 @@ body.dark th .sort-arrow{color:var(--text-secondary)}
       <div class="hint">REST API uses your existing SharePoint session for auth.</div>
 
       <label>Azure AD Tenant ID (for GitHub Pages auth)</label>
-      <input type="text" id="cfg-tenant" placeholder="e.g. 550e8400-e29b-41d4-a716-446655440000">
+      <input type="text" id="cfg-tenant" placeholder="684547e2-bb8b-450a-a3e1-3a6bc15e9471" value="684547e2-bb8b-450a-a3e1-3a6bc15e9471">
       <div class="hint">Found in Azure AD → App registrations → Your app → Overview. Required for GitHub Pages deployment.</div>
 
       <label>Azure AD Client ID</label>
-      <input type="text" id="cfg-client" placeholder="e.g. 00000000-0000-0000-0000-000000000000">
+      <input type="text" id="cfg-client" placeholder="1b3e37d8-0ba9-44b2-9033-68e4d8068a87" value="1b3e37d8-0ba9-44b2-9033-68e4d8068a87">
       <div class="hint">From the same Azure AD app registration.</div>
 
       <label>SharePoint List Link (paste any shared link)</label>
@@ -291,32 +288,15 @@ body.dark th .sort-arrow{color:var(--text-secondary)}
       <div id="conn-status" class="connection-status disconnected" style="display:none">
         Not connected.
       </div>
-    </div>
-  </div>
 
-  <!-- Engineering Data Source Settings -->
-  <div class="settings-overlay" id="eng-settings-overlay" onclick="closeEngSettings()"></div>
-  <div class="settings-panel" id="eng-settings-panel">
-    <div class="settings-header">
-      <h3>Engineering - Shop Drawing Source</h3>
-      <button class="settings-close" onclick="closeEngSettings()">&times;</button>
-    </div>
-    <div class="settings-body">
-      <label>SharePoint Site URL</label>
-      <input type="text" id="cfg-eng-site" placeholder="https://tenant.sharepoint.com/sites/YourSite">
-      <div class="hint">Site containing the Shop Drawing Status list.</div>
-
-      <label>List Name</label>
-      <input type="text" id="cfg-eng-list" placeholder="Shop Drawing Status">
-      <div class="hint">Display name of the Shop Drawing Status list.</div>
-
-      <div style="display:flex;gap:8px">
-        <button class="btn btn-primary" onclick="connectToEngineering()">🔌 Connect</button>
-        <button class="btn btn-outline" onclick="useDemoEngineering()">📁 Use Demo Data</button>
-      </div>
-
-      <div id="eng-conn-status" class="connection-status disconnected" style="display:none">
-        Not connected.
+      <div style="margin-top:24px;padding-top:16px;border-top:1px solid var(--gray-border)">
+        <label style="font-size:14px;font-weight:700">Per-View SharePoint Lists</label>
+        <div class="hint" style="margin-bottom:8px">Configure a separate list for each view. Leave blank to use the main list above.</div>
+        <div id="view-list-configs"></div>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button class="btn btn-outline" onclick="saveViewConfigs()">💾 Save View Configs</button>
+          <button class="btn btn-outline" onclick="connectAllViews()">🔌 Connect All</button>
+        </div>
       </div>
     </div>
   </div>
@@ -500,10 +480,11 @@ let DATA = [...DEMO_DATA];
 let dataSource = 'demo'; // 'demo' | 'sp-live' | 'sp-error'
 let spSiteUrl = '';
 let spListName = '';
-let engSiteUrl = '';
-let engListName = '';
-let engDATA = [];
-let engConnected = false;
+
+// Per-view data sources: each view can have {site, list, data, connected}
+const viewData = {};
+const VIEW_KEYS = ['procurement','engineering','construction','cost','planning','qaqc','hse'];
+VIEW_KEYS.forEach(k => { viewData[k] = { site:'', list:'', data:[], connected:false }; });
 
 const VIEWS = {
   dashboard:{title:'Executive Dashboard',dept:null,cols:['proj','prog','status','budget','actual','forecast','delayDays','priority','dept','pm'],group:'proj'},
@@ -700,85 +681,147 @@ function useDemoData(){
     closeSettings();
 }
 
-async function connectToEngineering(){
-    const site=document.getElementById('cfg-eng-site').value.trim();
-    const list=document.getElementById('cfg-eng-list').value.trim()||'Shop Drawing Status';
-    if(!site){
-        showEngConnStatus('Enter the SharePoint site URL for the Shop Drawing list.','disconnected');
-        return;
+// ======================== PER-VIEW DATA SOURCE ========================
+function buildViewConfigsUI(){
+    const container=document.getElementById('view-list-configs');
+    if(!container)return;
+    let html='';
+    VIEW_KEYS.forEach(v=>{
+        const label=VIEWS[v].title;
+        const vd=viewData[v];
+        html+=`<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px">
+          <span style="min-width:100px;font-size:12px;font-weight:600">${label}</span>
+          <input type="text" id="cfg-vsite-${v}" placeholder="Site URL" value="${vd.site||''}" style="flex:1;padding:4px 6px;font-size:11px;border:1px solid var(--gray-border);border-radius:4px">
+          <input type="text" id="cfg-vlist-${v}" placeholder="List name" value="${vd.list||''}" style="flex:1;padding:4px 6px;font-size:11px;border:1px solid var(--gray-border);border-radius:4px">
+          <span class="status-dot" id="dot-cfg-${v}" style="display:inline-block;flex-shrink:0"></span>
+        </div>`;
+    });
+    container.innerHTML=html;
+    VIEW_KEYS.forEach(v=>updateViewDot(v));
+}
+
+function saveViewConfigs(){
+    VIEW_KEYS.forEach(v=>{
+        const site=document.getElementById('cfg-vsite-'+v)?.value.trim()||'';
+        const list=document.getElementById('cfg-vlist-'+v)?.value.trim()||'';
+        viewData[v].site=site;
+        viewData[v].list=list;
+        if(site) storage.setItem('pmt-view-'+v+'-site',site);
+        else storage.removeItem('pmt-view-'+v+'-site');
+        if(list) storage.setItem('pmt-view-'+v+'-list',list);
+        else storage.removeItem('pmt-view-'+v+'-list');
+        updateViewDot(v);
+        updateViewNavDot(v);
+    });
+    alert('View configurations saved.');
+}
+
+async function connectSingleView(view,map,personCols){
+    const vd=viewData[view];
+    const site=vd.site || (document.getElementById('cfg-vsite-'+view)?.value.trim()||'');
+    const list=vd.list || (document.getElementById('cfg-vlist-'+view)?.value.trim()||'');
+    if(!site||!list){
+        updateViewDot(view,'offline');
+        return false;
     }
     if(location.protocol==='file:'){
-        showEngConnStatus('⚠ Cannot connect from a local file. Upload to GitHub Pages or SharePoint.','disconnected');
-        return;
+        updateViewDot(view,'offline');
+        return false;
     }
-    showEngConnStatus('Connecting to Shop Drawing list...','loading');
     try{
         const siteUrl=site.replace(/\/+$/,'');
         const apiUrl=`${siteUrl}/_api/web/lists/getbytitle('${list}')/items?\$top=500`;
         const resp=await apiFetch(apiUrl);
-        if(!resp.ok)throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
+        if(!resp.ok)throw new Error(`HTTP ${resp.status}`);
         const json=await resp.json();
-        const engItems=json.d?json.d.results:json.value;
-        if(!engItems||engItems.length===0){
-            showEngConnStatus('Connected but list is empty.','disconnected');
-            return;
-        }
-        engDATA=engItems.map(spItem=>{
+        const items=json.d?json.d.results:json.value;
+        if(!items||items.length===0)return false;
+        vd.data=items.map(spItem=>{
             const item={};
-            for(const [spKey,appKey] of Object.entries(SD_MAP)){
+            for(const [spKey,appKey] of Object.entries(map)){
                 let val=spItem[spKey];
                 if(val!==undefined&&val!==null){
-                    if(SD_PERSON_COLS.includes(spKey)){
+                    if(personCols&&personCols.includes(spKey)){
                         if(typeof val==='object'&&val.Title)val=val.Title;
                         else if(typeof val==='object'&&val.LookupValue)val=val.LookupValue;
                         else if(typeof val==='object'&&val.Email)val=val.Email;
                     }
-                    if(typeof val==='string'&&val.match(/\/Date\(/)){
+                    if(typeof val==='string'&&val.match(/\/Date\(/))
                         val=new Date(parseInt(val.replace(/[^0-9]/g,''))).toISOString().split('T')[0];
-                    }
-                    if(typeof val==='string'&&!isNaN(val)&&val!='')val=Number(val);
+                    if(typeof val==='string'&&!isNaN(val)&&val!=='')val=Number(val);
                 }
                 if(val!==undefined&&val!==null&&val!=='')item[appKey]=val;
             }
-            for(const k of Object.keys(SD_MAP)){
-                const appKey=SD_MAP[k];
+            for(const k of Object.keys(map)){
+                const appKey=map[k];
                 if(!(appKey in item))item[appKey]='';
             }
             if(!item.id)item.id=spItem.ID||'';
             if(!item.proj)item.proj=spItem.Title||spItem.ProjectName||spItem.Project_x0020_Name||'';
-            if(!item.dwgNo)item.dwgNo=spItem.DrawingNumber||spItem.Drawing_x0020_Number||'';
             if(!item.status)item.status=spItem.Status||'Not Started';
             if(!item.priority)item.priority=spItem.Priority||'Medium';
+            if(item.prog===undefined||item.prog==='')item.prog=0;
             return item;
         });
-        engSiteUrl=siteUrl;
-        engListName=list;
-        engConnected=true;
-        storage.setItem('pmt-eng-site',siteUrl);
-        storage.setItem('pmt-eng-list',list);
-        showEngConnStatus(`Connected! Loaded ${engDATA.length} shop drawings from "${list}".`,'connected');
-        updateEngBadge();
-        if(currentView==='engineering')renderCurrent();
+        vd.connected=true;
+        updateViewDot(view,'online');
+        updateViewNavDot(view,'online');
+        return true;
     }catch(err){
-        showEngConnStatus(`Connection failed: ${err.message}.`,'disconnected');
-        updateEngBadge();
+        vd.connected=false;
+        updateViewDot(view,'offline');
+        updateViewNavDot(view,'offline');
+        return false;
     }
 }
 
-function useDemoEngineering(){
-    engDATA=DEMO_DATA.filter(d=>d.dept==='Engineering');
-    engConnected=true;
-    showEngConnStatus('Using demo engineering data.','connected');
-    updateEngBadge();
-    if(currentView==='engineering')renderCurrent();
-    closeEngSettings();
+async function connectAllViews(){
+    VIEW_KEYS.forEach(v=>{
+        const dot=document.getElementById('dot-cfg-'+v);
+        if(dot)dot.className='status-dot loading';
+    });
+    let count=0;
+    for(const v of VIEW_KEYS){
+        const map=v==='engineering'?SD_MAP:SP_MAP;
+        const personCols=v==='engineering'?SD_PERSON_COLS:PERSON_COLS;
+        const ok=await connectSingleView(v,map,personCols);
+        if(ok)count++;
+    }
+    updateCounts();
+    if(currentView!=='dashboard')renderCurrent();
+    alert(`Connected ${count} of ${VIEW_KEYS.length} views.`);
 }
 
-function showEngConnStatus(msg,type){
-    const el=document.getElementById('eng-conn-status');
-    el.style.display='block';
-    el.textContent=msg;
-    el.className='connection-status '+type;
+function autoConnectCurrentView(){
+    const view=currentView;
+    if(view==='dashboard')return Promise.resolve();
+    const vd=viewData[view];
+    if(!vd||!vd.site||!vd.list)return Promise.resolve();
+    if(vd.connected&&vd.data.length>0)return Promise.resolve();
+    const map=view==='engineering'?SD_MAP:SP_MAP;
+    const personCols=view==='engineering'?SD_PERSON_COLS:PERSON_COLS;
+    return connectSingleView(view,map,personCols).then(()=>{
+        updateCounts();
+        renderCurrent();
+    });
+}
+
+function updateViewDot(view,state){
+    const dot=document.getElementById('dot-cfg-'+view);
+    if(!dot)return;
+    if(state)dot.className='status-dot '+state;
+    else{
+        const vd=viewData[view];
+        dot.className='status-dot '+(vd.connected&&vd.data.length>0?'online':'offline');
+    }
+}
+
+function updateViewNavDot(view,state){
+    const dot=document.getElementById('dot-'+view);
+    if(!dot)return;
+    const vd=viewData[view];
+    if(state==='online'||(vd&&vd.connected&&vd.data.length>0))dot.className='status-dot online';
+    else dot.className='status-dot offline';
 }
 
 function showConnStatus(msg,type){
@@ -786,12 +829,6 @@ function showConnStatus(msg,type){
     el.style.display='block';
     el.textContent=msg;
     el.className='connection-status '+type;
-}
-
-function updateEngBadge(){
-    const dot=document.getElementById('eng-conn-dot');
-    if(!dot)return;
-    dot.className='status-dot '+(engConnected&&engDATA.length>0?'online':'offline');
 }
 
 function updateBadge(){
@@ -815,17 +852,17 @@ function updateBadge(){
 
 function updateCounts(){
     document.getElementById('count-all').textContent=countAll();
-    ['procurement','engineering','construction','cost','planning','qaqc','hse'].forEach(v=>{
+    VIEW_KEYS.forEach(v=>{
         const deptName=v.charAt(0).toUpperCase()+v.slice(1);
         const label=v==='cost'?'Cost Control':v==='qaqc'?'QA/QC':deptName;
-        const cnt=v==='engineering'&&engConnected?engDATA.length:countByDept(label);
+        const vd=viewData[v];
+        const cnt=(vd.connected&&vd.data.length>0)?vd.data.length:countByDept(label);
         document.getElementById('count-'+v).textContent=cnt;
     });
 }
 
 // ======================== SETTINGS UI ========================
 function openSettings(){
-    closeEngSettings();
     if(spSiteUrl)document.getElementById('cfg-site').value=spSiteUrl;
     if(spListName)document.getElementById('cfg-list').value=spListName;
     const tenant=storage.getItem('pmt-tenant');
@@ -833,23 +870,13 @@ function openSettings(){
     if(tenant)document.getElementById('cfg-tenant').value=tenant;
     if(client)document.getElementById('cfg-client').value=client;
     document.getElementById('cfg-mode').value=dataSource==='demo'?'demo':'rest';
+    buildViewConfigsUI();
     document.getElementById('settings-overlay').classList.add('show');
     document.getElementById('settings-panel').classList.add('open');
 }
 function closeSettings(){
     document.getElementById('settings-overlay').classList.remove('show');
     document.getElementById('settings-panel').classList.remove('open');
-}
-function openEngSettings(){
-    closeSettings();
-    if(engSiteUrl)document.getElementById('cfg-eng-site').value=engSiteUrl;
-    if(engListName)document.getElementById('cfg-eng-list').value=engListName;
-    document.getElementById('eng-settings-overlay').classList.add('show');
-    document.getElementById('eng-settings-panel').classList.add('open');
-}
-function closeEngSettings(){
-    document.getElementById('eng-settings-overlay').classList.remove('show');
-    document.getElementById('eng-settings-panel').classList.remove('open');
 }
 
 // ======================== RENDER ========================
@@ -935,7 +962,9 @@ function renderDashboard(){
 }
 
 function renderTable(){
-    const d=currentView==='dashboard'?[...DATA]:(currentView==='engineering'&&engConnected&&engDATA.length>0)?[...engDATA]:DATA.filter(x=>x.dept===VIEWS[currentView].dept);
+    const vd=viewData[currentView];
+    const useViewData=currentView!=='dashboard'&&vd&&vd.connected&&vd.data.length>0;
+    const d=currentView==='dashboard'?[...DATA]:useViewData?[...vd.data]:DATA.filter(x=>x.dept===VIEWS[currentView].dept);
     const search=(document.getElementById('search')?.value||'').toLowerCase();
     const fDept=document.getElementById('filter-dept')?.value||'';
     const fStatus=document.getElementById('filter-status')?.value||'';
@@ -1009,7 +1038,9 @@ function cellValue(item,col){
 
 function renderDeptView(view){
     const v=VIEWS[view];
-    const items=(view==='engineering'&&engConnected&&engDATA.length>0)?engDATA:DATA.filter(x=>x.dept===v.dept);
+    const vd=viewData[view];
+    const useViewData=vd&&vd.connected&&vd.data.length>0;
+    const items=useViewData?vd.data:DATA.filter(x=>x.dept===v.dept);
     const total=items.length;
     const completed=items.filter(x=>x.status==='Completed').length;
     const inProg=items.filter(x=>x.status==='In Progress'||x.status==='Under Review').length;
@@ -1021,8 +1052,7 @@ function renderDeptView(view){
     if(view==='engineering'){
         const sub=items.filter(x=>x.subDate).length;
         const ifc=items.filter(x=>x.ifcDate).length;
-        const reviewed=items.filter(x=>x.clientReview==='Review Complete'||x.clientReview==='Approved'||x.clientReview==='Approved with Comments').length;
-        extra=(engConnected&&engDATA.length>0)?`<div class="kpi-card teal"><div class="kpi-label">Submitted</div><div class="kpi-value">${sub}</div></div>
+        extra=useViewData?`<div class="kpi-card teal"><div class="kpi-label">Submitted</div><div class="kpi-value">${sub}</div></div>
                <div class="kpi-card green"><div class="kpi-label">IFC Issued</div><div class="kpi-value">${ifc}</div></div>`:'';
     }
     if(view==='cost'){
@@ -1046,6 +1076,9 @@ function renderDeptView(view){
         extra=`<div class="kpi-card red"><div class="kpi-label">High/Extreme Risk</div><div class="kpi-value">${extreme}</div></div>`;
     }
 
+    const sourceLabel=useViewData?`Custom: ${vd.data.length} items`:(vd&&vd.list?`${vd.list}`:'Main list');
+    const sourceClass=useViewData?'live':(vd&&vd.list?'error':'demo');
+
     document.getElementById('content').innerHTML=`
     <div class="kpi-grid">
       <div class="kpi-card blue"><div class="kpi-label">Total Items</div><div class="kpi-value">${total}</div></div>
@@ -1061,7 +1094,7 @@ function renderDeptView(view){
         <span class="view-label">${v.title}</span>
         <span class="view-badge">${total} items</span>
         <span style="flex:1"></span>
-        ${view==='engineering'?`<button class="data-source-badge ${engConnected?'live':'demo'}" onclick="openEngSettings()" style="margin-right:8px;cursor:pointer"><span class="dot"></span>${engConnected&&engDATA.length>0?'Shop Drawings: '+engDATA.length+' items':'Click to configure'}</button>`:''}
+        <button class="data-source-badge ${sourceClass}" onclick="openSettings()" style="margin-right:8px;cursor:pointer"><span class="dot"></span>${sourceLabel}</button>
         <div class="filter-group">
           <select id="filter-status" onchange="renderTable()">
             <option value="">All Statuses</option>
@@ -1080,8 +1113,22 @@ function switchView(view){
     currentView=view;
     sortCol=null;sortAsc=true;
     document.querySelectorAll('.nav-item').forEach(el=>el.classList.toggle('active',el.dataset.view===view));
-    document.getElementById('view-title').textContent=VIEWS[view].title+(view==='engineering'&&engConnected&&engDATA.length>0?' (Shop Drawings)':'');
-    renderCurrent();
+    const vd=viewData[view];
+    const useViewData=view!=='dashboard'&&vd&&vd.connected&&vd.data.length>0;
+    document.getElementById('view-title').textContent=VIEWS[view].title+(useViewData&&vd.list?' ('+vd.list+')':'');
+    // Auto-connect if configured but not yet connected
+    if(view!=='dashboard'&&vd&&vd.site&&vd.list&&!vd.connected){
+        const map=view==='engineering'?SD_MAP:SP_MAP;
+        const personCols=view==='engineering'?SD_PERSON_COLS:PERSON_COLS;
+        document.getElementById('content').innerHTML='<div class="loading-state"><div class="spinner"></div><p>Auto-connecting to '+vd.list+'...</p></div>';
+        connectSingleView(view,map,personCols).then(()=>{
+            updateCounts();
+            updateViewNavDot(view);
+            renderCurrent();
+        });
+    }else{
+        renderCurrent();
+    }
 }
 
 function toggleSidebar(){
@@ -1097,6 +1144,7 @@ const storage = {
 };
 
 // ======================== SHAREPOINT AUTH (MSAL.js for GitHub Pages) ========================
+const SP_SCOPES = ['Sites.ReadWrite.All', 'User.Read'];
 let msalApp = null;
 let spToken = null;
 let spUser = null;
@@ -1120,7 +1168,7 @@ async function loginSP(){
     if(!initMsal()){ alert('Set Tenant ID and Client ID in Connection settings first (⚙️).'); return; }
     try{
         const resp = await msalApp.loginPopup({
-            scopes: ['https://sascontractingsa.sharepoint.com/Sites.Read.All'],
+            scopes: SP_SCOPES,
             prompt: 'select_account'
         });
         spUser = resp.account;
@@ -1134,7 +1182,7 @@ async function getTokenSP(){
     if(!msalApp||!spUser) return null;
     try{
         const resp = await msalApp.acquireTokenSilent({
-            scopes: ['https://sascontractingsa.sharepoint.com/Sites.Read.All'],
+            scopes: SP_SCOPES,
             account: spUser
         });
         spToken = resp.accessToken;
@@ -1142,7 +1190,7 @@ async function getTokenSP(){
     }catch(e){
         try{
             const resp = await msalApp.acquireTokenPopup({
-                scopes: ['https://sascontractingsa.sharepoint.com/Sites.Read.All']
+                scopes: SP_SCOPES
             });
             spToken = resp.accessToken;
             return spToken;
@@ -1196,19 +1244,25 @@ function toggleDark(){
     if(savedSite)document.getElementById('cfg-site').value=savedSite;
     if(savedList)document.getElementById('cfg-list').value=savedList;
     if(document.getElementById('cfg-link'))document.getElementById('cfg-link').value='https://sascontractingsa-my.sharepoint.com/:l:/g/personal/m_hajissa_alenshaiah_com/JAB0SL2Dg68dR4O0jC1UxIc1AdT1ZhpFsFXSzoRpZuLNvbI?e=c6RN2T';
-    // Restore engineering config
-    const engSavedSite=storage.getItem('pmt-eng-site');
-    const engSavedList=storage.getItem('pmt-eng-list');
-    if(engSavedSite)document.getElementById('cfg-eng-site').value=engSavedSite;
-    if(engSavedList)document.getElementById('cfg-eng-list').value=engSavedList;
-    // Pre-fill engineering site URL if not saved
-    if(!engSavedSite&&document.getElementById('cfg-eng-site')){
-        document.getElementById('cfg-eng-site').value='https://sascontractingsa.sharepoint.com/sites/Alenshaiah';
-        document.getElementById('cfg-eng-list').value='Shop Drawing Status';
+    // Restore per-view configs
+    VIEW_KEYS.forEach(v=>{
+        const site=storage.getItem('pmt-view-'+v+'-site');
+        const list=storage.getItem('pmt-view-'+v+'-list');
+        if(site) viewData[v].site=site;
+        if(list) viewData[v].list=list;
+    });
+    // Pre-fill Engineering view with Shop Drawing list as default
+    if(!viewData.engineering.site){
+        viewData.engineering.site='https://sascontractingsa.sharepoint.com/sites/Alenshaiah';
+        viewData.engineering.list='Shop Drawing Status';
     }
-    // Restore Azure AD config & check for existing MSAL session
-    const savedTenant=storage.getItem('pmt-tenant');
-    const savedClient=storage.getItem('pmt-client');
+    // Restore or save default Azure AD config & check for existing MSAL session
+    let savedTenant=storage.getItem('pmt-tenant');
+    let savedClient=storage.getItem('pmt-client');
+    const defaultTenant=document.getElementById('cfg-tenant').value.trim();
+    const defaultClient=document.getElementById('cfg-client').value.trim();
+    if(!savedTenant&&defaultTenant){ storage.setItem('pmt-tenant',defaultTenant); savedTenant=defaultTenant; }
+    if(!savedClient&&defaultClient){ storage.setItem('pmt-client',defaultClient); savedClient=defaultClient; }
     if(savedTenant)document.getElementById('cfg-tenant').value=savedTenant;
     if(savedClient)document.getElementById('cfg-client').value=savedClient;
     if(savedTenant&&savedClient&&!location.origin.includes('.sharepoint.com')){
@@ -1220,7 +1274,7 @@ function toggleDark(){
                 updateAuthUI();
             }else{
                 // Try silent sso
-                msalApp.ssoSilent({ scopes: ['https://sascontractingsa.sharepoint.com/Sites.Read.All'] })
+                msalApp.ssoSilent({ scopes: SP_SCOPES })
                     .then(r=>{ spUser=r.account; spToken=r.accessToken; updateAuthUI(); })
                     .catch(()=>{ document.getElementById('login-btn').style.display=''; });
             }
@@ -1231,7 +1285,7 @@ function toggleDark(){
 
     updateCounts();
     updateBadge();
-    updateEngBadge();
+    VIEW_KEYS.forEach(v=>updateViewNavDot(v));
     renderDashboard();
 })();
 </script>
