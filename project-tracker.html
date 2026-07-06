@@ -741,7 +741,7 @@ async function connectToSharePoint(){
         viewData.engineering.data = DATA;
         updateBadge();
         // Switch to Engineering view to see the data
-        document.querySelector('.view-btn[data-view="engineering"]')?.click();
+        document.querySelector('.nav-item[data-view="engineering"]')?.click();
     }catch(err){
         dataSource='sp-error';
         showConnStatus(`Connection failed: ${err.message}. Using demo data.`,'disconnected');
