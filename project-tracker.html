@@ -1304,8 +1304,11 @@ function toggleDark(){
 
 // ======================== INIT ========================
 (function init(){
+    // Detect if running in MSAL popup window — just process redirect and close
+    const isPopup = window.opener && window.opener !== window;
+
     // Restore dark mode
-    if(localStorage.getItem('pmt-dark')){
+    if(localStorage.getItem('pmt-dark') && !isPopup){
         document.body.classList.add('dark');
         document.getElementById('dark-toggle').textContent='☀️';
     }
@@ -1327,7 +1330,7 @@ function toggleDark(){
         viewData.engineering.site='https://sascontractingsa.sharepoint.com/sites/Alenshaiah';
         viewData.engineering.list='Shop Drawing Status';
     }
-    // Restore or save default Azure AD config & check for existing MSAL session
+    // Restore or save default Azure AD config
     let savedTenant=storage.getItem('pmt-tenant');
     let savedClient=storage.getItem('pmt-client');
     const defaultTenant=document.getElementById('cfg-tenant').value.trim();
@@ -1336,6 +1339,7 @@ function toggleDark(){
     if(!savedClient&&defaultClient){ storage.setItem('pmt-client',defaultClient); savedClient=defaultClient; }
     if(savedTenant)document.getElementById('cfg-tenant').value=savedTenant;
     if(savedClient)document.getElementById('cfg-client').value=savedClient;
+
     if(savedTenant&&savedClient&&!location.origin.includes('.sharepoint.com')){
         initMsal();
         msalApp.handleRedirectPromise().then(resp=>{
@@ -1343,21 +1347,29 @@ function toggleDark(){
                 spUser = resp.account;
                 spToken = resp.accessToken;
                 updateAuthUI();
+                // If in popup, auth is done — MSAL will postMessage back to opener and close
+                if(isPopup) window.close();
             }else{
+                if(isPopup) { window.close(); return; }
                 // Try silent sso
                 msalApp.ssoSilent({ scopes: SP_SCOPES })
                     .then(r=>{ spUser=r.account; spToken=r.accessToken; updateAuthUI(); })
                     .catch(()=>{ document.getElementById('login-btn').style.display=''; });
             }
-        }).catch(()=>{ document.getElementById('login-btn').style.display=''; });
-    }else if(!location.origin.includes('.sharepoint.com')){
+        }).catch(()=>{
+            if(isPopup) { window.close(); return; }
+            document.getElementById('login-btn').style.display='';
+        });
+    }else if(!location.origin.includes('.sharepoint.com') && !isPopup){
         document.getElementById('login-btn').style.display='';
     }
 
-    updateCounts();
-    updateBadge();
-    VIEW_KEYS.forEach(v=>updateViewNavDot(v));
-    renderDashboard();
+    if(!isPopup){
+        updateCounts();
+        updateBadge();
+        VIEW_KEYS.forEach(v=>updateViewNavDot(v));
+        renderDashboard();
+    }
 })();
 </script>
 </body>
