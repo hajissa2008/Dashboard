@@ -708,69 +708,37 @@ async function connectToSharePoint(){
             return;
         }
 
-        // Map SharePoint items to app format
-        DATA=spItems.map(spItem=>{
-            const item={};
-            for(const [spKey,appKey] of Object.entries(SP_MAP)){
-                let val=spItem[spKey];
-                if(val!==undefined&&val!==null){
-                    // Handle person fields
-                    if(PERSON_COLS.includes(spKey)){
-                        if(typeof val==='object'&&val.Title)val=val.Title;
-                        else if(typeof val==='object'&&val.LookupValue)val=val.LookupValue;
-                        else if(typeof val==='object'&&val.Email)val=val.Email;
-                    }
-                    // Handle dates
-                    if(typeof val==='string'&&val.match(/\/Date\(/)){
-                        val=new Date(parseInt(val.replace(/[^0-9]/g,''))).toISOString().split('T')[0];
-                    }
-                    // Handle numbers
-                    if(typeof val==='string'&&!isNaN(val)&&val!='')val=Number(val);
-                }
-                if(val!==undefined&&val!==null&&val!=='')item[appKey]=val;
-            }
-            // Ensure all fields exist
-            for(const k of Object.keys(SP_MAP)){
-                const appKey=SP_MAP[k];
-                if(!(appKey in item))item[appKey]='';
-            }
-            // Copy any unmapped fields (display names from SharePoint) into item
-            for(const k of Object.keys(spItem)){
-                if(!(k in item) && k!=='ID' && k!=='Title')
-                    item[k] = spItem[k];
-            }
-            // Ensure critical fields
-            if(!item.id)item.id=spItem.ID||'';
-            if(!item.proj)item.proj=spItem.Title||'';
-            if(!item.dept)item.dept=spItem.ResponsibleDepartment||'Engineering';
-            if(!item.status)item.status=spItem.Status||'Not Started';
-            if(!item.priority)item.priority=spItem.Priority||'Medium';
-            if(item.prog===undefined||item.prog==='')item.prog=0;
+        // Use raw SharePoint columns as-is (no predefined mapping)
+        const skipKeys = ['ID','id','ContentType','Modified','Created','AuthorLookupId','EditorLookupId','_UIVersionString','Attachments','Edit','LinkTitleNoMenu','LinkTitle','ItemChildCount','FolderChildCount','_ComplianceFlags','_ComplianceTag','_ComplianceTagWrittenTime','_ComplianceTagUserId','AppAuthorLookupId','AppEditorLookupId','@odata.etag'];
+        const rawKeys = Object.keys(spItems[0]).filter(k=>!skipKeys.includes(k));
+        DATA = spItems.map(spItem => {
+            const item = {};
+            rawKeys.forEach(k => { item[k] = spItem[k] ?? ''; });
+            // Critical fields for app to work
+            item.dept = 'Engineering';
+            item.proj = spItem['Project Code'] || spItem['Porject Name'] || spItem.Title || 'N/A';
+            item.status = spItem['DRAWING STATUS'] || spItem['REV 00 STATUS'] || 'Not Set';
+            item.priority = 'Medium';
             return item;
         });
 
         spSiteUrl=siteUrl;
         spListName=finalList;
         dataSource='sp-live';
-
-        // Save config
         storage.setItem('pmt-site',siteUrl);
         storage.setItem('pmt-list',finalList);
 
         showConnStatus(`Connected! Loaded ${DATA.length} items from "${finalList}".`,'connected');
-        // Show raw field names from actual SharePoint data (debug)
-        if(spItems.length>0){
-            const rawKeys = Object.keys(spItems[0]).filter(k=>k!=='ID'&&k!=='Title');
-            const kv = spItems[0];
-            const sample = rawKeys.slice(0,3).map(k=>k+'='+(kv[k]||'')).join(', ');
-            const el=document.getElementById('conn-status');
-            el.innerHTML += '<div style="margin-top:6px;font-size:11px;background:#fff3cd;padding:6px;border-radius:3px">' +
-                '<strong>📋 Raw fields (' + rawKeys.length + '):</strong> ' +
-                '<code style="word-break:break-all">' + rawKeys.join(', ') + '</code></div>';
-        }
+        // Show raw keys on page for debugging
+        const first = DATA[0]||{};
+        const allKeys = Object.keys(first).filter(k=>k!=='dept'&&k!=='priority');
+        const el=document.getElementById('conn-status');
+        el.innerHTML += '<div style="margin-top:6px;font-size:12px;background:#fff;padding:8px;border:1px solid #ccc;border-radius:3px;max-height:200px;overflow:auto">' +
+            '<strong>📋 Keys in DATA[0] (' + allKeys.length + '):</strong><br>' +
+            '<code>' + allKeys.join(', ') + '</code></div>';
         updateBadge();
-        updateCounts();
-        renderCurrent();
+        // Switch to Engineering view to see the data
+        document.querySelector('.view-btn[data-view="engineering"]')?.click();
     }catch(err){
         dataSource='sp-error';
         showConnStatus(`Connection failed: ${err.message}. Using demo data.`,'disconnected');
