@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AlEnshaiah - Project Tracker</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://alcdn.msauth.net/browser/2.32.2/js/msal-browser.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{--primary:#4C5D71;--primary-dark:#3A4A5E;--primary-light:#E8ECF0;--blue:var(--primary);--blue-dark:var(--primary-dark);--blue-light:var(--primary-light);--green:#107C10;--green-light:#E6F7E6;--red:#D92C2C;--red-light:#FDE8E8;--orange:#ED7D31;--orange-light:#FFF0E0;--yellow:#FFB900;--yellow-light:#FFF8E1;--gray:#8A8886;--gray-light:#F3F2F1;--gray-border:#EDEBE9;--text-primary:#201E1F;--text-secondary:#605E5C;--white:#FFFFFF;--bg:#F3F2F1;--shadow:0 1px 3px rgba(0,0,0,.08);--radius:6px;--sidebar-w:240px;--header-h:48px}
@@ -219,6 +220,13 @@ body.dark th .sort-arrow{color:var(--text-secondary)}
     <a class="nav-item" onclick="openSettings()">
       <span class="icon">⚙️</span> Connection <span class="status-dot" id="conn-dot"></span>
     </a>
+    <div class="nav-section">Account</div>
+    <a class="nav-item" id="login-btn" onclick="loginSP()" style="display:none">
+      <span class="icon">🔑</span> Sign in to SharePoint
+    </a>
+    <a class="nav-item" id="logout-btn" onclick="logoutSP()" style="display:none">
+      <span class="icon">👤</span> <span id="user-name">Signed in</span>
+    </a>
   </nav>
 </aside>
 
@@ -262,12 +270,21 @@ body.dark th .sort-arrow{color:var(--text-secondary)}
       </select>
       <div class="hint">REST API uses your existing SharePoint session for auth.</div>
 
+      <label>Azure AD Tenant ID (for GitHub Pages auth)</label>
+      <input type="text" id="cfg-tenant" placeholder="e.g. 550e8400-e29b-41d4-a716-446655440000">
+      <div class="hint">Found in Azure AD → App registrations → Your app → Overview. Required for GitHub Pages deployment.</div>
+
+      <label>Azure AD Client ID</label>
+      <input type="text" id="cfg-client" placeholder="e.g. 00000000-0000-0000-0000-000000000000">
+      <div class="hint">From the same Azure AD app registration.</div>
+
       <label>SharePoint List Link (paste any shared link)</label>
       <input type="text" id="cfg-link" placeholder="https://...sharepoint.com/:l:/g/personal/...">
       <div class="hint">Paste your SharePoint list sharing link — the site URL will be extracted automatically.</div>
 
       <div style="display:flex;gap:8px">
         <button class="btn btn-primary" onclick="connectToSharePoint()">🔌 Connect</button>
+        <button class="btn btn-outline" onclick="saveAuthConfig()">💾 Save Auth</button>
         <button class="btn btn-outline" onclick="useDemoData()">📁 Use Demo Data</button>
       </div>
 
@@ -552,12 +569,16 @@ function extractSiteFromLink(link){
 // ======================== SHAREPOINT API ========================
 const CORS_PROXY = 'https://corsproxy.io/?url=';
 
-function apiFetch(url){
+async function apiFetch(url){
     const opts = { method:'GET', headers:{'Accept':'application/json;odata=nometadata'} };
     const onSP = location.origin.includes('.sharepoint.com');
     if(!onSP){
-        url = CORS_PROXY + encodeURIComponent(url);
-        console.log('[apiFetch] proxied URL:', url);
+        if(spToken){
+            opts.headers['Authorization'] = 'Bearer ' + spToken;
+        }else{
+            url = CORS_PROXY + encodeURIComponent(url);
+        }
+        console.log('[apiFetch] request:', url);
     }else{
         opts.credentials = 'include';
     }
@@ -599,8 +620,7 @@ async function connectToSharePoint(){
 
     try{
         const siteUrl=finalSite.replace(/\/+$/,'');
-        const listName=encodeURIComponent(finalList);
-        const apiUrl=`${siteUrl}/_api/web/lists/getbytitle('${listName}')/items?$top=500`;
+        const apiUrl=`${siteUrl}/_api/web/lists/getbytitle('${finalList}')/items?\$top=500`;
 
         const resp=await apiFetch(apiUrl);
 
@@ -694,8 +714,7 @@ async function connectToEngineering(){
     showEngConnStatus('Connecting to Shop Drawing list...','loading');
     try{
         const siteUrl=site.replace(/\/+$/,'');
-        const listName=encodeURIComponent(list);
-        const apiUrl=`${siteUrl}/_api/web/lists/getbytitle('${listName}')/items?$top=500`;
+        const apiUrl=`${siteUrl}/_api/web/lists/getbytitle('${list}')/items?\$top=500`;
         const resp=await apiFetch(apiUrl);
         if(!resp.ok)throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
         const json=await resp.json();
@@ -809,6 +828,10 @@ function openSettings(){
     closeEngSettings();
     if(spSiteUrl)document.getElementById('cfg-site').value=spSiteUrl;
     if(spListName)document.getElementById('cfg-list').value=spListName;
+    const tenant=storage.getItem('pmt-tenant');
+    const client=storage.getItem('pmt-client');
+    if(tenant)document.getElementById('cfg-tenant').value=tenant;
+    if(client)document.getElementById('cfg-client').value=client;
     document.getElementById('cfg-mode').value=dataSource==='demo'?'demo':'rest';
     document.getElementById('settings-overlay').classList.add('show');
     document.getElementById('settings-panel').classList.add('open');
@@ -1073,6 +1096,86 @@ const storage = {
     setItem(k,v){ try{ localStorage.setItem(k,v) }catch(e){ this._data[k]=v } }
 };
 
+// ======================== SHAREPOINT AUTH (MSAL.js for GitHub Pages) ========================
+let msalApp = null;
+let spToken = null;
+let spUser = null;
+
+function initMsal(){
+    const tenant = storage.getItem('pmt-tenant') || document.getElementById('cfg-tenant').value.trim();
+    const client = storage.getItem('pmt-client') || document.getElementById('cfg-client').value.trim();
+    if(!tenant||!client) return false;
+    msalApp = new msal.PublicClientApplication({
+        auth:{
+            clientId: client,
+            authority: 'https://login.microsoftonline.com/' + tenant,
+            redirectUri: location.origin + location.pathname
+        },
+        cache:{ cacheLocation: 'localStorage' }
+    });
+    return true;
+}
+
+async function loginSP(){
+    if(!initMsal()){ alert('Set Tenant ID and Client ID in Connection settings first (⚙️).'); return; }
+    try{
+        const resp = await msalApp.loginPopup({
+            scopes: ['https://sascontractingsa.sharepoint.com/Sites.Read.All'],
+            prompt: 'select_account'
+        });
+        spUser = resp.account;
+        await getTokenSP();
+        updateAuthUI();
+        closeSettings();
+    }catch(e){ alert('Login failed: ' + e.message); }
+}
+
+async function getTokenSP(){
+    if(!msalApp||!spUser) return null;
+    try{
+        const resp = await msalApp.acquireTokenSilent({
+            scopes: ['https://sascontractingsa.sharepoint.com/Sites.Read.All'],
+            account: spUser
+        });
+        spToken = resp.accessToken;
+        return spToken;
+    }catch(e){
+        try{
+            const resp = await msalApp.acquireTokenPopup({
+                scopes: ['https://sascontractingsa.sharepoint.com/Sites.Read.All']
+            });
+            spToken = resp.accessToken;
+            return spToken;
+        }catch(e2){ spToken = null; return null; }
+    }
+}
+
+function logoutSP(){
+    spToken = null;
+    spUser = null;
+    if(msalApp) msalApp.logoutPopup();
+    updateAuthUI();
+}
+
+function saveAuthConfig(){
+    const tenant = document.getElementById('cfg-tenant').value.trim();
+    const client = document.getElementById('cfg-client').value.trim();
+    if(tenant) storage.setItem('pmt-tenant', tenant);
+    if(client) storage.setItem('pmt-client', client);
+    if(tenant&&client){
+        if(spUser) alert('Auth config saved. Re-login if needed.');
+        else alert('Auth config saved. Click "Sign in to SharePoint" in sidebar.');
+    }else{
+        alert('Enter both Tenant ID and Client ID.');
+    }
+}
+
+function updateAuthUI(){
+    document.getElementById('login-btn').style.display = spUser ? 'none' : '';
+    document.getElementById('logout-btn').style.display = spUser ? '' : 'none';
+    if(spUser) document.getElementById('user-name').textContent = spUser.name || spUser.username;
+}
+
 function toggleDark(){
     document.body.classList.toggle('dark');
     const btn=document.getElementById('dark-toggle');
@@ -1102,6 +1205,28 @@ function toggleDark(){
     if(!engSavedSite&&document.getElementById('cfg-eng-site')){
         document.getElementById('cfg-eng-site').value='https://sascontractingsa.sharepoint.com/sites/Alenshaiah';
         document.getElementById('cfg-eng-list').value='Shop Drawing Status';
+    }
+    // Restore Azure AD config & check for existing MSAL session
+    const savedTenant=storage.getItem('pmt-tenant');
+    const savedClient=storage.getItem('pmt-client');
+    if(savedTenant)document.getElementById('cfg-tenant').value=savedTenant;
+    if(savedClient)document.getElementById('cfg-client').value=savedClient;
+    if(savedTenant&&savedClient&&!location.origin.includes('.sharepoint.com')){
+        initMsal();
+        msalApp.handleRedirectPromise().then(resp=>{
+            if(resp&&resp.account){
+                spUser = resp.account;
+                spToken = resp.accessToken;
+                updateAuthUI();
+            }else{
+                // Try silent sso
+                msalApp.ssoSilent({ scopes: ['https://sascontractingsa.sharepoint.com/Sites.Read.All'] })
+                    .then(r=>{ spUser=r.account; spToken=r.accessToken; updateAuthUI(); })
+                    .catch(()=>{ document.getElementById('login-btn').style.display=''; });
+            }
+        }).catch(()=>{ document.getElementById('login-btn').style.display=''; });
+    }else if(!location.origin.includes('.sharepoint.com')){
+        document.getElementById('login-btn').style.display='';
     }
 
     updateCounts();
