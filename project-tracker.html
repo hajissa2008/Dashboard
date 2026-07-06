@@ -1220,12 +1220,15 @@ async function loginSP(){
     if(!initMsal()){ alert('Set Tenant ID and Client ID in Connection settings first (⚙️).'); return; }
     try {
         const resp = await msalApp.loginPopup({ scopes: SP_SCOPES, prompt: 'select_account' });
+        console.log('[loginSP] loginPopup success', resp.account?.name);
         spUser = resp.account;
-        await getTokenSP();
+        spToken = resp.accessToken;
+        if(!spToken) await getTokenSP();
         updateAuthUI();
         closeSettings();
     } catch(e) {
-        alert('Login failed: ' + e.message);
+        console.error('[loginSP] failed', e);
+        alert('Login failed: ' + e.message + '\n\nCheck console for details (F12)');
     }
 }
 
@@ -1239,13 +1242,10 @@ async function getTokenSP(){
         spToken = resp.accessToken;
         return spToken;
     }catch(e){
-        try{
-            const resp = await msalApp.acquireTokenPopup({
-                scopes: SP_SCOPES
-            });
-            spToken = resp.accessToken;
-            return spToken;
-        }catch(e2){ spToken = null; return null; }
+        // Silent failed — token from loginPopup/redirect should be used instead
+        if(spToken) return spToken;
+        console.warn('getTokenSP: silent failed, no fallback token', e.message);
+        return null;
     }
 }
 
@@ -1346,16 +1346,18 @@ function toggleDark(){
         if(msalApp){
             msalApp.handleRedirectPromise().then(async resp=>{
                 if(resp&&resp.account){
+                    console.log('[init] handleRedirectPromise got account', resp.account?.name);
                     spUser = resp.account;
-                    await getTokenSP();
+                    spToken = resp.accessToken;
+                    if(!spToken) await getTokenSP();
                     updateAuthUI();
                 }else{
-                    // Try silent sso for returning users
+                    console.log('[init] no redirect, trying ssoSilent');
                     msalApp.ssoSilent({ scopes: SP_SCOPES })
-                        .then(async r=>{ spUser=r.account; spToken=r.accessToken; updateAuthUI(); })
-                        .catch(()=>{ updateAuthUI(); });
+                        .then(async r=>{ spUser=r.account; spToken=r.accessToken; updateAuthUI(); console.log('[init] ssoSilent ok', r.account?.name); })
+                        .catch(()=>{ console.log('[init] ssoSilent failed, not signed in'); updateAuthUI(); });
                 }
-            }).catch(()=>{ updateAuthUI(); });
+            }).catch(()=>{ console.log('[init] handleRedirectPromise failed'); updateAuthUI(); });
         }else{ updateAuthUI(); }
     }else{
         updateAuthUI();
