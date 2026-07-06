@@ -72,6 +72,11 @@ html,body{height:100%;font-family:'Segoe UI',-apple-system,system-ui,sans-serif;
 .settings-body .btn-primary:hover{background:var(--blue-dark)}
 .settings-body .btn-outline{background:transparent;border:1px solid var(--gray-border);color:var(--text-primary)}
 .settings-body .btn-outline:hover{background:var(--gray-light)}
+.cfg-section{border:1px solid var(--gray-border);border-radius:8px;padding:16px;margin-bottom:16px}
+.cfg-section-title{font-size:14px;font-weight:700;margin-bottom:2px}
+.cfg-section-desc{font-size:11px;color:var(--text-secondary);margin-bottom:8px}
+.cfg-section label{margin-top:8px}
+.cfg-section .btn{margin-top:8px}
 .connection-status{padding:12px;border-radius:4px;font-size:13px;margin-top:16px}
 .connection-status.connected{background:var(--green-light);color:var(--green);border:1px solid var(--green)}
 .connection-status.disconnected{background:var(--red-light);color:var(--red);border:1px solid var(--red)}
@@ -252,52 +257,59 @@ body.dark th .sort-arrow{color:var(--text-secondary)}
       <button class="settings-close" onclick="closeSettings()">&times;</button>
     </div>
     <div class="settings-body">
-      <label>SharePoint Site URL</label>
-      <input type="text" id="cfg-site" placeholder="https://tenant.sharepoint.com/sites/YourSite">
-      <div class="hint">Your SharePoint site where the list lives.</div>
 
-      <label>List Name</label>
-      <input type="text" id="cfg-list" placeholder="Project Management Tracker">
-      <div class="hint">Display name of the SharePoint list.</div>
-
-      <label>Connection Mode</label>
-      <select id="cfg-mode">
-        <option value="rest">SharePoint REST API</option>
-        <option value="demo">Demo / Embedded Data</option>
-      </select>
-      <div class="hint">REST API uses your existing SharePoint session for auth.</div>
-
-      <label>Azure AD Tenant ID (for GitHub Pages auth)</label>
-      <input type="text" id="cfg-tenant" placeholder="684547e2-bb8b-450a-a3e1-3a6bc15e9471" value="684547e2-bb8b-450a-a3e1-3a6bc15e9471">
-      <div class="hint">Found in Azure AD → App registrations → Your app → Overview. Required for GitHub Pages deployment.</div>
-
-      <label>Azure AD Client ID</label>
-      <input type="text" id="cfg-client" placeholder="04f83c11-e51c-4a8a-be86-9e3a49f3e952" value="04f83c11-e51c-4a8a-be86-9e3a49f3e952">
-      <div class="hint">From the same Azure AD app registration.</div>
-
-      <label>SharePoint List Link (paste any shared link)</label>
-      <input type="text" id="cfg-link" placeholder="https://...sharepoint.com/:l:/g/personal/...">
-      <div class="hint">Paste your SharePoint list sharing link — the site URL will be extracted automatically.</div>
-
-      <div style="display:flex;gap:8px">
-        <button class="btn btn-primary" onclick="connectToSharePoint()">🔌 Connect</button>
-        <button class="btn btn-outline" onclick="saveAuthConfig()">💾 Save Auth</button>
-        <button class="btn btn-outline" onclick="useDemoData()">📁 Use Demo Data</button>
+      <!-- ===== SECTION 1: SIGN IN ===== -->
+      <div class="cfg-section">
+        <div class="cfg-section-title">1. Sign in with Microsoft</div>
+        <div class="cfg-section-desc">Authenticate via Azure AD to access SharePoint lists.</div>
+        <label>Tenant ID</label>
+        <input type="text" id="cfg-tenant" value="684547e2-bb8b-450a-a3e1-3a6bc15e9471">
+        <div class="hint">From Azure AD → App registrations → Your app → Overview.</div>
+        <label>Client ID</label>
+        <input type="text" id="cfg-client" value="04f83c11-e51c-4a8a-be86-9e3a49f3e952">
+        <div class="hint">From the same app registration.</div>
+        <div style="display:flex;gap:8px;margin-top:4px">
+          <button class="btn btn-primary" onclick="loginSP()" id="settings-login-btn">🔑 Sign In</button>
+          <button class="btn btn-outline" onclick="saveAuthConfig()">💾 Save</button>
+          <button class="btn btn-outline" onclick="logoutSP()" id="settings-logout-btn" style="display:none">🚪 Sign Out</button>
+        </div>
+        <div id="settings-auth-status" style="font-size:12px;margin-top:4px;color:var(--gray-text)"></div>
       </div>
 
-      <div id="conn-status" class="connection-status disconnected" style="display:none">
-        Not connected.
+      <!-- ===== SECTION 2: CONNECT TO LIST ===== -->
+      <div class="cfg-section">
+        <div class="cfg-section-title">2. Connect to SharePoint List</div>
+        <div class="cfg-section-desc">Enter your site and list name, or paste a sharing link.</div>
+        <label>SharePoint Site URL</label>
+        <input type="text" id="cfg-site" placeholder="https://sascontractingsa.sharepoint.com/sites/Alenshaiah" value="https://sascontractingsa.sharepoint.com/sites/Alenshaiah">
+        <div class="hint">Full URL of your SharePoint team site.</div>
+        <label>List Name</label>
+        <input type="text" id="cfg-list" placeholder="Project Management Tracker">
+        <div class="hint">Display name of the SharePoint list (created from Excel import).</div>
+        <label>Or paste a sharing link (auto-fills above)</label>
+        <input type="text" id="cfg-link" placeholder="https://...sharepoint.com/:l:/g/personal/...">
+        <div class="hint">Paste a list sharing link to auto-extract site URL and list name.</div>
+        <div style="display:flex;gap:8px;margin-top:4px">
+          <button class="btn btn-primary" onclick="connectToSharePoint()">🔌 Connect</button>
+          <button class="btn btn-outline" onclick="useDemoData()">📁 Use Demo Data</button>
+        </div>
+        <div id="conn-status" class="connection-status disconnected" style="display:none">Not connected.</div>
       </div>
 
-      <div style="margin-top:24px;padding-top:16px;border-top:1px solid var(--gray-border)">
-        <label style="font-size:14px;font-weight:700">Per-View SharePoint Lists</label>
-        <div class="hint" style="margin-bottom:8px">Configure a separate list for each view. Leave blank to use the main list above.</div>
-        <div id="view-list-configs"></div>
-        <div style="display:flex;gap:8px;margin-top:8px">
-          <button class="btn btn-outline" onclick="saveViewConfigs()">💾 Save View Configs</button>
-          <button class="btn btn-outline" onclick="connectAllViews()">🔌 Connect All</button>
+      <!-- ===== SECTION 3: PER-VIEW LISTS (ADVANCED) ===== -->
+      <div class="cfg-section">
+        <div class="cfg-section-title" style="cursor:pointer" onclick="toggleViewConfigs()">3. Per-View Lists <span id="view-cfg-toggle" style="font-size:11px">(show)</span></div>
+        <div id="view-list-configs-wrap" style="display:none">
+          <div class="cfg-section-desc">Configure a separate SharePoint list for each department view.</div>
+          <div id="view-list-configs"></div>
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <button class="btn btn-outline" onclick="saveViewConfigs()">💾 Save View Configs</button>
+            <button class="btn btn-outline" onclick="connectAllViews()">🔌 Connect All</button>
+          </div>
         </div>
       </div>
+
+      <div id="conn-status-hidden" style="display:none"></div>
     </div>
   </div>
 
@@ -699,7 +711,6 @@ async function connectToSharePoint(){
 function useDemoData(){
     DATA=[...DEMO_DATA];
     dataSource='demo';
-    document.getElementById('cfg-mode').value='demo';
     showConnStatus('Using embedded demo data with 8 sample activities.','connected');
     updateBadge();
     updateCounts();
@@ -884,6 +895,14 @@ function updateCounts(){
 }
 
 // ======================== SETTINGS UI ========================
+function toggleViewConfigs(){
+    const wrap=document.getElementById('view-list-configs-wrap');
+    const toggle=document.getElementById('view-cfg-toggle');
+    const show=wrap.style.display!=='block';
+    wrap.style.display=show?'block':'none';
+    toggle.textContent=show?'(hide)':'(show)';
+}
+
 function openSettings(){
     if(spSiteUrl)document.getElementById('cfg-site').value=spSiteUrl;
     if(spListName)document.getElementById('cfg-list').value=spListName;
@@ -891,8 +910,20 @@ function openSettings(){
     const client=storage.getItem('pmt-client');
     if(tenant)document.getElementById('cfg-tenant').value=tenant;
     if(client)document.getElementById('cfg-client').value=client;
-    document.getElementById('cfg-mode').value=dataSource==='demo'?'demo':'rest';
     buildViewConfigsUI();
+    // Update auth status in settings
+    const statusEl=document.getElementById('settings-auth-status');
+    if(spUser){
+        document.getElementById('settings-login-btn').style.display='none';
+        document.getElementById('settings-logout-btn').style.display='';
+        statusEl.textContent='Signed in as '+spUser.name;
+        statusEl.style.color='var(--green)';
+    }else{
+        document.getElementById('settings-login-btn').style.display='';
+        document.getElementById('settings-logout-btn').style.display='none';
+        statusEl.textContent='Not signed in';
+        statusEl.style.color='var(--red)';
+    }
     document.getElementById('settings-overlay').classList.add('show');
     document.getElementById('settings-panel').classList.add('open');
 }
@@ -1245,6 +1276,23 @@ function updateAuthUI(){
     document.getElementById('login-btn').style.display = spUser ? 'none' : '';
     document.getElementById('logout-btn').style.display = spUser ? '' : 'none';
     if(spUser) document.getElementById('user-name').textContent = spUser.name || spUser.username;
+    // Update settings panel auth status if visible
+    const statusEl=document.getElementById('settings-auth-status');
+    const loginBtn=document.getElementById('settings-login-btn');
+    const logoutBtn=document.getElementById('settings-logout-btn');
+    if(statusEl){
+        if(spUser){
+            loginBtn.style.display='none';
+            logoutBtn.style.display='';
+            statusEl.textContent='Signed in as '+(spUser.name||spUser.username);
+            statusEl.style.color='var(--green)';
+        }else{
+            loginBtn.style.display='';
+            logoutBtn.style.display='none';
+            statusEl.textContent='Not signed in';
+            statusEl.style.color='var(--red)';
+        }
+    }
 }
 
 function toggleDark(){
