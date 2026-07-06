@@ -1306,6 +1306,7 @@ function toggleDark(){
 
 // ======================== INIT ========================
 (function init(){
+    try{
     // Restore dark mode
     if(localStorage.getItem('pmt-dark')){
         document.body.classList.add('dark');
@@ -1340,20 +1341,22 @@ function toggleDark(){
     if(savedClient)document.getElementById('cfg-client').value=savedClient;
 
     // Initialize MSAL and check for existing session
-    if(savedTenant&&savedClient&&!location.origin.includes('.sharepoint.com')){
-        initMsal();
-        msalApp.handleRedirectPromise().then(async resp=>{
-            if(resp&&resp.account){
-                spUser = resp.account;
-                await getTokenSP();
-                updateAuthUI();
-            }else{
-                // Try silent sso for returning users
-                msalApp.ssoSilent({ scopes: SP_SCOPES })
-                    .then(async r=>{ spUser=r.account; spToken=r.accessToken; updateAuthUI(); })
-                    .catch(()=>{ updateAuthUI(); });
-            }
-        }).catch(()=>{ updateAuthUI(); });
+    if(savedTenant&&savedClient&&!location.origin.includes('.sharepoint.com')&&typeof msal!=='undefined'){
+        try{ initMsal(); }catch(e){ /* MSAL init failed, skip auth */ }
+        if(msalApp){
+            msalApp.handleRedirectPromise().then(async resp=>{
+                if(resp&&resp.account){
+                    spUser = resp.account;
+                    await getTokenSP();
+                    updateAuthUI();
+                }else{
+                    // Try silent sso for returning users
+                    msalApp.ssoSilent({ scopes: SP_SCOPES })
+                        .then(async r=>{ spUser=r.account; spToken=r.accessToken; updateAuthUI(); })
+                        .catch(()=>{ updateAuthUI(); });
+                }
+            }).catch(()=>{ updateAuthUI(); });
+        }else{ updateAuthUI(); }
     }else{
         updateAuthUI();
     }
@@ -1364,6 +1367,10 @@ function toggleDark(){
     updateBadge();
     VIEW_KEYS.forEach(v=>updateViewNavDot(v));
     renderDashboard();
+    }catch(e){
+        document.getElementById('content').innerHTML='<div style="padding:40px;text-align:center"><h3>⚠️ Error</h3><p style="color:var(--red)">'+e.message+'</p><button class="btn btn-primary" onclick="location.reload()">Reload</button></div>';
+        console.error('Init error:', e);
+    }
 })();
 </script>
 </body>
