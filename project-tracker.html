@@ -1218,18 +1218,7 @@ function initMsal(){
 
 async function loginSP(){
     if(!initMsal()){ alert('Set Tenant ID and Client ID in Connection settings first (⚙️).'); return; }
-    try {
-        const resp = await msalApp.loginPopup({ scopes: SP_SCOPES, prompt: 'select_account' });
-        console.log('[loginSP] loginPopup success', resp.account?.name);
-        spUser = resp.account;
-        spToken = resp.accessToken;
-        if(!spToken) await getTokenSP();
-        updateAuthUI();
-        closeSettings();
-    } catch(e) {
-        console.error('[loginSP] failed', e);
-        alert('Login failed: ' + e.message + '\n\nCheck console for details (F12)');
-    }
+    msalApp.loginRedirect({ scopes: SP_SCOPES, prompt: 'select_account' });
 }
 
 async function getTokenSP(){
@@ -1252,7 +1241,7 @@ async function getTokenSP(){
 function logoutSP(){
     spToken = null;
     spUser = null;
-    if(msalApp) msalApp.logoutPopup();
+    if(msalApp) msalApp.logoutRedirect();
     updateAuthUI();
 }
 
@@ -1307,23 +1296,6 @@ function toggleDark(){
 // ======================== INIT ========================
 (function init(){
     try{
-    // If running in MSAL popup, just process auth and close, don't render app
-    const isPopup = window.opener && window.opener !== window && window.opener !== window.self && !window.opener.closed;
-    if(isPopup && typeof msal !== 'undefined'){
-        const pt = storage.getItem('pmt-tenant') || document.getElementById('cfg-tenant')?.value?.trim();
-        const pc = storage.getItem('pmt-client') || document.getElementById('cfg-client')?.value?.trim();
-        if(pt && pc){
-            const pApp = new msal.PublicClientApplication({
-                auth:{ clientId: pc, authority: 'https://login.microsoftonline.com/' + pt, redirectUri: location.origin + location.pathname },
-                cache:{ cacheLocation: 'localStorage' }
-            });
-            pApp.handleRedirectPromise().then(r => {
-                if(r && r.account) setTimeout(() => window.close(), 500);
-                else if(!window.location.hash.includes('code=') && !window.location.hash.includes('token=')) window.close();
-            }).catch(() => window.close());
-        }else{ window.close(); }
-        return; // Stop init — don't render app in popup
-    }
     // Restore dark mode
     if(localStorage.getItem('pmt-dark')){
         document.body.classList.add('dark');
@@ -1361,20 +1333,17 @@ function toggleDark(){
     if(savedTenant&&savedClient&&!location.origin.includes('.sharepoint.com')&&typeof msal!=='undefined'){
         try{ initMsal(); }catch(e){ /* MSAL init failed, skip auth */ }
         if(msalApp){
-            msalApp.handleRedirectPromise().then(async resp=>{
+            msalApp.handleRedirectPromise().then(resp=>{
                 if(resp&&resp.account){
-                    console.log('[init] handleRedirectPromise got account', resp.account?.name);
                     spUser = resp.account;
                     spToken = resp.accessToken;
-                    if(!spToken) await getTokenSP();
                     updateAuthUI();
                 }else{
-                    console.log('[init] no redirect, trying ssoSilent');
                     msalApp.ssoSilent({ scopes: SP_SCOPES })
-                        .then(async r=>{ spUser=r.account; spToken=r.accessToken; updateAuthUI(); console.log('[init] ssoSilent ok', r.account?.name); })
-                        .catch(()=>{ console.log('[init] ssoSilent failed, not signed in'); updateAuthUI(); });
+                        .then(r=>{ spUser=r.account; spToken=r.accessToken; updateAuthUI(); })
+                        .catch(()=>{ updateAuthUI(); });
                 }
-            }).catch(()=>{ console.log('[init] handleRedirectPromise failed'); updateAuthUI(); });
+            }).catch(()=>{ updateAuthUI(); });
         }else{ updateAuthUI(); }
     }else{
         updateAuthUI();
