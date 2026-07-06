@@ -572,9 +572,32 @@ function siteToGraphPath(siteUrl){
     return u.hostname + ':' + u.pathname.replace(/\/+$/,'');
 }
 
-function graphListItemsUrl(siteUrl, listName){
+function graphListUrl(siteUrl, listName){
     const path = siteToGraphPath(siteUrl);
-    return `https://graph.microsoft.com/v1.0/sites/${path}:/lists/${encodeURIComponent(listName)}/items?$top=500&expand=fields`;
+    return `https://graph.microsoft.com/v1.0/sites/${path}:/lists/${encodeURIComponent(listName)}`;
+}
+function graphListItemsUrl(siteUrl, listName){
+    return graphListUrl(siteUrl, listName) + `/items?$top=500&expand=fields`;
+}
+function graphListColumnsUrl(siteUrl, listName){
+    return graphListUrl(siteUrl, listName) + `/columns`;
+}
+
+let columnNameMap = null; // cached field_N -> displayName
+
+async function fetchColumnNames(siteUrl, listName){
+    const url = graphListColumnsUrl(siteUrl, listName);
+    const resp = await fetch(url, {
+        headers: { 'Authorization': 'Bearer ' + spToken, 'Accept': 'application/json' }
+    });
+    if(!resp.ok) return null;
+    const json = await resp.json();
+    const map = {};
+    (json.value||[]).forEach(col => {
+        if(col.name && col.displayName && col.name.startsWith('field_'))
+            map[col.name] = col.displayName;
+    });
+    return map;
 }
 
 async function fetchSPListItems(siteUrl, listName){
@@ -590,14 +613,23 @@ async function fetchSPListItems(siteUrl, listName){
             throw new Error(`HTTP ${resp.status}: ${resp.statusText}. URL: ${url}. Response: ${body.substring(0,200)}`);
         }
         const json = await resp.json();
-        // Graph API returns { value: [ { id, fields: { Title, ... } } ] }
+        // Fetch column definitions to rename field_N -> displayName
+        if(!columnNameMap) columnNameMap = await fetchColumnNames(siteUrl, listName);
+        const rename = columnNameMap || {};
+
         if(json.value&&json.value.length>0){
             const raw = json.value[0].fields||{};
             const keys = Object.keys(raw);
             console.log('[SP] First item keys:', keys);
             console.log('[SP] First item sample:', JSON.stringify(raw).substring(0,1500));
         }
-        return (json.value || []).map(item => ({ ...item.fields, ID: item.id }));
+        return (json.value || []).map(item => {
+            const fields = {};
+            for(const [k,v] of Object.entries(item.fields||{})){
+                fields[rename[k] || k] = v;
+            }
+            return { ...fields, ID: item.id };
+        });
     }else{
         // Fallback: SharePoint REST via CORS proxy
         const url = `${siteUrl.replace(/\/+$/,'')}/_api/web/lists/getbytitle('${listName}')/items?$top=500`;
@@ -693,6 +725,11 @@ async function connectToSharePoint(){
             for(const k of Object.keys(SP_MAP)){
                 const appKey=SP_MAP[k];
                 if(!(appKey in item))item[appKey]='';
+            }
+            // Copy any unmapped fields (display names from SharePoint) into item
+            for(const k of Object.keys(spItem)){
+                if(!(k in item) && k!=='ID' && k!=='Title')
+                    item[k] = spItem[k];
             }
             // Ensure critical fields
             if(!item.id)item.id=spItem.ID||'';
@@ -1073,7 +1110,19 @@ function renderTable(){
         });
     }
 
-    const cols=(currentView==='dashboard'?VIEWS.dashboard:VIEWS[currentView]).cols;
+    let cols=(currentView==='dashboard'?VIEWS.dashboard:VIEWS[currentView]).cols;
+    // Add any extra fields from data that aren't in predefined cols
+    const extraCols=[];
+    if(filtered.length>0){
+        const allKeys=new Set();
+        cols.forEach(c=>allKeys.add(c));
+        filtered.forEach(item=>Object.keys(item).forEach(k=>{
+            if(!allKeys.has(k)&&k!=='id'&&k!=='proj'&&!k.startsWith('@')&&!extraCols.includes(k))
+                extraCols.push(k);
+        }));
+    }
+    cols = cols.concat(extraCols);
+
     const tbody=document.getElementById('table-body');
     if(!tbody)return;
 
@@ -1088,7 +1137,7 @@ function renderTable(){
     html+='</tr></thead><tbody>';
 
     filtered.forEach(item=>{
-        html+='<tr><td><span class="drawing-link" onclick="alert(\'Drawing: '+item.dwgNo+'\\nProject: '+item.proj+'\')">'+(item.dwgNo||item.proj)+'</span></td>';
+        html+='<tr><td><span class="drawing-link" onclick="alert(\'Project: '+item.proj+'\')">'+(item.proj||item.Title||'')+'</span></td>';
         cols.forEach(c=>{if(c!=='proj')html+=`<td>${cellValue(item,c)}</td>`;});
         html+='</tr>';
     });
