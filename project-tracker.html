@@ -1,0 +1,1106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AlEnshaiah - Project Tracker</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--primary:#4C5D71;--primary-dark:#3A4A5E;--primary-light:#E8ECF0;--blue:var(--primary);--blue-dark:var(--primary-dark);--blue-light:var(--primary-light);--green:#107C10;--green-light:#E6F7E6;--red:#D92C2C;--red-light:#FDE8E8;--orange:#ED7D31;--orange-light:#FFF0E0;--yellow:#FFB900;--yellow-light:#FFF8E1;--gray:#8A8886;--gray-light:#F3F2F1;--gray-border:#EDEBE9;--text-primary:#201E1F;--text-secondary:#605E5C;--white:#FFFFFF;--bg:#F3F2F1;--shadow:0 1px 3px rgba(0,0,0,.08);--radius:6px;--sidebar-w:240px;--header-h:48px}
+body.dark{--primary:#7A8FA5;--primary-dark:#8DA3B9;--primary-light:#2A3540;--blue:var(--primary);--blue-dark:var(--primary-dark);--blue-light:var(--primary-light);--green:#4CAF50;--green-light:#1B3A1B;--red:#F44336;--red-light:#3D1A1A;--orange:#FF9800;--orange-light:#3D2A0A;--yellow:#FFC107;--yellow-light:#3D3000;--gray:#A09E9C;--gray-light:#2D2D2D;--gray-border:#3D3D3D;--text-primary:#E0E0E0;--text-secondary:#B0B0B0;--white:#1E1E1E;--bg:#121212;--shadow:0 1px 3px rgba(0,0,0,.3)}
+html,body{height:100%;font-family:'Segoe UI',-apple-system,system-ui,sans-serif;font-size:14px;color:var(--text-primary);background:var(--bg)}
+html,body{height:100%;font-family:'Segoe UI',-apple-system,system-ui,sans-serif;font-size:14px;color:var(--text-primary);background:var(--gray-light)}
+
+.app{display:flex;height:100vh;overflow:hidden}
+.sidebar{width:var(--sidebar-w);background:var(--white);border-right:1px solid var(--gray-border);display:flex;flex-direction:column;flex-shrink:0;z-index:100}
+.sidebar-header{padding:12px 16px;border-bottom:1px solid var(--gray-border);display:flex;align-items:center;gap:10px}
+.sidebar-header .logo{width:28px;height:28px;background:var(--blue);border-radius:4px;display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:14px}
+.sidebar-header h1{font-size:14px;font-weight:600;color:var(--text-primary)}
+.sidebar-header span{font-size:10px;color:var(--text-secondary)}
+.sidebar-nav{flex:1;overflow-y:auto;padding:8px 0}
+.nav-section{padding:6px 16px 4px;font-size:10px;font-weight:600;text-transform:uppercase;color:var(--text-secondary);letter-spacing:.5px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:8px 16px;cursor:pointer;color:var(--text-primary);font-size:13px;transition:all .15s;border-left:3px solid transparent;text-decoration:none}
+.nav-item:hover{background:var(--gray-light)}
+.nav-item.active{background:var(--blue-light);border-left-color:var(--blue);color:var(--blue);font-weight:600}
+.nav-item .icon{width:18px;text-align:center;font-size:14px}
+.nav-item .count{margin-left:auto;background:var(--gray-light);padding:1px 8px;border-radius:10px;font-size:11px;color:var(--text-secondary)}
+.nav-item .status-dot{width:8px;height:8px;border-radius:50%;margin-left:auto;flex-shrink:0}
+.nav-item .status-dot.online{background:var(--green)}
+.nav-item .status-dot.offline{background:var(--red)}
+.nav-item .status-dot.loading{background:var(--yellow);animation:pulse 1s infinite}
+
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.header{height:var(--header-h);background:var(--white);border-bottom:1px solid var(--gray-border);display:flex;align-items:center;padding:0 20px;gap:16px;flex-shrink:0}
+.header .menu-toggle{display:none;background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-primary);padding:4px}
+.header h2{font-size:16px;font-weight:600;flex:1}
+.header .header-right{display:flex;align-items:center;gap:12px}
+.header .search-wrap{position:relative;width:260px}
+.header .search-wrap input{width:100%;padding:6px 12px 6px 32px;border:1px solid var(--gray-border);border-radius:20px;font-size:13px;outline:none;transition:border .2s}
+.header .search-wrap input:focus{border-color:var(--blue)}
+.header .search-wrap .search-icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text-secondary);font-size:13px}
+.data-source-badge{display:flex;align-items:center;gap:6px;padding:4px 10px;border-radius:16px;font-size:11px;font-weight:600;cursor:pointer;border:none}
+.data-source-badge.live{background:#E6F7E6;color:var(--green)}
+.data-source-badge.demo{background:var(--yellow-light);color:#8A6D00}
+.data-source-badge.error{background:var(--red-light);color:var(--red)}
+.data-source-badge .dot{width:7px;height:7px;border-radius:50%}
+.data-source-badge.live .dot{background:var(--green)}
+.data-source-badge.demo .dot{background:#8A6D00}
+.data-source-badge.error .dot{background:var(--red)}
+.dark-toggle{background:none;border:none;font-size:18px;cursor:pointer;padding:4px 8px;border-radius:50%;color:var(--text-primary);transition:background .15s;line-height:1}
+.dark-toggle:hover{background:var(--gray-light)}
+
+/* Settings Panel */
+.settings-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:200}
+.settings-overlay.show{display:block}
+.settings-panel{position:fixed;top:0;right:-400px;width:380px;max-width:90vw;height:100%;background:var(--white);box-shadow:-4px 0 20px rgba(0,0,0,.15);z-index:201;transition:right .3s;overflow-y:auto}
+.settings-panel.open{right:0}
+.settings-header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--gray-border)}
+.settings-header h3{font-size:16px;font-weight:600}
+.settings-close{background:none;border:none;font-size:22px;cursor:pointer;color:var(--text-secondary);padding:4px}
+.settings-body{padding:20px}
+.settings-body label{display:block;font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:4px;margin-top:16px}
+.settings-body label:first-child{margin-top:0}
+.settings-body input,.settings-body select{width:100%;padding:8px 12px;border:1px solid var(--gray-border);border-radius:4px;font-size:13px;outline:none}
+.settings-body input:focus,.settings-body select:focus{border-color:var(--blue)}
+.settings-body .hint{font-size:11px;color:var(--text-secondary);margin-top:4px}
+.settings-body .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 20px;border-radius:4px;font-size:13px;font-weight:600;cursor:pointer;border:none;margin-top:16px}
+.settings-body .btn-primary{background:var(--blue);color:white}
+.settings-body .btn-primary:hover{background:var(--blue-dark)}
+.settings-body .btn-outline{background:transparent;border:1px solid var(--gray-border);color:var(--text-primary)}
+.settings-body .btn-outline:hover{background:var(--gray-light)}
+.connection-status{padding:12px;border-radius:4px;font-size:13px;margin-top:16px}
+.connection-status.connected{background:var(--green-light);color:var(--green);border:1px solid var(--green)}
+.connection-status.disconnected{background:var(--red-light);color:var(--red);border:1px solid var(--red)}
+.connection-status.loading{background:var(--yellow-light);color:#8A6D00;border:1px solid var(--yellow)}
+
+/* Content */
+.content{flex:1;overflow-y:auto;padding:16px 20px}
+
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:20px}
+.kpi-card{background:var(--white);border-radius:var(--radius);padding:12px 14px;box-shadow:var(--shadow);border-left:3px solid var(--blue)}
+.kpi-card .kpi-label{font-size:11px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.3px;margin-bottom:2px}
+.kpi-card .kpi-value{font-size:22px;font-weight:700;color:var(--text-primary)}
+.kpi-card .kpi-sub{font-size:11px;color:var(--text-secondary);margin-top:2px}
+.kpi-card.red{border-left-color:var(--red)}
+.kpi-card.green{border-left-color:var(--green)}
+.kpi-card.orange{border-left-color:var(--orange)}
+.kpi-card.blue{border-left-color:var(--blue)}
+.kpi-card.purple{border-left-color:#8764B8}
+.kpi-card.teal{border-left-color:#00B7C3}
+
+.charts-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
+.chart-card{background:var(--white);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px}
+.chart-card h3{font-size:13px;font-weight:600;color:var(--text-primary);margin-bottom:12px}
+
+.table-wrap{background:var(--white);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+.table-toolbar{display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid var(--gray-border);flex-wrap:wrap}
+.table-toolbar .filter-group{display:flex;align-items:center;gap:6px}
+.table-toolbar select{padding:4px 8px;border:1px solid var(--gray-border);border-radius:4px;font-size:12px;background:var(--white);outline:none}
+.table-toolbar .view-label{font-size:12px;font-weight:600;color:var(--text-secondary)}
+.table-toolbar .view-badge{background:var(--blue);color:white;padding:2px 10px;border-radius:12px;font-size:11px;font-weight:600}
+.table-scroll{overflow-x:auto;max-height:65vh;overflow-y:auto}
+.table-scroll::-webkit-scrollbar{height:6px;width:6px}
+.table-scroll::-webkit-scrollbar-thumb{background:var(--gray-border);border-radius:3px}
+table{width:100%;border-collapse:collapse;white-space:nowrap;font-size:12px}
+thead{position:sticky;top:0;z-index:10}
+th{background:var(--gray-light);color:var(--text-secondary);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.3px;padding:8px 10px;text-align:left;border-bottom:2px solid var(--gray-border);cursor:pointer;user-select:none;white-space:nowrap}
+th:hover{color:var(--text-primary)}
+th .sort-arrow{display:inline-block;margin-left:4px;opacity:.4;font-size:10px}
+th.sorted .sort-arrow{opacity:1;color:var(--blue)}
+td{padding:7px 10px;border-bottom:1px solid var(--gray-border);color:var(--text-primary)}
+tr:hover td{background:var(--blue-light)}
+
+.status-badge{display:inline-block;padding:2px 10px;border-radius:12px;font-size:11px;font-weight:600}
+.status-Completed,.status-Approved,.status-IFC{background:var(--green-light);color:var(--green)}
+.status-In\ Progress,.status-Submitted,.status-Under\ Consultant\ Review{background:var(--blue-light);color:var(--blue)}
+.status-Under\ Review,.status-Waiting\ Approval,.status-Internal\ Review,.status-Approved\ with\ Comments{background:var(--orange-light);color:var(--orange)}
+.status-Delayed,.status-Revise\ &\ Resubmit,.status-Rejected{background:var(--red-light);color:var(--red)}
+.status-On\ Hold,.status-Cancelled{background:var(--gray-light);color:var(--gray)}
+.status-Not\ Started,.status-Draft{background:#F0F0F0;color:#666}
+.status-Ready\ for\ Submission{background:var(--yellow-light);color:#8A6D00}
+
+.priority-badge{display:inline-block;padding:1px 8px;border-radius:10px;font-size:10px;font-weight:700;text-transform:uppercase}
+.priority-Critical{background:var(--red-light);color:var(--red)}
+.priority-High{background:var(--orange-light);color:var(--orange)}
+.priority-Medium{background:var(--yellow-light);color:#8A6D00}
+.priority-Low{background:var(--green-light);color:var(--green)}
+
+.progress-bar{display:flex;align-items:center;gap:6px}
+.progress-track{flex:1;height:6px;background:var(--gray-border);border-radius:3px;overflow:hidden}
+.progress-fill{height:100%;border-radius:3px;transition:width .3s}
+.progress-fill.green{background:var(--green)}.progress-fill.blue{background:var(--blue)}
+.progress-fill.orange{background:var(--orange)}.progress-fill.red{background:var(--red)}
+.progress-text{font-size:11px;font-weight:600;min-width:32px;text-align:right}
+
+.person{display:flex;align-items:center;gap:6px}
+.person-avatar{width:24px;height:24px;border-radius:50%;background:var(--blue);color:white;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;flex-shrink:0}
+
+.overdue{color:var(--red);font-weight:600}
+.on-track{color:var(--green);font-weight:500}
+.drawing-link{color:var(--blue);cursor:pointer;text-decoration:none;font-weight:500}
+.drawing-link:hover{text-decoration:underline}
+
+.empty-state{padding:40px;text-align:center;color:var(--text-secondary)}
+.empty-state .empty-icon{font-size:40px;margin-bottom:8px}
+.loading-state{padding:60px;text-align:center;color:var(--text-secondary)}
+.spinner{width:32px;height:32px;border:3px solid var(--gray-border);border-top-color:var(--blue);border-radius:50%;animation:spin .6s linear infinite;margin:0 auto 12px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+body.dark .sidebar,body.dark .header,body.dark .kpi-card,body.dark .chart-card,body.dark .table-wrap,body.dark .settings-panel{background:var(--white)}
+body.dark .sidebar{border-right-color:var(--gray-border)}
+body.dark .header{border-bottom-color:var(--gray-border)}
+body.dark .sidebar-header{border-bottom-color:var(--gray-border)}
+body.dark table th{background:var(--bg);color:var(--text-secondary);border-bottom-color:var(--gray-border)}
+body.dark td{border-bottom-color:var(--gray-border);color:var(--text-primary)}
+body.dark tr:hover td{background:var(--blue-light)}
+body.dark .settings-header{border-bottom-color:var(--gray-border)}
+body.dark .table-toolbar{border-bottom-color:var(--gray-border)}
+body.dark .settings-body input,body.dark .settings-body select{background:var(--bg);border-color:var(--gray-border);color:var(--text-primary)}
+body.dark .empty-state{color:var(--text-secondary)}
+body.dark th .sort-arrow{color:var(--text-secondary)}
+
+@media(max-width:768px){
+.sidebar{position:fixed;left:-280px;transition:left .25s;height:100%;box-shadow:2px 0 12px rgba(0,0,0,.15)}
+.sidebar.open{left:0}
+.sidebar-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:99}
+.sidebar-backdrop.show{display:block}
+.header .menu-toggle{display:block}
+.header .search-wrap{width:140px}
+.kpi-grid{grid-template-columns:repeat(auto-fill,minmax(130px,1fr))}
+.charts-row{grid-template-columns:1fr}
+.content{padding:12px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+<div class="sidebar-backdrop" id="backdrop" onclick="toggleSidebar()"></div>
+
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <img src="data:image/png;base64,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" alt="AlEnshaiah" style="height:32px;width:auto">
+    <div><h1>Project Tracker</h1><span>AlEnshaiah Contracting</span></div>
+  </div>
+  <nav class="sidebar-nav" id="nav">
+    <div class="nav-section">Dashboard</div>
+    <a class="nav-item active" data-view="dashboard" onclick="switchView('dashboard')">
+      <span class="icon">📊</span> Executive Dashboard <span class="count" id="count-all">0</span>
+    </a>
+    <div class="nav-section">Department Views</div>
+    <a class="nav-item" data-view="procurement" onclick="switchView('procurement')">
+      <span class="icon">📦</span> Procurement <span class="count" id="count-procurement">0</span>
+    </a>
+    <a class="nav-item" data-view="engineering" onclick="switchView('engineering')">
+      <span class="icon">📐</span> Engineering <span class="count" id="count-engineering">0</span>
+    </a>
+    <a class="nav-item" onclick="openEngSettings()" style="padding-left:38px;font-size:12px">
+      <span class="icon">📋</span> Shop Drawing Source <span class="status-dot" id="eng-conn-dot"></span>
+    </a>
+    <a class="nav-item" data-view="construction" onclick="switchView('construction')">
+      <span class="icon">🏗️</span> Construction <span class="count" id="count-construction">0</span>
+    </a>
+    <a class="nav-item" data-view="cost" onclick="switchView('cost')">
+      <span class="icon">💰</span> Cost Control <span class="count" id="count-cost">0</span>
+    </a>
+    <a class="nav-item" data-view="planning" onclick="switchView('planning')">
+      <span class="icon">📅</span> Planning <span class="count" id="count-planning">0</span>
+    </a>
+    <a class="nav-item" data-view="qaqc" onclick="switchView('qaqc')">
+      <span class="icon">✅</span> QA/QC <span class="count" id="count-qaqc">0</span>
+    </a>
+    <a class="nav-item" data-view="hse" onclick="switchView('hse')">
+      <span class="icon">🛡️</span> HSE <span class="count" id="count-hse">0</span>
+    </a>
+    <div class="nav-section">Data Source</div>
+    <a class="nav-item" onclick="openSettings()">
+      <span class="icon">⚙️</span> Connection <span class="status-dot" id="conn-dot"></span>
+    </a>
+  </nav>
+</aside>
+
+<main class="main">
+  <header class="header">
+    <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+    <img src="data:image/png;base64,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" alt="" style="height:28px;width:auto;margin-right:8px">
+    <h2 id="view-title">Executive Dashboard</h2>
+    <div class="header-right">
+      <div class="search-wrap">
+        <span class="search-icon">🔍</span>
+        <input type="text" placeholder="Search activities..." id="search" oninput="renderCurrent()">
+      </div>
+      <button class="dark-toggle" id="dark-toggle" onclick="toggleDark()" title="Toggle dark mode">🌙</button>
+      <button class="data-source-badge demo" id="ds-badge" onclick="openSettings()" title="Click to configure">
+        <span class="dot"></span><span id="ds-label">Demo Data</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Settings Panel -->
+  <div class="settings-overlay" id="settings-overlay" onclick="closeSettings()"></div>
+  <div class="settings-panel" id="settings-panel">
+    <div class="settings-header">
+      <h3>Data Source Configuration</h3>
+      <button class="settings-close" onclick="closeSettings()">&times;</button>
+    </div>
+    <div class="settings-body">
+      <label>SharePoint Site URL</label>
+      <input type="text" id="cfg-site" placeholder="https://tenant.sharepoint.com/sites/YourSite">
+      <div class="hint">Your SharePoint site where the list lives.</div>
+
+      <label>List Name</label>
+      <input type="text" id="cfg-list" placeholder="Project Management Tracker">
+      <div class="hint">Display name of the SharePoint list.</div>
+
+      <label>Connection Mode</label>
+      <select id="cfg-mode">
+        <option value="rest">SharePoint REST API</option>
+        <option value="demo">Demo / Embedded Data</option>
+      </select>
+      <div class="hint">REST API uses your existing SharePoint session for auth.</div>
+
+      <label>SharePoint List Link (paste any shared link)</label>
+      <input type="text" id="cfg-link" placeholder="https://...sharepoint.com/:l:/g/personal/...">
+      <div class="hint">Paste your SharePoint list sharing link — the site URL will be extracted automatically.</div>
+
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-primary" onclick="connectToSharePoint()">🔌 Connect</button>
+        <button class="btn btn-outline" onclick="useDemoData()">📁 Use Demo Data</button>
+      </div>
+
+      <div id="conn-status" class="connection-status disconnected" style="display:none">
+        Not connected.
+      </div>
+    </div>
+  </div>
+
+  <!-- Engineering Data Source Settings -->
+  <div class="settings-overlay" id="eng-settings-overlay" onclick="closeEngSettings()"></div>
+  <div class="settings-panel" id="eng-settings-panel">
+    <div class="settings-header">
+      <h3>Engineering - Shop Drawing Source</h3>
+      <button class="settings-close" onclick="closeEngSettings()">&times;</button>
+    </div>
+    <div class="settings-body">
+      <label>SharePoint Site URL</label>
+      <input type="text" id="cfg-eng-site" placeholder="https://tenant.sharepoint.com/sites/YourSite">
+      <div class="hint">Site containing the Shop Drawing Status list.</div>
+
+      <label>List Name</label>
+      <input type="text" id="cfg-eng-list" placeholder="Shop Drawing Status">
+      <div class="hint">Display name of the Shop Drawing Status list.</div>
+
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-primary" onclick="connectToEngineering()">🔌 Connect</button>
+        <button class="btn btn-outline" onclick="useDemoEngineering()">📁 Use Demo Data</button>
+      </div>
+
+      <div id="eng-conn-status" class="connection-status disconnected" style="display:none">
+        Not connected.
+      </div>
+    </div>
+  </div>
+
+  <div class="content" id="content">
+    <div class="loading-state">
+      <div class="spinner"></div>
+      <p>Loading project data...</p>
+    </div>
+  </div>
+</main>
+
+</div>
+
+<script>
+// ======================== SHAREPOINT COLUMN MAPPING ========================
+// Maps SharePoint internal column names -> app field names
+const SP_MAP = {
+  ProjectID:'id',ProjectName:'proj',Client:'client',ContractNumber:'contract',
+  ProjectManager:'pm',Discipline:'cat',Package:'pkg',Area:'area',Location:'loc',
+  WBSCode:'wbs',
+  ActivityID:'actId',ActivityName:'actName',ActivityCategory:'cat',
+  ResponsibleDepartment:'dept',AssignedTo:'assigned',
+  Priority:'priority',Status:'status',Progress:'prog',
+  PlannedStart:'pStart',PlannedFinish:'pFinish',ActualStart:'aStart',
+  ActualFinish:'aFinish',DueDate:'due',Remarks:'remarks',
+  MaterialDescription:'matDesc',MaterialCode:'matCode',Vendor:'vendor',
+  VendorContact:'vendorContact',RFQNumber:'rfq',RFQDate:'rfqDate',
+  TechEvalStatus:'techEval',CommEvalStatus:'commEval',
+  PRNumber:'pr',PONumber:'po',PODate:'poDate',
+  MfgStatus:'mfgStatus',ShippingStatus:'shipStatus',
+  ExpectedDeliveryDate:'expDel',ActualDeliveryDate:'actDel',
+  WarehouseStatus:'whStatus',InspectionStatus:'inspStatus',
+  Cost:'cost',Currency:'curr',
+  DrawingNumber:'dwgNo',DrawingTitle:'dwgTitle',DrawingType:'dwgType',
+  Revision:'rev',Engineer:'eng',Checker:'checker',Approver:'appr',
+  SubmissionDate:'subDate',ClientReviewStatus:'clientReview',
+  ApprovalDate:'apprDate',IFCDate:'ifcDate',EngDiscipline:'engDisc',
+  SpecNumber:'spec',CalcReference:'calc',RFINumber:'rfi',TQNumber:'tq',
+  DesignStatus:'desStatus',
+  WorkFront:'workFront',ConstArea:'cArea',Contractor:'contractor',
+  Foreman:'foreman',WorkStatus:'workStatus',
+  DailyProgress:'dailyProg',WeeklyProgress:'weeklyProg',
+  CompletionPct:'compPct',InspectionReqNo:'inspReq',
+  SiteIssue:'siteIssue',NCRNumber:'ncr',PunchItem:'punch',WorkPermit:'permit',
+  Budget:'budget',CommittedCost:'committed',ActualCost:'actual',
+  ForecastCost:'forecast',CostVariance:'costVar',
+  EarnedValue:'ev',PlannedValue:'pv',CPI:'cpi',SPI:'spi',
+  PrimaveraActivityID:'primId',ScheduleStatus:'schedStatus',
+  BaselineFinish:'baseFinish',CurrentFinish:'curFinish',
+  DelayDays:'delayDays',RecoveryPlan:'recovery',
+  CriticalActivity:'critical',Float:'floatDays',
+  RiskLevel:'risk',PermitStatus:'permitStat',
+  IncidentNumber:'incident',ToolboxTalk:'toolbox',
+  SafetyInspection:'safetyInsp',HSECorrectiveAction:'hseAction',
+  HSECloseoutDate:'hseClose',
+  QAInspectionReq:'qaInsp',MaterialInspection:'matInsp',
+  TestReport:'testReport',QANCR:'qaNcr',
+  QACorrectiveAction:'qaAction',QualityStatus:'qaStatus',
+  QACloseoutDate:'qaClose'
+};
+
+// Person columns that need display name extraction
+const PERSON_COLS = ['ProjectManager','AssignedTo','Engineer','Checker','Approver',
+                     'DocumentController','DisciplineLead','DesignEngineer',
+                     'Foreman','ResponsiblePerson'];
+
+// ======================== SHOP DRAWING COLUMN MAPPING ========================
+// Maps SharePoint internal column names -> app field names for Shop Drawing Status list
+const SD_MAP = {
+  ID:'id',Title:'title',ProjectName:'proj',Project_x0020_Name:'proj',
+  DrawingNumber:'dwgNo',Drawing_x0020_Number:'dwgNo',
+  DrawingTitle:'dwgTitle',Drawing_x0020_Title:'dwgTitle',
+  DrawingType:'dwgType',Drawing_x0020_Type:'dwgType',
+  Discipline:'engDisc',Status:'status',Revision:'rev',
+  Engineer:'eng',Checker:'checker',Approver:'appr',
+  SubmissionDate:'subDate',Submission_x0020_Date:'subDate',
+  ClientReviewStatus:'clientReview',Client_x0020_Review_x0020_Status:'clientReview',
+  ApprovalDate:'apprDate',Approval_x0020_Date:'apprDate',
+  IFCDate:'ifcDate',IFC_x0020_Date:'ifcDate',
+  Priority:'priority',Remarks:'remarks',
+  ResponsibleEngineer:'eng',Responsible_x0020_Engineer:'eng',
+  DisciplineLead:'discLead',Discipline_x0020_Lead:'discLead',
+  ProjectPhase:'phase',Project_x0020_Phase:'phase',
+  SpecNumber:'spec',Spec_x0020_Number:'spec',
+  CalcReference:'calc',Calc_x0020_Reference:'calc',
+  RFINumber:'rfi',RFI_x0020_Number:'rfi',
+  TQNumber:'tq',TQ_x0020_Number:'tq',
+  ActivityID:'actId',Activity_x0020_ID:'actId',
+  DueDate:'due',Due_x0020_Date:'due',
+  ActualFinish:'aFinish',Actual_x0020_Finish:'aFinish',
+  AssignedTo:'assigned',Assigned_x0020_To:'assigned',
+  Package:'pkg',Area:'area',Location:'loc'
+};
+const SD_PERSON_COLS = ['Engineer','Checker','Approver','ResponsibleEngineer','DisciplineLead','AssignedTo'];
+
+// ======================== EMBEDDED DEMO DATA ========================
+const DEMO_DATA = [
+  {id:'PRJ-001',proj:'North Field Expansion',client:'QatarEnergy',contract:'CONT-2025-0042',pm:'Ahmed Al-Mansoori',dept:'Engineering',pkg:'Pkg-001-Electrical',area:'Area 1',loc:'Ras Laffan',wbs:'1.2.3.4.001',
+   actId:'ENG-DWG-001',actName:'P&ID Line List Review',cat:'Engineering',assigned:'Fatima Hassan',priority:'High',status:'In Progress',prog:75,pStart:'2025-01-15',pFinish:'2025-03-30',aStart:'2025-01-20',aFinish:'',due:'2025-03-30',remarks:'Awaiting vendor data',
+   matDesc:'Centrifugal Pump 4x3-10',matCode:'PUMP-0042',vendor:'Flowserve Corporation',vendorContact:'John Smith',rfq:'RFQ-2025-0088',rfqDate:'2025-01-10',techEval:'Under Evaluation',commEval:'Pending',pr:'PR-2025-0042',po:'PO-2025-0033',poDate:'2025-02-01',
+   mfgStatus:'In Progress',shipStatus:'Not Shipped',expDel:'2025-05-15',actDel:'',whStatus:'Pending Receipt',inspStatus:'Pending',cost:45000,curr:'USD',
+   dwgNo:'DW-0001-PID-001',dwgTitle:'P&ID - Cooling Water System',dwgType:'P&ID',rev:'B',eng:'Sara Al-Dosari',checker:'Khalid Al-Mohannadi',appr:'Mohannad Al-Ansari',
+   subDate:'2025-02-10',clientReview:'Under Review',apprDate:'',ifcDate:'',engDisc:'Process',spec:'SP-0001',calc:'CALC-HYD-001',rfi:'RFI-0025',tq:'TQ-0012',desStatus:'Submitted',
+   workFront:'Area 1',cArea:'Area 1',contractor:'CCC',foreman:'Ali Hassan',workStatus:'In Progress',dailyProg:65,weeklyProg:70,compPct:72,inspReq:'IR-2025-0088',siteIssue:'',ncr:'NCR-0025',punch:'Flange bolt torque',permit:'WP-2025-0144',
+   budget:1250000,committed:980000,actual:875000,forecast:1180000,costVar:375000,ev:900000,pv:950000,cpi:1.0286,spi:0.9474,
+   primId:'A1030-0042',schedStatus:'On Schedule',baseFinish:'2025-04-01',curFinish:'2025-04-10',delayDays:5,recovery:'Add 2 welders',critical:false,floatDays:10,
+   risk:'High',permitStat:'Issued',incident:'',toolbox:'2025-02-08',safetyInsp:'2025-02-10',hseAction:'Guardrails installed.',hseClose:'2025-02-15',
+   qaInsp:'QIR-2025-0012',matInsp:'Passed',testReport:'TR-0022',qaNcr:'',qaAction:'Weld repair completed.',qaStatus:'Passed',qaClose:'2025-02-20'},
+
+  {id:'PRJ-002',proj:'RasGas Complex Upgrade',client:'ExxonMobil',contract:'CONT-2025-0088',pm:'Khalid Al-Sayed',dept:'Procurement',pkg:'Pkg-002-Piping',area:'Area 2',loc:'Mesaieed',wbs:'1.2.3.5.001',
+   actId:'PROC-PO-002',actName:'Structural Steel Purchase',cat:'Procurement',assigned:'Omar Rashid',priority:'Critical',status:'Waiting Approval',prog:50,pStart:'2025-02-01',pFinish:'2025-04-15',aStart:'2025-02-05',aFinish:'',due:'2025-04-10',remarks:'PO pending commercial approval',
+   matDesc:'Structural Steel Beam W8x40',matCode:'STM-0088',vendor:'Gulf Steel Industries',vendorContact:'Ahmed Al-Jaber',rfq:'RFQ-2025-0012',rfqDate:'2025-01-05',techEval:'Approved',commEval:'Negotiation',pr:'PR-2025-0088',po:'PO-2025-0099',poDate:'2025-02-15',
+   mfgStatus:'Completed',shipStatus:'In Transit',expDel:'2025-04-20',actDel:'',whStatus:'Received',inspStatus:'Passed',cost:320000,curr:'USD',
+   dwgNo:'DW-0100-STR-001',dwgTitle:'Structural Steel Layout Area 2',dwgType:'Structural',rev:'A',eng:'Hassan Ali',checker:'Mona Al-Kuwari',appr:'Khalid Al-Sayed',
+   subDate:'2025-02-01',clientReview:'Approved',apprDate:'2025-02-28',ifcDate:'2025-03-15',engDisc:'Structural',spec:'SP-0100',calc:'CALC-STR-002',rfi:'RFI-0033',tq:'TQ-0015',desStatus:'Approved',
+   workFront:'Area 2',cArea:'Area 2',contractor:'Gulf Steel Industries',foreman:'Saeed Al-Marri',workStatus:'Mobilizing',dailyProg:10,weeklyProg:15,compPct:12,inspReq:'IR-2025-0015',siteIssue:'',ncr:'',punch:'',permit:'WP-2025-0018',
+   budget:850000,committed:620000,actual:580000,forecast:810000,costVar:270000,ev:600000,pv:650000,cpi:0.8929,spi:0.9231,
+   primId:'A1045-0055',schedStatus:'Critical',baseFinish:'2025-05-01',curFinish:'2025-05-15',delayDays:14,recovery:'Expedite vendor delivery',critical:true,floatDays:-2,
+   risk:'Extreme',permitStat:'Issued',incident:'INC-2025-0007',toolbox:'2025-03-01',safetyInsp:'2025-03-02',hseAction:'Scaffolding inspection completed.',hseClose:'2025-03-05',
+   qaInsp:'QIR-2025-0025',matInsp:'Pending',testReport:'TR-0045',qaNcr:'NCR-QA-0022',qaAction:'Retest scheduled next week.',qaStatus:'In Progress',qaClose:''},
+
+  {id:'PRJ-003',proj:'Mesaieed Industrial Plant',client:'TotalEnergies',contract:'CONT-2025-0012',pm:'Sara Al-Dosari',dept:'Construction',pkg:'Pkg-003-Civil',area:'Area 3',loc:'Mesaieed',wbs:'1.3.4.5.001',
+   actId:'CON-CIV-001',actName:'Foundation Works Area 3',cat:'Construction',assigned:'Khalid Al-Naemi',priority:'Medium',status:'Completed',prog:100,pStart:'2024-10-01',pFinish:'2025-02-28',aStart:'2024-10-05',aFinish:'2025-02-20',due:'2025-02-28',remarks:'Completed ahead of schedule',
+   matDesc:'Ready Mix Concrete Grade 40',matCode:'RMC-40',vendor:'Qatar Ready Mix',vendorContact:'Ali Mohammed',rfq:'RFQ-2024-0044',rfqDate:'2024-08-15',techEval:'Approved',commEval:'Approved',pr:'PR-2024-0022',po:'PO-2024-0011',poDate:'2024-09-01',
+   mfgStatus:'Completed',shipStatus:'Delivered',expDel:'2024-10-01',actDel:'2024-09-28',whStatus:'Issued',inspStatus:'Passed',cost:175000,curr:'USD',
+   dwgNo:'DW-0200-CIV-001',dwgTitle:'Foundation Plan Area 3',dwgType:'Detail',rev:'C',eng:'Khalid Al-Naemi',checker:'Sara Al-Dosari',appr:'Ahmed Al-Mansoori',
+   subDate:'2024-09-15',clientReview:'Approved',apprDate:'2024-10-01',ifcDate:'2024-10-05',engDisc:'Civil',spec:'SP-0200',calc:'CALC-CIV-001',rfi:'RFI-0010',tq:'TQ-0008',desStatus:'Approved',
+   workFront:'Area 3',cArea:'Area 3',contractor:'Al Jaber Engineering',foreman:'Khalid Al-Naemi',workStatus:'Completed',dailyProg:100,weeklyProg:100,compPct:100,inspReq:'IR-2024-0155',siteIssue:'',ncr:'',punch:'Coating touch-up',permit:'WP-2025-0002',
+   budget:3200000,committed:2950000,actual:2900000,forecast:3100000,costVar:300000,ev:3100000,pv:3200000,cpi:1.069,spi:0.9688,
+   primId:'A2010-0012',schedStatus:'Ahead',baseFinish:'2025-02-28',curFinish:'2025-02-20',delayDays:-8,recovery:'',critical:false,floatDays:15,
+   risk:'Low',permitStat:'Not Required',incident:'',toolbox:'2024-10-01',safetyInsp:'2024-10-02',hseAction:'All safety protocols followed.',hseClose:'2025-02-20',
+   qaInsp:'QIR-2024-0045',matInsp:'Passed',testReport:'TR-0010',qaNcr:'',qaAction:'',qaStatus:'Closed',qaClose:'2025-02-20'},
+
+  {id:'PRJ-004',proj:'Ras Laffan Utilities',client:'QatarEnergy',contract:'CONT-2025-0066',pm:'Mohannad Al-Ansari',dept:'Engineering',pkg:'Pkg-004-Electrical',area:'Area 4',loc:'Ras Laffan',wbs:'1.4.5.6.001',
+   actId:'ENG-ELC-002',actName:'Power Distribution Design',cat:'Engineering',assigned:'Mona Al-Kuwari',priority:'High',status:'Delayed',prog:30,pStart:'2025-01-01',pFinish:'2025-04-30',aStart:'2025-01-10',aFinish:'',due:'2025-04-15',remarks:'Consultant comments pending',
+   matDesc:'LV Switchgear Panel',matCode:'SWG-0041',vendor:'ABB',vendorContact:'Pierre Dupont',rfq:'RFQ-2025-0033',rfqDate:'2025-02-01',techEval:'Pending',commEval:'Pending',pr:'',po:'',poDate:'',
+   mfgStatus:'Not Started',shipStatus:'Not Shipped',expDel:'2025-07-01',actDel:'',whStatus:'Pending Receipt',inspStatus:'Pending',cost:210000,curr:'USD',
+   dwgNo:'DW-0300-ELC-001',dwgTitle:'Power Distribution SLD',dwgType:'Schematic',rev:'B',eng:'Mona Al-Kuwari',checker:'Hassan Ali',appr:'Ahmed Al-Mansoori',
+   subDate:'2025-02-15',clientReview:'Returned with Comments',apprDate:'',ifcDate:'',engDisc:'Electrical',spec:'SP-0300',calc:'CALC-ELC-002',rfi:'RFI-0045',tq:'TQ-0022',desStatus:'In Progress',
+   workFront:'Area 4',cArea:'Area 4',contractor:'Siemens',foreman:'Mona Al-Kuwari',workStatus:'Not Started',dailyProg:0,weeklyProg:0,compPct:0,inspReq:'',siteIssue:'Consultant comments delayed',ncr:'',punch:'',permit:'',
+   budget:2100000,committed:1800000,actual:1750000,forecast:2050000,costVar:350000,ev:1700000,pv:1800000,cpi:0.9722,spi:0.9444,
+   primId:'A3010-0022',schedStatus:'Delayed',baseFinish:'2025-04-30',curFinish:'2025-05-30',delayDays:30,recovery:'Add 2 engineers for 2 weeks',critical:true,floatDays:-5,
+   risk:'High',permitStat:'Applied',incident:'',toolbox:'2025-03-05',safetyInsp:'',hseAction:'Awaiting gas test results.',hseClose:'',
+   qaInsp:'QIR-2025-0033',matInsp:'Failed',testReport:'TR-0060',qaNcr:'NCR-QA-0035',qaAction:'Replace damaged cable section.',qaStatus:'Failed',qaClose:''},
+
+  {id:'PRJ-005',proj:'North Field Expansion',client:'QatarEnergy',contract:'CONT-2025-0042',pm:'Ahmed Al-Mansoori',dept:'QA/QC',pkg:'Pkg-001-Electrical',area:'Area 1',loc:'Ras Laffan',wbs:'1.2.3.4.002',
+   actId:'QA-WELD-001',actName:'Piping Weld Inspection',cat:'Inspection',assigned:'Hassan Ali',priority:'Critical',status:'Under Review',prog:80,pStart:'2025-02-01',pFinish:'2025-03-15',aStart:'2025-02-01',aFinish:'',due:'2025-03-10',remarks:'RT results pending',
+   workFront:'Area 1',cArea:'Area 1',contractor:'CCC',foreman:'Ali Hassan',workStatus:'In Progress',dailyProg:75,weeklyProg:80,compPct:80,inspReq:'IR-2025-0100',siteIssue:'Welding rod storage issue',ncr:'NCR-0030',punch:'RT scan incomplete',permit:'WP-2025-0200',
+   budget:450000,committed:380000,actual:350000,forecast:430000,costVar:100000,ev:360000,pv:400000,cpi:0.9474,spi:0.9,
+   primId:'A4010-0033',schedStatus:'Behind',baseFinish:'2025-03-15',curFinish:'2025-03-25',delayDays:10,recovery:'Add 1 RT shift',critical:false,floatDays:3,
+   risk:'Medium',permitStat:'Issued',incident:'',toolbox:'2025-02-20',safetyInsp:'2025-02-22',hseAction:'Welding screens installed.',hseClose:'',
+   qaInsp:'QIR-2025-0055',matInsp:'Passed',testReport:'TR-0070',qaNcr:'',qaAction:'Weld procedure qualified.',qaStatus:'Passed',qaClose:'2025-03-01'},
+
+  {id:'PRJ-006',proj:'North Field Expansion',client:'QatarEnergy',contract:'CONT-2025-0042',pm:'Ahmed Al-Mansoori',dept:'HSE',pkg:'Pkg-005-Safety',area:'Area 1',loc:'Ras Laffan',wbs:'1.5.6.7.001',
+   actId:'HSE-SAF-001',actName:'Scaffolding Safety Inspection',cat:'Inspection',assigned:'Ali Hassan',priority:'High',status:'Completed',prog:100,pStart:'2025-02-01',pFinish:'2025-02-15',aStart:'2025-02-01',aFinish:'2025-02-14',due:'2025-02-15',remarks:'All scaffolds certified',
+   workFront:'Area 1',cArea:'Area 1',contractor:'CCC',foreman:'Ali Hassan',workStatus:'Completed',dailyProg:100,weeklyProg:100,compPct:100,inspReq:'',siteIssue:'',ncr:'',punch:'',permit:'',
+   budget:120000,committed:95000,actual:88000,forecast:95000,costVar:32000,ev:95000,pv:120000,cpi:1.0795,spi:0.7917,
+   primId:'A5010-0044',schedStatus:'Ahead',baseFinish:'2025-02-15',curFinish:'2025-02-14',delayDays:-1,recovery:'',critical:false,floatDays:5,
+   risk:'Medium',permitStat:'Expired',incident:'',toolbox:'2025-02-05',safetyInsp:'2025-02-08',hseAction:'Scaffold tags replaced.',hseClose:'2025-02-14'},
+
+  {id:'PRJ-007',proj:'RasGas Complex Upgrade',client:'ExxonMobil',contract:'CONT-2025-0088',pm:'Khalid Al-Sayed',dept:'Planning',pkg:'Pkg-006-Schedule',area:'Area 2',loc:'Mesaieed',wbs:'1.2.3.5.002',
+   actId:'PLN-SCH-001',actName:'Integrated Schedule Update',cat:'Engineering',assigned:'Omar Rashid',priority:'High',status:'In Progress',prog:60,pStart:'2025-03-01',pFinish:'2025-04-30',aStart:'2025-03-01',aFinish:'',due:'2025-04-25',remarks:'Updating with actual progress',
+   budget:80000,committed:55000,actual:42000,forecast:75000,costVar:38000,ev:48000,pv:60000,cpi:1.1429,spi:0.8,
+   primId:'A6010-0055',schedStatus:'On Schedule',baseFinish:'2025-04-30',curFinish:'2025-04-30',delayDays:0,recovery:'',critical:false,floatDays:10,
+   risk:'Low',permitStat:'Not Required'},
+
+  {id:'PRJ-008',proj:'Mesaieed Industrial Plant',client:'TotalEnergies',contract:'CONT-2025-0012',pm:'Sara Al-Dosari',dept:'Cost Control',pkg:'Pkg-007-Cost',area:'Area 3',loc:'Mesaieed',wbs:'1.3.4.5.002',
+   actId:'COST-BUD-001',actName:'Monthly Cost Forecasting',cat:'Engineering',assigned:'Khalid Al-Naemi',priority:'Medium',status:'In Progress',prog:45,pStart:'2025-01-01',pFinish:'2025-12-31',aStart:'2025-01-01',aFinish:'',due:'2025-12-31',remarks:'Monthly update cycle',
+   eng:'Khalid Al-Naemi',checker:'Sara Al-Dosari',appr:'Ahmed Al-Mansoori',
+   budget:5000000,committed:4200000,actual:3850000,forecast:4800000,costVar:1150000,ev:4000000,pv:4500000,cpi:1.039,spi:0.8889,
+   primId:'A7010-0066',schedStatus:'On Schedule',baseFinish:'2025-12-31',curFinish:'2025-12-31',delayDays:0,recovery:'',critical:false,floatDays:30,
+   risk:'Low',permitStat:'Not Required'}
+];
+
+// ======================== STATE ========================
+let currentView = 'dashboard';
+let sortCol = null;
+let sortAsc = true;
+let DATA = [...DEMO_DATA];
+let dataSource = 'demo'; // 'demo' | 'sp-live' | 'sp-error'
+let spSiteUrl = '';
+let spListName = '';
+let engSiteUrl = '';
+let engListName = '';
+let engDATA = [];
+let engConnected = false;
+
+const VIEWS = {
+  dashboard:{title:'Executive Dashboard',dept:null,cols:['proj','prog','status','budget','actual','forecast','delayDays','priority','dept','pm'],group:'proj'},
+  procurement:{title:'Procurement Tracker',dept:'Procurement',cols:['id','proj','matDesc','vendor','rfq','po','rfqDate','poDate','expDel','actDel','mfgStatus','shipStatus','inspStatus','cost','assigned','status','priority','remarks']},
+  engineering:{title:'Engineering - Shop Drawings',dept:'Engineering',cols:['id','dwgNo','dwgTitle','dwgType','rev','eng','checker','appr','subDate','clientReview','apprDate','ifcDate','engDisc','spec','calc','rfi','tq','status','priority','remarks']},
+  construction:{title:'Construction Tracker',dept:'Construction',cols:['id','proj','actId','actName','workFront','cArea','contractor','foreman','workStatus','dailyProg','weeklyProg','compPct','status','pStart','pFinish','aStart','aFinish','inspReq','siteIssue','ncr','punch','permit','priority','remarks']},
+  cost:{title:'Cost Control Tracker',dept:'Cost Control',cols:['id','proj','actId','actName','wbs','budget','committed','actual','forecast','costVar','ev','pv','cpi','spi','prog','status']},
+  planning:{title:'Planning Tracker',dept:'Planning',cols:['id','proj','actId','actName','primId','schedStatus','pStart','pFinish','baseFinish','curFinish','delayDays','floatDays','critical','recovery','prog','status','priority']},
+  qaqc:{title:'QA/QC Tracker',dept:'QA/QC',cols:['id','proj','actId','actName','qaInsp','matInsp','testReport','qaNcr','qaAction','qaStatus','qaClose','status','priority','assigned']},
+  hse:{title:'HSE Tracker',dept:'HSE',cols:['id','proj','actId','actName','risk','permitStat','incident','toolbox','safetyInsp','hseAction','hseClose','status','priority','assigned']}
+};
+
+const COL_LABELS = {
+  id:'Project ID',proj:'Project Name',client:'Client',contract:'Contract #',pm:'Project Manager',dept:'Department',pkg:'Package',area:'Area',loc:'Location',wbs:'WBS Code',
+  actId:'Activity ID',actName:'Activity Name',cat:'Category',assigned:'Assigned To',priority:'Priority',status:'Status',prog:'Progress',
+  pStart:'Planned Start',pFinish:'Planned Finish',aStart:'Actual Start',aFinish:'Actual Finish',due:'Due Date',remarks:'Remarks',
+  matDesc:'Material Description',matCode:'Material Code',vendor:'Vendor',vendorContact:'Vendor Contact',rfq:'RFQ #',rfqDate:'RFQ Date',
+  techEval:'Tech Eval',commEval:'Comm Eval',pr:'PR #',po:'PO #',poDate:'PO Date',mfgStatus:'Mfg Status',shipStatus:'Shipping Status',
+  expDel:'Expected Delivery',actDel:'Actual Delivery',whStatus:'Warehouse Status',inspStatus:'Inspection Status',cost:'Cost',curr:'Currency',
+  dwgNo:'Drawing #',dwgTitle:'Drawing Title',dwgType:'Drawing Type',rev:'Revision',eng:'Engineer',checker:'Checker',appr:'Approver',
+  subDate:'Submission Date',clientReview:'Client Review',apprDate:'Approval Date',ifcDate:'IFC Date',engDisc:'Eng Discipline',
+  spec:'Spec #',calc:'Calc Ref',rfi:'RFI #',tq:'TQ #',desStatus:'Design Status',
+  workFront:'Work Front',cArea:'Const Area',contractor:'Contractor',foreman:'Foreman',workStatus:'Work Status',
+  dailyProg:'Daily %',weeklyProg:'Weekly %',compPct:'Completion %',inspReq:'Insp Req #',siteIssue:'Site Issue',ncr:'NCR #',punch:'Punch Item',permit:'Work Permit',
+  budget:'Budget',committed:'Committed',actual:'Actual Cost',forecast:'Forecast',costVar:'Cost Variance',
+  ev:'Earned Value',pv:'Planned Value',cpi:'CPI',spi:'SPI',
+  primId:'Primavera ID',schedStatus:'Schedule Status',baseFinish:'Baseline Finish',curFinish:'Current Finish',delayDays:'Delay Days',
+  recovery:'Recovery Plan',critical:'Critical',floatDays:'Float',
+  risk:'Risk Level',permitStat:'Permit Status',incident:'Incident #',toolbox:'Toolbox Talk',safetyInsp:'Safety Inspection',
+  title:'Title',dwgNo:'Drawing #',dwgTitle:'Drawing Title',dwgType:'Drawing Type',rev:'Revision',
+  eng:'Engineer',checker:'Checker',appr:'Approver',subDate:'Submission Date',clientReview:'Client Review',
+  apprDate:'Approval Date',ifcDate:'IFC Date',spec:'Spec #',calc:'Calc Ref',phase:'Phase',discLead:'Disc Lead',
+  hseAction:'HSE Action',hseClose:'HSE Closeout',
+  qaInsp:'QA Insp Req',matInsp:'Material Inspection',testReport:'Test Report',qaNcr:'QA NCR',qaAction:'QA Action',qaStatus:'Quality Status',qaClose:'QA Closeout'
+};
+
+// ======================== HELPERS ========================
+function fmtCurrency(n){return typeof n==='number'?'$'+n.toLocaleString():n}
+function getVal(item,col){return item[col]??''}
+function progressClass(v){if(v>=100)return'green';if(v>=75)return'blue';if(v>=50)return'orange';return'red'}
+function statusClass(s){return'status-'+s.replace(/ /g,'\\ ')}
+function priorityClass(p){return'priority-'+p}
+function countByDept(dept){return DATA.filter(d=>d.dept===dept).length}
+function countAll(){return DATA.length}
+
+function extractSiteFromLink(link){
+    if(!link)return'';
+    link=link.split('?')[0]; // strip query params
+    // Pattern 1: sharing link with personal path → https://host/personal/user
+    let m=link.match(/^(https:\/\/[^\/]+)\/:l:\/g\/(personal\/[^\/]+)/);
+    if(m)return m[1]+'/'+m[2];
+    // Pattern 2: sharing link with sites path → https://host/sites/name
+    m=link.match(/^(https:\/\/[^\/]+)\/:l:\/g\/(sites\/[^\/]+)/);
+    if(m)return m[1]+'/'+m[2];
+    // Pattern 3: direct URL with sites or personal path
+    m=link.match(/^(https:\/\/[^\/]+)\/(sites\/[^\/]+|personal\/[^\/]+)/);
+    if(m)return m[1]+'/'+m[2];
+    // Pattern 4: just the root sharepoint domain
+    m=link.match(/^(https:\/\/[^\/]+\.sharepoint\.com)/);
+    return m?m[1]:'';
+}
+
+// ======================== SHAREPOINT API ========================
+async function connectToSharePoint(){
+    const site=document.getElementById('cfg-site').value.trim();
+    const list=document.getElementById('cfg-list').value.trim();
+    const link=document.getElementById('cfg-link').value.trim();
+
+    let finalSite=site, finalList=list;
+
+    // Try to extract from link
+    if(link&&!finalSite){
+        const extracted=extractSiteFromLink(link);
+        if(extracted){
+            finalSite=extracted;
+            document.getElementById('cfg-site').value=finalSite; // show user what was extracted
+        }
+    }
+
+    // Try common list name
+    if(!finalList)finalList='Project Management Tracker';
+
+    if(!finalSite){
+        showConnStatus('Enter a SharePoint site URL or paste a list sharing link.','disconnected');
+        return;
+    }
+
+    // Detect if running as local file (REST API won't work due to CORS)
+    if(location.protocol==='file:'){
+        showConnStatus('⚠ Cannot connect from local file. Upload this HTML to SharePoint (e.g. Site Pages library) and open it from there, or use a CORS browser extension for testing.','disconnected');
+        return;
+    }
+
+    showConnStatus('Connecting to SharePoint...','loading');
+    document.getElementById('ds-badge').className='data-source-badge demo';
+
+    try{
+        const siteUrl=finalSite.replace(/\/+$/,'');
+        const listName=encodeURIComponent(finalList);
+        const apiUrl=`${siteUrl}/_api/web/lists/getbytitle('${listName}')/items?$top=500`;
+
+        const resp=await fetch(apiUrl,{
+            method:'GET',
+            headers:{'Accept':'application/json;odata=verbose'},
+            credentials:'include'
+        });
+
+        if(!resp.ok)throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
+
+        const json=await resp.json();
+        const spItems=json.d.results;
+
+        if(!spItems||spItems.length===0){
+            showConnStatus('Connected but list is empty.','disconnected');
+            return;
+        }
+
+        // Map SharePoint items to app format
+        DATA=spItems.map(spItem=>{
+            const item={};
+            for(const [spKey,appKey] of Object.entries(SP_MAP)){
+                let val=spItem[spKey];
+                if(val!==undefined&&val!==null){
+                    // Handle person fields
+                    if(PERSON_COLS.includes(spKey)){
+                        if(typeof val==='object'&&val.Title)val=val.Title;
+                        else if(typeof val==='object'&&val.LookupValue)val=val.LookupValue;
+                        else if(typeof val==='object'&&val.Email)val=val.Email;
+                    }
+                    // Handle dates
+                    if(typeof val==='string'&&val.match(/\/Date\(/)){
+                        val=new Date(parseInt(val.replace(/[^0-9]/g,''))).toISOString().split('T')[0];
+                    }
+                    // Handle numbers
+                    if(typeof val==='string'&&!isNaN(val)&&val!='')val=Number(val);
+                }
+                if(val!==undefined&&val!==null&&val!=='')item[appKey]=val;
+            }
+            // Ensure all fields exist
+            for(const k of Object.keys(SP_MAP)){
+                const appKey=SP_MAP[k];
+                if(!(appKey in item))item[appKey]='';
+            }
+            // Ensure critical fields
+            if(!item.id)item.id=spItem.ID||'';
+            if(!item.proj)item.proj=spItem.Title||'';
+            if(!item.dept)item.dept=spItem.ResponsibleDepartment||'Engineering';
+            if(!item.status)item.status=spItem.Status||'Not Started';
+            if(!item.priority)item.priority=spItem.Priority||'Medium';
+            if(item.prog===undefined||item.prog==='')item.prog=0;
+            return item;
+        });
+
+        spSiteUrl=siteUrl;
+        spListName=finalList;
+        dataSource='sp-live';
+
+        // Save config
+        storage.setItem('pmt-site',siteUrl);
+        storage.setItem('pmt-list',finalList);
+
+        showConnStatus(`Connected! Loaded ${DATA.length} items from "${finalList}".`,'connected');
+        updateBadge();
+        updateCounts();
+        renderCurrent();
+    }catch(err){
+        dataSource='sp-error';
+        showConnStatus(`Connection failed: ${err.message}. Using demo data.`,'disconnected');
+        updateBadge();
+    }
+}
+
+function useDemoData(){
+    DATA=[...DEMO_DATA];
+    dataSource='demo';
+    document.getElementById('cfg-mode').value='demo';
+    showConnStatus('Using embedded demo data with 8 sample activities.','connected');
+    updateBadge();
+    updateCounts();
+    renderCurrent();
+    closeSettings();
+}
+
+async function connectToEngineering(){
+    const site=document.getElementById('cfg-eng-site').value.trim();
+    const list=document.getElementById('cfg-eng-list').value.trim()||'Shop Drawing Status';
+    if(!site){
+        showEngConnStatus('Enter the SharePoint site URL for the Shop Drawing list.','disconnected');
+        return;
+    }
+    if(location.protocol==='file:'){
+        showEngConnStatus('⚠ Cannot connect from local file. Upload this HTML to SharePoint and open from there.','disconnected');
+        return;
+    }
+    showEngConnStatus('Connecting to Shop Drawing list...','loading');
+    try{
+        const siteUrl=site.replace(/\/+$/,'');
+        const listName=encodeURIComponent(list);
+        const apiUrl=`${siteUrl}/_api/web/lists/getbytitle('${listName}')/items?$top=500`;
+        const resp=await fetch(apiUrl,{
+            method:'GET',headers:{'Accept':'application/json;odata=verbose'},credentials:'include'
+        });
+        if(!resp.ok)throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
+        const json=await resp.json();
+        const items=json.d.results;
+        if(!items||items.length===0){
+            showEngConnStatus('Connected but list is empty.','disconnected');
+            return;
+        }
+        engDATA=items.map(spItem=>{
+            const item={};
+            for(const [spKey,appKey] of Object.entries(SD_MAP)){
+                let val=spItem[spKey];
+                if(val!==undefined&&val!==null){
+                    if(SD_PERSON_COLS.includes(spKey)){
+                        if(typeof val==='object'&&val.Title)val=val.Title;
+                        else if(typeof val==='object'&&val.LookupValue)val=val.LookupValue;
+                        else if(typeof val==='object'&&val.Email)val=val.Email;
+                    }
+                    if(typeof val==='string'&&val.match(/\/Date\(/)){
+                        val=new Date(parseInt(val.replace(/[^0-9]/g,''))).toISOString().split('T')[0];
+                    }
+                    if(typeof val==='string'&&!isNaN(val)&&val!='')val=Number(val);
+                }
+                if(val!==undefined&&val!==null&&val!=='')item[appKey]=val;
+            }
+            for(const k of Object.keys(SD_MAP)){
+                const appKey=SD_MAP[k];
+                if(!(appKey in item))item[appKey]='';
+            }
+            if(!item.id)item.id=spItem.ID||'';
+            if(!item.proj)item.proj=spItem.Title||spItem.ProjectName||spItem.Project_x0020_Name||'';
+            if(!item.dwgNo)item.dwgNo=spItem.DrawingNumber||spItem.Drawing_x0020_Number||'';
+            if(!item.status)item.status=spItem.Status||'Not Started';
+            if(!item.priority)item.priority=spItem.Priority||'Medium';
+            return item;
+        });
+        engSiteUrl=siteUrl;
+        engListName=list;
+        engConnected=true;
+        localStorage.setItem('pmt-eng-site',siteUrl);
+        localStorage.setItem('pmt-eng-list',list);
+        showEngConnStatus(`Connected! Loaded ${engDATA.length} shop drawings from "${list}".`,'connected');
+        updateEngBadge();
+        if(currentView==='engineering')renderCurrent();
+    }catch(err){
+        showEngConnStatus(`Connection failed: ${err.message}.`,'disconnected');
+        updateEngBadge();
+    }
+}
+
+function useDemoEngineering(){
+    engDATA=DEMO_DATA.filter(d=>d.dept==='Engineering');
+    engConnected=true;
+    showEngConnStatus('Using demo engineering data.','connected');
+    updateEngBadge();
+    if(currentView==='engineering')renderCurrent();
+    closeEngSettings();
+}
+
+function showEngConnStatus(msg,type){
+    const el=document.getElementById('eng-conn-status');
+    el.style.display='block';
+    el.textContent=msg;
+    el.className='connection-status '+type;
+}
+
+function showConnStatus(msg,type){
+    const el=document.getElementById('conn-status');
+    el.style.display='block';
+    el.textContent=msg;
+    el.className='connection-status '+type;
+}
+
+function updateEngBadge(){
+    const dot=document.getElementById('eng-conn-dot');
+    if(!dot)return;
+    dot.className='status-dot '+(engConnected&&engDATA.length>0?'online':'offline');
+}
+
+function updateBadge(){
+    const badge=document.getElementById('ds-badge');
+    const label=document.getElementById('ds-label');
+    const dot=document.getElementById('conn-dot');
+    if(dataSource==='sp-live'){
+        badge.className='data-source-badge live';
+        label.textContent=`Live: ${DATA.length} items`;
+        dot.className='status-dot online';
+    }else if(dataSource==='sp-error'){
+        badge.className='data-source-badge error';
+        label.textContent='Connection Error';
+        dot.className='status-dot offline';
+    }else{
+        badge.className='data-source-badge demo';
+        label.textContent='Demo Data';
+        dot.className='status-dot offline';
+    }
+}
+
+function updateCounts(){
+    document.getElementById('count-all').textContent=countAll();
+    ['procurement','engineering','construction','cost','planning','qaqc','hse'].forEach(v=>{
+        const deptName=v.charAt(0).toUpperCase()+v.slice(1);
+        const label=v==='cost'?'Cost Control':v==='qaqc'?'QA/QC':deptName;
+        const cnt=v==='engineering'&&engConnected?engDATA.length:countByDept(label);
+        document.getElementById('count-'+v).textContent=cnt;
+    });
+}
+
+// ======================== SETTINGS UI ========================
+function openSettings(){
+    closeEngSettings();
+    if(spSiteUrl)document.getElementById('cfg-site').value=spSiteUrl;
+    if(spListName)document.getElementById('cfg-list').value=spListName;
+    document.getElementById('cfg-mode').value=dataSource==='demo'?'demo':'rest';
+    document.getElementById('settings-overlay').classList.add('show');
+    document.getElementById('settings-panel').classList.add('open');
+}
+function closeSettings(){
+    document.getElementById('settings-overlay').classList.remove('show');
+    document.getElementById('settings-panel').classList.remove('open');
+}
+function openEngSettings(){
+    closeSettings();
+    if(engSiteUrl)document.getElementById('cfg-eng-site').value=engSiteUrl;
+    if(engListName)document.getElementById('cfg-eng-list').value=engListName;
+    document.getElementById('eng-settings-overlay').classList.add('show');
+    document.getElementById('eng-settings-panel').classList.add('open');
+}
+function closeEngSettings(){
+    document.getElementById('eng-settings-overlay').classList.remove('show');
+    document.getElementById('eng-settings-panel').classList.remove('open');
+}
+
+// ======================== RENDER ========================
+function renderCurrent(){
+    if(currentView==='dashboard')renderDashboard();
+    else renderDeptView(currentView);
+}
+
+function renderDashboard(){
+    const d=DATA;
+    if(d.length===0){
+        document.getElementById('content').innerHTML=`
+          <div class="empty-state"><div class="empty-icon">📭</div><p>No data loaded. <br><button class="btn btn-primary" onclick="openSettings()" style="margin-top:12px;padding:8px 20px;border-radius:4px;font-size:13px;font-weight:600;cursor:pointer;border:none;background:#0078D4;color:white">Configure Data Source</button></p></div>`;
+        return;
+    }
+    const total=d.length;
+    const completed=d.filter(x=>x.status==='Completed').length;
+    const inProg=d.filter(x=>x.status==='In Progress'||x.status==='Under Review').length;
+    const delayed=d.filter(x=>x.status==='Delayed'||x.status==='Waiting Approval').length;
+    const overdue=d.filter(x=>x.delayDays>0).length;
+    const avgDelay=Math.round(d.reduce((s,x)=>s+Math.max(0,x.delayDays||0),0)/Math.max(1,total));
+    const avgProg=Math.round(d.reduce((s,x)=>s+(x.prog||0),0)/total);
+    const totalBudget=d.reduce((s,x)=>s+(x.budget||0),0);
+    const totalActual=d.reduce((s,x)=>s+(x.actual||0),0);
+    const variance=totalBudget-totalActual;
+    const compRate=total?Math.round(completed/total*100):0;
+
+    const statusData={};d.forEach(x=>{statusData[x.status]=(statusData[x.status]||0)+1});
+    const deptData={};d.forEach(x=>{deptData[x.dept]=(deptData[x.dept]||0)+1});
+
+    document.getElementById('content').innerHTML=`
+    <div class="kpi-grid">
+      <div class="kpi-card blue"><div class="kpi-label">Total Activities</div><div class="kpi-value">${total}</div><div class="kpi-sub">${dataSource==='sp-live'?'Live SharePoint data':'Demo data'}</div></div>
+      <div class="kpi-card green"><div class="kpi-label">Completed</div><div class="kpi-value">${completed}</div><div class="kpi-sub">${compRate}% completion rate</div></div>
+      <div class="kpi-card blue"><div class="kpi-label">In Progress</div><div class="kpi-value">${inProg}</div><div class="kpi-sub">Active work</div></div>
+      <div class="kpi-card red"><div class="kpi-label">Delayed / Waiting</div><div class="kpi-value">${delayed}</div><div class="kpi-sub">Requires attention</div></div>
+      <div class="kpi-card orange"><div class="kpi-label">Overdue Items</div><div class="kpi-value">${overdue}</div><div class="kpi-sub">Past due date</div></div>
+      <div class="kpi-card purple"><div class="kpi-label">Avg Delay</div><div class="kpi-value">${avgDelay}d</div><div class="kpi-sub">Across all items</div></div>
+      <div class="kpi-card teal"><div class="kpi-label">Avg Progress</div><div class="kpi-value">${avgProg}%</div><div class="kpi-sub">Overall completion</div></div>
+      <div class="kpi-card green"><div class="kpi-label">Budget Variance</div><div class="kpi-value">${variance>=0?'+':''}$${variance.toLocaleString()}</div><div class="kpi-sub">Budget vs Actual</div></div>
+    </div>
+    <div class="charts-row">
+      <div class="chart-card"><h3>Status Distribution</h3><canvas id="chart-status"></canvas></div>
+      <div class="chart-card"><h3>Discipline Distribution</h3><canvas id="chart-dept"></canvas></div>
+    </div>
+    <div class="table-wrap">
+      <div class="table-toolbar">
+        <span class="view-label">Executive Dashboard</span>
+        <span class="view-badge">${total} items</span>
+        <span style="flex:1"></span>
+        <div class="filter-group">
+          <select id="filter-dept" onchange="renderTable()">
+            <option value="">All Departments</option>
+            <option>Engineering</option><option>Procurement</option><option>Construction</option>
+            <option>QA/QC</option><option>HSE</option><option>Planning</option><option>Cost Control</option>
+          </select>
+          <select id="filter-status" onchange="renderTable()">
+            <option value="">All Statuses</option>
+            <option>Not Started</option><option>In Progress</option><option>Under Review</option>
+            <option>Waiting Approval</option><option>Completed</option><option>Delayed</option>
+            <option>On Hold</option><option>Cancelled</option>
+          </select>
+        </div>
+      </div>
+      <div class="table-scroll"><table id="data-table"><tbody id="table-body"></tbody></table></div>
+    </div>`;
+
+    // Charts
+    if(Object.keys(statusData).length>0){
+        new Chart(document.getElementById('chart-status'),{type:'doughnut',data:{
+            labels:Object.keys(statusData),datasets:[{data:Object.values(statusData),
+            backgroundColor:['#0078D4','#107C10','#ED7D31','#D92C2C','#FFB900','#8764B8','#8A8886','#00B7C3']}]},
+            options:{responsive:true,plugins:{legend:{position:'bottom',labels:{boxWidth:12,font:{size:10}}}}}});
+    }
+    if(Object.keys(deptData).length>0){
+        new Chart(document.getElementById('chart-dept'),{type:'bar',data:{
+            labels:Object.keys(deptData),datasets:[{label:'Activities',data:Object.values(deptData),
+            backgroundColor:['#0078D4','#ED7D31','#FFB900','#107C10','#D92C2C','#8764B8','#00B7C3']}]},
+            options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{stepSize:1}}}}});
+    }
+
+    renderTable();
+}
+
+function renderTable(){
+    const d=currentView==='dashboard'?[...DATA]:(currentView==='engineering'&&engConnected&&engDATA.length>0)?[...engDATA]:DATA.filter(x=>x.dept===VIEWS[currentView].dept);
+    const search=(document.getElementById('search')?.value||'').toLowerCase();
+    const fDept=document.getElementById('filter-dept')?.value||'';
+    const fStatus=document.getElementById('filter-status')?.value||'';
+
+    const filtered=d.filter(x=>{
+        if(fDept&&x.dept!==fDept)return false;
+        if(fStatus&&x.status!==fStatus)return false;
+        if(search)return Object.values(x).some(v=>String(v).toLowerCase().includes(search));
+        return true;
+    });
+
+    if(sortCol){
+        filtered.sort((a,b)=>{
+            const va=a[sortCol],vb=b[sortCol];
+            if(va==null)return 1;if(vb==null)return-1;
+            if(typeof va==='number'&&typeof vb==='number')return sortAsc?va-vb:vb-va;
+            return sortAsc?String(va).localeCompare(String(vb)):String(vb).localeCompare(String(va));
+        });
+    }
+
+    const cols=(currentView==='dashboard'?VIEWS.dashboard:VIEWS[currentView]).cols;
+    const tbody=document.getElementById('table-body');
+    if(!tbody)return;
+
+    if(filtered.length===0){
+        tbody.innerHTML=`<tr><td colspan="${cols.length+1}"><div class="empty-state"><div class="empty-icon">📭</div>No items match your filters</div></td></tr>`;
+        return;
+    }
+
+    let html='<thead><tr>';
+    html+=`<th onclick="sortBy('proj')" class="${sortCol==='proj'?'sorted':''}">Project Name<span class="sort-arrow">${arrow('proj')}</span></th>`;
+    cols.forEach(c=>{if(c!=='proj')html+=`<th onclick="sortBy('${c}')" class="${sortCol===c?'sorted':''}">${COL_LABELS[c]||c}<span class="sort-arrow">${arrow(c)}</span></th>`;});
+    html+='</tr></thead><tbody>';
+
+    filtered.forEach(item=>{
+        html+='<tr><td><span class="drawing-link" onclick="alert(\'Drawing: '+item.dwgNo+'\\nProject: '+item.proj+'\')">'+(item.dwgNo||item.proj)+'</span></td>';
+        cols.forEach(c=>{if(c!=='proj')html+=`<td>${cellValue(item,c)}</td>`;});
+        html+='</tr>';
+    });
+    html+='</tbody>';
+    tbody.innerHTML=html;
+}
+
+function arrow(col){return sortCol===col?(sortAsc?'▲':'▼'):''}
+function sortBy(col){if(sortCol===col)sortAsc=!sortAsc;else{sortCol=col;sortAsc=true;}renderTable();}
+
+function cellValue(item,col){
+    const v=getVal(item,col);
+    if(col==='status')return `<span class="status-badge ${statusClass(v)}">${v||'Not Set'}</span>`;
+    if(col==='priority')return `<span class="priority-badge ${priorityClass(v)}">${v||'N/A'}</span>`;
+    if(col==='prog'||col==='dailyProg'||col==='weeklyProg'||col==='compPct'){
+        const p=Number(v)||0;
+        return `<div class="progress-bar"><div class="progress-track"><div class="progress-fill ${progressClass(p)}" style="width:${p}%"></div></div><span class="progress-text">${p}%</span></div>`;
+    }
+    if(col==='cost'||col==='budget'||col==='actual'||col==='forecast'||col==='committed'||col==='costVar'||col==='ev'||col==='pv')return fmtCurrency(v);
+    if(col==='cpi'||col==='spi')return typeof v==='number'?v.toFixed(4):v||'-';
+    if(col==='delayDays'){
+        const d=Number(v)||0;
+        return d>0?`<span class="overdue">${d}d</span>`:d<0?`<span style="color:var(--green)">${d}d</span>`:`${d}d`;
+    }
+    if(col==='critical')return v&&v!=='false'?`<span style="color:var(--red);font-weight:600">Yes</span>`:'No';
+    if(col==='assigned'||col==='pm'||col==='eng'||col==='checker'||col==='appr'||col==='foreman'){
+        return v?`<div class="person"><div class="person-avatar">${String(v).charAt(0)}</div><span>${v}</span></div>`:'-';
+    }
+    if(col==='proj')return v||'-';
+    if(col==='id'||col==='actId'||col==='dwgNo'||col==='rfq'||col==='po'||col==='pr'||col==='rfi'||col==='tq'||col==='qaInsp'||col==='qaNcr'||col==='ncr'||col==='inspReq'||col==='permit'||col==='primId'){
+        return v?`<span class="drawing-link">${v}</span>`:'-';
+    }
+    return v||'-';
+}
+
+function renderDeptView(view){
+    const v=VIEWS[view];
+    const items=(view==='engineering'&&engConnected&&engDATA.length>0)?engDATA:DATA.filter(x=>x.dept===v.dept);
+    const total=items.length;
+    const completed=items.filter(x=>x.status==='Completed').length;
+    const inProg=items.filter(x=>x.status==='In Progress'||x.status==='Under Review').length;
+    const delayed=items.filter(x=>x.status==='Delayed'||x.status==='Waiting Approval').length;
+    const avgProg=total?Math.round(items.reduce((s,x)=>s+(x.prog||0),0)/total):0;
+    const highPrio=items.filter(x=>x.priority==='Critical'||x.priority==='High').length;
+
+    let extra='';
+    if(view==='engineering'){
+        const sub=items.filter(x=>x.subDate).length;
+        const ifc=items.filter(x=>x.ifcDate).length;
+        const reviewed=items.filter(x=>x.clientReview==='Review Complete'||x.clientReview==='Approved'||x.clientReview==='Approved with Comments').length;
+        extra=(engConnected&&engDATA.length>0)?`<div class="kpi-card teal"><div class="kpi-label">Submitted</div><div class="kpi-value">${sub}</div></div>
+               <div class="kpi-card green"><div class="kpi-label">IFC Issued</div><div class="kpi-value">${ifc}</div></div>`:'';
+    }
+    if(view==='cost'){
+        const b=items.reduce((s,x)=>s+(x.budget||0),0);
+        const a=items.reduce((s,x)=>s+(x.actual||0),0);
+        extra=`<div class="kpi-card teal"><div class="kpi-label">Total Budget</div><div class="kpi-value">$${b.toLocaleString()}</div></div>
+               <div class="kpi-card orange"><div class="kpi-label">Total Actual</div><div class="kpi-value">$${a.toLocaleString()}</div></div>`;
+    }
+    if(view==='planning'){
+        const crit=items.filter(x=>x.critical).length;
+        extra=`<div class="kpi-card red"><div class="kpi-label">Critical Path</div><div class="kpi-value">${crit}</div></div>
+               <div class="kpi-card orange"><div class="kpi-label">Avg Delay</div><div class="kpi-value">${Math.round(items.reduce((s,x)=>s+Math.max(0,x.delayDays||0),0)/Math.max(1,total))}d</div></div>`;
+    }
+    if(view==='qaqc'){
+        const passed=items.filter(x=>x.qaStatus==='Passed'||x.qaStatus==='Closed').length;
+        extra=`<div class="kpi-card green"><div class="kpi-label">Passed/Closed</div><div class="kpi-value">${passed}</div></div>
+               <div class="kpi-card red"><div class="kpi-label">Failed</div><div class="kpi-value">${items.filter(x=>x.qaStatus==='Failed').length}</div></div>`;
+    }
+    if(view==='hse'){
+        const extreme=items.filter(x=>x.risk==='Extreme'||x.risk==='High').length;
+        extra=`<div class="kpi-card red"><div class="kpi-label">High/Extreme Risk</div><div class="kpi-value">${extreme}</div></div>`;
+    }
+
+    document.getElementById('content').innerHTML=`
+    <div class="kpi-grid">
+      <div class="kpi-card blue"><div class="kpi-label">Total Items</div><div class="kpi-value">${total}</div></div>
+      <div class="kpi-card green"><div class="kpi-label">Completed</div><div class="kpi-value">${completed}</div></div>
+      <div class="kpi-card blue"><div class="kpi-label">In Progress</div><div class="kpi-value">${inProg}</div></div>
+      <div class="kpi-card orange"><div class="kpi-label">High Priority</div><div class="kpi-value">${highPrio}</div></div>
+      <div class="kpi-card purple"><div class="kpi-label">Avg Progress</div><div class="kpi-value">${avgProg}%</div></div>
+      <div class="kpi-card red"><div class="kpi-label">Delayed</div><div class="kpi-value">${delayed}</div></div>
+      ${extra}
+    </div>
+    <div class="table-wrap">
+      <div class="table-toolbar">
+        <span class="view-label">${v.title}</span>
+        <span class="view-badge">${total} items</span>
+        <span style="flex:1"></span>
+        ${view==='engineering'?`<button class="data-source-badge ${engConnected?'live':'demo'}" onclick="openEngSettings()" style="margin-right:8px;cursor:pointer"><span class="dot"></span>${engConnected&&engDATA.length>0?'Shop Drawings: '+engDATA.length+' items':'Click to configure'}</button>`:''}
+        <div class="filter-group">
+          <select id="filter-status" onchange="renderTable()">
+            <option value="">All Statuses</option>
+            <option>Not Started</option><option>In Progress</option><option>Under Review</option>
+            <option>Waiting Approval</option><option>Completed</option><option>Delayed</option>
+            <option>On Hold</option><option>Cancelled</option>
+          </select>
+        </div>
+      </div>
+      <div class="table-scroll"><table id="data-table"><tbody id="table-body"></tbody></table></div>
+    </div>`;
+    renderTable();
+}
+
+function switchView(view){
+    currentView=view;
+    sortCol=null;sortAsc=true;
+    document.querySelectorAll('.nav-item').forEach(el=>el.classList.toggle('active',el.dataset.view===view));
+    document.getElementById('view-title').textContent=VIEWS[view].title+(view==='engineering'&&engConnected&&engDATA.length>0?' (Shop Drawings)':'');
+    renderCurrent();
+}
+
+function toggleSidebar(){
+    document.getElementById('sidebar').classList.toggle('open');
+    document.getElementById('backdrop').classList.toggle('show');
+}
+
+// Safe storage wrapper (handles sandboxed iframes where localStorage throws)
+const storage = {
+    _data: {},
+    getItem(k){ try{ return localStorage.getItem(k) }catch(e){ return this._data[k]||null } },
+    setItem(k,v){ try{ localStorage.setItem(k,v) }catch(e){ this._data[k]=v } }
+};
+
+function toggleDark(){
+    document.body.classList.toggle('dark');
+    const btn=document.getElementById('dark-toggle');
+    btn.textContent=document.body.classList.contains('dark')?'☀️':'🌙';
+    storage.setItem('pmt-dark',document.body.classList.contains('dark')?'1':'');
+}
+
+// ======================== INIT ========================
+(function init(){
+    // Restore dark mode
+    if(localStorage.getItem('pmt-dark')){
+        document.body.classList.add('dark');
+        document.getElementById('dark-toggle').textContent='☀️';
+    }
+    // Restore engineering config
+    const engSavedSite=localStorage.getItem('pmt-eng-site');
+    const engSavedList=localStorage.getItem('pmt-eng-list');
+    if(engSavedSite)document.getElementById('cfg-eng-site').value=engSavedSite;
+    if(engSavedList)document.getElementById('cfg-eng-list').value=engSavedList;
+    // Restore saved config
+    const savedSite=localStorage.getItem('pmt-site');
+    const savedList=localStorage.getItem('pmt-list');
+    if(savedSite)document.getElementById('cfg-site').value=savedSite;
+    if(savedList)document.getElementById('cfg-list').value=savedList;
+    if(document.getElementById('cfg-link'))document.getElementById('cfg-link').value='https://sascontractingsa-my.sharepoint.com/:l:/g/personal/m_hajissa_alenshaiah_com/JAB0SL2Dg68dR4O0jC1UxIc1AdT1ZhpFsFXSzoRpZuLNvbI?e=c6RN2T';
+    // Pre-fill engineering site URL if not saved
+    if(!engSavedSite&&document.getElementById('cfg-eng-site')){
+        document.getElementById('cfg-eng-site').value='https://sascontractingsa.sharepoint.com/sites/Alenshaiah';
+        document.getElementById('cfg-eng-list').value='Shop Drawing Status';
+    }
+
+    updateCounts();
+    updateBadge();
+    updateEngBadge();
+    renderDashboard();
+})();
+</script>
+</body>
+</html>
