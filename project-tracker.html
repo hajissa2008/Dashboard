@@ -574,17 +574,21 @@ function siteToGraphPath(siteUrl){
 
 function graphListItemsUrl(siteUrl, listName){
     const path = siteToGraphPath(siteUrl);
-    return `https://graph.microsoft.com/v1.0/sites/${path}:/lists/getByTitle('${encodeURIComponent(listName)}')/items?$top=500&expand=fields`;
+    return `https://graph.microsoft.com/v1.0/sites/${path}:/lists/${encodeURIComponent(listName)}/items?$top=500&expand=fields`;
 }
 
 async function fetchSPListItems(siteUrl, listName){
     if(spToken){
         // Use Microsoft Graph API
         const url = graphListItemsUrl(siteUrl, listName);
+        console.log('[SP] Fetching:', url);
         const resp = await fetch(url, {
             headers: { 'Authorization': 'Bearer ' + spToken, 'Accept': 'application/json' }
         });
-        if(!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
+        if(!resp.ok){
+            const body = await resp.text().catch(()=>'');
+            throw new Error(`HTTP ${resp.status}: ${resp.statusText}. URL: ${url}. Response: ${body.substring(0,200)}`);
+        }
         const json = await resp.json();
         // Graph API returns { value: [ { id, fields: { Title, ... } } ] }
         return (json.value || []).map(item => ({ ...item.fields, ID: item.id }));
@@ -1245,7 +1249,7 @@ function initMsal(){
 
 async function loginSP(){
     if(!initMsal()){ alert('Set Tenant ID and Client ID in Connection settings first (⚙️).'); return; }
-    msalApp.loginRedirect({ scopes: SP_SCOPES, prompt: 'select_account' });
+    msalApp.loginRedirect({ scopes: SP_SCOPES });
 }
 
 async function getTokenSP(){
@@ -1323,6 +1327,9 @@ function toggleDark(){
 // ======================== INIT ========================
 (function init(){
     try{
+    console.log('[PMT] Page URL:', location.href);
+    console.log('[PMT] Origin:', location.origin, 'Path:', location.pathname);
+    console.log('[PMT] Redirect URI (must match Azure AD):', location.origin + location.pathname);
     // Restore dark mode
     if(localStorage.getItem('pmt-dark')){
         document.body.classList.add('dark');
@@ -1371,15 +1378,19 @@ function toggleDark(){
                         .catch(()=>{ updateAuthUI(); });
                 }
             }).catch(e=>{
-                console.error('[MSAL] handleRedirectPromise error:', e.message);
+                const errMsg = (e.message||'') + (e.errorCode ? ' ('+e.errorCode+')' : '');
+                console.error('[MSAL] handleRedirectPromise error:', errMsg);
                 const st=document.getElementById('settings-auth-status');
                 if(st){
                     const uri = location.origin + location.pathname;
-                    st.innerHTML = '❌ Azure AD rejected login. Check settings:<br>' +
-                        '1. Redirect URI: <code>' + uri + '</code> must be <strong>SPA</strong> type<br>' +
-                        '2. API permissions: <strong>Sites.ReadWrite.All</strong>, <strong>User.Read</strong><br>' +
-                        '3. "Allow public client flows" = <strong>Yes</strong><br>' +
-                        '<span style="font-size:10px">Error: ' + (e.message||'').substring(0,100) + '</span>';
+                    const isAccessDenied = errMsg.includes('access_denied');
+                    st.innerHTML = isAccessDenied
+                        ? '❌ <strong>Admin consent required.</strong> <code>Sites.ReadWrite.All</code> needs admin approval.<br>' +
+                          'Go to Azure Portal → API permissions → <strong>Grant admin consent for Alenshaiah</strong>'
+                        : '❌ Azure AD rejected login. Check settings:<br>' +
+                          '1. Redirect URI: <code>' + uri + '</code> must be <strong>SPA</strong> type<br>' +
+                          '2. API permissions: <strong>Sites.ReadWrite.All</strong>, <strong>User.Read</strong><br>' +
+                          '3. "Allow public client flows" = <strong>Yes</strong>';
                     st.style.color='var(--red)';
                 }
                 updateAuthUI();
