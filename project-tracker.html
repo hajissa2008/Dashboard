@@ -592,11 +592,19 @@ async function fetchColumnNames(siteUrl, listName){
     });
     if(!resp.ok) return null;
     const json = await resp.json();
-    const map = {};
+    const map = {}, pairs=[];
     (json.value||[]).forEach(col => {
-        if(col.name && col.displayName && col.name.startsWith('field_'))
+        if(col.name && col.displayName && col.name.startsWith('field_')){
             map[col.name] = col.displayName;
+            pairs.push(col.name+' → '+col.displayName);
+        }
     });
+    // Show column mapping on page
+    const el=document.getElementById('conn-status');
+    if(el && pairs.length>0){
+        el.innerHTML += '<div style="margin-top:6px;font-size:10px;background:#e8f4fd;padding:6px;border-radius:3px">' +
+            '<strong>📋 Column mapping:</strong><br><code>' + pairs.join('<br>') + '</code></div>';
+    }
     return map;
 }
 
