@@ -289,7 +289,7 @@ body.dark th .sort-arrow{color:var(--text-secondary)}
         <input type="text" id="cfg-site" placeholder="https://sascontractingsa.sharepoint.com/sites/Alenshaiah" value="https://sascontractingsa.sharepoint.com/sites/Alenshaiah">
         <div class="hint">Full URL of your SharePoint team site.</div>
         <label>List Name</label>
-        <input type="text" id="cfg-list" placeholder="Project Management Tracker">
+        <input type="text" id="cfg-list" value="Shop Drawing Status" placeholder="Project Management Tracker">
         <div class="hint">Display name of the SharePoint list (created from Excel import).</div>
         <label>Or paste a sharing link (auto-fills above)</label>
         <input type="text" id="cfg-link" placeholder="https://...sharepoint.com/:l:/g/personal/...">
@@ -592,17 +592,10 @@ async function fetchSPListItems(siteUrl, listName){
         const json = await resp.json();
         // Graph API returns { value: [ { id, fields: { Title, ... } } ] }
         if(json.value&&json.value.length>0){
-            const keys = Object.keys(json.value[0].fields||{});
+            const raw = json.value[0].fields||{};
+            const keys = Object.keys(raw);
             console.log('[SP] First item keys:', keys);
-            console.log('[SP] First item sample:', JSON.stringify(json.value[0].fields).substring(0,500));
-            // Show field names on page for easy copy-paste
-            const connEl=document.getElementById('conn-status');
-            if(connEl){
-                const fieldList = keys.slice(0,40).join(', ');
-                connEl.innerHTML = '✅ Connected. Fields found: <code style="font-size:10px">' + fieldList + '</code>';
-                connEl.className = 'connection-status connected';
-                connEl.style.display = 'block';
-            }
+            console.log('[SP] First item sample:', JSON.stringify(raw).substring(0,1500));
         }
         return (json.value || []).map(item => ({ ...item.fields, ID: item.id }));
     }else{
@@ -720,6 +713,16 @@ async function connectToSharePoint(){
         storage.setItem('pmt-list',finalList);
 
         showConnStatus(`Connected! Loaded ${DATA.length} items from "${finalList}".`,'connected');
+        // Show raw field names from actual SharePoint data (debug)
+        if(spItems.length>0){
+            const rawKeys = Object.keys(spItems[0]).filter(k=>k!=='ID'&&k!=='Title');
+            const kv = spItems[0];
+            const sample = rawKeys.slice(0,3).map(k=>k+'='+(kv[k]||'')).join(', ');
+            const el=document.getElementById('conn-status');
+            el.innerHTML += '<div style="margin-top:6px;font-size:11px;background:#fff3cd;padding:6px;border-radius:3px">' +
+                '<strong>📋 Raw fields (' + rawKeys.length + '):</strong> ' +
+                '<code style="word-break:break-all">' + rawKeys.join(', ') + '</code></div>';
+        }
         updateBadge();
         updateCounts();
         renderCurrent();
