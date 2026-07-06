@@ -736,6 +736,9 @@ async function connectToSharePoint(){
         el.innerHTML += '<div style="margin-top:6px;font-size:12px;background:#fff;padding:8px;border:1px solid #ccc;border-radius:3px;max-height:200px;overflow:auto">' +
             '<strong>📋 Keys in DATA[0] (' + allKeys.length + '):</strong><br>' +
             '<code>' + allKeys.join(', ') + '</code></div>';
+        // Mark engineering as connected so auto-connect doesn't override
+        viewData.engineering.connected = true;
+        viewData.engineering.data = DATA;
         updateBadge();
         // Switch to Engineering view to see the data
         document.querySelector('.view-btn[data-view="engineering"]')?.click();
