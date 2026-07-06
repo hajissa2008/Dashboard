@@ -550,6 +550,39 @@ function extractSiteFromLink(link){
 // ======================== SHAREPOINT API ========================
 const CORS_PROXY = 'https://corsproxy.io/?url=';
 
+function siteToGraphPath(siteUrl){
+    const u = new URL(siteUrl);
+    return u.hostname + ':' + u.pathname.replace(/\/+$/,'');
+}
+
+function graphListItemsUrl(siteUrl, listName){
+    const path = siteToGraphPath(siteUrl);
+    return `https://graph.microsoft.com/v1.0/sites/${path}:/lists/getByTitle('${encodeURIComponent(listName)}')/items?$top=500&expand=fields`;
+}
+
+async function fetchSPListItems(siteUrl, listName){
+    if(spToken){
+        // Use Microsoft Graph API
+        const url = graphListItemsUrl(siteUrl, listName);
+        const resp = await fetch(url, {
+            headers: { 'Authorization': 'Bearer ' + spToken, 'Accept': 'application/json' }
+        });
+        if(!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
+        const json = await resp.json();
+        // Graph API returns { value: [ { id, fields: { Title, ... } } ] }
+        return (json.value || []).map(item => ({ ...item.fields, ID: item.id }));
+    }else{
+        // Fallback: SharePoint REST via CORS proxy
+        const url = `${siteUrl.replace(/\/+$/,'')}/_api/web/lists/getbytitle('${listName}')/items?$top=500`;
+        const resp = await fetch(CORS_PROXY + encodeURIComponent(url), {
+            headers: { 'Accept': 'application/json;odata=nometadata' }
+        });
+        if(!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
+        const json = await resp.json();
+        return json.d ? json.d.results : (json.value || []);
+    }
+}
+
 async function apiFetch(url){
     const opts = { method:'GET', headers:{'Accept':'application/json;odata=nometadata'} };
     const onSP = location.origin.includes('.sharepoint.com');
@@ -601,14 +634,7 @@ async function connectToSharePoint(){
 
     try{
         const siteUrl=finalSite.replace(/\/+$/,'');
-        const apiUrl=`${siteUrl}/_api/web/lists/getbytitle('${finalList}')/items?\$top=500`;
-
-        const resp=await apiFetch(apiUrl);
-
-        if(!resp.ok)throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
-
-        const json=await resp.json();
-        const spItems=json.d?json.d.results:json.value;
+        const spItems = await fetchSPListItems(siteUrl, finalList);
 
         if(!spItems||spItems.length===0){
             showConnStatus('Connected but list is empty.','disconnected');
@@ -730,11 +756,7 @@ async function connectSingleView(view,map,personCols){
     }
     try{
         const siteUrl=site.replace(/\/+$/,'');
-        const apiUrl=`${siteUrl}/_api/web/lists/getbytitle('${list}')/items?\$top=500`;
-        const resp=await apiFetch(apiUrl);
-        if(!resp.ok)throw new Error(`HTTP ${resp.status}`);
-        const json=await resp.json();
-        const items=json.d?json.d.results:json.value;
+        const items = await fetchSPListItems(siteUrl, list);
         if(!items||items.length===0)return false;
         vd.data=items.map(spItem=>{
             const item={};
