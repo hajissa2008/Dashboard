@@ -1307,6 +1307,23 @@ function toggleDark(){
 // ======================== INIT ========================
 (function init(){
     try{
+    // If running in MSAL popup, just process auth and close, don't render app
+    const isPopup = window.opener && window.opener !== window && window.opener !== window.self && !window.opener.closed;
+    if(isPopup && typeof msal !== 'undefined'){
+        const pt = storage.getItem('pmt-tenant') || document.getElementById('cfg-tenant')?.value?.trim();
+        const pc = storage.getItem('pmt-client') || document.getElementById('cfg-client')?.value?.trim();
+        if(pt && pc){
+            const pApp = new msal.PublicClientApplication({
+                auth:{ clientId: pc, authority: 'https://login.microsoftonline.com/' + pt, redirectUri: location.origin + location.pathname },
+                cache:{ cacheLocation: 'localStorage' }
+            });
+            pApp.handleRedirectPromise().then(r => {
+                if(r && r.account) setTimeout(() => window.close(), 500);
+                else if(!window.location.hash.includes('code=') && !window.location.hash.includes('token=')) window.close();
+            }).catch(() => window.close());
+        }else{ window.close(); }
+        return; // Stop init — don't render app in popup
+    }
     // Restore dark mode
     if(localStorage.getItem('pmt-dark')){
         document.body.classList.add('dark');
