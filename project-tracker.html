@@ -736,12 +736,10 @@ async function connectToSharePoint(){
         el.innerHTML += '<div style="margin-top:6px;font-size:12px;background:#fff;padding:8px;border:1px solid #ccc;border-radius:3px;max-height:200px;overflow:auto">' +
             '<strong>📋 Keys in DATA[0] (' + allKeys.length + '):</strong><br>' +
             '<code>' + allKeys.join(', ') + '</code></div>';
-        // Mark engineering as connected so auto-connect doesn't override
-        viewData.engineering.connected = true;
-        viewData.engineering.data = DATA;
+        // Render raw data directly (bypass view system)
+        renderRawData();
         updateBadge();
-        // Switch to Engineering view to see the data
-        document.querySelector('.nav-item[data-view="engineering"]')?.click();
+        closeSettings();
     }catch(err){
         dataSource='sp-error';
         showConnStatus(`Connection failed: ${err.message}. Using demo data.`,'disconnected');
@@ -982,6 +980,36 @@ function closeSettings(){
     document.getElementById('settings-overlay').classList.remove('show');
     document.getElementById('settings-panel').classList.remove('open');
 }
+
+function renderRawData(){
+    currentView='raw';
+    const cols = Object.keys(DATA[0]||{}).filter(k=>!k.startsWith('@'));
+    let html = `<div class="table-wrap"><div class="table-toolbar">
+      <span class="view-label">📊 Raw SharePoint Data (${DATA.length} rows, ${cols.length} columns)</span>
+    </div><div class="table-scroll" style="max-height:70vh;overflow:auto"><table id="raw-table"><thead><tr>`;
+    cols.forEach(c => { html += `<th onclick="sortRaw('${c}')">${c}</th>`; });
+    html += '</tr></thead><tbody>';
+    DATA.forEach(item => {
+        html += '<tr>';
+        cols.forEach(c => { html += '<td>' + (item[c]??'') + '</td>'; });
+        html += '</tr>';
+    });
+    html += '</tbody></table></div></div>';
+    document.getElementById('content').innerHTML = html;
+    document.querySelectorAll('.nav-item').forEach(el=>el.classList.remove('active'));
+}
+function sortRaw(col){
+    const asc = rawSortCol===col ? !rawSortAsc : true;
+    rawSortCol = col; rawSortAsc = asc;
+    DATA.sort((a,b)=>{
+        const va=a[col],vb=b[col];
+        if(va==null)return 1; if(vb==null)return -1;
+        if(typeof va==='number'&&typeof vb==='number') return asc?va-vb:vb-va;
+        return asc?String(va).localeCompare(String(vb)):String(vb).localeCompare(String(va));
+    });
+    renderRawData();
+}
+let rawSortCol=null, rawSortAsc=true;
 
 // ======================== RENDER ========================
 function renderCurrent(){
