@@ -1220,16 +1220,7 @@ function initMsal(){
 
 async function loginSP(){
     if(!initMsal()){ alert('Set Tenant ID and Client ID in Connection settings first (⚙️).'); return; }
-    try{
-        const resp = await msalApp.loginPopup({
-            scopes: SP_SCOPES,
-            prompt: 'select_account'
-        });
-        spUser = resp.account;
-        await getTokenSP();
-        updateAuthUI();
-        closeSettings();
-    }catch(e){ alert('Login failed: ' + e.message); }
+    msalApp.loginRedirect({ scopes: SP_SCOPES, prompt: 'select_account' });
 }
 
 async function getTokenSP(){
@@ -1255,8 +1246,8 @@ async function getTokenSP(){
 function logoutSP(){
     spToken = null;
     spUser = null;
-    if(msalApp) msalApp.logoutPopup();
-    updateAuthUI();
+    if(msalApp) msalApp.logoutRedirect();
+    else updateAuthUI();
 }
 
 function saveAuthConfig(){
@@ -1357,7 +1348,7 @@ function toggleDark(){
         }).catch(()=>{
             if(!isPopup) document.getElementById('login-btn').style.display='';
         });
-    }else if(!location.origin.includes('.sharepoint.com') && !isPopup){
+    }else if(!isPopup){
         document.getElementById('login-btn').style.display='';
     }
 
