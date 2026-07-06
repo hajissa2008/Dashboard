@@ -264,11 +264,11 @@ body.dark th .sort-arrow{color:var(--text-secondary)}
 
       <label>CORS Proxy URL (for cross-origin, e.g. GitHub Pages)</label>
       <input type="text" id="cfg-proxy" placeholder="https://your-proxy.herokuapp.com/">
-      <div class="hint">Leave empty when deployed on SharePoint. For external hosting, use a CORS proxy that forwards requests (e.g. a Cloudflare Worker or cors-anywhere instance).</div>
+      <div class="hint">For corsproxy.io enter: https://corsproxy.io/?url= . For cors-anywhere enter: https://your-proxy.herokuapp.com/ .</div>
 
       <label>Bearer Token (for proxy auth, optional)</label>
       <input type="password" id="cfg-token" placeholder="Paste your SharePoint access token">
-      <div class="hint">Only needed when using a proxy. Get a token from Azure AD or your SharePoint site.</div>
+      <div class="hint">Only needed when proxy can't forward cookies. Get a token from <a href="https://learn.microsoft.com/en-us/sharepoint/dev/sp-add-ins/using-sharepoint-online-from-a-cross-domain-javascript-web-part" target="_blank">Azure AD app registration</a> or try without first.</div>
 
       <label>SharePoint List Link (paste any shared link)</label>
       <input type="text" id="cfg-link" placeholder="https://...sharepoint.com/:l:/g/personal/...">
@@ -303,11 +303,11 @@ body.dark th .sort-arrow{color:var(--text-secondary)}
 
       <label>CORS Proxy URL (for cross-origin)</label>
       <input type="text" id="cfg-eng-proxy" placeholder="https://your-proxy.herokuapp.com/">
-      <div class="hint">Same proxy as above if using one.</div>
+      <div class="hint">For corsproxy.io enter: https://corsproxy.io/?url=</div>
 
       <label>Bearer Token (for proxy auth)</label>
       <input type="password" id="cfg-eng-token" placeholder="Paste your SharePoint access token">
-      <div class="hint">Required when using a proxy from external hosting.</div>
+      <div class="hint">Try without token first; some proxies forward the session cookie automatically.</div>
 
       <div style="display:flex;gap:8px">
         <button class="btn btn-primary" onclick="connectToEngineering()">🔌 Connect</button>
@@ -571,10 +571,16 @@ function extractSiteFromLink(link){
 
 // ======================== SHAREPOINT API ========================
 function apiFetch(url, proxy, token){
-    const opts = { method:'GET', headers:{'Accept':'application/json;odata=verbose'} };
+    const opts = { method:'GET', headers:{'Accept':'application/json;odata=nometadata'} };
     if(proxy){
-        url = proxy.replace(/\/+$/,'') + '/' + encodeURIComponent(url);
+        const p = proxy.trim();
+        const enc = encodeURIComponent(url);
+        if(p.includes('?url=')) url = p.replace(/\?url=.*$/,'?url=') + enc;
+        else if(p.endsWith('?')) url = p + 'url=' + enc;
+        else if(p.endsWith('=')) url = p + enc;
+        else url = p.replace(/\/+$/,'') + '/' + enc;
         if(token) opts.headers['Authorization'] = 'Bearer ' + token;
+        console.log('[apiFetch] proxied URL:', url);
     }else{
         opts.credentials = 'include';
     }
@@ -626,7 +632,7 @@ async function connectToSharePoint(){
         if(!resp.ok)throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
 
         const json=await resp.json();
-        const spItems=json.d.results;
+        const spItems=json.d?json.d.results:json.value;
 
         if(!spItems||spItems.length===0){
             showConnStatus('Connected but list is empty.','disconnected');
@@ -724,12 +730,12 @@ async function connectToEngineering(){
         const resp=await apiFetch(apiUrl, proxy, token);
         if(!resp.ok)throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
         const json=await resp.json();
-        const items=json.d.results;
-        if(!items||items.length===0){
+        const engItems=json.d?json.d.results:json.value;
+        if(!engItems||engItems.length===0){
             showEngConnStatus('Connected but list is empty.','disconnected');
             return;
         }
-        engDATA=items.map(spItem=>{
+        engDATA=engItems.map(spItem=>{
             const item={};
             for(const [spKey,appKey] of Object.entries(SD_MAP)){
                 let val=spItem[spKey];
