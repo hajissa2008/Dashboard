@@ -1273,13 +1273,14 @@ function saveAuthConfig(){
 }
 
 function updateAuthUI(){
-    document.getElementById('login-btn').style.display = spUser ? 'none' : '';
-    document.getElementById('logout-btn').style.display = spUser ? '' : 'none';
-    if(spUser) document.getElementById('user-name').textContent = spUser.name || spUser.username;
+    const el=id=>document.getElementById(id);
+    if(el('login-btn'))el('login-btn').style.display = spUser ? 'none' : '';
+    if(el('logout-btn'))el('logout-btn').style.display = spUser ? '' : 'none';
+    if(spUser&&el('user-name'))el('user-name').textContent = spUser.name || spUser.username;
     // Update settings panel auth status if visible
-    const statusEl=document.getElementById('settings-auth-status');
-    const loginBtn=document.getElementById('settings-login-btn');
-    const logoutBtn=document.getElementById('settings-logout-btn');
+    const statusEl=el('settings-auth-status');
+    const loginBtn=el('settings-login-btn');
+    const logoutBtn=el('settings-logout-btn');
     if(statusEl){
         if(spUser){
             loginBtn.style.display='none';
@@ -1347,18 +1348,14 @@ function toggleDark(){
                 spUser = resp.account;
                 spToken = resp.accessToken;
                 updateAuthUI();
-                // If in popup, auth is done — MSAL will postMessage back to opener and close
-                if(isPopup) window.close();
-            }else{
-                if(isPopup) { window.close(); return; }
-                // Try silent sso
+            }else if(!isPopup){
+                // Try silent sso (only in main window)
                 msalApp.ssoSilent({ scopes: SP_SCOPES })
                     .then(r=>{ spUser=r.account; spToken=r.accessToken; updateAuthUI(); })
                     .catch(()=>{ document.getElementById('login-btn').style.display=''; });
             }
         }).catch(()=>{
-            if(isPopup) { window.close(); return; }
-            document.getElementById('login-btn').style.display='';
+            if(!isPopup) document.getElementById('login-btn').style.display='';
         });
     }else if(!location.origin.includes('.sharepoint.com') && !isPopup){
         document.getElementById('login-btn').style.display='';
