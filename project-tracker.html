@@ -272,7 +272,7 @@ body.dark th .sort-arrow{color:var(--text-secondary)}
       <div class="hint">Found in Azure AD → App registrations → Your app → Overview. Required for GitHub Pages deployment.</div>
 
       <label>Azure AD Client ID</label>
-      <input type="text" id="cfg-client" placeholder="1b3e37d8-0ba9-44b2-9033-68e4d8068a87" value="1b3e37d8-0ba9-44b2-9033-68e4d8068a87">
+      <input type="text" id="cfg-client" placeholder="04f83c11-e51c-4a8a-be86-9e3a49f3e952" value="04f83c11-e51c-4a8a-be86-9e3a49f3e952">
       <div class="hint">From the same Azure AD app registration.</div>
 
       <label>SharePoint List Link (paste any shared link)</label>
@@ -1181,7 +1181,8 @@ function initMsal(){
             authority: 'https://login.microsoftonline.com/' + tenant,
             redirectUri: location.origin + location.pathname
         },
-        cache:{ cacheLocation: 'localStorage' }
+        cache:{ cacheLocation: 'localStorage' },
+        system:{ allowNativeBroker: false }
     });
     return true;
 }
