@@ -819,7 +819,16 @@ async function connectSingleView(view){
         const rawKeys = Object.keys(items[0]).filter(k=>!skipKeys.includes(k));
         vd.data=items.map(spItem=>{
             const item={};
-            rawKeys.forEach(k => { item[k] = spItem[k] ?? ''; });
+            rawKeys.forEach(k => {
+                let v = spItem[k];
+                if(v!==null&&v!==undefined){
+                    if(typeof v==='object'){
+                        v = v.Title || v.LookupValue || v.Email || (v['@odata.type']?JSON.stringify(v):'');
+                    }
+                    if(typeof v==='string'&&v.match(/\/Date\(/))v=new Date(parseInt(v.replace(/[^0-9]/g,''))).toISOString().split('T')[0];
+                }
+                item[k] = v ?? '';
+            });
             item.dept = VIEWS[view]?.dept || view;
             item.proj = spItem['Project Code'] || spItem['Project Name'] || spItem.Title || 'N/A';
             item.status = spItem['Status'] || spItem['DRAWING STATUS'] || 'Not Set';
@@ -1141,7 +1150,8 @@ function arrow(col){return sortCol===col?(sortAsc?'▲':'▼'):''}
 function sortBy(col){if(sortCol===col)sortAsc=!sortAsc;else{sortCol=col;sortAsc=true;}renderTable();}
 
 function cellValue(item,col){
-    const v=getVal(item,col);
+    let v=getVal(item,col);
+    if(v!==null&&v!==undefined&&typeof v==='object'){v=v.Title||v.LookupValue||v.Email||String(v);}
     if(col==='status')return `<span class="status-badge ${statusClass(v)}">${v||'Not Set'}</span>`;
     if(col==='priority')return `<span class="priority-badge ${priorityClass(v)}">${v||'N/A'}</span>`;
     if(col==='prog'||col==='dailyProg'||col==='weeklyProg'||col==='compPct'){
