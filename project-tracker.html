@@ -798,7 +798,7 @@ function saveViewConfigs(){
     alert('View configurations saved.');
 }
 
-async function connectSingleView(view,map,personCols){
+async function connectSingleView(view){
     const vd=viewData[view];
     const site=vd.site || (document.getElementById('cfg-vsite-'+view)?.value.trim()||'');
     const list=vd.list || (document.getElementById('cfg-vlist-'+view)?.value.trim()||'');
@@ -814,31 +814,16 @@ async function connectSingleView(view,map,personCols){
         const siteUrl=site.replace(/\/+$/,'');
         const items = await fetchSPListItems(siteUrl, list);
         if(!items||items.length===0)return false;
+        // Use raw SharePoint fields (no predefined mapping) for any view
+        const skipKeys = ['ID','id','Title','ContentType','Modified','Created','AuthorLookupId','EditorLookupId','_UIVersionString','Attachments','Edit','LinkTitleNoMenu','LinkTitle','ItemChildCount','FolderChildCount','_ComplianceFlags','_ComplianceTag','_ComplianceTagWrittenTime','_ComplianceTagUserId','AppAuthorLookupId','AppEditorLookupId','@odata.etag'];
+        const rawKeys = Object.keys(items[0]).filter(k=>!skipKeys.includes(k));
         vd.data=items.map(spItem=>{
             const item={};
-            for(const [spKey,appKey] of Object.entries(map)){
-                let val=spItem[spKey];
-                if(val!==undefined&&val!==null){
-                    if(personCols&&personCols.includes(spKey)){
-                        if(typeof val==='object'&&val.Title)val=val.Title;
-                        else if(typeof val==='object'&&val.LookupValue)val=val.LookupValue;
-                        else if(typeof val==='object'&&val.Email)val=val.Email;
-                    }
-                    if(typeof val==='string'&&val.match(/\/Date\(/))
-                        val=new Date(parseInt(val.replace(/[^0-9]/g,''))).toISOString().split('T')[0];
-                    if(typeof val==='string'&&!isNaN(val)&&val!=='')val=Number(val);
-                }
-                if(val!==undefined&&val!==null&&val!=='')item[appKey]=val;
-            }
-            for(const k of Object.keys(map)){
-                const appKey=map[k];
-                if(!(appKey in item))item[appKey]='';
-            }
-            if(!item.id)item.id=spItem.ID||'';
-            if(!item.proj)item.proj=spItem.Title||spItem.ProjectName||spItem.Project_x0020_Name||'';
-            if(!item.status)item.status=spItem.Status||'Not Started';
-            if(!item.priority)item.priority=spItem.Priority||'Medium';
-            if(item.prog===undefined||item.prog==='')item.prog=0;
+            rawKeys.forEach(k => { item[k] = spItem[k] ?? ''; });
+            item.dept = VIEWS[view]?.dept || view;
+            item.proj = spItem['Project Code'] || spItem['Project Name'] || spItem.Title || 'N/A';
+            item.status = spItem['Status'] || spItem['DRAWING STATUS'] || 'Not Set';
+            item.priority = spItem['Priority'] || 'Medium';
             return item;
         });
         vd.connected=true;
@@ -860,9 +845,7 @@ async function connectAllViews(){
     });
     let count=0;
     for(const v of VIEW_KEYS){
-        const map=v==='engineering'?SD_MAP:SP_MAP;
-        const personCols=v==='engineering'?SD_PERSON_COLS:PERSON_COLS;
-        const ok=await connectSingleView(v,map,personCols);
+        const ok=await connectSingleView(v);
         if(ok)count++;
     }
     updateCounts();
@@ -876,9 +859,7 @@ function autoConnectCurrentView(){
     const vd=viewData[view];
     if(!vd||!vd.site||!vd.list)return Promise.resolve();
     if(vd.connected&&vd.data.length>0)return Promise.resolve();
-    const map=view==='engineering'?SD_MAP:SP_MAP;
-    const personCols=view==='engineering'?SD_PERSON_COLS:PERSON_COLS;
-    return connectSingleView(view,map,personCols).then(()=>{
+    return connectSingleView(view).then(()=>{
         updateCounts();
         renderCurrent();
     });
@@ -1123,18 +1104,16 @@ function renderTable(){
         });
     }
 
-    let cols=(currentView==='dashboard'?VIEWS.dashboard:VIEWS[currentView]).cols;
-    // Add any extra fields from data that aren't in predefined cols
-    const extraCols=[];
-    if(filtered.length>0){
-        const allKeys=new Set();
-        cols.forEach(c=>allKeys.add(c));
-        filtered.forEach(item=>Object.keys(item).forEach(k=>{
-            if(!allKeys.has(k)&&k!=='id'&&k!=='proj'&&!k.startsWith('@')&&!extraCols.includes(k))
-                extraCols.push(k);
-        }));
+    let cols;
+    if(currentView!=='dashboard'&&d.length>0){
+        // Use actual SharePoint data keys as columns (skip internal keys)
+        const predefinedCols=(currentView==='dashboard'?VIEWS.dashboard:VIEWS[currentView]).cols;
+        const dataKeys=Object.keys(d[0]).filter(k=>!['dept','priority','proj','status','Title'].includes(k)&&!k.startsWith('@')&&!k.startsWith('_'));
+        const matchesPredefined=dataKeys.filter(k=>predefinedCols.includes(k)).length;
+        cols=matchesPredefined<dataKeys.length*0.5?dataKeys:predefinedCols;
+    }else{
+        cols=(currentView==='dashboard'?VIEWS.dashboard:VIEWS[currentView]).cols;
     }
-    cols = cols.concat(extraCols);
 
     const tbody=document.getElementById('table-body');
     if(!tbody)return;
@@ -1268,10 +1247,8 @@ function switchView(view){
     document.getElementById('view-title').textContent=VIEWS[view].title+(useViewData&&vd.list?' ('+vd.list+')':'');
     // Auto-connect if configured but not yet connected
     if(view!=='dashboard'&&vd&&vd.site&&vd.list&&!vd.connected){
-        const map=view==='engineering'?SD_MAP:SP_MAP;
-        const personCols=view==='engineering'?SD_PERSON_COLS:PERSON_COLS;
         document.getElementById('content').innerHTML='<div class="loading-state"><div class="spinner"></div><p>Auto-connecting to '+vd.list+'...</p></div>';
-        connectSingleView(view,map,personCols).then(()=>{
+        connectSingleView(view).then(()=>{
             updateCounts();
             updateViewNavDot(view);
             renderCurrent();
@@ -1430,6 +1407,11 @@ function toggleDark(){
     if(!viewData.engineering.site){
         viewData.engineering.site='https://sascontractingsa.sharepoint.com/sites/Alenshaiah';
         viewData.engineering.list='Shop Drawing Status';
+    }
+    // Pre-fill Construction view with Maseel Activity list as default
+    if(!viewData.construction.site){
+        viewData.construction.site='https://sascontractingsa.sharepoint.com/sites/Alenshaiah';
+        viewData.construction.list='Maseel Activity';
     }
     // Restore or save default Azure AD config
     let savedTenant=storage.getItem('pmt-tenant');
