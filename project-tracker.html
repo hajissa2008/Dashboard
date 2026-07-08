@@ -1505,8 +1505,7 @@ function showKpiModal(title, items, columns){
     document.getElementById('kpi-modal-count').textContent = items.length + ' item(s)';
     const body = document.getElementById('kpi-modal-body');
     if(!items.length){body.innerHTML='<p style="color:var(--text-secondary)">No items.</p>';document.getElementById('kpi-modal-overlay').classList.add('show');return;}
-    let cols = columns || Object.keys(items[0]).filter(k=>!k.startsWith('@')&&!k.startsWith('_')&&!['ID','id','dept'].includes(k));
-    if(cols.length>8)cols=cols.slice(0,8);
+    const cols = columns || Object.keys(items[0]).filter(k=>!k.startsWith('@')&&!k.startsWith('_')&&!['ID','id','dept'].includes(k));
     const labels = typeof COL_LABELS!=='undefined' ? COL_LABELS : {};
     let html='<table><thead><tr>'+cols.map(c=>'<th>'+(labels[c]||c)+'</th>').join('')+'</tr></thead><tbody>';
     items.forEach(x=>{
@@ -1638,6 +1637,10 @@ function renderDeptView(view){
     const vd=viewData[view];
     const useViewData=vd&&vd.connected&&vd.data.length>0;
     const items=useViewData?vd.data:DATA.filter(x=>x.dept===v.dept);
+    // Compute view columns (same logic as renderTable)
+    const _skipKeys=new Set(['dept','priority','proj','status','Title','Modified','Created','EditorLookupId','AuthorLookupId','ID','id','ContentType']);
+    const _dataKeys=items.length>0?Object.keys(items[0]).filter(k=>!_skipKeys.has(k)&&!k.startsWith('@')&&!k.startsWith('_')&&!ALIAS_SHORTS.has(k)):[];
+    const viewCols=_dataKeys.length>0?_dataKeys:v.cols;
     const total=items.length;
     const completed=items.filter(x=>x.status==='Completed').length;
     const inProg=items.filter(x=>x.status==='In Progress'||x.status==='Under Review').length;
@@ -1658,7 +1661,7 @@ function renderDeptView(view){
         const trendHtml=trend?`<span class="kpi-trend ${trend.cls}">${trend.txt}</span>`:'';
         const subHtml=sub!==undefined?`<div class="kpi-sub">${sub}</div>`:'';
         let ci=-1;
-        if(detailItems){ci=window._kpiCache.length;window._kpiCache.push({title:label,items:detailItems||[],cols:v.cols});}
+        if(detailItems){ci=window._kpiCache.length;window._kpiCache.push({title:label,items:detailItems||[],cols:viewCols});}
         const clickAttr=ci>=0?`onclick="showKpiModalFromCache(${ci})"`:tip?`onclick="filterByStatus('${tip}')"`:'';
         return `<div class="kpi-card" ${clickAttr} title="Click for details" style="cursor:pointer">
           <div class="kpi-accent" style="background:${color}"></div>
