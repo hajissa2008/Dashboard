@@ -742,6 +742,8 @@ async function connectToSharePoint(){
         // Render raw data directly (bypass view system)
         renderRawData();
         updateBadge();
+        updateCounts();
+        VIEW_KEYS.forEach(v=>updateViewNavDot(v));
         closeSettings();
     }catch(err){
         dataSource='sp-error';
@@ -756,6 +758,7 @@ function useDemoData(){
     showConnStatus('Using embedded demo data with 8 sample activities.','connected');
     updateBadge();
     updateCounts();
+    VIEW_KEYS.forEach(v=>updateViewNavDot(v));
     renderCurrent();
     closeSettings();
 }
@@ -835,6 +838,7 @@ async function connectSingleView(view){
         vd.connected=true;
         updateViewDot(view,'online');
         updateViewNavDot(view,'online');
+        updateCounts();
         return true;
     }catch(err){
         vd.connected=false;
