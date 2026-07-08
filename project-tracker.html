@@ -550,6 +550,34 @@ function priorityClass(p){return'priority-'+p}
 function countByDept(dept){return DATA.filter(d=>d.dept===dept).length}
 function countAll(){return DATA.length}
 
+// Date-based overdue logic: item is overdue if any of its end dates (planned/due) is before today AND status is not complete
+const COMPLETE_STATUSES = new Set(['Completed','Closed','Approved','Passed','Cancelled','Delivered','Issued']);
+function getEndDates(item){
+    const dates=[];
+    ['pFinish','due','baseFinish','expDel','curFinish','aFinish'].forEach(f=>{
+        const v=item[f];
+        if(v&&typeof v==='string'&&/\d{4}-\d{2}-\d{2}/.test(v))dates.push(new Date(v));
+    });
+    return dates;
+}
+function isOverdue(item){
+    if(!item||COMPLETE_STATUSES.has(item.status))return false;
+    const dates=getEndDates(item);
+    if(dates.length===0)return Number(item.delayDays||item['Delay Days']||0)>0; // fallback to delayDays
+    const now=new Date();now.setHours(0,0,0,0);
+    return dates.some(d=>d<now);
+}
+function calcDelay(item){
+    if(!item)return 0;
+    if(item.delayDays!==undefined&&item.delayDays!==null&&item.delayDays!==0)return Number(item.delayDays);
+    if(item['Delay Days']!==undefined&&item['Delay Days']!==null)return Number(item['Delay Days']);
+    const dates=getEndDates(item);
+    if(dates.length===0)return Number(item.delayDays||0);
+    const earliest=dates.sort((a,b)=>a-b)[0];
+    const now=new Date();now.setHours(0,0,0,0);
+    return Math.round((now-earliest)/86400000);
+}
+
 function extractSiteFromLink(link){
     if(!link)return'';
     link=link.split('?')[0]; // strip query params
@@ -1084,8 +1112,8 @@ function renderDashboard(){
     const completed=d.filter(x=>x.status==='Completed').length;
     const inProg=d.filter(x=>x.status==='In Progress'||x.status==='Under Review').length;
     const delayed=d.filter(x=>x.status==='Delayed'||x.status==='Waiting Approval').length;
-    const overdue=d.filter(x=>Number(x.delayDays||0)>0).length;
-    const avgDelay=Math.round(d.reduce((s,x)=>s+Math.max(0,Number(x.delayDays||x['Delay Days']||0)),0)/Math.max(1,total));
+    const overdue=d.filter(isOverdue).length;
+    const avgDelay=Math.round(d.reduce((s,x)=>s+Math.max(0,calcDelay(x)),0)/Math.max(1,total));
     const avgProg=Math.round(d.reduce((s,x)=>s+(Number(x.prog||x['CompletionPct']||0)),0)/total);
     const totalBudget=d.reduce((s,x)=>s+(Number(x.budget||x['Budget']||0)),0);
     const totalActual=d.reduce((s,x)=>s+(Number(x.actual||x['ActualCost']||x['Actual Cost']||0)),0);
@@ -1112,7 +1140,7 @@ function renderDashboard(){
         const items=vd&&vd.connected&&vd.data.length>0?vd.data:d.filter(x=>x.dept===dp.key);
         const t=items.length, c=items.filter(x=>x.status==='Completed').length;
         const ip=items.filter(x=>x.status==='In Progress'||x.status==='Under Review').length;
-        const od=items.filter(x=>Number(x.delayDays||x['Delay Days']||0)>0).length;
+        const od=items.filter(isOverdue).length;
         const ap=t?Math.round(items.reduce((s,x)=>s+(x.prog||0),0)/t):0;
         deptKpis+=`<div class="kpi-card" onclick="switchView('${vk||'dashboard'}')" title="Click to view ${dp.key}" style="grid-column:span 1">
           <div class="kpi-accent" style="background:${dp.color}"></div>
