@@ -1555,14 +1555,20 @@ function renderDeptView(view){
               kpi('⚠️','Delayed',delayedDel,'#D92C2C',null,null,'Delayed')+
               kpi('✅','Completed',completed,'#107C10',completed/total*100,null,'Completed');
     }else if(view==='construction'){
-        const active=items.filter(x=>x.status==='In Progress'||x.status==='Active').length;
-        const issues=items.filter(x=>x.status==='Issue'||x.status==='Delayed').length;
+        const notStarted=items.filter(x=>x.status==='Not Started').length;
+        const inProgress=items.filter(x=>x.status==='In Progress').length;
+        const forInsp=items.filter(x=>x.status==='For Inspection').length;
+        const partInsp=items.filter(x=>x.status==='Partially Inspected').length;
+        const accDone=items.filter(x=>x.status==='ACC Completed').length;
+        const sdcDone=items.filter(x=>x.status==='SDC Completed').length;
         kpis=kpi('🏗️','Total Activities',total,'#4C5D71')+
-              kpi('🔄','Active',active,'#00B7C3',active/total*100,null,'In Progress')+
-              kpi('✅','Completed',completed,'#107C10',completed/total*100,null,'Completed')+
-              kpi('⚠️','Issues',issues,'#D92C2C',null,null,'Issue')+
-              kpi('⏰','Overdue',overdue,'#D92C2C',null,null,'Delayed')+
-              kpi('📊','Avg Progress',avgProg+'%','#8764B8',avgProg);
+              kpi('⏰','Overdue',overdue,'#D92C2C',null,null)+
+              kpi('📋','Not Started',notStarted,'#8A8886',total?notStarted/total*100:0,null)+
+              kpi('🔄','In Progress',inProgress,'#00B7C3',total?inProgress/total*100:0,null,'In Progress')+
+              kpi('🔍','For Inspection',forInsp,'#ED7D31',total?forInsp/total*100:0,null)+
+              kpi('🔎','Partially Inspected',partInsp,'#FFB900',total?partInsp/total*100:0,null)+
+              kpi('✅','ACC Completed',accDone,'#107C10',total?accDone/total*100:0,null)+
+              kpi('📌','SDC Completed',sdcDone,'#8764B8',total?sdcDone/total*100:0,null);
     }else if(view==='cost'){
         const budget=items.reduce((s,x)=>s+(x.budget||x['Budget']||0),0);
         const actual=items.reduce((s,x)=>s+(x.actual||x['Actual Cost']||x['Actual']||0),0);
