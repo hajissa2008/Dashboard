@@ -520,7 +520,7 @@ VIEW_KEYS.forEach(k => { viewData[k] = { site:'', list:'', data:[], connected:fa
 const VIEWS = {
   dashboard:{title:'Executive Dashboard',dept:null,cols:['proj','prog','status','budget','actual','forecast','delayDays','priority','dept','pm'],group:'proj'},
   procurement:{title:'Procurement Tracker',dept:'Procurement',cols:['id','proj','matDesc','vendor','rfq','po','rfqDate','poDate','expDel','actDel','mfgStatus','shipStatus','inspStatus','cost','assigned','status','priority','remarks']},
-  engineering:{title:'Engineering - Shop Drawings',dept:'Engineering',cols:['id','dwgNo','dwgTitle','dwgType','rev','eng','checker','appr','subDate','clientReview','apprDate','ifcDate','engDisc','spec','calc','rfi','tq','status','priority','remarks']},
+  engineering:{title:'Engineering - Shop Drawings',dept:'Engineering',cols:['id','dwgNo','dwgTitle','dwgType','rev00','rev01','rev02','rev03','eng','checker','appr','subDate','clientReview','apprDate','ifcDate','engDisc','spec','calc','rfi','tq','status','priority','phase','part','remarks']},
   construction:{title:'Construction Tracker',dept:'Construction',cols:['id','proj','actId','actName','workFront','cArea','contractor','foreman','workStatus','dailyProg','weeklyProg','compPct','status','pStart','pFinish','aStart','aFinish','inspReq','siteIssue','ncr','punch','permit','priority','remarks']},
   cost:{title:'Cost Control Tracker',dept:'Cost Control',cols:['id','proj','actId','actName','wbs','budget','committed','actual','forecast','costVar','ev','pv','cpi','spi','prog','status']},
   planning:{title:'Planning Tracker',dept:'Planning',cols:['id','proj','actId','actName','primId','schedStatus','pStart','pFinish','baseFinish','curFinish','delayDays','floatDays','critical','recovery','prog','status','priority']},
@@ -549,10 +549,30 @@ const COL_LABELS = {
   eng:'Engineer',checker:'Checker',appr:'Approver',subDate:'Submission Date',clientReview:'Client Review',
   apprDate:'Approval Date',ifcDate:'IFC Date',spec:'Spec #',calc:'Calc Ref',phase:'Phase',discLead:'Disc Lead',
   hseAction:'HSE Action',hseClose:'HSE Closeout',
-  qaInsp:'QA Insp Req',matInsp:'Material Inspection',testReport:'Test Report',qaNcr:'QA NCR',qaAction:'QA Action',qaStatus:'Quality Status',qaClose:'QA Closeout'
+  qaInsp:'QA Insp Req',matInsp:'Material Inspection',testReport:'Test Report',qaNcr:'QA NCR',qaAction:'QA Action',qaStatus:'Quality Status',qaClose:'QA Closeout',
+  rev00:'REV 00',rev01:'REV 01',rev02:'REV 02',rev03:'REV 03',
+  part:'Part',phase:'Phase',
+  // Engineering Shop Drawing Status columns
+  dwgNo:'Drawing #',dwgTitle:'Drawing Title',dwgType:'Drawing Type',engDisc:'Eng Discipline',
+  spec:'Spec #',calc:'Calc Ref',rfi:'RFI #',tq:'TQ #',desStatus:'Design Status',
+  subDate:'Submission Date',clientReview:'Client Review',apprDate:'Approval Date',ifcDate:'IFC Date',
+  eng:'Engineer',checker:'Checker',appr:'Approver'
 };
 
 // ======================== HELPERS ========================
+// All short alias names used by connectSingleView – exclude from dynamic table columns
+const ALIAS_SHORTS = new Set([
+  'prog','compPct','dailyProg','weeklyProg','workFront','cArea','contractor','foreman','workStatus',
+  'pStart','pFinish','aStart','aFinish','inspReq','siteIssue','ncr','punch','permit',
+  'dwgNo','dwgTitle','dwgType','subDate','clientReview','apprDate','ifcDate','engDisc','spec','calc','rfi','tq',
+  'matDesc','matCode','vendorContact','rfq','rfqDate','po','poDate','pr','mfgStatus','shipStatus',
+  'expDel','actDel','whStatus','inspStatus','actId','actName','id','due','eng','discLead',
+  'phase','assigned','delayDays','risk','permitStat','incident',
+  'qaInsp','matInsp','testReport','qaNcr','qaAction','qaStatus','qaClose',
+  'hseAction','hseClose','budget','committed','actual','forecast','costVar','ev','pv','cpi','spi',
+  'primId','schedStatus','baseFinish','curFinish','recovery','critical','floatDays',
+  'rev00','rev01','rev02','rev03','part','proj','status','priority','dept'
+]);
 function fmtCurrency(n){return typeof n==='number'?'$'+n.toLocaleString():n}
 function getVal(item,col){return item[col]??''}
 function progressClass(v){if(v>=100)return'green';if(v>=75)return'blue';if(v>=50)return'orange';return'red'}
@@ -1435,9 +1455,10 @@ function renderTable(){
 
     let cols;
     if(currentView!=='dashboard'&&d.length>0){
-        // Always use actual data keys (SharePoint columns) when connected or data exists
-        const dataKeys=Object.keys(d[0]).filter(k=>!['dept','priority','proj','status','Title'].includes(k)&&!k.startsWith('@')&&!k.startsWith('_'));
-        cols=dataKeys;
+        const skipKeys = new Set(['dept','priority','proj','status','Title','Modified','Created','EditorLookupId','AuthorLookupId','ID','id','ContentType']);
+        // Use actual SharePoint keys when connected, but exclude all alias short names
+        const dataKeys=Object.keys(d[0]).filter(k=>!skipKeys.has(k)&&!k.startsWith('@')&&!k.startsWith('_')&&!ALIAS_SHORTS.has(k));
+        cols=dataKeys.length>0?dataKeys:(VIEWS[currentView]?.cols||[]);
     }else{
         cols=(currentView==='dashboard'?VIEWS.dashboard:VIEWS[currentView]).cols;
     }
