@@ -653,7 +653,7 @@ function toDate(v){
     }
     return null;
 }
-const DATE_COLS = ['pFinish','due','baseFinish','expDel','curFinish','aFinish','pStart','aStart','PlannedFinish','Planned_x0020_Finish','ActualFinish','Actual_x0020_Finish','DueDate','Due_x0020_Date','BaselineFinish','ExpectedDeliveryDate','ActualDeliveryDate'];
+const DATE_COLS = ['pFinish','due','baseFinish','expDel','curFinish','aFinish','PlannedFinish','Planned_x0020_Finish','ActualFinish','Actual_x0020_Finish','DueDate','Due_x0020_Date','BaselineFinish','ExpectedDeliveryDate','ActualDeliveryDate'];
 function getEndDates(item){
     const dates=[];
     DATE_COLS.forEach(f=>{
@@ -1862,7 +1862,7 @@ function renderDeptView(view){
         kpis=kpi('🏗️','Total Activities',total,'#4C5D71',null,null,null,null,items)+
               kpi('⏰','Overdue',overdue,'#D92C2C',null,null,null,null,items.filter(isOverdue))+
               kpi('📋','Not Started',notStarted,'#8A8886',total?notStarted/total*100:0,null,null,null,items.filter(x=>x.status==='Not Started'))+
-              kpi('🔄','In Progress',inProgress,'#00B7C3',total?inProgress/total*100:0,null,'In Progress',items.filter(x=>x.status==='In Progress'))+
+              kpi('🔄','In Progress',inProgress,'#00B7C3',total?inProgress/total*100:0,null,'In Progress',null,items.filter(x=>x.status==='In Progress'))+
               kpi('🔍','For Inspection',forInsp,'#ED7D31',total?forInsp/total*100:0,null,null,null,items.filter(x=>x.status==='For Inspection'))+
               kpi('🔎','Partially Inspected',partInsp,'#FFB900',total?partInsp/total*100:0,null,null,null,items.filter(x=>x.status==='Partially Inspected'))+
               kpi('✅','ACC Completed',accDone,'#107C10',total?accDone/total*100:0,null,null,null,items.filter(x=>x.status==='ACC Completed'))+
@@ -1885,7 +1885,7 @@ function renderDeptView(view){
         const onTrack=items.filter(x=>!isOverdue(x)).length;
         kpis=kpi('📅','Total Activities',total,'#4C5D71',null,null,null,null,items)+
               kpi('🔴','Critical Path',crit,'#D92C2C',crit/total*100,null,null,null,items.filter(x=>x.critical||x['Critical']==='Yes'))+
-              kpi('⏱️','Avg Delay',avgDelay+'d','#ED7D31',null,avgDelay>0?{txt:'Behind',cls:'down'}:{txt:'On Track',cls:'up'},null,items)+
+              kpi('⏱️','Avg Delay',avgDelay+'d','#ED7D31',null,avgDelay>0?{txt:'Behind',cls:'down'}:{txt:'On Track',cls:'up'},null,null,items)+
               kpi('⏰','Overdue',overdue,'#D92C2C',null,null,'Delayed',null,items.filter(isOverdue))+
               kpi('✅','On Track',onTrack,'#107C10',onTrack/total*100,null,null,null,items.filter(x=>!isOverdue(x)))+
               kpi('📊','Completed',completed,'#00B7C3',completed/total*100,null,'Completed',null,items.filter(x=>x.status==='Completed'));
