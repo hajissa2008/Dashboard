@@ -59,6 +59,19 @@ html,body{height:100%;font-family:'Segoe UI',-apple-system,system-ui,sans-serif;
 /* Settings Panel */
 .settings-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:200}
 .settings-overlay.show{display:block}
+.kpi-modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:300}
+.kpi-modal-overlay.show{display:flex;align-items:center;justify-content:center}
+.kpi-modal{background:var(--white);border-radius:8px;width:90vw;max-width:1000px;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 8px 30px rgba(0,0,0,.25)}
+.kpi-modal-head{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid var(--gray-border)}
+.kpi-modal-head h3{font-size:15px;font-weight:600;margin:0}
+.kpi-modal-close{background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-secondary);padding:2px 6px;border-radius:4px}
+.kpi-modal-close:hover{background:var(--bg-light)}
+.kpi-modal-body{overflow:auto;flex:1;padding:12px 20px 20px}
+.kpi-modal-body table{width:100%;border-collapse:collapse;font-size:12px}
+.kpi-modal-body th{background:var(--bg-light);padding:8px 10px;text-align:left;font-weight:600;border-bottom:2px solid var(--gray-border);white-space:nowrap}
+.kpi-modal-body td{padding:6px 10px;border-bottom:1px solid var(--gray-border);max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.kpi-modal-body tr:hover td{background:var(--bg-light)}
+.kpi-modal-count{font-size:12px;color:var(--text-secondary);padding:0 20px 10px}
 .settings-panel{position:fixed;top:0;right:-400px;width:380px;max-width:90vw;height:100%;background:var(--white);box-shadow:-4px 0 20px rgba(0,0,0,.15);z-index:201;transition:right .3s;overflow-y:auto}
 .settings-panel.open{right:0}
 .settings-header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--gray-border)}
@@ -329,6 +342,18 @@ body.dark th .sort-arrow{color:var(--text-secondary)}
       </div>
 
       <div id="conn-status-hidden" style="display:none"></div>
+    </div>
+  </div>
+
+  <!-- KPI Detail Modal -->
+  <div class="kpi-modal-overlay" id="kpi-modal-overlay" onclick="closeKpiModal(event)">
+    <div class="kpi-modal" onclick="event.stopPropagation()">
+      <div class="kpi-modal-head">
+        <h3 id="kpi-modal-title"></h3>
+        <button class="kpi-modal-close" onclick="closeKpiModal()">✕</button>
+      </div>
+      <div class="kpi-modal-count" id="kpi-modal-count"></div>
+      <div class="kpi-modal-body" id="kpi-modal-body"></div>
     </div>
   </div>
 
@@ -1475,12 +1500,34 @@ function renderDashboard(){
     renderTable();
 }
 
-function filterByStatus(status){
-    const sel=document.getElementById('filter-status');
-    if(sel&&status){
-        sel.value=status;
-        renderTable();
-    }
+function showKpiModal(title, items, columns){
+    document.getElementById('kpi-modal-title').textContent = title;
+    document.getElementById('kpi-modal-count').textContent = items.length + ' item(s)';
+    const body = document.getElementById('kpi-modal-body');
+    if(!items.length){body.innerHTML='<p style="color:var(--text-secondary)">No items.</p>';document.getElementById('kpi-modal-overlay').classList.add('show');return;}
+    let cols = columns || Object.keys(items[0]).filter(k=>!k.startsWith('@')&&!k.startsWith('_')&&!['ID','id','dept'].includes(k));
+    if(cols.length>8)cols=cols.slice(0,8);
+    const labels = typeof COL_LABELS!=='undefined' ? COL_LABELS : {};
+    let html='<table><thead><tr>'+cols.map(c=>'<th>'+(labels[c]||c)+'</th>').join('')+'</tr></thead><tbody>';
+    items.forEach(x=>{
+        html+='<tr>'+cols.map(c=>{
+            let v=x[c];
+            if(v&&typeof v==='object')v=v.Title||v.LookupValue||v.Email||'';
+            return '<td title="'+(v||'')+'">'+(v||'-')+'</td>';
+        }).join('')+'</tr>';
+    });
+    html+='</tbody></table>';
+    body.innerHTML=html;
+    document.getElementById('kpi-modal-overlay').classList.add('show');
+}
+function closeKpiModal(ev){
+    if(ev && ev.target!==document.getElementById('kpi-modal-overlay'))return;
+    document.getElementById('kpi-modal-overlay').classList.remove('show');
+}
+function showKpiModalFromCache(idx){
+    const d=window._kpiCache[idx];
+    if(!d)return;
+    showKpiModal(d.title,d.items,d.cols);
 }
 
 function renderTable(){
@@ -1605,11 +1652,15 @@ function renderDeptView(view){
     }
     const lastUpdated=items.reduce((latest,x)=>x.Modified&&x.Modified>latest?x.Modified:latest,'')||'';
 
-    function kpi(icon,label,value,color,pct,trend,tip,sub){
+    window._kpiCache=window._kpiCache||[];
+    function kpi(icon,label,value,color,pct,trend,tip,sub,detailItems){
         const bar=pct!=null?`<div class="kpi-bar"><div class="kpi-bar-fill" style="width:${Math.min(100,pct)}%;background:${color}"></div></div>`:'';
         const trendHtml=trend?`<span class="kpi-trend ${trend.cls}">${trend.txt}</span>`:'';
         const subHtml=sub!==undefined?`<div class="kpi-sub">${sub}</div>`:'';
-        return `<div class="kpi-card" onclick="filterByStatus('${tip||''}')" title="Click to filter">
+        let ci=-1;
+        if(detailItems){ci=window._kpiCache.length;window._kpiCache.push({title:label,items:detailItems||[],cols:v.cols});}
+        const clickAttr=ci>=0?`onclick="showKpiModalFromCache(${ci})"`:tip?`onclick="filterByStatus('${tip}')"`:'';
+        return `<div class="kpi-card" ${clickAttr} title="Click for details" style="cursor:pointer">
           <div class="kpi-accent" style="background:${color}"></div>
           <div class="kpi-icon">${icon}</div>
           <div class="kpi-label">${label} ${trendHtml}</div>
@@ -1649,15 +1700,15 @@ function renderDeptView(view){
             return statuses.map(([s,c])=>s+' ('+c+')').join(', ');
         }
         const rev00=revGroups.rev00.length, rev01=revGroups.rev01.length, rev02=revGroups.rev02.length, rev03=revGroups.rev03.length;
-        kpis=kpi('📐','Total Documents',total,'#4C5D71')+
-              kpi('⏰','Overdue',overdue,'#D92C2C',null,null)+
-              kpi('⬜','Rev 00',rev00,'#8A8886',total?rev00/total*100:0,null,null,revStatusSummary('rev00',rev00))+
-              kpi('1️⃣','Rev 01',rev01,'#00B7C3',total?rev01/total*100:0,null,null,revStatusSummary('rev01',rev01))+
-              kpi('2️⃣','Rev 02',rev02,'#ED7D31',total?rev02/total*100:0,null,null,revStatusSummary('rev02',rev02))+
-              kpi('3️⃣','Rev 03',rev03,'#8764B8',total?rev03/total*100:0,null,null,revStatusSummary('rev03',rev03))+
-              kpi('🏷️','Disciplines',disciplines,'#0078D4')+
-              kpi('📅','Phases',phases,'#D92C2C')+
-              kpi('📁','Parts',parts,'#4C5D71');
+        kpis=kpi('📐','Total Documents',total,'#4C5D71',null,null,null,null,items)+
+              kpi('⏰','Overdue',overdue,'#D92C2C',null,null,null,null,items.filter(isOverdue))+
+              kpi('⬜','Rev 00',rev00,'#8A8886',total?rev00/total*100:0,null,null,revStatusSummary('rev00',rev00),revGroups.rev00)+
+              kpi('1️⃣','Rev 01',rev01,'#00B7C3',total?rev01/total*100:0,null,null,revStatusSummary('rev01',rev01),revGroups.rev01)+
+              kpi('2️⃣','Rev 02',rev02,'#ED7D31',total?rev02/total*100:0,null,null,revStatusSummary('rev02',rev02),revGroups.rev02)+
+              kpi('3️⃣','Rev 03',rev03,'#8764B8',total?rev03/total*100:0,null,null,revStatusSummary('rev03',rev03),revGroups.rev03)+
+              kpi('🏷️','Disciplines',disciplines,'#0078D4',null,null,null,null,items)+
+              kpi('📅','Phases',phases,'#D92C2C',null,null,null,null,items)+
+              kpi('📁','Parts',parts,'#4C5D71',null,null,null,null,items);
     }else if(view==='procurement'){
         const withRFQ=items.filter(x=>x.rfq&&x.rfq!==''&&x.rfq!=='N/A'&&x.rfq!=='0').length;
         const withPO=items.filter(x=>x.poRef&&x.poRef!=='').length;
@@ -1667,13 +1718,13 @@ function renderDeptView(view){
         const statusCounts={};
         items.forEach(x=>{const s=x.matSubStatus||x.status||'N/A';statusCounts[s]=(statusCounts[s]||0)+1;});
         const topStatus=Object.entries(statusCounts).sort((a,b)=>b[1]-a[1]).slice(0,2).map(([s,c])=>s+' ('+c+')').join(', ');
-        kpis=kpi('📦','Total Items',total,'#4C5D71')+
-              kpi('⏰','Overdue',overdue,'#D92C2C')+
-              kpi('📋','With RFQ',withRFQ,'#00B7C3',total?withRFQ/total*100:0)+
-              kpi('📄','With PO',withPO,'#ED7D31',total?withPO/total*100:0)+
-              kpi('🏷️','Disciplines',disciplines,'#0078D4')+
-              kpi('🏭','Suppliers',manuf,'#8764B8')+
-              kpi('📊','Status','','#8A8886',null,null,null,topStatus||'N/A');
+        kpis=kpi('📦','Total Items',total,'#4C5D71',null,null,null,null,items)+
+              kpi('⏰','Overdue',overdue,'#D92C2C',null,null,null,null,items.filter(isOverdue))+
+              kpi('📋','With RFQ',withRFQ,'#00B7C3',total?withRFQ/total*100:0,null,null,null,items.filter(x=>x.rfq&&x.rfq!==''&&x.rfq!=='N/A'&&x.rfq!=='0'))+
+              kpi('📄','With PO',withPO,'#ED7D31',total?withPO/total*100:0,null,null,null,items.filter(x=>x.poRef&&x.poRef!==''))+
+              kpi('🏷️','Disciplines',disciplines,'#0078D4',null,null,null,null,items)+
+              kpi('🏭','Suppliers',manuf,'#8764B8',null,null,null,null,items)+
+              kpi('📊','Status','','#8A8886',null,null,null,topStatus||'N/A',items);
     }else if(view==='construction'){
         const notStarted=items.filter(x=>x.status==='Not Started').length;
         const inProgress=items.filter(x=>x.status==='In Progress').length;
@@ -1681,64 +1732,64 @@ function renderDeptView(view){
         const partInsp=items.filter(x=>x.status==='Partially Inspected').length;
         const accDone=items.filter(x=>x.status==='ACC Completed').length;
         const sdcDone=items.filter(x=>x.status==='SDC Completed').length;
-        kpis=kpi('🏗️','Total Activities',total,'#4C5D71')+
-              kpi('⏰','Overdue',overdue,'#D92C2C',null,null)+
-              kpi('📋','Not Started',notStarted,'#8A8886',total?notStarted/total*100:0,null)+
-              kpi('🔄','In Progress',inProgress,'#00B7C3',total?inProgress/total*100:0,null,'In Progress')+
-              kpi('🔍','For Inspection',forInsp,'#ED7D31',total?forInsp/total*100:0,null)+
-              kpi('🔎','Partially Inspected',partInsp,'#FFB900',total?partInsp/total*100:0,null)+
-              kpi('✅','ACC Completed',accDone,'#107C10',total?accDone/total*100:0,null)+
-              kpi('📌','SDC Completed',sdcDone,'#8764B8',total?sdcDone/total*100:0,null);
+        kpis=kpi('🏗️','Total Activities',total,'#4C5D71',null,null,null,null,items)+
+              kpi('⏰','Overdue',overdue,'#D92C2C',null,null,null,null,items.filter(isOverdue))+
+              kpi('📋','Not Started',notStarted,'#8A8886',total?notStarted/total*100:0,null,null,null,items.filter(x=>x.status==='Not Started'))+
+              kpi('🔄','In Progress',inProgress,'#00B7C3',total?inProgress/total*100:0,null,'In Progress',items.filter(x=>x.status==='In Progress'))+
+              kpi('🔍','For Inspection',forInsp,'#ED7D31',total?forInsp/total*100:0,null,null,null,items.filter(x=>x.status==='For Inspection'))+
+              kpi('🔎','Partially Inspected',partInsp,'#FFB900',total?partInsp/total*100:0,null,null,null,items.filter(x=>x.status==='Partially Inspected'))+
+              kpi('✅','ACC Completed',accDone,'#107C10',total?accDone/total*100:0,null,null,null,items.filter(x=>x.status==='ACC Completed'))+
+              kpi('📌','SDC Completed',sdcDone,'#8764B8',total?sdcDone/total*100:0,null,null,null,items.filter(x=>x.status==='SDC Completed'));
     }else if(view==='cost'){
         const budget=items.reduce((s,x)=>s+(x.budget||x['Budget']||0),0);
         const actual=items.reduce((s,x)=>s+(x.actual||x['Actual Cost']||x['Actual']||0),0);
         const variance=budget-actual;
         const varCls=variance>=0?'up':'down';
         const varTxt=variance>=0?'Under Budget':'Over Budget';
-        kpis=kpi('💰','Total Budget','$'+budget.toLocaleString(),'#107C10')+
-              kpi('💳','Actual Cost','$'+actual.toLocaleString(),'#D92C2C',budget?Math.min(100,actual/budget*100):0)+
-              kpi('📊','Variance','$'+Math.abs(variance).toLocaleString(),variance>=0?'#00B7C3':'#ED7D31',null,{txt:varTxt,cls:varCls})+
-              kpi('✅','Under Budget',items.filter(x=>(x.budget||0)>(x.actual||0)).length,'#107C10')+
-              kpi('⚠️','Over Budget',items.filter(x=>(x.budget||0)<(x.actual||0)).length,'#D92C2C')+
-              kpi('⏰','Overdue Items',overdue,'#D92C2C',null,null,'Delayed');
+        kpis=kpi('💰','Total Budget','$'+budget.toLocaleString(),'#107C10',null,null,null,null,items)+
+              kpi('💳','Actual Cost','$'+actual.toLocaleString(),'#D92C2C',budget?Math.min(100,actual/budget*100):0,null,null,null,items)+
+              kpi('📊','Variance','$'+Math.abs(variance).toLocaleString(),variance>=0?'#00B7C3':'#ED7D31',null,{txt:varTxt,cls:varCls},null,items)+
+              kpi('✅','Under Budget',items.filter(x=>(x.budget||0)>(x.actual||0)).length,'#107C10',null,null,null,null,items.filter(x=>(x.budget||0)>(x.actual||0)))+
+              kpi('⚠️','Over Budget',items.filter(x=>(x.budget||0)<(x.actual||0)).length,'#D92C2C',null,null,null,null,items.filter(x=>(x.budget||0)<(x.actual||0)))+
+              kpi('⏰','Overdue Items',overdue,'#D92C2C',null,null,'Delayed',null,items.filter(isOverdue));
     }else if(view==='planning'){
         const crit=items.filter(x=>x.critical||x['Critical']==='Yes').length;
         const avgDelay=total?Math.round(items.reduce((s,x)=>s+Math.max(0,calcDelay(x)),0)/total):0;
         const onTrack=items.filter(x=>!isOverdue(x)).length;
-        kpis=kpi('📅','Total Activities',total,'#4C5D71')+
-              kpi('🔴','Critical Path',crit,'#D92C2C',crit/total*100)+
-              kpi('⏱️','Avg Delay',avgDelay+'d','#ED7D31',null,avgDelay>0?{txt:'Behind',cls:'down'}:{txt:'On Track',cls:'up'})+
-              kpi('⏰','Overdue',overdue,'#D92C2C',null,null,'Delayed')+
-              kpi('✅','On Track',onTrack,'#107C10',onTrack/total*100)+
-              kpi('📊','Completed',completed,'#00B7C3',completed/total*100,null,'Completed');
+        kpis=kpi('📅','Total Activities',total,'#4C5D71',null,null,null,null,items)+
+              kpi('🔴','Critical Path',crit,'#D92C2C',crit/total*100,null,null,null,items.filter(x=>x.critical||x['Critical']==='Yes'))+
+              kpi('⏱️','Avg Delay',avgDelay+'d','#ED7D31',null,avgDelay>0?{txt:'Behind',cls:'down'}:{txt:'On Track',cls:'up'},null,items)+
+              kpi('⏰','Overdue',overdue,'#D92C2C',null,null,'Delayed',null,items.filter(isOverdue))+
+              kpi('✅','On Track',onTrack,'#107C10',onTrack/total*100,null,null,null,items.filter(x=>!isOverdue(x)))+
+              kpi('📊','Completed',completed,'#00B7C3',completed/total*100,null,'Completed',null,items.filter(x=>x.status==='Completed'));
     }else if(view==='qaqc'){
         const passed=items.filter(x=>x.qaStatus==='Passed'||x.qaStatus==='Closed'||x.status==='Passed').length;
         const failed=items.filter(x=>x.qaStatus==='Failed'||x.status==='Failed').length;
         const open=items.filter(x=>x.status==='Open'||x.qaStatus==='Open').length;
-        kpis=kpi('✅','Total Inspections',total,'#4C5D71')+
-              kpi('✔️','Passed',passed,'#107C10',total?passed/total*100:0)+
-              kpi('❌','Failed',failed,'#D92C2C',null,{txt:failed+' open',cls:'down'})+
-              kpi('⏰','Overdue',overdue,'#D92C2C',null,null,'Delayed')+
-              kpi('📋','Open',open,'#ED7D31',open/total*100)+
-              kpi('📊','Pass Rate',total?Math.round(passed/total*100)+'%':'0%','#00B7C3',passed/total*100);
+        kpis=kpi('✅','Total Inspections',total,'#4C5D71',null,null,null,null,items)+
+              kpi('✔️','Passed',passed,'#107C10',total?passed/total*100:0,null,null,null,items.filter(x=>x.qaStatus==='Passed'||x.qaStatus==='Closed'||x.status==='Passed'))+
+              kpi('❌','Failed',failed,'#D92C2C',null,{txt:failed+' open',cls:'down'},null,null,items.filter(x=>x.qaStatus==='Failed'||x.status==='Failed'))+
+              kpi('⏰','Overdue',overdue,'#D92C2C',null,null,'Delayed',null,items.filter(isOverdue))+
+              kpi('📋','Open',open,'#ED7D31',open/total*100,null,null,null,items.filter(x=>x.status==='Open'||x.qaStatus==='Open'))+
+              kpi('📊','Pass Rate',total?Math.round(passed/total*100)+'%':'0%','#00B7C3',passed/total*100,null,null,null,items);
     }else if(view==='hse'){
         const extreme=items.filter(x=>x.risk==='Extreme'||x.risk==='High'||x['Risk Level']==='Extreme'||x['Risk Level']==='High').length;
         const incidents=items.filter(x=>x.incident||x['Incident #']).length;
         const permits=items.filter(x=>x.permit||x['Work Permit']||x.permitStat==='Approved').length;
-        kpis=kpi('🛡️','Total Assessments',total,'#4C5D71')+
-              kpi('🔴','High/Extreme Risk',extreme,'#D92C2C',extreme/total*100)+
-              kpi('⚠️','Incidents',incidents,'#ED7D31')+
-              kpi('📋','Permits Issued',permits,'#00B7C3')+
-              kpi('⏰','Overdue',overdue,'#D92C2C',null,null,'Delayed')+
-              kpi('✅','Completed',completed,'#107C10',completed/total*100,null,'Completed');
+        kpis=kpi('🛡️','Total Assessments',total,'#4C5D71',null,null,null,null,items)+
+              kpi('🔴','High/Extreme Risk',extreme,'#D92C2C',extreme/total*100,null,null,null,items.filter(x=>x.risk==='Extreme'||x.risk==='High'||x['Risk Level']==='Extreme'||x['Risk Level']==='High'))+
+              kpi('⚠️','Incidents',incidents,'#ED7D31',null,null,null,null,items.filter(x=>x.incident||x['Incident #']))+
+              kpi('📋','Permits Issued',permits,'#00B7C3',null,null,null,null,items.filter(x=>x.permit||x['Work Permit']||x.permitStat==='Approved'))+
+              kpi('⏰','Overdue',overdue,'#D92C2C',null,null,'Delayed',null,items.filter(isOverdue))+
+              kpi('✅','Completed',completed,'#107C10',completed/total*100,null,'Completed',null,items.filter(x=>x.status==='Completed'));
     }else{
-        kpis=kpi('📊','Total Items',total,'#4C5D71')+
-              kpi('📈','Completed',completed,'#107C10',total?completed/total*100:0,null,'Completed')+
-              kpi('🔄','In Progress',inProg,'#00B7C3',null,null,'In Progress')+
-              kpi('🔴','High Priority',highPrio,'#D92C2C')+
-              kpi('⏰','Overdue',overdue,'#D92C2C',null,null,'Delayed')+
-              kpi('📊','Avg Progress',avgProg+'%','#8764B8',avgProg)+
-              kpi('⏰','Delayed',delayed,'#ED7D31',null,null,'Delayed');
+        kpis=kpi('📊','Total Items',total,'#4C5D71',null,null,null,null,items)+
+              kpi('📈','Completed',completed,'#107C10',total?completed/total*100:0,null,'Completed',null,items.filter(x=>x.status==='Completed'))+
+              kpi('🔄','In Progress',inProg,'#00B7C3',null,null,'In Progress',null,items.filter(x=>x.status==='In Progress'||x.status==='Under Review'))+
+              kpi('🔴','High Priority',highPrio,'#D92C2C',null,null,null,null,items.filter(x=>x.priority==='Critical'||x.priority==='High'))+
+              kpi('⏰','Overdue',overdue,'#D92C2C',null,null,'Delayed',null,items.filter(isOverdue))+
+              kpi('📊','Avg Progress',avgProg+'%','#8764B8',avgProg,null,null,null,items)+
+              kpi('⏰','Delayed',delayed,'#ED7D31',null,null,'Delayed',null,items.filter(x=>x.status==='Delayed'||x.status==='Waiting Approval'));
     }
 
     const team=getTeam(items,VIEW_PERSON_COLS[view]||['assigned']);
