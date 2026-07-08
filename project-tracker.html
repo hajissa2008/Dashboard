@@ -1042,7 +1042,7 @@ async function connectSingleView(view){
             if(item.status==='O')item.status='Open';
             if(item.status==='D')item.status='Delivered';
             // Normalize Maseel Activity / SharePoint status values
-            const statusNorm={'SDC Inspection':'SDC Completed','ACC Inspection':'ACC Completed','For Insp':'For Inspection','Inprogress':'In Progress','Yet to Start':'Not Started','Complete':'Completed'};
+            const statusNorm={'SDC Inspection':'SDC Completed','SDC Done':'SDC Completed','ACC Inspection':'ACC Completed','For Insp':'For Inspection','Inprogress':'In Progress','Yet to Start':'Not Started','Complete':'Completed'};
             if(statusNorm[item.status])item.status=statusNorm[item.status];
             item.priority = spItem['Priority'] || 'Medium';
             // Map common SharePoint column names → short names used by KPIs & views
@@ -1107,7 +1107,10 @@ async function connectSingleView(view){
                 'Budget':['budget'],'CommittedCost':['committed'],'ActualCost':['actual'],'ForecastCost':['forecast'],
                 'CostVariance':['costVar'],'EarnedValue':['ev'],'PlannedValue':['pv'],'CPI':['cpi'],'SPI':['spi'],
                 'PrimaveraActivityID':['primId'],'ScheduleStatus':['schedStatus'],'BaselineFinish':['baseFinish'],
-                'CurrentFinish':['curFinish'],'RecoveryPlan':['recovery'],'CriticalActivity':['critical'],'FloatDays':['floatDays']
+                'CurrentFinish':['curFinish'],'RecoveryPlan':['recovery'],'CriticalActivity':['critical'],'FloatDays':['floatDays'],
+                // All-caps column names from Maseel Activity export
+                'STATUS':['status'],'PROGRESS':['prog'],'START':['pStart'],'FINISH':['pFinish'],
+                'start':['pStart'],'finish':['pFinish']
             };
             for(const [spName,shortNames] of Object.entries(aliases)){
                 if(item[spName]!==undefined&&item[spName]!==''&&item[spName]!==null){
