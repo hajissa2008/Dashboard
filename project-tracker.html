@@ -1033,7 +1033,12 @@ async function connectSingleView(view){
             });
             item.dept = VIEWS[view]?.dept || view;
             item.proj = spItem['Project Code'] || spItem['Project Name'] || spItem.Title || item['ProjectName'] || item['Project_x0020_Name'] || 'N/A';
-            item.status = spItem['Status'] || spItem['DRAWING STATUS'] || spItem['WorkStatus'] || spItem['Material Submitta STATUS'] || 'Not Set';
+            let rawStatus = spItem['Status'] || spItem['DRAWING STATUS'] || spItem['WorkStatus'] || spItem['Material Submitta STATUS'];
+            if(!rawStatus){
+                const statusKey = Object.keys(spItem).find(k=>/^status$/i.test(k.trim())||/^work.?status$/i.test(k.trim()));
+                if(statusKey) rawStatus = spItem[statusKey];
+            }
+            item.status = rawStatus || 'Not Set';
             if(item.status==='O')item.status='Open';
             if(item.status==='D')item.status='Delivered';
             // Normalize Maseel Activity / SharePoint status values
