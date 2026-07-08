@@ -584,7 +584,7 @@ function graphListColumnsUrl(siteUrl, listName){
     return graphListUrl(siteUrl, listName) + `/columns`;
 }
 
-let columnNameMap = null; // cached field_N -> displayName
+let columnNameMap = {}; // per-list cache: { listName: { field_N: displayName } }
 
 async function fetchColumnNames(siteUrl, listName){
     const url = graphListColumnsUrl(siteUrl, listName);
@@ -611,9 +611,9 @@ async function fetchColumnNames(siteUrl, listName){
 
 async function fetchSPListItems(siteUrl, listName){
     if(spToken){
-        // Fetch column definitions once
-        if(!columnNameMap) columnNameMap = await fetchColumnNames(siteUrl, listName);
-        const rename = columnNameMap || {};
+        // Fetch column definitions per-list and cache
+        if(!columnNameMap[listName]) columnNameMap[listName] = await fetchColumnNames(siteUrl, listName);
+        const rename = columnNameMap[listName] || {};
 
         // Fetch all pages of items
         let allItems = [], nextUrl = graphListItemsUrl(siteUrl, listName);
