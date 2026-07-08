@@ -88,21 +88,12 @@ html,body{height:100%;font-family:'Segoe UI',-apple-system,system-ui,sans-serif;
 /* Content */
 .content{flex:1;overflow-y:auto;padding:16px 20px}
 
-.kpi-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px;margin-bottom:20px}
-.kpi-card{position:relative;background:var(--white);border-radius:10px;padding:16px 18px;box-shadow:0 1px 4px rgba(0,0,0,.06),0 2px 8px rgba(0,0,0,.04);border:none;overflow:hidden;cursor:pointer;transition:transform .2s,box-shadow .2s;user-select:none}
-.kpi-card:hover{transform:translateY(-3px);box-shadow:0 4px 12px rgba(0,0,0,.1),0 8px 24px rgba(0,0,0,.08)}
-.kpi-card:active{transform:translateY(-1px)}
-.kpi-card .kpi-accent{position:absolute;top:0;left:0;width:4px;height:100%;border-radius:0 2px 2px 0}
-.kpi-card .kpi-icon{font-size:20px;margin-bottom:6px;display:inline-block}
-.kpi-card .kpi-label{font-size:11px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.4px;font-weight:600;margin-bottom:4px}
-.kpi-card .kpi-value{font-size:24px;font-weight:700;color:var(--text-primary);line-height:1.2}
-.kpi-card .kpi-sub{font-size:11px;color:var(--text-secondary);margin-top:4px;display:flex;align-items:center;gap:4px}
-.kpi-card .kpi-bar{height:4px;border-radius:2px;margin-top:10px;background:var(--gray-border);overflow:hidden}
-.kpi-card .kpi-bar-fill{height:100%;border-radius:2px;transition:width .6s ease}
-.kpi-card .kpi-trend{font-size:10px;font-weight:600;padding:1px 6px;border-radius:8px}
-.kpi-card .kpi-trend.up{background:var(--green-light);color:var(--green)}
-.kpi-card .kpi-trend.down{background:var(--red-light);color:var(--red)}
-.kpi-card .kpi-trend.neutral{background:var(--gray-light);color:var(--gray)}
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin-bottom:20px}
+.kpi-card{background:var(--white);border-radius:8px;padding:14px 16px;box-shadow:0 1px 3px rgba(0,0,0,.07);border:none;cursor:pointer;transition:transform .15s,box-shadow .15s;user-select:none}
+.kpi-card:hover{transform:translateY(-2px);box-shadow:0 3px 10px rgba(0,0,0,.1)}
+.kpi-card .kpi-label{font-size:10px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.4px;font-weight:600;margin-bottom:2px}
+.kpi-card .kpi-value{font-size:22px;font-weight:700;color:var(--text-primary);line-height:1.2}
+.kpi-card .kpi-sub{font-size:11px;color:var(--text-secondary);margin-top:2px}
 
 .charts-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
 .chart-card{background:var(--white);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px}
@@ -162,8 +153,9 @@ tr:hover td{background:var(--blue-light)}
 .spinner{width:32px;height:32px;border:3px solid var(--gray-border);border-top-color:var(--blue);border-radius:50%;animation:spin .6s linear infinite;margin:0 auto 12px}
 @keyframes spin{to{transform:rotate(360deg)}}
 
-body.dark .sidebar,body.dark .header,body.dark .kpi-card,body.dark .chart-card,body.dark .table-wrap,body.dark .settings-panel{background:var(--white)}
-body.dark .kpi-card:hover{box-shadow:0 4px 12px rgba(255,255,255,.05),0 8px 24px rgba(255,255,255,.03)}
+body.dark .sidebar,body.dark .header,body.dark .kpi-card,body.dark .gauge-card,body.dark .phase-card,body.dark .team-card,body.dark .chart-card,body.dark .table-wrap,body.dark .settings-panel{background:var(--white)}
+body.dark .kpi-card:hover{box-shadow:0 3px 10px rgba(255,255,255,.05)}
+body.dark .gauge-card:hover{box-shadow:0 4px 12px rgba(255,255,255,.05)}
 body.dark .sidebar{border-right-color:var(--gray-border)}
 body.dark .header{border-bottom-color:var(--gray-border)}
 body.dark .sidebar-header{border-bottom-color:var(--gray-border)}
@@ -1126,58 +1118,45 @@ function renderDashboard(){
         const ip=items.filter(x=>x.status==='In Progress'||x.status==='Under Review').length;
         const od=items.filter(x=>Number(x.delayDays||x['Delay Days']||0)>0).length;
         const ap=t?Math.round(items.reduce((s,x)=>s+(x.prog||0),0)/t):0;
-        deptKpis+=`<div class="kpi-card" onclick="switchView('${vk||'dashboard'}')" title="Click to view ${dp.key}" style="grid-column:span 1">
-          <div class="kpi-accent" style="background:${dp.color}"></div>
-          <div class="kpi-icon">${dp.icon}</div>
+        deptKpis+=`<div class="kpi-card" onclick="switchView('${vk||'dashboard'}')" title="Click to view ${dp.key}" style="border-top:3px solid ${dp.color}">
           <div class="kpi-label">${dp.key}</div>
           <div class="kpi-value" style="font-size:18px">${t}</div>
           <div class="kpi-sub">${c} done · ${ip} active · ${od} overdue</div>
-          <div class="kpi-bar"><div class="kpi-bar-fill" style="width:${ap}%;background:${dp.color}"></div></div>
         </div>`;
     });
 
     document.getElementById('content').innerHTML=`
     <div class="kpi-grid">
-      <div class="kpi-card" onclick="switchView('engineering')" title="Click to view Engineering">
-        <div class="kpi-accent" style="background:#4C5D71"></div><div class="kpi-icon">📊</div>
+      <div class="kpi-card" onclick="switchView('engineering')" title="Click to view Engineering" style="border-top:3px solid #4C5D71">
         <div class="kpi-label">Total Activities</div><div class="kpi-value">${total}</div>
         <div class="kpi-sub">${dataSource==='sp-live'?'Live SharePoint':'Demo data'}</div>
-        <div class="kpi-bar"><div class="kpi-bar-fill" style="width:${compRate}%;background:#4C5D71"></div></div>
       </div>
-      <div class="kpi-card" onclick="openKpiPopup('Completed Items',d.filter(x=>x.status==='Completed'))" title="Click to view details">
-        <div class="kpi-accent" style="background:#107C10"></div><div class="kpi-icon">✅</div>
+      <div class="kpi-card" onclick="openKpiPopup('Completed Items',d.filter(x=>x.status==='Completed'))" title="Click to view details" style="border-top:3px solid #107C10">
         <div class="kpi-label">Completed</div><div class="kpi-value">${completed}</div>
         <div class="kpi-sub">${compRate}% completion rate</div>
       </div>
-      <div class="kpi-card" onclick="openKpiPopup('In Progress Items',d.filter(x=>x.status==='In Progress'||x.status==='Under Review'))" title="Click to view details">
-        <div class="kpi-accent" style="background:#00B7C3"></div><div class="kpi-icon">🔄</div>
+      <div class="kpi-card" onclick="openKpiPopup('In Progress Items',d.filter(x=>x.status==='In Progress'||x.status==='Under Review'))" title="Click to view details" style="border-top:3px solid #00B7C3">
         <div class="kpi-label">In Progress</div><div class="kpi-value">${inProg}</div>
         <div class="kpi-sub">Active work items</div>
       </div>
-      <div class="kpi-card" onclick="openKpiPopup('Delayed / Waiting Items',d.filter(x=>x.status==='Delayed'||x.status==='Waiting Approval'))" title="Click to view details">
-        <div class="kpi-accent" style="background:#D92C2C"></div><div class="kpi-icon">⏰</div>
+      <div class="kpi-card" onclick="openKpiPopup('Delayed / Waiting Items',d.filter(x=>x.status==='Delayed'||x.status==='Waiting Approval'))" title="Click to view details" style="border-top:3px solid #D92C2C">
         <div class="kpi-label">Delayed / Waiting</div><div class="kpi-value">${delayed}</div>
         <div class="kpi-sub">Requires attention</div>
       </div>
-      <div class="kpi-card" onclick="openKpiPopup('Overdue Items',d.filter(x=>x.delayDays>0))" title="Click to view details">
-        <div class="kpi-accent" style="background:#ED7D31"></div><div class="kpi-icon">⚠️</div>
+      <div class="kpi-card" onclick="openKpiPopup('Overdue Items',d.filter(x=>x.delayDays>0))" title="Click to view details" style="border-top:3px solid #ED7D31">
         <div class="kpi-label">Overdue Items</div><div class="kpi-value">${overdue}</div>
         <div class="kpi-sub">Past due date</div>
       </div>
-      <div class="kpi-card">
-        <div class="kpi-accent" style="background:#8764B8"></div><div class="kpi-icon">📈</div>
+      <div class="kpi-card" style="border-top:3px solid #8764B8">
         <div class="kpi-label">Avg Progress</div><div class="kpi-value">${avgProg}%</div>
         <div class="kpi-sub">Overall completion</div>
-        <div class="kpi-bar"><div class="kpi-bar-fill" style="width:${avgProg};background:#8764B8"></div></div>
       </div>
-      <div class="kpi-card">
-        <div class="kpi-accent" style="background:${variance>=0?'#107C10':'#D92C2C'}"></div><div class="kpi-icon">💰</div>
+      <div class="kpi-card" style="border-top:3px solid ${variance>=0?'#107C10':'#D92C2C'}">
         <div class="kpi-label">Budget Variance</div>
         <div class="kpi-value">${variance>=0?'+':''}$${variance.toLocaleString()}</div>
         <div class="kpi-sub">${variance>=0?'Under budget':'Over budget'}</div>
       </div>
-      <div class="kpi-card">
-        <div class="kpi-accent" style="background:#00B7C3"></div><div class="kpi-icon">⏱️</div>
+      <div class="kpi-card" style="border-top:3px solid #00B7C3">
         <div class="kpi-label">Avg Delay</div><div class="kpi-value">${avgDelay}d</div>
         <div class="kpi-sub">Average across items</div>
       </div>
@@ -1543,7 +1522,6 @@ function renderConstructionView(){
     </div>`;
 
     // Table
-    const vCols=Object.keys(items[0]||{}).filter(k=>!['dept','priority','Title','@odata.etag'].includes(k)&&!k.startsWith('_')&&!k.startsWith('@'));
     html+=`<div class="table-wrap">
       <div class="table-toolbar">
         <span class="view-label">${v.title}</span>
@@ -1592,16 +1570,12 @@ function renderDeptView(view){
     const overdue=items.filter(x=>Number(x.delayDays||x['Delay Days']||0)>0).length;
     const lastUpdated=items.reduce((latest,x)=>x.Modified&&x.Modified>latest?x.Modified:latest,'')||'';
 
-    function kpi(icon,label,value,color,pct,trend,tip,filteredItems){
-        const bar=pct!=null?`<div class="kpi-bar"><div class="kpi-bar-fill" style="width:${Math.min(100,pct)}%;background:${color}"></div></div>`:'';
-        const trendHtml=trend?`<span class="kpi-trend ${trend.cls}">${trend.txt}</span>`:'';
-        const onclick=filteredItems?`openKpiPopup('${label.replace(/'/g,"\\'")}',${JSON.stringify(filteredItems).replace(/'/g,"\\'")})`:tip?`filterByStatus('${tip}')`:'';
-        return `<div class="kpi-card" onclick="${onclick}" title="Click to view details">
-          <div class="kpi-accent" style="background:${color}"></div>
-          <div class="kpi-icon">${icon}</div>
-          <div class="kpi-label">${label} ${trendHtml}</div>
+    function kpi(label,value,color,pct,filteredItems,subtitle){
+        const onclick=filteredItems?`openKpiPopup('${label.replace(/'/g,"\\'")}',${JSON.stringify(filteredItems).replace(/'/g,"\\'")})`:'';
+        return `<div class="kpi-card" onclick="${onclick}" title="Click to view details" style="border-top:3px solid ${color}">
+          <div class="kpi-label">${label}</div>
           <div class="kpi-value">${value}</div>
-          ${bar}
+          ${subtitle?`<div class="kpi-sub">${subtitle}</div>`:''}
         </div>`;
     }
 
@@ -1611,86 +1585,77 @@ function renderDeptView(view){
         const ifc=items.filter(x=>x.ifcDate||x['IFC Date']).length;
         const rev=items.filter(x=>x.rev>1||(parseInt(x.rev)||0)>1).length;
         const pendingReview=items.filter(x=>x.status==='Submitted'||x.status==='Under Review').length;
-        kpis=kpi('📐','Total Drawings',total,'#4C5D71')+
-              kpi('📤','Submitted',sub,'#00B7C3',sub/total*100,null,'Submitted',items.filter(x=>x.subDate||x['Submission Date']))+
-              kpi('✅','IFC Issued',ifc,'#107C10',ifc/total*100,null,'IFC',items.filter(x=>x.ifcDate||x['IFC Date']))+
-              kpi('🔄','Under Review',pendingReview,'#ED7D31',null,null,'Under Review',items.filter(x=>x.status==='Submitted'||x.status==='Under Review'))+
-              kpi('⏰','Overdue',overdue,'#D92C2C',null,null,'Delayed',items.filter(x=>Number(x.delayDays||x['Delay Days']||0)>0))+
-              kpi('🔁','Revised',rev,'#8764B8')+
-              kpi('📊','Avg Progress',avgProg+'%','#4C5D71',avgProg);
+        kpis=kpi('Total Drawings',total,'#4C5D71')+
+              kpi('Submitted',sub,'#00B7C3',sub/total*100,items.filter(x=>x.subDate||x['Submission Date']),sub/total*100+'%')+
+              kpi('IFC Issued',ifc,'#107C10',ifc/total*100,items.filter(x=>x.ifcDate||x['IFC Date']),ifc/total*100+'%')+
+              kpi('Under Review',pendingReview,'#ED7D31',null,items.filter(x=>x.status==='Submitted'||x.status==='Under Review'))+
+              kpi('Overdue',overdue,'#D92C2C',null,items.filter(x=>Number(x.delayDays||x['Delay Days']||0)>0))+
+              kpi('Revised',rev,'#8764B8')+
+              kpi('Avg Progress',avgProg+'%','#4C5D71');
     }else if(view==='procurement'){
         const rfqOpen=items.filter(x=>x.status==='RFQ Sent'||x.status==='Open').length;
         const poIssued=items.filter(x=>x.po||x['PO #']||x['PO No.']).length;
         const delayedDel=items.filter(x=>x.status==='Delayed'||x.status==='Overdue').length;
-        kpis=kpi('📦','Total Orders',total,'#4C5D71')+
-              kpi('📋','RFQs Open',rfqOpen,'#ED7D31',rfqOpen/total*100)+
-              kpi('📄','POs Issued',poIssued,'#00B7C3',poIssued/total*100)+
-              kpi('⏰','Overdue',overdue,'#D92C2C',null,null,'Delayed',items.filter(x=>Number(x.delayDays||x['Delay Days']||0)>0))+
-              kpi('⚠️','Delayed',delayedDel,'#D92C2C',null,null,'Delayed',items.filter(x=>x.status==='Delayed'||x.status==='Overdue'))+
-              kpi('✅','Completed',completed,'#107C10',completed/total*100,null,'Completed',items.filter(x=>x.status==='Completed'));
-    }else if(view==='construction'){
-        const active=items.filter(x=>x.status==='In Progress'||x.status==='Active').length;
-        const issues=items.filter(x=>x.status==='Issue'||x.status==='Delayed').length;
-        kpis=kpi('🏗️','Total Activities',total,'#4C5D71')+
-              kpi('🔄','Active',active,'#00B7C3',active/total*100,null,'In Progress')+
-              kpi('✅','Completed',completed,'#107C10',completed/total*100,null,'Completed')+
-              kpi('⚠️','Issues',issues,'#D92C2C',null,null,'Issue')+
-              kpi('⏰','Overdue',overdue,'#D92C2C',null,null,'Delayed')+
-              kpi('📊','Avg Progress',avgProg+'%','#8764B8',avgProg);
+        kpis=kpi('Total Orders',total,'#4C5D71')+
+              kpi('RFQs Open',rfqOpen,'#ED7D31',rfqOpen/total*100)+
+              kpi('POs Issued',poIssued,'#00B7C3',poIssued/total*100)+
+              kpi('Overdue',overdue,'#D92C2C',null,items.filter(x=>Number(x.delayDays||x['Delay Days']||0)>0))+
+              kpi('Delayed',delayedDel,'#D92C2C',null,items.filter(x=>x.status==='Delayed'||x.status==='Overdue'))+
+              kpi('Completed',completed,'#107C10',completed/total*100,items.filter(x=>x.status==='Completed'));
     }else if(view==='cost'){
         const budget=items.reduce((s,x)=>s+(x.budget||x['Budget']||0),0);
         const actual=items.reduce((s,x)=>s+(x.actual||x['Actual Cost']||x['Actual']||0),0);
         const variance=budget-actual;
         const varCls=variance>=0?'up':'down';
         const varTxt=variance>=0?'Under Budget':'Over Budget';
-        kpis=kpi('💰','Total Budget','$'+budget.toLocaleString(),'#107C10')+
-              kpi('💳','Actual Cost','$'+actual.toLocaleString(),'#D92C2C',budget?Math.min(100,actual/budget*100):0)+
-              kpi('📊','Variance','$'+Math.abs(variance).toLocaleString(),variance>=0?'#00B7C3':'#ED7D31',null,{txt:varTxt,cls:varCls})+
-              kpi('✅','Under Budget',items.filter(x=>(x.budget||0)>(x.actual||0)).length,'#107C10')+
-              kpi('⚠️','Over Budget',items.filter(x=>(x.budget||0)<(x.actual||0)).length,'#D92C2C')+
-              kpi('⏰','Overdue Items',overdue,'#D92C2C',null,null,'Delayed',items.filter(x=>Number(x.delayDays||x['Delay Days']||0)>0));
+        kpis=kpi('Total Budget','$'+budget.toLocaleString(),'#107C10')+
+              kpi('Actual Cost','$'+actual.toLocaleString(),'#D92C2C',budget?Math.min(100,actual/budget*100):0)+
+              kpi('Variance','$'+Math.abs(variance).toLocaleString(),variance>=0?'#00B7C3':'#ED7D31')+
+              kpi('Under Budget',items.filter(x=>(x.budget||0)>(x.actual||0)).length,'#107C10')+
+              kpi('Over Budget',items.filter(x=>(x.budget||0)<(x.actual||0)).length,'#D92C2C')+
+              kpi('Overdue Items',overdue,'#D92C2C',null,items.filter(x=>Number(x.delayDays||x['Delay Days']||0)>0));
     }else if(view==='planning'){
         const crit=items.filter(x=>x.critical||x['Critical']==='Yes').length;
         const avgDelay=total?Math.round(items.reduce((s,x)=>s+Math.max(0,x.delayDays||x['Delay Days']||0),0)/total):0;
         const onTrack=items.filter(x=>!x.delayDays&&!x['Delay Days']).length;
-        kpis=kpi('📅','Total Activities',total,'#4C5D71')+
-              kpi('🔴','Critical Path',crit,'#D92C2C',crit/total*100)+
-              kpi('⏱️','Avg Delay',avgDelay+'d','#ED7D31',null,avgDelay>0?{txt:'Behind',cls:'down'}:{txt:'On Track',cls:'up'})+
-              kpi('⏰','Overdue',overdue,'#D92C2C',null,null,'Delayed',items.filter(x=>Number(x.delayDays||x['Delay Days']||0)>0))+
-              kpi('✅','On Track',onTrack,'#107C10',onTrack/total*100)+
-              kpi('📊','Completed',completed,'#00B7C3',completed/total*100,null,'Completed',items.filter(x=>x.status==='Completed'));
+        kpis=kpi('Total Activities',total,'#4C5D71')+
+              kpi('Critical Path',crit,'#D92C2C',crit/total*100)+
+              kpi('Avg Delay',avgDelay+'d','#ED7D31')+
+              kpi('Overdue',overdue,'#D92C2C',null,items.filter(x=>Number(x.delayDays||x['Delay Days']||0)>0))+
+              kpi('On Track',onTrack,'#107C10',onTrack/total*100)+
+              kpi('Completed',completed,'#00B7C3',completed/total*100,items.filter(x=>x.status==='Completed'));
     }else if(view==='qaqc'){
         const passed=items.filter(x=>x.qaStatus==='Passed'||x.qaStatus==='Closed'||x.status==='Passed').length;
         const failed=items.filter(x=>x.qaStatus==='Failed'||x.status==='Failed').length;
         const open=items.filter(x=>x.status==='Open'||x.qaStatus==='Open').length;
-        kpis=kpi('✅','Total Inspections',total,'#4C5D71')+
-              kpi('✔️','Passed',passed,'#107C10',total?passed/total*100:0)+
-              kpi('❌','Failed',failed,'#D92C2C',null,{txt:failed+' open',cls:'down'})+
-              kpi('📰','Overdue',overdue,'#D92C2C',null,null,'Delayed',items.filter(x=>Number(x.delayDays||x['Delay Days']||0)>0))+
-              kpi('📋','Open',open,'#ED7D31',open/total*100)+
-              kpi('📊','Pass Rate',total?Math.round(passed/total*100)+'%':'0%','#00B7C3',passed/total*100);
+        kpis=kpi('Total Inspections',total,'#4C5D71')+
+              kpi('Passed',passed,'#107C10',total?passed/total*100:0)+
+              kpi('Failed',failed,'#D92C2C')+
+              kpi('Overdue',overdue,'#D92C2C',null,items.filter(x=>Number(x.delayDays||x['Delay Days']||0)>0))+
+              kpi('Open',open,'#ED7D31',open/total*100)+
+              kpi('Pass Rate',total?Math.round(passed/total*100)+'%':'0%','#00B7C3');
     }else if(view==='hse'){
         const extreme=items.filter(x=>x.risk==='Extreme'||x.risk==='High'||x['Risk Level']==='Extreme'||x['Risk Level']==='High').length;
         const incidents=items.filter(x=>x.incident||x['Incident #']).length;
         const permits=items.filter(x=>x.permit||x['Work Permit']||x.permitStat==='Approved').length;
-        kpis=kpi('🛡️','Total Assessments',total,'#4C5D71')+
-              kpi('🔴','High/Extreme Risk',extreme,'#D92C2C',extreme/total*100)+
-              kpi('⚠️','Incidents',incidents,'#ED7D31')+
-              kpi('📋','Permits Issued',permits,'#00B7C3')+
-              kpi('⏰','Overdue',overdue,'#D92C2C',null,null,'Delayed',items.filter(x=>Number(x.delayDays||x['Delay Days']||0)>0))+
-              kpi('✅','Completed',completed,'#107C10',completed/total*100,null,'Completed',items.filter(x=>x.status==='Completed'));
+        kpis=kpi('Total Assessments',total,'#4C5D71')+
+              kpi('High/Extreme Risk',extreme,'#D92C2C',extreme/total*100)+
+              kpi('Incidents',incidents,'#ED7D31')+
+              kpi('Permits Issued',permits,'#00B7C3')+
+              kpi('Overdue',overdue,'#D92C2C',null,items.filter(x=>Number(x.delayDays||x['Delay Days']||0)>0))+
+              kpi('Completed',completed,'#107C10',completed/total*100,items.filter(x=>x.status==='Completed'));
     }else{
         const completedItems=items.filter(x=>x.status==='Completed');
         const inProgItems=items.filter(x=>x.status==='In Progress'||x.status==='Under Review');
         const overdueItems=items.filter(x=>Number(x.delayDays||x['Delay Days']||0)>0);
         const delayedItems=items.filter(x=>x.status==='Delayed'||x.status==='Waiting Approval');
-        kpis=kpi('📊','Total Items',total,'#4C5D71')+
-              kpi('📈','Completed',completed,'#107C10',total?completed/total*100:0,null,'Completed',completedItems)+
-              kpi('🔄','In Progress',inProg,'#00B7C3',null,null,'In Progress',inProgItems)+
-              kpi('🔴','High Priority',highPrio,'#D92C2C')+
-              kpi('⏰','Overdue',overdue,'#D92C2C',null,null,'Delayed',overdueItems)+
-              kpi('📊','Avg Progress',avgProg+'%','#8764B8',avgProg)+
-              kpi('⏰','Delayed',delayed,'#ED7D31',null,null,'Delayed',delayedItems);
+        kpis=kpi('Total Items',total,'#4C5D71')+
+              kpi('Completed',completed,'#107C10',total?completed/total*100:0,completedItems)+
+              kpi('In Progress',inProg,'#00B7C3',null,inProgItems)+
+              kpi('High Priority',highPrio,'#D92C2C')+
+              kpi('Overdue',overdue,'#D92C2C',null,overdueItems)+
+              kpi('Avg Progress',avgProg+'%','#8764B8')+
+              kpi('Delayed',delayed,'#ED7D31',null,delayedItems);
     }
 
     document.getElementById('content').innerHTML=`
