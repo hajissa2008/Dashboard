@@ -1336,7 +1336,6 @@ function renderCurrent(){
 }
 
 function renderDashboard(){
-    // Aggregate data from ALL connected per-view sources + demo DATA fallback
     const connectedViews=VIEW_KEYS.filter(v=>viewData[v]?.connected&&viewData[v]?.data?.length>0);
     let d;
     if(connectedViews.length>0){
@@ -1350,22 +1349,26 @@ function renderDashboard(){
           <div class="empty-state"><div class="empty-icon">📭</div><p>No data loaded. <br><button class="btn btn-primary" onclick="openSettings()" style="margin-top:12px;padding:8px 20px;border-radius:4px;font-size:13px;font-weight:600;cursor:pointer;border:none;background:#0078D4;color:white">Configure Data Source</button></p></div>`;
         return;
     }
+    window._kpiCache=[];
+    const pushKpi=(title,items,cols)=>{const idx=window._kpiCache.length;window._kpiCache.push({title,items,cols:cols||['proj','prog','status','dept','delayDays','priority']});return idx;};
     const total=d.length;
-    const completed=d.filter(x=>x.status==='Completed').length;
+    const notStarted=d.filter(x=>x.status==='Not Started'||x.status==='Not Set').length;
     const inProg=d.filter(x=>x.status==='In Progress'||x.status==='Under Review').length;
-    const delayed=d.filter(x=>x.status==='Delayed'||x.status==='Waiting Approval').length;
+    const completed=d.filter(x=>x.status==='Completed').length;
     const overdue=d.filter(isOverdue).length;
+    const avgProg=total?Math.round(d.reduce((s,x)=>s+(Number(x.prog||x['CompletionPct']||0)),0)/total):0;
+    const compRate=total?Math.round(completed/total*100):0;
     const avgDelay=Math.round(d.reduce((s,x)=>s+Math.max(0,calcDelay(x)),0)/Math.max(1,total));
-    const avgProg=Math.round(d.reduce((s,x)=>s+(Number(x.prog||x['CompletionPct']||0)),0)/total);
     const totalBudget=d.reduce((s,x)=>s+(Number(x.budget||x['Budget']||0)),0);
     const totalActual=d.reduce((s,x)=>s+(Number(x.actual||x['ActualCost']||x['Actual Cost']||0)),0);
     const variance=totalBudget-totalActual;
-    const compRate=total?Math.round(completed/total*100):0;
-
+    const ciTotal=pushKpi('All Items',d);
+    const ciNotStarted=pushKpi('Not Started',d.filter(x=>x.status==='Not Started'||x.status==='Not Set'));
+    const ciInProg=pushKpi('In Progress',d.filter(x=>x.status==='In Progress'||x.status==='Under Review'));
+    const ciCompleted=pushKpi('Completed',d.filter(x=>x.status==='Completed'));
+    const ciOverdue=pushKpi('Overdue Items',d.filter(isOverdue));
     const statusData={};d.forEach(x=>{const s=x.status||'Not Set';statusData[s]=(statusData[s]||0)+1});
     const deptData={};d.forEach(x=>{const dp=x.dept||'Unknown';deptData[dp]=(deptData[dp]||0)+1});
-
-    // Per-department summary
     const depts=[
         {key:'Engineering',icon:'📐',color:'#4C5D71'},
         {key:'Procurement',icon:'📦',color:'#ED7D31'},
@@ -1379,72 +1382,77 @@ function renderDashboard(){
     depts.forEach(dp=>{
         const vk=VIEW_KEYS.find(k=>VIEWS[k].title===dp.key||VIEWS[k].dept===dp.key);
         const vd=vk?viewData[vk]:null;
-        const items=vd&&vd.connected&&vd.data.length>0?vd.data:d.filter(x=>x.dept===dp.key);
-        const t=items.length, c=items.filter(x=>x.status==='Completed').length;
+        const useViewData=vd&&vd.connected&&vd.data.length>0;
+        const items=useViewData?vd.data:d.filter(x=>x.dept===dp.key);
+        const t=items.length;
+        if(t===0){deptKpis+=`<div class="kpi-card" style="opacity:.5;grid-column:span 1"><div class="kpi-accent" style="background:${dp.color}"></div><div class="kpi-icon">${dp.icon}</div><div class="kpi-label">${dp.key}</div><div class="kpi-value" style="font-size:18px">0</div><div class="kpi-sub">No items</div></div>`;return;}
+        const ns=items.filter(x=>x.status==='Not Started'||x.status==='Not Set').length;
         const ip=items.filter(x=>x.status==='In Progress'||x.status==='Under Review').length;
+        const c=items.filter(x=>x.status==='Completed').length;
         const od=items.filter(isOverdue).length;
         const ap=t?Math.round(items.reduce((s,x)=>s+(x.prog||0),0)/t):0;
-        deptKpis+=`<div class="kpi-card" onclick="switchView('${vk||'dashboard'}')" title="Click to view ${dp.key}" style="grid-column:span 1">
+        let deptCols=VIEWS[vk]?.cols||['proj','prog','status','delayDays'];
+        if(useViewData&&items.length>0){
+            const skipKeys=new Set(['dept','priority','proj','status','Title','Modified','Created','EditorLookupId','AuthorLookupId','ID','id','ContentType']);
+            const dk=Object.keys(items[0]).filter(k=>!skipKeys.has(k)&&!k.startsWith('@')&&!k.startsWith('_')&&!ALIAS_SHORTS.has(k));
+            if(dk.length>0)deptCols=dk;
+        }
+        const ci=pushKpi(dp.key,items,deptCols);
+        deptKpis+=`<div class="kpi-card" onclick="showKpiModalFromCache(${ci})" title="Click to view ${dp.key} details" style="grid-column:span 1;cursor:pointer">
           <div class="kpi-accent" style="background:${dp.color}"></div>
           <div class="kpi-icon">${dp.icon}</div>
           <div class="kpi-label">${dp.key}</div>
           <div class="kpi-value" style="font-size:18px">${t}</div>
-          <div class="kpi-sub">${c} done · ${ip} active · ${od} overdue</div>
+          <div class="kpi-sub">
+            <span style="color:var(--text-secondary)">NS:</span>${ns}
+            <span style="color:var(--text-secondary);margin-left:6px">IP:</span>${ip}
+            <span style="color:var(--green);margin-left:6px">C:</span>${c}
+            <span style="color:var(--red);margin-left:6px">OD:</span>${od}
+          </div>
           <div class="kpi-bar"><div class="kpi-bar-fill" style="width:${ap}%;background:${dp.color}"></div></div>
         </div>`;
     });
-
     document.getElementById('content').innerHTML=`
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <div style="font-size:12px;color:var(--text-secondary)">${connectedViews.length>0?connectedViews.length+' connected lists':'Demo data'} · ${compRate}% complete</div>
+      <div style="font-size:11px;color:var(--text-secondary)">Avg delay ${avgDelay}d · Variance ${variance>=0?'+':''}$${variance.toLocaleString()}</div>
+    </div>
     <div class="kpi-grid">
-      <div class="kpi-card" onclick="switchView('engineering')" title="Click to view Engineering">
-        <div class="kpi-accent" style="background:#4C5D71"></div><div class="kpi-icon">📊</div>
-        <div class="kpi-label">Total Activities</div><div class="kpi-value">${total}</div>
-        <div class="kpi-sub">${connectedViews.length>0?connectedViews.length+' connected lists':'Demo data'}</div>
-        <div class="kpi-bar"><div class="kpi-bar-fill" style="width:${compRate}%;background:#4C5D71"></div></div>
+      <div class="kpi-card" onclick="showKpiModalFromCache(${ciTotal})" style="cursor:pointer;grid-column:span 1">
+        <div class="kpi-accent" style="background:#4C5D71"></div>
+        <div class="kpi-icon">📊</div>
+        <div class="kpi-label">Total Items</div>
+        <div class="kpi-value">${total}</div>
+        <div class="kpi-sub">
+          <span style="color:var(--text-secondary)">NS:</span>${notStarted}
+          <span style="color:var(--text-secondary);margin-left:8px">IP:</span>${inProg}
+          <span style="color:var(--green);margin-left:8px">C:</span>${completed}
+          <span style="color:var(--red);margin-left:8px">OD:</span>${overdue}
+        </div>
       </div>
-      <div class="kpi-card">
+      <div class="kpi-card" onclick="showKpiModalFromCache(${ciNotStarted})" style="cursor:pointer">
+        <div class="kpi-accent" style="background:#8C8C8C"></div><div class="kpi-icon">⏸️</div>
+        <div class="kpi-label">Not Started</div><div class="kpi-value">${notStarted}</div>
+        <div class="kpi-sub">${total?Math.round(notStarted/total*100):0}% of total</div>
+      </div>
+      <div class="kpi-card" onclick="showKpiModalFromCache(${ciInProg})" style="cursor:pointer">
+        <div class="kpi-accent" style="background:#00B7C3"></div><div class="kpi-icon">🔄</div>
+        <div class="kpi-label">In Progress</div><div class="kpi-value">${inProg}</div>
+        <div class="kpi-sub">${total?Math.round(inProg/total*100):0}% of total</div>
+      </div>
+      <div class="kpi-card" onclick="showKpiModalFromCache(${ciCompleted})" style="cursor:pointer">
         <div class="kpi-accent" style="background:#107C10"></div><div class="kpi-icon">✅</div>
         <div class="kpi-label">Completed</div><div class="kpi-value">${completed}</div>
         <div class="kpi-sub">${compRate}% completion rate</div>
       </div>
-      <div class="kpi-card">
-        <div class="kpi-accent" style="background:#00B7C3"></div><div class="kpi-icon">🔄</div>
-        <div class="kpi-label">In Progress</div><div class="kpi-value">${inProg}</div>
-        <div class="kpi-sub">Active work items</div>
-      </div>
-      <div class="kpi-card">
-        <div class="kpi-accent" style="background:#D92C2C"></div><div class="kpi-icon">⏰</div>
-        <div class="kpi-label">Delayed / Waiting</div><div class="kpi-value">${delayed}</div>
-        <div class="kpi-sub">Requires attention</div>
-      </div>
-      <div class="kpi-card">
-        <div class="kpi-accent" style="background:#ED7D31"></div><div class="kpi-icon">⚠️</div>
-        <div class="kpi-label">Overdue Items</div><div class="kpi-value">${overdue}</div>
-        <div class="kpi-sub">Past due date</div>
-      </div>
-      <div class="kpi-card">
-        <div class="kpi-accent" style="background:#8764B8"></div><div class="kpi-icon">📈</div>
-        <div class="kpi-label">Avg Progress</div><div class="kpi-value">${avgProg}%</div>
-        <div class="kpi-sub">Overall completion</div>
-        <div class="kpi-bar"><div class="kpi-bar-fill" style="width:${avgProg};background:#8764B8"></div></div>
-      </div>
-      <div class="kpi-card">
-        <div class="kpi-accent" style="background:${variance>=0?'#107C10':'#D92C2C'}"></div><div class="kpi-icon">💰</div>
-        <div class="kpi-label">Budget Variance</div>
-        <div class="kpi-value">${variance>=0?'+':''}$${variance.toLocaleString()}</div>
-        <div class="kpi-sub">${variance>=0?'Under budget':'Over budget'}</div>
-      </div>
-      <div class="kpi-card">
-        <div class="kpi-accent" style="background:#00B7C3"></div><div class="kpi-icon">⏱️</div>
-        <div class="kpi-label">Avg Delay</div><div class="kpi-value">${avgDelay}d</div>
-        <div class="kpi-sub">Average across items</div>
+      <div class="kpi-card" onclick="showKpiModalFromCache(${ciOverdue})" style="cursor:pointer">
+        <div class="kpi-accent" style="background:#D92C2C"></div><div class="kpi-icon">⚠️</div>
+        <div class="kpi-label">Overdue</div><div class="kpi-value">${overdue}</div>
+        <div class="kpi-sub">Avg delay ${avgDelay}d</div>
       </div>
     </div>
     <h3 style="font-size:13px;font-weight:600;color:var(--text-secondary);margin:0 0 12px;text-transform:uppercase;letter-spacing:.5px">📋 Department Overview</h3>
-    <div class="kpi-grid">
-      ${deptKpis}
-    </div>
-    <!-- Team Section: aggregated from all connected view data -->
+    <div class="kpi-grid">${deptKpis}</div>
     ${(()=>{
         let teamHtml='';
         connectedViews.forEach(v=>{
@@ -1482,8 +1490,6 @@ function renderDashboard(){
       </div>
       <div class="table-scroll"><table id="data-table"><tbody id="table-body"></tbody></table></div>
     </div>`;
-
-    // Charts
     if(Object.keys(statusData).length>0){
         new Chart(document.getElementById('chart-status'),{type:'doughnut',data:{
             labels:Object.keys(statusData),datasets:[{data:Object.values(statusData),
@@ -1496,7 +1502,6 @@ function renderDashboard(){
             backgroundColor:['#0078D4','#ED7D31','#FFB900','#107C10','#D92C2C','#8764B8','#00B7C3']}]},
             options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{stepSize:1}}}}});
     }
-
     renderTable();
 }
 
