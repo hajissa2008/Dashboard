@@ -638,7 +638,7 @@ function countByDept(dept){return DATA.filter(d=>d.dept===dept).length}
 function countAll(){return DATA.length}
 
 // Date-based overdue logic: item is overdue if any of its end dates (planned/due) is before today AND status is not complete
-const COMPLETE_STATUSES = new Set(['Completed','Closed','Approved','Passed','Cancelled','Delivered','Issued','IFC','Submitted']);
+const COMPLETE_STATUSES = new Set(['Completed','Closed','Approved','Passed','Cancelled','Delivered','Issued','IFC','Submitted','SDC Completed','ACC Completed']);
 function toDate(v){
     if(!v||v==='')return null;
     if(v instanceof Date&&!isNaN(v))return v;
