@@ -1139,7 +1139,7 @@ async function connectAllViews(){
         if(ok)count++;
     }
     updateCounts();
-    if(currentView!=='dashboard')renderCurrent();
+    renderCurrent();
     updateRefreshStatus(count+'/'+VIEW_KEYS.length+' connected');
     setTimeout(()=>{if(document.getElementById('refresh-status'))updateRefreshStatus();},3000);
 }
@@ -1185,6 +1185,7 @@ function autoConnectConfiguredViews(){
         connectSingleView(v).then(()=>{
             updateCounts();
             updateViewNavDot(v);
+            if(currentView==='dashboard')renderDashboard();
         }).catch(()=>{});
     });
 }
@@ -1350,7 +1351,7 @@ function renderDashboard(){
         return;
     }
     window._kpiCache=[];
-    const pushKpi=(title,items,cols)=>{const idx=window._kpiCache.length;window._kpiCache.push({title,items,cols:cols||['proj','prog','status','dept','delayDays','priority']});return idx;};
+    const pushKpi=(title,items,cols,wbs)=>{const idx=window._kpiCache.length;window._kpiCache.push({title,items,cols:cols||['proj','prog','status','dept','delayDays','priority'],wbs});return idx;};
     const total=d.length;
     const notStarted=d.filter(x=>x.status==='Not Started'||x.status==='Not Set').length;
     const inProg=d.filter(x=>x.status==='In Progress'||x.status==='Under Review').length;
@@ -1362,11 +1363,11 @@ function renderDashboard(){
     const totalBudget=d.reduce((s,x)=>s+(Number(x.budget||x['Budget']||0)),0);
     const totalActual=d.reduce((s,x)=>s+(Number(x.actual||x['ActualCost']||x['Actual Cost']||0)),0);
     const variance=totalBudget-totalActual;
-    const ciTotal=pushKpi('All Items',d);
-    const ciNotStarted=pushKpi('Not Started',d.filter(x=>x.status==='Not Started'||x.status==='Not Set'));
-    const ciInProg=pushKpi('In Progress',d.filter(x=>x.status==='In Progress'||x.status==='Under Review'));
-    const ciCompleted=pushKpi('Completed',d.filter(x=>x.status==='Completed'));
-    const ciOverdue=pushKpi('Overdue Items',d.filter(isOverdue));
+    const ciTotal=pushKpi('All Items',d,null,true);
+    const ciNotStarted=pushKpi('Not Started',d.filter(x=>x.status==='Not Started'||x.status==='Not Set'),null,true);
+    const ciInProg=pushKpi('In Progress',d.filter(x=>x.status==='In Progress'||x.status==='Under Review'),null,true);
+    const ciCompleted=pushKpi('Completed',d.filter(x=>x.status==='Completed'),null,true);
+    const ciOverdue=pushKpi('Overdue Items',d.filter(isOverdue),null,true);
     const statusData={};d.forEach(x=>{const s=x.status||'Not Set';statusData[s]=(statusData[s]||0)+1});
     const deptData={};d.forEach(x=>{const dp=x.dept||'Unknown';deptData[dp]=(deptData[dp]||0)+1});
     const depts=[
@@ -1397,7 +1398,7 @@ function renderDashboard(){
             const dk=Object.keys(items[0]).filter(k=>!skipKeys.has(k)&&!k.startsWith('@')&&!k.startsWith('_')&&!ALIAS_SHORTS.has(k));
             if(dk.length>0)deptCols=dk;
         }
-        const ci=pushKpi(dp.key,items,deptCols);
+        const ci=pushKpi(dp.key,items,deptCols,false);
         deptKpis+=`<div class="kpi-card" onclick="showKpiModalFromCache(${ci})" title="Click to view ${dp.key} details" style="grid-column:span 1;cursor:pointer">
           <div class="kpi-accent" style="background:${dp.color}"></div>
           <div class="kpi-icon">${dp.icon}</div>
@@ -1528,10 +1529,46 @@ function closeKpiModal(ev){
     if(ev && ev.target!==document.getElementById('kpi-modal-overlay'))return;
     document.getElementById('kpi-modal-overlay').classList.remove('show');
 }
+function showKpiWbsModal(title, allItems){
+    if(!window._kpiCache)window._kpiCache=[];
+    const deptMap={};
+    allItems.forEach(x=>{const dp=x.dept||'Unknown';if(!deptMap[dp])deptMap[dp]=[];deptMap[dp].push(x);});
+    const depts=Object.keys(deptMap).sort();
+    let html='<div style="padding:4px 0 12px;font-size:12px;color:var(--text-secondary)">Click a department to view items</div><div class="kpi-grid" style="grid-template-columns:repeat(auto-fill,minmax(210px,1fr))">';
+    depts.forEach(dept=>{
+        const items=deptMap[dept];
+        const t=items.length;
+        const ns=items.filter(x=>x.status==='Not Started'||x.status==='Not Set').length;
+        const ip=items.filter(x=>x.status==='In Progress'||x.status==='Under Review').length;
+        const c=items.filter(x=>x.status==='Completed').length;
+        const od=items.filter(isOverdue).length;
+        const vk=VIEW_KEYS.find(k=>VIEWS[k].title===dept||VIEWS[k].dept===dept);
+        let cols=(vk&&VIEWS[vk]?.cols)||['proj','prog','status','dept','delayDays','priority'];
+        if(vk&&viewData[vk]?.connected&&viewData[vk]?.data?.length>0){
+            const skipKeys=new Set(['dept','priority','proj','status','Title','Modified','Created','EditorLookupId','AuthorLookupId','ID','id','ContentType']);
+            const dk=Object.keys(items[0]).filter(k=>!skipKeys.has(k)&&!k.startsWith('@')&&!k.startsWith('_')&&!ALIAS_SHORTS.has(k));
+            if(dk.length>0)cols=dk;
+        }
+        const subIdx=window._kpiCache.length;
+        window._kpiCache.push({title:dept+' ('+title+')',items,cols});
+        html+='<div class="kpi-card" onclick="showKpiModalFromCache('+subIdx+')" style="cursor:pointer;padding:12px 14px;grid-column:span 1"><div class="kpi-label">'+dept+'</div><div class="kpi-value" style="font-size:20px">'+t+'</div><div class="kpi-sub">'+
+            (ns?'<span style="color:var(--text-secondary)">NS:'+ns+'</span>':'')+
+            (ip?'<span style="color:#00B7C3;margin-left:4px">IP:'+ip+'</span>':'')+
+            (c?'<span style="color:var(--green);margin-left:4px">C:'+c+'</span>':'')+
+            (od?'<span style="color:var(--red);margin-left:4px">OD:'+od+'</span>':'')+
+        '</div></div>';
+    });
+    html+='</div>';
+    document.getElementById('kpi-modal-title').textContent=title;
+    document.getElementById('kpi-modal-count').textContent=allItems.length+' item(s)';
+    document.getElementById('kpi-modal-body').innerHTML=html;
+    document.getElementById('kpi-modal-overlay').classList.add('show');
+}
 function showKpiModalFromCache(idx){
     const d=window._kpiCache[idx];
     if(!d)return;
-    showKpiModal(d.title,d.items,d.cols);
+    if(d.wbs)showKpiWbsModal(d.title,d.items);
+    else showKpiModal(d.title,d.items,d.cols);
 }
 
 function renderTable(){
