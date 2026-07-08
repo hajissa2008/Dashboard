@@ -551,6 +551,11 @@ const COL_LABELS = {
   hseAction:'HSE Action',hseClose:'HSE Closeout',
   qaInsp:'QA Insp Req',matInsp:'Material Inspection',testReport:'Test Report',qaNcr:'QA NCR',qaAction:'QA Action',qaStatus:'Quality Status',qaClose:'QA Closeout',
   rev00:'REV 00',rev01:'REV 01',rev02:'REV 02',rev03:'REV 03',
+  // Raw REV column labels for SharePoint Shop Drawing Status
+  'REV 00 (OUT MDH)':'REV 00 OUT MDH','REV 00  IN':'REV 00 IN',
+  'REV 01 OUT(MDH)':'REV 01 OUT','REV 01  IN':'REV 01 IN',
+  'REV 02 OUT(MDH)':'REV 02 OUT','REV 02 IN':'REV 02 IN',
+  'REV 03 (OUT MDH)':'REV 03 OUT',
   part:'Part',phase:'Phase',
   // Engineering Shop Drawing Status columns
   dwgNo:'Drawing #',dwgTitle:'Drawing Title',dwgType:'Drawing Type',engDisc:'Eng Discipline',
@@ -972,6 +977,8 @@ async function connectSingleView(view){
             item.dept = VIEWS[view]?.dept || view;
             item.proj = spItem['Project Code'] || spItem['Project Name'] || spItem.Title || item['ProjectName'] || item['Project_x0020_Name'] || 'N/A';
             item.status = spItem['Status'] || spItem['DRAWING STATUS'] || spItem['WorkStatus'] || 'Not Set';
+            if(item.status==='O')item.status='Open';
+            if(item.status==='D')item.status='Delivered';
             item.priority = spItem['Priority'] || 'Medium';
             // Map common SharePoint column names → short names used by KPIs & views
             const aliases = {
@@ -1000,9 +1007,13 @@ async function connectSingleView(view){
                 'ProjectID':['id'],'ProjectName':['proj'],'Project_x0020_Name':['proj'],
                 'DueDate':['due','Due_x0020_Date'],'ResponsibleEngineer':['eng'],'DisciplineLead':['discLead'],
                 'REV00':['rev00'],'REV 00':['rev00'],'REV_00':['rev00'],'REV_x0020_00':['rev00'],
+                'REV 00 (OUT MDH)':['rev00'],'REV 00  IN':['rev00'],
                 'REV01':['rev01'],'REV 01':['rev01'],'REV_01':['rev01'],'REV_x0020_01':['rev01'],
+                'REV 01 OUT(MDH)':['rev01'],'REV 01  IN':['rev01'],
                 'REV02':['rev02'],'REV 02':['rev02'],'REV_02':['rev02'],'REV_x0020_02':['rev02'],
+                'REV 02 OUT(MDH)':['rev02'],'REV 02 IN':['rev02'],
                 'REV03':['rev03'],'REV 03':['rev03'],'REV_03':['rev03'],'REV_x0020_03':['rev03'],
+                'REV 03 (OUT MDH)':['rev03'],
                 'Phase':['phase'],'Part':['part'],
                 'ProjectPhase':['phase'],'Drawing_x0020_Number':['dwgNo'],'Drawing_x0020_Title':['dwgTitle'],'Drawing_x0020_Type':['dwgType'],
                 'Assigned_x0020_To':['assigned'],'AssignedTo':['assigned'],'ResponsibleDepartment':['dept'],
@@ -1561,17 +1572,21 @@ function renderDeptView(view){
 
     let kpis='';
     if(view==='engineering'){
-        // Determine each document's current revision level (highest non-empty REV field)
-        const revFields=[{key:'rev03',label:'REV 03'},{key:'rev02',label:'REV 02'},{key:'rev01',label:'REV 01'},{key:'rev00',label:'REV 00'}];
+        // Determine each document's current revision level by checking raw column names
+        const revFields=[{key:'rev03',cols:['REV 03 (OUT MDH)']},
+                         {key:'rev02',cols:['REV 02 OUT(MDH)','REV 02 IN']},
+                         {key:'rev01',cols:['REV 01 OUT(MDH)','REV 01  IN']},
+                         {key:'rev00',cols:['REV 00 (OUT MDH)','REV 00  IN']}];
         const revGroups={rev00:[],rev01:[],rev02:[],rev03:[]};
         const revStatuses={rev00:{},rev01:{},rev02:{},rev03:{}};
         items.forEach(item=>{
             for(const rf of revFields){
-                const v=item[rf.key]||item[rf.label]||item[rf.label.replace(' ','_')];
-                if(v!==undefined&&v!==null&&v!==''){
-                    const s=String(v).trim();
+                const colName=rf.cols.find(c=>item[c]!==undefined&&item[c]!==null&&item[c]!=='');
+                const value=colName?item[colName]:item[rf.key];
+                if(value!==undefined&&value!==null&&value!==''){
                     revGroups[rf.key].push(item);
-                    revStatuses[rf.key][s]=(revStatuses[rf.key][s]||0)+1;
+                    const status=colName?colName.includes('OUT')?'OUT MDH':'IN':String(value).trim();
+                    revStatuses[rf.key][status]=(revStatuses[rf.key][status]||0)+1;
                     break;
                 }
             }
