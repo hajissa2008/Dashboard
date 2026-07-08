@@ -176,6 +176,50 @@ body.dark .settings-body input,body.dark .settings-body select{background:var(--
 body.dark .empty-state{color:var(--text-secondary)}
 body.dark th .sort-arrow{color:var(--text-secondary)}
 
+/* Popup Modal */
+.popup-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:300;justify-content:center;align-items:center}
+.popup-overlay.show{display:flex}
+.popup-modal{background:var(--white);border-radius:12px;width:90%;max-width:1100px;max-height:85vh;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,.2);display:flex;flex-direction:column}
+.popup-header{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid var(--gray-border);flex-shrink:0}
+.popup-header h3{font-size:15px;font-weight:600;display:flex;align-items:center;gap:8px}
+.popup-close{background:none;border:none;font-size:24px;cursor:pointer;color:var(--text-secondary);padding:4px;line-height:1}
+.popup-body{overflow:auto;padding:0;flex:1}
+.popup-body table{width:100%;border-collapse:collapse;font-size:12px}
+.popup-body th{background:var(--gray-light);color:var(--text-secondary);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.3px;padding:8px 10px;text-align:left;border-bottom:2px solid var(--gray-border);position:sticky;top:0;z-index:1}
+.popup-body td{padding:7px 10px;border-bottom:1px solid var(--gray-border);color:var(--text-primary)}
+.popup-body tr:hover td{background:var(--blue-light)}
+.popup-count{font-size:12px;color:var(--text-secondary);font-weight:400}
+
+/* Gauge KPI */
+.gauge-card{position:relative;background:var(--white);border-radius:12px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.06);border:none;overflow:hidden;cursor:pointer;transition:transform .2s,box-shadow .2s;user-select:none;text-align:center;display:flex;flex-direction:column;align-items:center}
+.gauge-card:hover{transform:translateY(-3px);box-shadow:0 4px 12px rgba(0,0,0,.1)}
+.gauge-card svg{width:72px;height:72px;margin-bottom:6px}
+.gauge-card .gauge-label{font-size:10px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.4px;font-weight:600}
+.gauge-card .gauge-value{font-size:18px;font-weight:700;color:var(--text-primary);line-height:1.2;margin-top:2px}
+.gauge-card .gauge-sub{font-size:10px;color:var(--text-secondary);margin-top:2px}
+
+/* Phase Card */
+.phase-card{background:var(--white);border-radius:10px;padding:14px 16px;box-shadow:0 1px 4px rgba(0,0,0,.06);margin-bottom:10px}
+.phase-card h4{font-size:13px;font-weight:600;margin-bottom:8px;display:flex;justify-content:space-between}
+.phase-card .phase-segments{display:flex;height:8px;border-radius:4px;overflow:hidden;margin-bottom:6px}
+.phase-card .phase-seg{height:100%;transition:width .3s}
+.phase-card .phase-stats{display:flex;gap:10px;font-size:10px;color:var(--text-secondary);flex-wrap:wrap}
+.phase-card .phase-stats span{display:flex;align-items:center;gap:4px}
+
+/* Team Card */
+.team-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-bottom:20px}
+.team-card{background:var(--white);border-radius:10px;padding:12px;box-shadow:0 1px 4px rgba(0,0,0,.06);text-align:center;cursor:pointer;transition:transform .2s}
+.team-card:hover{transform:translateY(-2px)}
+.team-card .team-avatar{width:40px;height:40px;border-radius:50%;background:var(--blue);color:white;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;margin:0 auto 6px}
+.team-card .team-name{font-size:12px;font-weight:600;color:var(--text-primary)}
+.team-card .team-count{font-size:11px;color:var(--text-secondary);margin-top:2px}
+
+body.dark .popup-modal{background:var(--white)}
+body.dark .popup-header{border-bottom-color:var(--gray-border)}
+body.dark .popup-body th{background:var(--bg);color:var(--text-secondary);border-bottom-color:var(--gray-border)}
+body.dark .popup-body td{border-bottom-color:var(--gray-border)}
+body.dark .popup-body tr:hover td{background:var(--blue-light)}
+
 @media(max-width:768px){
 .sidebar{position:fixed;left:-280px;transition:left .25s;height:100%;box-shadow:2px 0 12px rgba(0,0,0,.15)}
 .sidebar.open{left:0}
@@ -318,6 +362,17 @@ body.dark th .sort-arrow{color:var(--text-secondary)}
       </div>
 
       <div id="conn-status-hidden" style="display:none"></div>
+    </div>
+  </div>
+
+  <!-- KPI Drill-Down Popup -->
+  <div class="popup-overlay" id="kpi-popup" onclick="closeKpiPopup(event)">
+    <div class="popup-modal" onclick="event.stopPropagation()">
+      <div class="popup-header">
+        <h3 id="kpi-popup-title">KPI Details <span class="popup-count" id="kpi-popup-count"></span></h3>
+        <button class="popup-close" onclick="closeKpiPopup()">&times;</button>
+      </div>
+      <div class="popup-body" id="kpi-popup-body"></div>
     </div>
   </div>
 
@@ -1026,6 +1081,7 @@ let rawSortCol=null, rawSortAsc=true;
 // ======================== RENDER ========================
 function renderCurrent(){
     if(currentView==='dashboard')renderDashboard();
+    else if(currentView==='construction')renderConstructionView();
     else renderDeptView(currentView);
 }
 
@@ -1088,22 +1144,22 @@ function renderDashboard(){
         <div class="kpi-sub">${dataSource==='sp-live'?'Live SharePoint':'Demo data'}</div>
         <div class="kpi-bar"><div class="kpi-bar-fill" style="width:${compRate}%;background:#4C5D71"></div></div>
       </div>
-      <div class="kpi-card" onclick="filterByStatus('Completed')" title="Click to filter">
+      <div class="kpi-card" onclick="openKpiPopup('Completed Items',d.filter(x=>x.status==='Completed'))" title="Click to view details">
         <div class="kpi-accent" style="background:#107C10"></div><div class="kpi-icon">✅</div>
         <div class="kpi-label">Completed</div><div class="kpi-value">${completed}</div>
         <div class="kpi-sub">${compRate}% completion rate</div>
       </div>
-      <div class="kpi-card" onclick="filterByStatus('In Progress')" title="Click to filter">
+      <div class="kpi-card" onclick="openKpiPopup('In Progress Items',d.filter(x=>x.status==='In Progress'||x.status==='Under Review'))" title="Click to view details">
         <div class="kpi-accent" style="background:#00B7C3"></div><div class="kpi-icon">🔄</div>
         <div class="kpi-label">In Progress</div><div class="kpi-value">${inProg}</div>
         <div class="kpi-sub">Active work items</div>
       </div>
-      <div class="kpi-card" onclick="filterByStatus('Delayed')" title="Click to filter">
+      <div class="kpi-card" onclick="openKpiPopup('Delayed / Waiting Items',d.filter(x=>x.status==='Delayed'||x.status==='Waiting Approval'))" title="Click to view details">
         <div class="kpi-accent" style="background:#D92C2C"></div><div class="kpi-icon">⏰</div>
         <div class="kpi-label">Delayed / Waiting</div><div class="kpi-value">${delayed}</div>
         <div class="kpi-sub">Requires attention</div>
       </div>
-      <div class="kpi-card" onclick="filterByStatus('Overdue')" title="Click to filter">
+      <div class="kpi-card" onclick="openKpiPopup('Overdue Items',d.filter(x=>x.delayDays>0))" title="Click to view details">
         <div class="kpi-accent" style="background:#ED7D31"></div><div class="kpi-icon">⚠️</div>
         <div class="kpi-label">Overdue Items</div><div class="kpi-value">${overdue}</div>
         <div class="kpi-sub">Past due date</div>
@@ -1277,6 +1333,251 @@ function cellValue(item,col){
     return v||'-';
 }
 
+// ======================== KPI POPUP (Drill-Down) ========================
+function openKpiPopup(title, items, viewCols){
+    const overlay=document.getElementById('kpi-popup');
+    document.getElementById('kpi-popup-title').innerHTML = title + ' <span class="popup-count">(' + items.length + ' items)</span>';
+    const body=document.getElementById('kpi-popup-body');
+    if(!items||items.length===0){
+        body.innerHTML='<div class="empty-state" style="padding:40px;text-align:center;color:var(--text-secondary)"><div style="font-size:32px;margin-bottom:8px">📭</div><p>No items</p></div>';
+        overlay.classList.add('show'); return;
+    }
+    const cols=viewCols||Object.keys(items[0]).filter(k=>!['dept','priority','Title','@odata.etag','ID','id'].includes(k)&&!k.startsWith('_')&&!k.startsWith('@'));
+    let html='<table><thead><tr>';
+    cols.forEach(c=>{html+='<th>'+(COL_LABELS[c]||c)+'</th>'});
+    html+='</tr></thead><tbody>';
+    items.forEach(item=>{
+        html+='<tr>';
+        cols.forEach(c=>{
+            let v=item[c];
+            if(v!==null&&v!==undefined&&typeof v==='object')v=v.Title||v.LookupValue||v.Email||String(v);
+            if(c==='status'||c==='DRAWING STATUS'||c==='REV 00 STATUS')html+='<td><span class="status-badge">'+(v||'Not Set')+'</span></td>';
+            else if(c==='priority')html+='<td><span class="priority-badge">'+(v||'N/A')+'</span></td>';
+            else if(['prog','dailyProg','weeklyProg','compPct'].includes(c))html+='<td>'+(v||0)+'%</td>';
+            else if(['cost','budget','actual','forecast','committed','costVar','ev','pv'].includes(c))html+='<td>'+(typeof v==='number'?'$'+v.toLocaleString():v||'-')+'</td>';
+            else html+='<td>'+(v??'-')+'</td>';
+        });
+        html+='</tr>';
+    });
+    html+='</tbody></table>';
+    body.innerHTML=html;
+    overlay.classList.add('show');
+}
+function closeKpiPopup(e){
+    if(e&&e.target!==e.currentTarget)return;
+    document.getElementById('kpi-popup').classList.remove('show');
+}
+
+// ======================== SVG GAUGE HELPER ========================
+function gaugeHTML(pct, color){
+    const r=30, circ=2*Math.PI*r, offset=circ*(1-Math.min(pct,100)/100);
+    return `<svg viewBox="0 0 72 72"><circle cx="36" cy="36" r="${r}" fill="none" stroke="var(--gray-border)" stroke-width="5"/>
+      <circle cx="36" cy="36" r="${r}" fill="none" stroke="${color}" stroke-width="5" stroke-dasharray="${circ}" stroke-dashoffset="${offset}" stroke-linecap="round" transform="rotate(-90,36,36)"/>
+      <text x="36" y="36" text-anchor="middle" dominant-baseline="central" font-size="14" font-weight="700" fill="var(--text-primary)">${Math.round(pct)}%</text></svg>`;
+}
+
+// ======================== CONSTRUCTION VIEW ========================
+function renderConstructionView(){
+    const v=VIEWS.construction;
+    const vd=viewData.construction;
+    const useViewData=vd&&vd.connected&&vd.data.length>0;
+    const items=useViewData?vd.data:DATA.filter(x=>x.dept===v.dept);
+    const total=items.length;
+    const completed=items.filter(x=>x.status==='Completed').length;
+    const inProg=items.filter(x=>x.status==='In Progress'||x.status==='Active').length;
+    const notStarted=items.filter(x=>x.status==='Not Started'||x.status==='Not Set').length;
+    const delayed=items.filter(x=>x.status==='Delayed'||x.status==='Issue').length;
+    const forInsp=items.filter(x=>x.status==='For Inspection'||x.status==='Submitted').length;
+    const overdue=items.filter(x=>Number(x.delayDays||x['Delay Days']||0)>0).length;
+    const avgProg=total?Math.round(items.reduce((s,x)=>s+(x.prog||0),0)/total):0;
+    const compRate=total?Math.round(completed/total*100):0;
+    const overdueRate=total?Math.round(overdue/total*100):0;
+    const notStartedRate=total?Math.round(notStarted/total*100):0;
+    const inProgRate=total?Math.round(inProg/total*100):0;
+    const forInspRate=total?Math.round(forInsp/total*100):0;
+
+    // Phase / Workfront grouping
+    const phases={};
+    items.forEach(item=>{
+        const wf=item.workFront||item['Work Front']||item.cArea||item['Const Area']||'General';
+        if(!phases[wf])phases[wf]={items:[],total:0,comp:0,inProg:0,notStarted:0,delayed:0};
+        phases[wf].items.push(item);
+        phases[wf].total++;
+        if(item.status==='Completed')phases[wf].comp++;
+        else if(item.status==='In Progress'||item.status==='Active')phases[wf].inProg++;
+        else if(item.status==='Not Started'||item.status==='Not Set')phases[wf].notStarted++;
+        else if(item.status==='Delayed'||item.status==='Issue')phases[wf].delayed++;
+    });
+
+    // Team / Foreman grouping
+    const team={};
+    items.forEach(item=>{
+        const f=item.foreman||item['Foreman']||item.assigned||item['Assigned To']||'Unassigned';
+        if(!team[f])team[f]={items:[],total:0,comp:0,inProg:0,overdue:0};
+        team[f].items.push(item);
+        team[f].total++;
+        if(item.status==='Completed')team[f].comp++;
+        if(item.status==='In Progress'||item.status==='Active')team[f].inProg++;
+        if(Number(item.delayDays||item['Delay Days']||0)>0)team[f].overdue++;
+    });
+
+    // Gauge KPIs
+    const gaugeColor=avgProg>66?'#107C10':avgProg>33?'#ED7D31':'#D92C2C';
+    let html=`<div class="kpi-grid" style="grid-template-columns:repeat(auto-fill,minmax(140px,1fr))">
+      <div class="gauge-card" onclick='openKpiPopup("All Activities",${JSON.stringify(items).replace(/'/g,"\\'")})'>
+        ${gaugeHTML(compRate,'#4C5D71')}<div class="gauge-label">Total</div><div class="gauge-value">${total}</div><div class="gauge-sub">${compRate}% done</div>
+      </div>
+      <div class="gauge-card" onclick='openKpiPopup("Overdue Items",${JSON.stringify(items.filter(x=>Number(x.delayDays||x["Delay Days"]||0)>0)).replace(/'/g,"\\'")})'>
+        ${gaugeHTML(overdueRate,'#D92C2C')}<div class="gauge-label">Overdue</div><div class="gauge-value">${overdue}</div><div class="gauge-sub">${overdueRate}% of total</div>
+      </div>
+      <div class="gauge-card" onclick='openKpiPopup("Not Started Items",${JSON.stringify(items.filter(x=>x.status==="Not Started"||x.status==="Not Set")).replace(/'/g,"\\'")})'>
+        ${gaugeHTML(notStartedRate,'#8A8886')}<div class="gauge-label">Not Started</div><div class="gauge-value">${notStarted}</div><div class="gauge-sub">${notStartedRate}% pending</div>
+      </div>
+      <div class="gauge-card" onclick='openKpiPopup("In Progress Items",${JSON.stringify(items.filter(x=>x.status==="In Progress"||x.status==="Active")).replace(/'/g,"\\'")})'>
+        ${gaugeHTML(inProgRate,'#00B7C3')}<div class="gauge-label">In Progress</div><div class="gauge-value">${inProg}</div><div class="gauge-sub">${inProgRate}% active</div>
+      </div>
+      <div class="gauge-card" onclick='openKpiPopup("For Inspection Items",${JSON.stringify(items.filter(x=>x.status==="For Inspection"||x.status==="Submitted")).replace(/'/g,"\\'")})'>
+        ${gaugeHTML(forInspRate,'#ED7D31')}<div class="gauge-label">For Insp.</div><div class="gauge-value">${forInsp}</div><div class="gauge-sub">Needs review</div>
+      </div>
+      <div class="gauge-card" onclick='openKpiPopup("Completed Items",${JSON.stringify(items.filter(x=>x.status==="Completed")).replace(/'/g,"\\'")})'>
+        ${gaugeHTML(100,'#107C10')}<div class="gauge-label">Completed</div><div class="gauge-value">${completed}</div><div class="gauge-sub">${compRate}% rate</div>
+      </div>
+      <div class="gauge-card" onclick='openKpiPopup("Delayed Items",${JSON.stringify(items.filter(x=>x.status==="Delayed"||x.status==="Issue")).replace(/'/g,"\\'")})'>
+        ${gaugeHTML(overdue>0?Math.min(100,Math.round(delayed/total*100*2)):0,'#F44336')}<div class="gauge-label">Delayed</div><div class="gauge-value">${delayed}</div><div class="gauge-sub">Needs attention</div>
+      </div>
+    </div>`;
+
+    // Phase / Workfront cards
+    html+=`<h3 style="font-size:13px;font-weight:600;color:var(--text-secondary);margin:16px 0 10px;text-transform:uppercase;letter-spacing:.5px">◇ Workfronts / Phases</h3>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px;margin-bottom:20px">`;
+    Object.entries(phases).forEach(([name,ph])=>{
+        const pct=ph.total?Math.round(ph.comp/ph.total*100):0;
+        const segs=[];
+        if(ph.comp>0)segs.push(`<div class="phase-seg" style="width:${ph.comp/ph.total*100}%;background:#107C10" title="Completed: ${ph.comp}"></div>`);
+        if(ph.inProg>0)segs.push(`<div class="phase-seg" style="width:${ph.inProg/ph.total*100}%;background:#00B7C3" title="In Progress: ${ph.inProg}"></div>`);
+        if(ph.delayed>0)segs.push(`<div class="phase-seg" style="width:${ph.delayed/ph.total*100}%;background:#D92C2C" title="Delayed: ${ph.delayed}"></div>`);
+        if(ph.notStarted>0)segs.push(`<div class="phase-seg" style="width:${ph.notStarted/ph.total*100}%;background:var(--gray-border)" title="Not Started: ${ph.notStarted}"></div>`);
+        html+=`<div class="phase-card" onclick='openKpiPopup("${name}",${JSON.stringify(ph.items).replace(/'/g,"\\'")})'>
+          <h4><span>${name}</span><span>${pct}%</span></h4>
+          <div class="phase-segments">${segs.join('')}</div>
+          <div class="phase-stats">
+            <span>✅ ${ph.comp}</span><span>🔄 ${ph.inProg}</span><span>⏰ ${ph.delayed}</span><span>⏸ ${ph.notStarted}</span>
+          </div>
+        </div>`;
+    });
+    html+=`</div>`;
+
+    // Overdue Analysis
+    const overdueItems=items.filter(x=>Number(x.delayDays||x['Delay Days']||0)>0);
+    if(overdueItems.length>0){
+        // Overdue by phase
+        const odByPhase={};
+        overdueItems.forEach(item=>{
+            const wf=item.workFront||item['Work Front']||item.cArea||item['Const Area']||'General';
+            if(!odByPhase[wf])odByPhase[wf]={count:0,days:0};
+            odByPhase[wf].count++;
+            odByPhase[wf].days+=Number(item.delayDays||item['Delay Days']||0);
+        });
+        const odPhaseEntries=Object.entries(odByPhase).sort((a,b)=>b[1].days-a[1].days);
+
+        // Overdue by person
+        const odByPerson={};
+        overdueItems.forEach(item=>{
+            const p=item.foreman||item['Foreman']||item.assigned||item['Assigned To']||'Unassigned';
+            if(!odByPerson[p])odByPerson[p]={count:0,days:0};
+            odByPerson[p].count++;
+            odByPerson[p].days+=Number(item.delayDays||item['Delay Days']||0);
+        });
+        const odPersonEntries=Object.entries(odByPerson).sort((a,b)=>b[1].days-a[1].days);
+
+        html+=`<h3 style="font-size:13px;font-weight:600;color:var(--text-secondary);margin:16px 0 10px;text-transform:uppercase;letter-spacing:.5px">⚠ Overdue Analysis</h3>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px">
+          <div class="chart-card"><h3>Overdue by Workfront</h3><div style="margin-top:8px">`;
+        odPhaseEntries.forEach(([name,od])=>{
+            const maxDays=odPhaseEntries[0][1].days||1;
+            html+=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+              <span style="font-size:11px;min-width:80px">${name}</span>
+              <div style="flex:1;height:18px;background:var(--gray-border);border-radius:3px;overflow:hidden">
+                <div style="height:100%;width:${od.days/maxDays*100}%;background:#D92C2C;border-radius:3px;display:flex;align-items:center;justify-content:flex-end;padding-right:4px;font-size:9px;color:white;font-weight:600;min-width:30px">${od.days}d</div>
+              </div>
+              <span style="font-size:11px;color:var(--text-secondary);min-width:40px">${od.count} items</span>
+            </div>`;
+        });
+        html+=`</div></div>
+          <div class="chart-card"><h3>Overdue by Person</h3><div style="margin-top:8px">`;
+        odPersonEntries.forEach(([name,od])=>{
+            const maxDays=odPersonEntries[0][1].days||1;
+            html+=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+              <span style="font-size:11px;min-width:80px">${name}</span>
+              <div style="flex:1;height:18px;background:var(--gray-border);border-radius:3px;overflow:hidden">
+                <div style="height:100%;width:${od.days/maxDays*100}%;background:#ED7D31;border-radius:3px;display:flex;align-items:center;justify-content:flex-end;padding-right:4px;font-size:9px;color:white;font-weight:600;min-width:30px">${od.days}d</div>
+              </div>
+              <span style="font-size:11px;color:var(--text-secondary);min-width:40px">${od.count} items</span>
+            </div>`;
+        });
+        html+=`</div></div></div>`;
+    }
+
+    // Team cards
+    html+=`<h3 style="font-size:13px;font-weight:600;color:var(--text-secondary);margin:16px 0 10px;text-transform:uppercase;letter-spacing:.5px">👥 Team</h3>
+    <div class="team-grid">`;
+    Object.entries(team).sort((a,b)=>b[1].total-a[1].total).forEach(([name,tm])=>{
+        const initials=name.split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
+        html+=`<div class="team-card" onclick='openKpiPopup("${name}",${JSON.stringify(tm.items).replace(/'/g,"\\'")})'>
+          <div class="team-avatar">${initials}</div>
+          <div class="team-name">${name}</div>
+          <div class="team-count">${tm.total} items · ${tm.comp} done · ${tm.overdue} overdue</div>
+        </div>`;
+    });
+    html+=`</div>`;
+
+    // Charts row
+    const statusLabels=[...new Set(items.map(x=>x.status))];
+    const statusCounts=statusLabels.map(s=>items.filter(x=>x.status===s).length);
+    const phaseLabels=Object.keys(phases);
+    const phaseCompPcts=phaseLabels.map(p=>phases[p].total?Math.round(phases[p].comp/phases[p].total*100):0);
+
+    html+=`<div class="charts-row">
+      <div class="chart-card"><h3>Status Distribution</h3><canvas id="chart-const-status"></canvas></div>
+      <div class="chart-card"><h3>Completion by Phase</h3><canvas id="chart-const-phase"></canvas></div>
+    </div>`;
+
+    // Table
+    const vCols=Object.keys(items[0]||{}).filter(k=>!['dept','priority','Title','@odata.etag'].includes(k)&&!k.startsWith('_')&&!k.startsWith('@'));
+    html+=`<div class="table-wrap">
+      <div class="table-toolbar">
+        <span class="view-label">${v.title}</span>
+        <span class="view-badge">${total} items</span>
+        <span style="flex:1"></span>
+        <div class="filter-group">
+          <select id="filter-status" onchange="renderTable()">
+            <option value="">All Statuses</option>
+            <option>Not Started</option><option>In Progress</option><option>Active</option>
+            <option>For Inspection</option><option>Submitted</option>
+            <option>Completed</option><option>Delayed</option><option>Issue</option><option>On Hold</option>
+          </select>
+        </div>
+      </div>
+      <div class="table-scroll"><table id="data-table"><tbody id="table-body"></tbody></table></div>
+    </div>`;
+
+    document.getElementById('content').innerHTML=html;
+    renderTable();
+    // Charts
+    if(statusLabels.length>0){
+        new Chart(document.getElementById('chart-const-status'),{type:'doughnut',data:{
+            labels:statusLabels,datasets:[{data:statusCounts,
+            backgroundColor:['#00B7C3','#107C10','#ED7D31','#D92C2C','#8764B8','#8A8886','#FFB900','#4C5D71']}]},
+            options:{responsive:true,plugins:{legend:{position:'bottom',labels:{boxWidth:12,font:{size:10}}}}}});
+    }
+    if(phaseLabels.length>0){
+        new Chart(document.getElementById('chart-const-phase'),{type:'bar',data:{
+            labels:phaseLabels,datasets:[{label:'Completion %',data:phaseCompPcts,
+            backgroundColor:'#00B7C3'}]},
+            options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,max:100,ticks:{stepSize:25}}}}});
+    }
+}
+
 function renderDeptView(view){
     const v=VIEWS[view];
     const vd=viewData[view];
@@ -1291,10 +1592,11 @@ function renderDeptView(view){
     const overdue=items.filter(x=>Number(x.delayDays||x['Delay Days']||0)>0).length;
     const lastUpdated=items.reduce((latest,x)=>x.Modified&&x.Modified>latest?x.Modified:latest,'')||'';
 
-    function kpi(icon,label,value,color,pct,trend,tip){
+    function kpi(icon,label,value,color,pct,trend,tip,filteredItems){
         const bar=pct!=null?`<div class="kpi-bar"><div class="kpi-bar-fill" style="width:${Math.min(100,pct)}%;background:${color}"></div></div>`:'';
         const trendHtml=trend?`<span class="kpi-trend ${trend.cls}">${trend.txt}</span>`:'';
-        return `<div class="kpi-card" onclick="filterByStatus('${tip||''}')" title="Click to filter">
+        const onclick=filteredItems?`openKpiPopup('${label.replace(/'/g,"\\'")}',${JSON.stringify(filteredItems).replace(/'/g,"\\'")})`:tip?`filterByStatus('${tip}')`:'';
+        return `<div class="kpi-card" onclick="${onclick}" title="Click to view details">
           <div class="kpi-accent" style="background:${color}"></div>
           <div class="kpi-icon">${icon}</div>
           <div class="kpi-label">${label} ${trendHtml}</div>
@@ -1310,10 +1612,10 @@ function renderDeptView(view){
         const rev=items.filter(x=>x.rev>1||(parseInt(x.rev)||0)>1).length;
         const pendingReview=items.filter(x=>x.status==='Submitted'||x.status==='Under Review').length;
         kpis=kpi('📐','Total Drawings',total,'#4C5D71')+
-              kpi('📤','Submitted',sub,'#00B7C3',sub/total*100,null,'Submitted')+
-              kpi('✅','IFC Issued',ifc,'#107C10',ifc/total*100,null,'IFC')+
-              kpi('🔄','Under Review',pendingReview,'#ED7D31',null,null,'Under Review')+
-              kpi('⏰','Overdue',overdue,'#D92C2C',null,null,'Delayed')+
+              kpi('📤','Submitted',sub,'#00B7C3',sub/total*100,null,'Submitted',items.filter(x=>x.subDate||x['Submission Date']))+
+              kpi('✅','IFC Issued',ifc,'#107C10',ifc/total*100,null,'IFC',items.filter(x=>x.ifcDate||x['IFC Date']))+
+              kpi('🔄','Under Review',pendingReview,'#ED7D31',null,null,'Under Review',items.filter(x=>x.status==='Submitted'||x.status==='Under Review'))+
+              kpi('⏰','Overdue',overdue,'#D92C2C',null,null,'Delayed',items.filter(x=>Number(x.delayDays||x['Delay Days']||0)>0))+
               kpi('🔁','Revised',rev,'#8764B8')+
               kpi('📊','Avg Progress',avgProg+'%','#4C5D71',avgProg);
     }else if(view==='procurement'){
@@ -1323,9 +1625,9 @@ function renderDeptView(view){
         kpis=kpi('📦','Total Orders',total,'#4C5D71')+
               kpi('📋','RFQs Open',rfqOpen,'#ED7D31',rfqOpen/total*100)+
               kpi('📄','POs Issued',poIssued,'#00B7C3',poIssued/total*100)+
-              kpi('⏰','Overdue',overdue,'#D92C2C',null,null,'Delayed')+
-              kpi('⚠️','Delayed',delayedDel,'#D92C2C',null,null,'Delayed')+
-              kpi('✅','Completed',completed,'#107C10',completed/total*100,null,'Completed');
+              kpi('⏰','Overdue',overdue,'#D92C2C',null,null,'Delayed',items.filter(x=>Number(x.delayDays||x['Delay Days']||0)>0))+
+              kpi('⚠️','Delayed',delayedDel,'#D92C2C',null,null,'Delayed',items.filter(x=>x.status==='Delayed'||x.status==='Overdue'))+
+              kpi('✅','Completed',completed,'#107C10',completed/total*100,null,'Completed',items.filter(x=>x.status==='Completed'));
     }else if(view==='construction'){
         const active=items.filter(x=>x.status==='In Progress'||x.status==='Active').length;
         const issues=items.filter(x=>x.status==='Issue'||x.status==='Delayed').length;
@@ -1346,7 +1648,7 @@ function renderDeptView(view){
               kpi('📊','Variance','$'+Math.abs(variance).toLocaleString(),variance>=0?'#00B7C3':'#ED7D31',null,{txt:varTxt,cls:varCls})+
               kpi('✅','Under Budget',items.filter(x=>(x.budget||0)>(x.actual||0)).length,'#107C10')+
               kpi('⚠️','Over Budget',items.filter(x=>(x.budget||0)<(x.actual||0)).length,'#D92C2C')+
-              kpi('⏰','Overdue Items',overdue,'#D92C2C',null,null,'Delayed');
+              kpi('⏰','Overdue Items',overdue,'#D92C2C',null,null,'Delayed',items.filter(x=>Number(x.delayDays||x['Delay Days']||0)>0));
     }else if(view==='planning'){
         const crit=items.filter(x=>x.critical||x['Critical']==='Yes').length;
         const avgDelay=total?Math.round(items.reduce((s,x)=>s+Math.max(0,x.delayDays||x['Delay Days']||0),0)/total):0;
@@ -1354,9 +1656,9 @@ function renderDeptView(view){
         kpis=kpi('📅','Total Activities',total,'#4C5D71')+
               kpi('🔴','Critical Path',crit,'#D92C2C',crit/total*100)+
               kpi('⏱️','Avg Delay',avgDelay+'d','#ED7D31',null,avgDelay>0?{txt:'Behind',cls:'down'}:{txt:'On Track',cls:'up'})+
-              kpi('⏰','Overdue',overdue,'#D92C2C',null,null,'Delayed')+
+              kpi('⏰','Overdue',overdue,'#D92C2C',null,null,'Delayed',items.filter(x=>Number(x.delayDays||x['Delay Days']||0)>0))+
               kpi('✅','On Track',onTrack,'#107C10',onTrack/total*100)+
-              kpi('📊','Completed',completed,'#00B7C3',completed/total*100,null,'Completed');
+              kpi('📊','Completed',completed,'#00B7C3',completed/total*100,null,'Completed',items.filter(x=>x.status==='Completed'));
     }else if(view==='qaqc'){
         const passed=items.filter(x=>x.qaStatus==='Passed'||x.qaStatus==='Closed'||x.status==='Passed').length;
         const failed=items.filter(x=>x.qaStatus==='Failed'||x.status==='Failed').length;
@@ -1364,7 +1666,7 @@ function renderDeptView(view){
         kpis=kpi('✅','Total Inspections',total,'#4C5D71')+
               kpi('✔️','Passed',passed,'#107C10',total?passed/total*100:0)+
               kpi('❌','Failed',failed,'#D92C2C',null,{txt:failed+' open',cls:'down'})+
-              kpi('⏰','Overdue',overdue,'#D92C2C',null,null,'Delayed')+
+              kpi('📰','Overdue',overdue,'#D92C2C',null,null,'Delayed',items.filter(x=>Number(x.delayDays||x['Delay Days']||0)>0))+
               kpi('📋','Open',open,'#ED7D31',open/total*100)+
               kpi('📊','Pass Rate',total?Math.round(passed/total*100)+'%':'0%','#00B7C3',passed/total*100);
     }else if(view==='hse'){
@@ -1375,16 +1677,20 @@ function renderDeptView(view){
               kpi('🔴','High/Extreme Risk',extreme,'#D92C2C',extreme/total*100)+
               kpi('⚠️','Incidents',incidents,'#ED7D31')+
               kpi('📋','Permits Issued',permits,'#00B7C3')+
-              kpi('⏰','Overdue',overdue,'#D92C2C',null,null,'Delayed')+
-              kpi('✅','Completed',completed,'#107C10',completed/total*100,null,'Completed');
+              kpi('⏰','Overdue',overdue,'#D92C2C',null,null,'Delayed',items.filter(x=>Number(x.delayDays||x['Delay Days']||0)>0))+
+              kpi('✅','Completed',completed,'#107C10',completed/total*100,null,'Completed',items.filter(x=>x.status==='Completed'));
     }else{
+        const completedItems=items.filter(x=>x.status==='Completed');
+        const inProgItems=items.filter(x=>x.status==='In Progress'||x.status==='Under Review');
+        const overdueItems=items.filter(x=>Number(x.delayDays||x['Delay Days']||0)>0);
+        const delayedItems=items.filter(x=>x.status==='Delayed'||x.status==='Waiting Approval');
         kpis=kpi('📊','Total Items',total,'#4C5D71')+
-              kpi('📈','Completed',completed,'#107C10',total?completed/total*100:0,null,'Completed')+
-              kpi('🔄','In Progress',inProg,'#00B7C3',null,null,'In Progress')+
+              kpi('📈','Completed',completed,'#107C10',total?completed/total*100:0,null,'Completed',completedItems)+
+              kpi('🔄','In Progress',inProg,'#00B7C3',null,null,'In Progress',inProgItems)+
               kpi('🔴','High Priority',highPrio,'#D92C2C')+
-              kpi('⏰','Overdue',overdue,'#D92C2C',null,null,'Delayed')+
+              kpi('⏰','Overdue',overdue,'#D92C2C',null,null,'Delayed',overdueItems)+
               kpi('📊','Avg Progress',avgProg+'%','#8764B8',avgProg)+
-              kpi('⏰','Delayed',delayed,'#ED7D31',null,null,'Delayed');
+              kpi('⏰','Delayed',delayed,'#ED7D31',null,null,'Delayed',delayedItems);
     }
 
     document.getElementById('content').innerHTML=`
