@@ -562,28 +562,47 @@ function countByDept(dept){return DATA.filter(d=>d.dept===dept).length}
 function countAll(){return DATA.length}
 
 // Date-based overdue logic: item is overdue if any of its end dates (planned/due) is before today AND status is not complete
-const COMPLETE_STATUSES = new Set(['Completed','Closed','Approved','Passed','Cancelled','Delivered','Issued']);
+const COMPLETE_STATUSES = new Set(['Completed','Closed','Approved','Passed','Cancelled','Delivered','Issued','IFC','Submitted']);
+function toDate(v){
+    if(!v||v==='')return null;
+    if(v instanceof Date&&!isNaN(v))return v;
+    if(typeof v==='number')return new Date(v);
+    if(typeof v==='string'){
+        // Try /Date(123456)/
+        const m=v.match(/\/Date\((-?\d+)\)\//);
+        if(m)return new Date(parseInt(m[1]));
+        // Try "2025-01-15" or "2025-01-15T00:00:00Z" or "1/15/2025"
+        const d=new Date(v);
+        if(!isNaN(d))return d;
+    }
+    return null;
+}
+const DATE_COLS = ['pFinish','due','baseFinish','expDel','curFinish','aFinish','pStart','aStart','PlannedFinish','Planned_x0020_Finish','ActualFinish','Actual_x0020_Finish','DueDate','Due_x0020_Date','BaselineFinish','ExpectedDeliveryDate','ActualDeliveryDate'];
 function getEndDates(item){
     const dates=[];
-    ['pFinish','due','baseFinish','expDel','curFinish','aFinish'].forEach(f=>{
-        const v=item[f];
-        if(v&&typeof v==='string'&&/\d{4}-\d{2}-\d{2}/.test(v))dates.push(new Date(v));
+    DATE_COLS.forEach(f=>{
+        const d=toDate(item[f]);
+        if(d)dates.push(d);
     });
     return dates;
 }
 function isOverdue(item){
     if(!item||COMPLETE_STATUSES.has(item.status))return false;
     const dates=getEndDates(item);
-    if(dates.length===0)return Number(item.delayDays||item['Delay Days']||0)>0; // fallback to delayDays
+    if(dates.length===0){
+        const dd=Number(item.delayDays||item['Delay Days']||0);
+        return dd>0;
+    }
     const now=new Date();now.setHours(0,0,0,0);
-    return dates.some(d=>d<now);
+    const result=dates.some(d=>d<now);
+    return result;
 }
 function calcDelay(item){
     if(!item)return 0;
-    if(item.delayDays!==undefined&&item.delayDays!==null&&item.delayDays!==0)return Number(item.delayDays);
+    if(item.delayDays!==undefined&&item.delayDays!==null)return Number(item.delayDays);
     if(item['Delay Days']!==undefined&&item['Delay Days']!==null)return Number(item['Delay Days']);
     const dates=getEndDates(item);
-    if(dates.length===0)return Number(item.delayDays||0);
+    if(dates.length===0)return 0;
     const earliest=dates.sort((a,b)=>a-b)[0];
     const now=new Date();now.setHours(0,0,0,0);
     return Math.round((now-earliest)/86400000);
@@ -932,7 +951,13 @@ async function connectSingleView(view){
             const aliases = {
                 'CompletionPct':['prog','compPct'],'Progress':['prog'],'DailyProgress':['dailyProg'],'WeeklyProgress':['weeklyProg'],
                 'WorkFront':['workFront'],'ConstArea':['cArea'],'Contractor':['contractor'],'Foreman':['foreman'],'WorkStatus':['workStatus','status'],
-                'PlannedStart':['pStart'],'PlannedFinish':['pFinish'],'ActualStart':['aStart'],'ActualFinish':['aFinish'],
+                'PlannedStart':['pStart'],'Planned_x0020_Start':['pStart'],
+                'PlannedFinish':['pFinish'],'Planned_x0020_Finish':['pFinish'],
+                'PlanStartDate':['pStart'],'PlanFinishDate':['pFinish'],
+                'StartDate':['pStart'],'EndDate':['pFinish'],'FinishDate':['pFinish'],
+                'ActualStart':['aStart'],'Actual_x0020_Start':['aStart'],
+                'ActualFinish':['aFinish'],'Actual_x0020_Finish':['aFinish'],
+                'ActualStartDate':['aStart'],'ActualEndDate':['aFinish'],'ActualFinishDate':['aFinish'],
                 'InspectionReqNo':['inspReq'],'SiteIssue':['siteIssue'],'NCRNumber':['ncr'],'PunchItem':['punch'],'WorkPermit':['permit'],
                 'DrawingNumber':['dwgNo','Drawing_x0020_Number'],'DrawingTitle':['dwgTitle','Drawing_x0020_Title'],'DrawingType':['dwgType','Drawing_x0020_Type'],
                 'Revision':['rev'],'SubmissionDate':['subDate','Submission_x0020_Date'],'ClientReviewStatus':['clientReview','Client_x0020_Review_x0020_Status'],
@@ -1473,6 +1498,11 @@ function renderDeptView(view){
     const avgProg=total?Math.round(items.reduce((s,x)=>s+(x.prog||0),0)/total):0;
     const highPrio=items.filter(x=>x.priority==='Critical'||x.priority==='High').length;
     const overdue=items.filter(isOverdue).length;
+    // Debug first 3 items' date fields for troubleshooting
+    if(items.length>0&&overdue===0&&items.some(x=>!COMPLETE_STATUSES.has(x.status))){
+        const sample=items.slice(0,3).map(x=>({proj:x.proj,status:x.status,pFinish:x.pFinish,due:x.due,PlannedFinish:x.PlannedFinish,Planned_x0020_Finish:x.Planned_x0020_Finish,delayDays:x.delayDays,allDates:Object.keys(x).filter(k=>x[k]&&typeof x[k]==='string'&&/\d{2,4}[-\/]\d{2}[-\/]\d{2,4}/.test(x[k]))}));
+        console.warn('[Overdue Debug] View:',view,'Items with incomplete status but 0 overdue. Sample:',JSON.stringify(sample));
+    }
     const lastUpdated=items.reduce((latest,x)=>x.Modified&&x.Modified>latest?x.Modified:latest,'')||'';
 
     function kpi(icon,label,value,color,pct,trend,tip){
