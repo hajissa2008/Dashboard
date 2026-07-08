@@ -670,7 +670,7 @@ function isOverdue(item){
         return dd>0;
     }
     const now=new Date();now.setHours(0,0,0,0);
-    const result=dates.some(d=>d<now);
+    const result=dates.some(d=>d<=now);
     return result;
 }
 function calcDelay(item){
