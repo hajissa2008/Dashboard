@@ -554,6 +554,9 @@ function extractSiteFromLink(link){
     // Pattern 2: sharing link with sites path → https://host/sites/name
     m=link.match(/^(https:\/\/[^\/]+)\/:l:\/g\/(sites\/[^\/]+)/);
     if(m)return m[1]+'/'+m[2];
+    // Pattern 2b: sharing link with /:l:/s/ (People in org link) → https://host/sites/name
+    m=link.match(/^(https:\/\/[^\/]+)\/:l:\/s\/([^\/]+)/);
+    if(m)return m[1]+'/sites/'+m[2];
     // Pattern 3: direct URL with sites or personal path
     m=link.match(/^(https:\/\/[^\/]+)\/(sites\/[^\/]+|personal\/[^\/]+)/);
     if(m)return m[1]+'/'+m[2];
@@ -1414,6 +1417,11 @@ function toggleDark(){
     if(!viewData.construction.site){
         viewData.construction.site='https://sascontractingsa.sharepoint.com/sites/Alenshaiah';
         viewData.construction.list='Maseel Activity';
+    }
+    // Pre-fill Procurement view
+    if(!viewData.procurement.site){
+        viewData.procurement.site='https://sascontractingsa.sharepoint.com/sites/Alenshaiah';
+        viewData.procurement.list='Procurement_Tracker Log';
     }
     // Restore or save default Azure AD config
     let savedTenant=storage.getItem('pmt-tenant');
