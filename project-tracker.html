@@ -867,6 +867,17 @@ async function connectAllViews(){
     alert(`Connected ${count} of ${VIEW_KEYS.length} views.`);
 }
 
+function autoConnectConfiguredViews(){
+    VIEW_KEYS.forEach(v=>{
+        const vd=viewData[v];
+        if(!vd||!vd.site||!vd.list||vd.connected)return;
+        connectSingleView(v).then(()=>{
+            updateCounts();
+            updateViewNavDot(v);
+        }).catch(()=>{});
+    });
+}
+
 function autoConnectCurrentView(){
     const view=currentView;
     if(view==='dashboard')return Promise.resolve();
@@ -1453,8 +1464,8 @@ function toggleDark(){
             if(accounts.length>0){
                 spUser = accounts[0];
                 msalApp.acquireTokenSilent({ scopes: SP_SCOPES, account: spUser })
-                    .then(r=>{ spToken=r.accessToken; updateAuthUI(); })
-                    .catch(()=>{ spToken=null; updateAuthUI(); });
+                    .then(r=>{ spToken=r.accessToken; updateAuthUI(); autoConnectConfiguredViews(); })
+                    .catch(()=>{ spToken=null; updateAuthUI(); autoConnectConfiguredViews(); });
             }else{
                 // No cached account — handle redirect response (first-time login return)
                 msalApp.handleRedirectPromise().then(resp=>{
@@ -1465,6 +1476,7 @@ function toggleDark(){
                     }else{
                         updateAuthUI();
                     }
+                    autoConnectConfiguredViews();
                 }).catch(e=>{
                     const errMsg = (e.message||'') + (e.errorCode ? ' ('+e.errorCode+')' : '');
                     console.error('[MSAL] handleRedirectPromise error:', errMsg);
@@ -1482,11 +1494,13 @@ function toggleDark(){
                         st.style.color='var(--red)';
                     }
                     updateAuthUI();
+                    autoConnectConfiguredViews();
                 });
             }
-        }else{ updateAuthUI(); }
+        }else{ updateAuthUI(); autoConnectConfiguredViews(); }
     }else{
         updateAuthUI();
+        autoConnectConfiguredViews();
     }
 
     // Auto-show demo data if nothing loaded yet
