@@ -50,8 +50,11 @@ html,body{height:100%;font-family:'Segoe UI',-apple-system,system-ui,sans-serif;
 .data-source-badge.live .dot{background:var(--green)}
 .data-source-badge.demo .dot{background:#8A6D00}
 .data-source-badge.error .dot{background:var(--red)}
-.dark-toggle{background:none;border:none;font-size:18px;cursor:pointer;padding:4px 8px;border-radius:50%;color:var(--text-primary);transition:background .15s;line-height:1}
-.dark-toggle:hover{background:var(--gray-light)}
+.dark-toggle,.gear-btn{background:none;border:none;font-size:18px;cursor:pointer;padding:4px 8px;border-radius:50%;color:var(--text-primary);transition:background .15s,color .15s;line-height:1;position:relative}
+.dark-toggle:hover,.gear-btn:hover{background:var(--gray-light)}
+.gear-btn.live{color:var(--green)}
+.gear-btn.error{color:var(--red)}
+.gear-btn.demo{color:var(--orange)}
 
 /* Settings Panel */
 .settings-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:200}
@@ -218,10 +221,7 @@ body.dark th .sort-arrow{color:var(--text-secondary)}
     <a class="nav-item" data-view="hse" onclick="switchView('hse')">
       <span class="icon">🛡️</span> HSE <span class="count" id="count-hse">0</span><span class="status-dot" id="dot-hse" style="display:inline-block;vertical-align:middle;margin-left:4px"></span>
     </a>
-    <div class="nav-section">Data Source</div>
-    <a class="nav-item" onclick="openSettings()">
-      <span class="icon">⚙️</span> Connection <span class="status-dot" id="conn-dot"></span>
-    </a>
+
   </nav>
 </aside>
 
@@ -240,10 +240,8 @@ body.dark th .sort-arrow{color:var(--text-secondary)}
         <span class="search-icon">🔍</span>
         <input type="text" placeholder="Search activities..." id="search" oninput="renderCurrent()">
       </div>
+      <button class="gear-btn" id="gear-btn" onclick="openSettings()" title="Data Source Configuration">⚙️</button>
       <button class="dark-toggle" id="dark-toggle" onclick="toggleDark()" title="Toggle dark mode">🌙</button>
-      <button class="data-source-badge demo" id="ds-badge" onclick="openSettings()" title="Click to configure">
-        <span class="dot"></span><span id="ds-label">Demo Data</span>
-      </button>
     </div>
   </header>
 
@@ -703,7 +701,6 @@ async function connectToSharePoint(){
     }
 
     showConnStatus('Connecting to SharePoint...','loading');
-    document.getElementById('ds-badge').className='data-source-badge demo';
 
     try{
         const siteUrl=finalSite.replace(/\/+$/,'');
@@ -900,21 +897,16 @@ function showConnStatus(msg,type){
 }
 
 function updateBadge(){
-    const badge=document.getElementById('ds-badge');
-    const label=document.getElementById('ds-label');
-    const dot=document.getElementById('conn-dot');
+    const gear=document.getElementById('gear-btn');
     if(dataSource==='sp-live'){
-        badge.className='data-source-badge live';
-        label.textContent=`Live: ${DATA.length} items`;
-        dot.className='status-dot online';
+        gear.className='gear-btn live';
+        gear.title=`Live: ${DATA.length} items`;
     }else if(dataSource==='sp-error'){
-        badge.className='data-source-badge error';
-        label.textContent='Connection Error';
-        dot.className='status-dot offline';
+        gear.className='gear-btn error';
+        gear.title='Connection Error';
     }else{
-        badge.className='data-source-badge demo';
-        label.textContent='Demo Data';
-        dot.className='status-dot offline';
+        gear.className='gear-btn demo';
+        gear.title='Demo Data';
     }
 }
 
@@ -1215,9 +1207,6 @@ function renderDeptView(view){
         extra=`<div class="kpi-card red"><div class="kpi-label">High/Extreme Risk</div><div class="kpi-value">${extreme}</div></div>`;
     }
 
-    const sourceLabel=useViewData?`Custom: ${vd.data.length} items`:(vd&&vd.list?`${vd.list}`:'Main list');
-    const sourceClass=useViewData?'live':(vd&&vd.list?'error':'demo');
-
     document.getElementById('content').innerHTML=`
     <div class="kpi-grid">
       <div class="kpi-card blue"><div class="kpi-label">Total Items</div><div class="kpi-value">${total}</div></div>
@@ -1233,7 +1222,6 @@ function renderDeptView(view){
         <span class="view-label">${v.title}</span>
         <span class="view-badge">${total} items</span>
         <span style="flex:1"></span>
-        <button class="data-source-badge ${sourceClass}" onclick="openSettings()" style="margin-right:8px;cursor:pointer"><span class="dot"></span>${sourceLabel}</button>
         <div class="filter-group">
           <select id="filter-status" onchange="renderTable()">
             <option value="">All Statuses</option>
