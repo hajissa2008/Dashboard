@@ -1437,34 +1437,42 @@ function toggleDark(){
     if(savedTenant&&savedClient&&!location.origin.includes('.sharepoint.com')&&typeof msal!=='undefined'){
         try{ initMsal(); }catch(e){ /* MSAL init failed, skip auth */ }
         if(msalApp){
-            msalApp.handleRedirectPromise().then(resp=>{
-                if(resp&&resp.account){
-                    spUser = resp.account;
-                    spToken = resp.accessToken;
+            // First check localStorage for cached accounts (survives page refresh)
+            const accounts = msalApp.getAllAccounts();
+            if(accounts.length>0){
+                spUser = accounts[0];
+                msalApp.acquireTokenSilent({ scopes: SP_SCOPES, account: spUser })
+                    .then(r=>{ spToken=r.accessToken; updateAuthUI(); })
+                    .catch(()=>{ spToken=null; updateAuthUI(); });
+            }else{
+                // No cached account — handle redirect response (first-time login return)
+                msalApp.handleRedirectPromise().then(resp=>{
+                    if(resp&&resp.account){
+                        spUser = resp.account;
+                        spToken = resp.accessToken;
+                        updateAuthUI();
+                    }else{
+                        updateAuthUI();
+                    }
+                }).catch(e=>{
+                    const errMsg = (e.message||'') + (e.errorCode ? ' ('+e.errorCode+')' : '');
+                    console.error('[MSAL] handleRedirectPromise error:', errMsg);
+                    const st=document.getElementById('settings-auth-status');
+                    if(st){
+                        const uri = location.origin + location.pathname;
+                        const isAccessDenied = errMsg.includes('access_denied');
+                        st.innerHTML = isAccessDenied
+                            ? '❌ <strong>Admin consent required.</strong> <code>Sites.ReadWrite.All</code> needs admin approval.<br>' +
+                              'Go to Azure Portal → API permissions → <strong>Grant admin consent for Alenshaiah</strong>'
+                            : '❌ Azure AD rejected login. Check settings:<br>' +
+                              '1. Redirect URI: <code>' + uri + '</code> must be <strong>SPA</strong> type<br>' +
+                              '2. API permissions: <strong>Sites.ReadWrite.All</strong>, <strong>User.Read</strong><br>' +
+                              '3. "Allow public client flows" = <strong>Yes</strong>';
+                        st.style.color='var(--red)';
+                    }
                     updateAuthUI();
-                }else{
-                    msalApp.ssoSilent({ scopes: SP_SCOPES })
-                        .then(r=>{ spUser=r.account; spToken=r.accessToken; updateAuthUI(); })
-                        .catch(()=>{ updateAuthUI(); });
-                }
-            }).catch(e=>{
-                const errMsg = (e.message||'') + (e.errorCode ? ' ('+e.errorCode+')' : '');
-                console.error('[MSAL] handleRedirectPromise error:', errMsg);
-                const st=document.getElementById('settings-auth-status');
-                if(st){
-                    const uri = location.origin + location.pathname;
-                    const isAccessDenied = errMsg.includes('access_denied');
-                    st.innerHTML = isAccessDenied
-                        ? '❌ <strong>Admin consent required.</strong> <code>Sites.ReadWrite.All</code> needs admin approval.<br>' +
-                          'Go to Azure Portal → API permissions → <strong>Grant admin consent for Alenshaiah</strong>'
-                        : '❌ Azure AD rejected login. Check settings:<br>' +
-                          '1. Redirect URI: <code>' + uri + '</code> must be <strong>SPA</strong> type<br>' +
-                          '2. API permissions: <strong>Sites.ReadWrite.All</strong>, <strong>User.Read</strong><br>' +
-                          '3. "Allow public client flows" = <strong>Yes</strong>';
-                    st.style.color='var(--red)';
-                }
-                updateAuthUI();
-            });
+                });
+            }
         }else{ updateAuthUI(); }
     }else{
         updateAuthUI();
