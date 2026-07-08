@@ -1051,6 +1051,35 @@ function renderDashboard(){
     const statusData={};d.forEach(x=>{statusData[x.status]=(statusData[x.status]||0)+1});
     const deptData={};d.forEach(x=>{deptData[x.dept]=(deptData[x.dept]||0)+1});
 
+    // Per-department summary
+    const depts=[
+        {key:'Engineering',icon:'📐',color:'#4C5D71'},
+        {key:'Procurement',icon:'📦',color:'#ED7D31'},
+        {key:'Construction',icon:'🏗️',color:'#00B7C3'},
+        {key:'Cost Control',icon:'💰',color:'#107C10'},
+        {key:'Planning',icon:'📅',color:'#8764B8'},
+        {key:'QA/QC',icon:'✅',color:'#0078D4'},
+        {key:'HSE',icon:'🛡️',color:'#D92C2C'}
+    ];
+    let deptKpis='';
+    depts.forEach(dp=>{
+        const vk=VIEW_KEYS.find(k=>VIEWS[k].title===dp.key||VIEWS[k].dept===dp.key);
+        const vd=vk?viewData[vk]:null;
+        const items=vd&&vd.connected&&vd.data.length>0?vd.data:d.filter(x=>x.dept===dp.key);
+        const t=items.length, c=items.filter(x=>x.status==='Completed').length;
+        const ip=items.filter(x=>x.status==='In Progress'||x.status==='Under Review').length;
+        const od=items.filter(x=>Number(x.delayDays||x['Delay Days']||0)>0).length;
+        const ap=t?Math.round(items.reduce((s,x)=>s+(x.prog||0),0)/t):0;
+        deptKpis+=`<div class="kpi-card" onclick="switchView('${vk||'dashboard'}')" title="Click to view ${dp.key}" style="grid-column:span 1">
+          <div class="kpi-accent" style="background:${dp.color}"></div>
+          <div class="kpi-icon">${dp.icon}</div>
+          <div class="kpi-label">${dp.key}</div>
+          <div class="kpi-value" style="font-size:18px">${t}</div>
+          <div class="kpi-sub">${c} done · ${ip} active · ${od} overdue</div>
+          <div class="kpi-bar"><div class="kpi-bar-fill" style="width:${ap}%;background:${dp.color}"></div></div>
+        </div>`;
+    });
+
     document.getElementById('content').innerHTML=`
     <div class="kpi-grid">
       <div class="kpi-card" onclick="switchView('engineering')" title="Click to view Engineering">
@@ -1096,6 +1125,10 @@ function renderDashboard(){
         <div class="kpi-label">Avg Delay</div><div class="kpi-value">${avgDelay}d</div>
         <div class="kpi-sub">Average across items</div>
       </div>
+    </div>
+    <h3 style="font-size:13px;font-weight:600;color:var(--text-secondary);margin:0 0 12px;text-transform:uppercase;letter-spacing:.5px">📋 Department Overview</h3>
+    <div class="kpi-grid">
+      ${deptKpis}
     </div>
     <div class="charts-row">
       <div class="chart-card"><h3>Status Distribution</h3><canvas id="chart-status"></canvas></div>
@@ -1255,6 +1288,7 @@ function renderDeptView(view){
     const delayed=items.filter(x=>x.status==='Delayed'||x.status==='Waiting Approval').length;
     const avgProg=total?Math.round(items.reduce((s,x)=>s+(x.prog||0),0)/total):0;
     const highPrio=items.filter(x=>x.priority==='Critical'||x.priority==='High').length;
+    const overdue=items.filter(x=>Number(x.delayDays||x['Delay Days']||0)>0).length;
     const lastUpdated=items.reduce((latest,x)=>x.Modified&&x.Modified>latest?x.Modified:latest,'')||'';
 
     function kpi(icon,label,value,color,pct,trend,tip){
@@ -1279,6 +1313,7 @@ function renderDeptView(view){
               kpi('📤','Submitted',sub,'#00B7C3',sub/total*100,null,'Submitted')+
               kpi('✅','IFC Issued',ifc,'#107C10',ifc/total*100,null,'IFC')+
               kpi('🔄','Under Review',pendingReview,'#ED7D31',null,null,'Under Review')+
+              kpi('⏰','Overdue',overdue,'#D92C2C',null,null,'Delayed')+
               kpi('🔁','Revised',rev,'#8764B8')+
               kpi('📊','Avg Progress',avgProg+'%','#4C5D71',avgProg);
     }else if(view==='procurement'){
@@ -1288,6 +1323,7 @@ function renderDeptView(view){
         kpis=kpi('📦','Total Orders',total,'#4C5D71')+
               kpi('📋','RFQs Open',rfqOpen,'#ED7D31',rfqOpen/total*100)+
               kpi('📄','POs Issued',poIssued,'#00B7C3',poIssued/total*100)+
+              kpi('⏰','Overdue',overdue,'#D92C2C',null,null,'Delayed')+
               kpi('⚠️','Delayed',delayedDel,'#D92C2C',null,null,'Delayed')+
               kpi('✅','Completed',completed,'#107C10',completed/total*100,null,'Completed');
     }else if(view==='construction'){
@@ -1297,6 +1333,7 @@ function renderDeptView(view){
               kpi('🔄','Active',active,'#00B7C3',active/total*100,null,'In Progress')+
               kpi('✅','Completed',completed,'#107C10',completed/total*100,null,'Completed')+
               kpi('⚠️','Issues',issues,'#D92C2C',null,null,'Issue')+
+              kpi('⏰','Overdue',overdue,'#D92C2C',null,null,'Delayed')+
               kpi('📊','Avg Progress',avgProg+'%','#8764B8',avgProg);
     }else if(view==='cost'){
         const budget=items.reduce((s,x)=>s+(x.budget||x['Budget']||0),0);
@@ -1307,8 +1344,9 @@ function renderDeptView(view){
         kpis=kpi('💰','Total Budget','$'+budget.toLocaleString(),'#107C10')+
               kpi('💳','Actual Cost','$'+actual.toLocaleString(),'#D92C2C',budget?Math.min(100,actual/budget*100):0)+
               kpi('📊','Variance','$'+Math.abs(variance).toLocaleString(),variance>=0?'#00B7C3':'#ED7D31',null,{txt:varTxt,cls:varCls})+
-              kpi('✅','Under Budget Items',items.filter(x=>(x.budget||0)>(x.actual||0)).length,'#107C10')+
-              kpi('⚠️','Over Budget Items',items.filter(x=>(x.budget||0)<(x.actual||0)).length,'#D92C2C');
+              kpi('✅','Under Budget',items.filter(x=>(x.budget||0)>(x.actual||0)).length,'#107C10')+
+              kpi('⚠️','Over Budget',items.filter(x=>(x.budget||0)<(x.actual||0)).length,'#D92C2C')+
+              kpi('⏰','Overdue Items',overdue,'#D92C2C',null,null,'Delayed');
     }else if(view==='planning'){
         const crit=items.filter(x=>x.critical||x['Critical']==='Yes').length;
         const avgDelay=total?Math.round(items.reduce((s,x)=>s+Math.max(0,x.delayDays||x['Delay Days']||0),0)/total):0;
@@ -1316,6 +1354,7 @@ function renderDeptView(view){
         kpis=kpi('📅','Total Activities',total,'#4C5D71')+
               kpi('🔴','Critical Path',crit,'#D92C2C',crit/total*100)+
               kpi('⏱️','Avg Delay',avgDelay+'d','#ED7D31',null,avgDelay>0?{txt:'Behind',cls:'down'}:{txt:'On Track',cls:'up'})+
+              kpi('⏰','Overdue',overdue,'#D92C2C',null,null,'Delayed')+
               kpi('✅','On Track',onTrack,'#107C10',onTrack/total*100)+
               kpi('📊','Completed',completed,'#00B7C3',completed/total*100,null,'Completed');
     }else if(view==='qaqc'){
@@ -1325,6 +1364,7 @@ function renderDeptView(view){
         kpis=kpi('✅','Total Inspections',total,'#4C5D71')+
               kpi('✔️','Passed',passed,'#107C10',total?passed/total*100:0)+
               kpi('❌','Failed',failed,'#D92C2C',null,{txt:failed+' open',cls:'down'})+
+              kpi('⏰','Overdue',overdue,'#D92C2C',null,null,'Delayed')+
               kpi('📋','Open',open,'#ED7D31',open/total*100)+
               kpi('📊','Pass Rate',total?Math.round(passed/total*100)+'%':'0%','#00B7C3',passed/total*100);
     }else if(view==='hse'){
@@ -1335,12 +1375,14 @@ function renderDeptView(view){
               kpi('🔴','High/Extreme Risk',extreme,'#D92C2C',extreme/total*100)+
               kpi('⚠️','Incidents',incidents,'#ED7D31')+
               kpi('📋','Permits Issued',permits,'#00B7C3')+
+              kpi('⏰','Overdue',overdue,'#D92C2C',null,null,'Delayed')+
               kpi('✅','Completed',completed,'#107C10',completed/total*100,null,'Completed');
     }else{
         kpis=kpi('📊','Total Items',total,'#4C5D71')+
               kpi('📈','Completed',completed,'#107C10',total?completed/total*100:0,null,'Completed')+
               kpi('🔄','In Progress',inProg,'#00B7C3',null,null,'In Progress')+
               kpi('🔴','High Priority',highPrio,'#D92C2C')+
+              kpi('⏰','Overdue',overdue,'#D92C2C',null,null,'Delayed')+
               kpi('📊','Avg Progress',avgProg+'%','#8764B8',avgProg)+
               kpi('⏰','Delayed',delayed,'#ED7D31',null,null,'Delayed');
     }
