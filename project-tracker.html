@@ -664,6 +664,7 @@ function getEndDates(item){
 }
 function isOverdue(item){
     if(!item||COMPLETE_STATUSES.has(item.status))return false;
+    if(item.status&&/Done/i.test(item.status))return false;
     const dates=getEndDates(item);
     if(dates.length===0){
         const dd=Number(item.delayDays||item['Delay Days']||0);
