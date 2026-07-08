@@ -1036,6 +1036,9 @@ async function connectSingleView(view){
             item.status = spItem['Status'] || spItem['DRAWING STATUS'] || spItem['WorkStatus'] || spItem['Material Submitta STATUS'] || 'Not Set';
             if(item.status==='O')item.status='Open';
             if(item.status==='D')item.status='Delivered';
+            // Normalize Maseel Activity / SharePoint status values
+            const statusNorm={'SDC Inspection':'SDC Completed','ACC Inspection':'ACC Completed','For Insp':'For Inspection','Inprogress':'In Progress','Yet to Start':'Not Started','Complete':'Completed'};
+            if(statusNorm[item.status])item.status=statusNorm[item.status];
             item.priority = spItem['Priority'] || 'Medium';
             // Map common SharePoint column names → short names used by KPIs & views
             const aliases = {
