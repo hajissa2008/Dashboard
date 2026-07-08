@@ -156,6 +156,15 @@ tr:hover td{background:var(--blue-light)}
 .drawing-link{color:var(--blue);cursor:pointer;text-decoration:none;font-weight:500}
 .drawing-link:hover{text-decoration:underline}
 
+.team-grid{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 16px}
+.team-card{background:var(--bg);border:1px solid var(--gray-border);border-radius:6px;padding:10px 14px;flex:1 1 200px;min-width:180px;transition:box-shadow .15s}
+.team-card:hover{box-shadow:0 2px 8px rgba(0,0,0,.08)}
+.team-card.team-warn{border-left:3px solid var(--red)}
+.team-card .person-avatar{width:36px;height:36px;font-size:15px}
+.team-roles{font-size:11px;color:var(--text-secondary);margin-top:2px}
+.team-meta{font-size:11px;color:var(--text-secondary);margin-top:2px}
+.team-more{display:flex;align-items:center;justify-content:center;color:var(--text-secondary);font-size:13px;font-weight:500;cursor:pointer}
+
 .empty-state{padding:40px;text-align:center;color:var(--text-secondary)}
 .empty-state .empty-icon{font-size:40px;margin-bottom:8px}
 .loading-state{padding:60px;text-align:center;color:var(--text-secondary)}
@@ -245,6 +254,8 @@ body.dark th .sort-arrow{color:var(--text-secondary)}
         <span class="search-icon">🔍</span>
         <input type="text" placeholder="Search activities..." id="search" oninput="renderCurrent()">
       </div>
+      <button class="gear-btn" onclick="refreshAllViews()" title="Refresh all connected data sources">🔄</button>
+      <span id="refresh-status" style="font-size:10px;color:var(--text-secondary);white-space:nowrap"></span>
       <button class="gear-btn" id="gear-btn" onclick="openSettings()" title="Data Source Configuration">⚙️</button>
       <button class="dark-toggle" id="dark-toggle" onclick="toggleDark()" title="Toggle dark mode">🌙</button>
     </div>
@@ -576,6 +587,53 @@ function calcDelay(item){
     const earliest=dates.sort((a,b)=>a-b)[0];
     const now=new Date();now.setHours(0,0,0,0);
     return Math.round((now-earliest)/86400000);
+}
+
+// Per-view person columns (mapped short names)
+const VIEW_PERSON_COLS = {
+    procurement:['assigned'],
+    engineering:['eng','checker','appr','assigned'],
+    construction:['foreman','contractor','assigned'],
+    cost:['assigned','eng'],
+    planning:['assigned','eng'],
+    qaqc:['assigned'],
+    hse:['assigned']
+};
+const PERSON_LABELS = {
+    foreman:'Foreman',contractor:'Contractor',assigned:'Assigned To',
+    eng:'Engineer',checker:'Checker',appr:'Approver'
+};
+const ALL_PERSON_COLS = [...new Set(Object.values(VIEW_PERSON_COLS).flat())];
+function getTeam(items,personCols){
+    const members={};
+    items.forEach(item=>{
+        personCols.forEach(col=>{
+            const name=item[col];
+            if(name&&typeof name==='string'&&name.trim()){
+                if(!members[name])members[name]={name,roles:{},count:0,overdue:0};
+                members[name].roles[col]=(members[name].roles[col]||0)+1;
+                members[name].count++;
+                if(isOverdue(item))members[name].overdue++;
+            }
+        });
+    });
+    return Object.values(members).sort((a,b)=>b.count-a.count);
+}
+function renderTeam(team,compact){
+    if(!team||team.length===0)return'';
+    const max=compact?Math.min(team.length,6):team.length;
+    let html='<div class="team-grid">';
+    for(let i=0;i<max;i++){
+        const m=team[i];
+        const roles=Object.entries(m.roles).map(([r,c])=>`${PERSON_LABELS[r]||r}${c>1?' ('+c+')':''}`).join(', ');
+        html+=`<div class="team-card ${m.overdue>0?'team-warn':''}">
+          <div class="person"><div class="person-avatar" style="width:36px;height:36px;font-size:15px">${m.name.charAt(0)}</div>
+          <div><strong>${m.name}</strong><div class="team-roles">${roles}</div>
+          <div class="team-meta">${m.count} items${m.overdue>0?' · <span class="overdue">'+m.overdue+' overdue</span>':''}</div></div></div>
+        </div>`;
+    }
+    if(compact&&team.length>6)html+=`<div class="team-card team-more">+${team.length-6} more</div>`;
+    return html+'</div>';
 }
 
 function extractSiteFromLink(link){
@@ -933,10 +991,45 @@ async function connectAllViews(){
     }
     updateCounts();
     if(currentView!=='dashboard')renderCurrent();
-    alert(`Connected ${count} of ${VIEW_KEYS.length} views.`);
+    updateRefreshStatus(count+'/'+VIEW_KEYS.length+' connected');
+    setTimeout(()=>{if(document.getElementById('refresh-status'))updateRefreshStatus();},3000);
+}
+
+const REFRESH_INTERVAL_MS = 120000; // 2 minutes
+let refreshTimer = null;
+let lastRefreshTime = 0;
+
+function updateRefreshStatus(msg){
+    const el=document.getElementById('refresh-status');
+    if(!el)return;
+    if(msg)el.textContent=msg;
+    else if(lastRefreshTime)el.textContent='🔄 ' + new Date(lastRefreshTime).toLocaleTimeString();
+    else el.textContent='';
+}
+
+async function refreshAllViews(){
+    const btn=document.querySelector('.gear-btn[onclick*="refreshAllViews"]');
+    if(btn)btn.style.opacity='0.5';
+    updateRefreshStatus('Refreshing...');
+    await connectAllViews();
+    lastRefreshTime=Date.now();
+    updateRefreshStatus();
+    renderCurrent();
+    if(btn)btn.style.opacity='1';
+}
+
+function startAutoRefresh(){
+    stopAutoRefresh();
+    refreshTimer=setInterval(()=>{refreshAllViews();},REFRESH_INTERVAL_MS);
+    updateRefreshStatus();
+}
+
+function stopAutoRefresh(){
+    if(refreshTimer){clearInterval(refreshTimer);refreshTimer=null;}
 }
 
 function autoConnectConfiguredViews(){
+    lastRefreshTime=Date.now();
     VIEW_KEYS.forEach(v=>{
         const vd=viewData[v];
         if(!vd||!vd.site||!vd.list||vd.connected)return;
@@ -1202,6 +1295,19 @@ function renderDashboard(){
     <div class="kpi-grid">
       ${deptKpis}
     </div>
+    <!-- Team Section: aggregated from all connected view data -->
+    ${(()=>{
+        let teamHtml='';
+        connectedViews.forEach(v=>{
+            const items=viewData[v]?.data||[];
+            const cols=VIEW_PERSON_COLS[v]||['assigned'];
+            const team=getTeam(items,cols);
+            if(team.length>0){
+                teamHtml+=`<div style="margin:4px 0 8px"><span style="font-size:13px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.5px">${VIEWS[v].title} Team</span>${renderTeam(team,true)}</div>`;
+            }
+        });
+        return teamHtml;
+    })()}
     <div class="charts-row">
       <div class="chart-card"><h3>Status Distribution</h3><canvas id="chart-status"></canvas></div>
       <div class="chart-card"><h3>Discipline Distribution</h3><canvas id="chart-dept"></canvas></div>
@@ -1341,7 +1447,7 @@ function cellValue(item,col){
     if(col==='cost'||col==='budget'||col==='actual'||col==='forecast'||col==='committed'||col==='costVar'||col==='ev'||col==='pv')return fmtCurrency(v);
     if(col==='cpi'||col==='spi')return typeof v==='number'?v.toFixed(4):v||'-';
     if(col==='delayDays'){
-        const d=Number(v)||0;
+        const d=calcDelay(item);
         return d>0?`<span class="overdue">${d}d</span>`:d<0?`<span style="color:var(--green)">${d}d</span>`:`${d}d`;
     }
     if(col==='critical')return v&&v!=='false'?`<span style="color:var(--red);font-weight:600">Yes</span>`:'No';
@@ -1366,7 +1472,7 @@ function renderDeptView(view){
     const delayed=items.filter(x=>x.status==='Delayed'||x.status==='Waiting Approval').length;
     const avgProg=total?Math.round(items.reduce((s,x)=>s+(x.prog||0),0)/total):0;
     const highPrio=items.filter(x=>x.priority==='Critical'||x.priority==='High').length;
-    const overdue=items.filter(x=>Number(x.delayDays||x['Delay Days']||0)>0).length;
+    const overdue=items.filter(isOverdue).length;
     const lastUpdated=items.reduce((latest,x)=>x.Modified&&x.Modified>latest?x.Modified:latest,'')||'';
 
     function kpi(icon,label,value,color,pct,trend,tip){
@@ -1427,8 +1533,8 @@ function renderDeptView(view){
               kpi('⏰','Overdue Items',overdue,'#D92C2C',null,null,'Delayed');
     }else if(view==='planning'){
         const crit=items.filter(x=>x.critical||x['Critical']==='Yes').length;
-        const avgDelay=total?Math.round(items.reduce((s,x)=>s+Math.max(0,x.delayDays||x['Delay Days']||0),0)/total):0;
-        const onTrack=items.filter(x=>!x.delayDays&&!x['Delay Days']).length;
+        const avgDelay=total?Math.round(items.reduce((s,x)=>s+Math.max(0,calcDelay(x)),0)/total):0;
+        const onTrack=items.filter(x=>!isOverdue(x)).length;
         kpis=kpi('📅','Total Activities',total,'#4C5D71')+
               kpi('🔴','Critical Path',crit,'#D92C2C',crit/total*100)+
               kpi('⏱️','Avg Delay',avgDelay+'d','#ED7D31',null,avgDelay>0?{txt:'Behind',cls:'down'}:{txt:'On Track',cls:'up'})+
@@ -1465,10 +1571,13 @@ function renderDeptView(view){
               kpi('⏰','Delayed',delayed,'#ED7D31',null,null,'Delayed');
     }
 
+    const team=getTeam(items,VIEW_PERSON_COLS[view]||['assigned']);
+    const teamHtml=team.length>0?`<h3 style="font-size:13px;font-weight:600;color:var(--text-secondary);margin:12px 0 8px;text-transform:uppercase;letter-spacing:.5px">👥 Team (${team.length})</h3>${renderTeam(team,false)}`:'';
     document.getElementById('content').innerHTML=`
     <div class="kpi-grid">
       ${kpis}
     </div>
+    ${teamHtml}
     <div class="table-wrap">
       <div class="table-toolbar">
         <span class="view-label">${v.title}</span>
@@ -1731,6 +1840,7 @@ function toggleDark(){
     updateCounts();
     updateBadge();
     VIEW_KEYS.forEach(v=>updateViewNavDot(v));
+    startAutoRefresh();
     renderDashboard();
     }catch(e){
         document.getElementById('content').innerHTML='<div style="padding:40px;text-align:center"><h3>⚠️ Error</h3><p style="color:var(--red)">'+e.message+'</p><button class="btn btn-primary" onclick="location.reload()">Reload</button></div>';
