@@ -519,7 +519,7 @@ VIEW_KEYS.forEach(k => { viewData[k] = { site:'', list:'', data:[], connected:fa
 
 const VIEWS = {
   dashboard:{title:'Executive Dashboard',dept:null,cols:['proj','prog','status','budget','actual','forecast','delayDays','priority','dept','pm'],group:'proj'},
-  procurement:{title:'Procurement Tracker',dept:'Procurement',cols:['id','proj','matDesc','vendor','rfq','po','rfqDate','poDate','expDel','actDel','mfgStatus','shipStatus','inspStatus','cost','assigned','status','priority','remarks']},
+  procurement:{title:'Procurement Tracker',dept:'Procurement',cols:['id','proj','engDisc','matDesc','rfq','expDel','leadTime','status','remarks']},
   engineering:{title:'Engineering - Shop Drawings',dept:'Engineering',cols:['id','dwgNo','dwgTitle','dwgType','rev00','rev01','rev02','rev03','eng','checker','appr','subDate','clientReview','apprDate','ifcDate','engDisc','spec','calc','rfi','tq','status','priority','phase','part','remarks']},
   construction:{title:'Construction Tracker',dept:'Construction',cols:['id','proj','actId','actName','workFront','cArea','contractor','foreman','workStatus','dailyProg','weeklyProg','compPct','status','pStart','pFinish','aStart','aFinish','inspReq','siteIssue','ncr','punch','permit','priority','remarks']},
   cost:{title:'Cost Control Tracker',dept:'Cost Control',cols:['id','proj','actId','actName','wbs','budget','committed','actual','forecast','costVar','ev','pv','cpi','spi','prog','status']},
@@ -551,6 +551,11 @@ const COL_LABELS = {
   hseAction:'HSE Action',hseClose:'HSE Closeout',
   qaInsp:'QA Insp Req',matInsp:'Material Inspection',testReport:'Test Report',qaNcr:'QA NCR',qaAction:'QA Action',qaStatus:'Quality Status',qaClose:'QA Closeout',
   rev00:'REV 00',rev01:'REV 01',rev02:'REV 02',rev03:'REV 03',
+  // Procurement Tracker Log column labels
+  'Discipline':'Discipline','Description':'Description','RFQ':'RFQ',
+  'Material Submitta STATUS':'Material Status','PROCUREMENT LEAD TIME':'Lead Time',
+  'PLANNED DELIVERY DATE':'Planned Delivery','REMARKS':'Remarks',
+  leadTime:'Lead Time',plannedDelivery:'Planned Delivery',matSubStatus:'Mat. Status',
   // Raw REV column labels for SharePoint Shop Drawing Status
   'REV 00 (OUT MDH)':'REV 00 OUT MDH','REV 00  IN':'REV 00 IN',
   'REV 01 OUT(MDH)':'REV 01 OUT','REV 01  IN':'REV 01 IN',
@@ -576,7 +581,8 @@ const ALIAS_SHORTS = new Set([
   'qaInsp','matInsp','testReport','qaNcr','qaAction','qaStatus','qaClose',
   'hseAction','hseClose','budget','committed','actual','forecast','costVar','ev','pv','cpi','spi',
   'primId','schedStatus','baseFinish','curFinish','recovery','critical','floatDays',
-  'rev00','rev01','rev02','rev03','part','proj','status','priority','dept'
+  'rev00','rev01','rev02','rev03','part','proj','status','priority','dept',
+  'leadTime','plannedDelivery','matSubStatus','description'
 ]);
 function fmtCurrency(n){return typeof n==='number'?'$'+n.toLocaleString():n}
 function getVal(item,col){return item[col]??''}
@@ -976,7 +982,7 @@ async function connectSingleView(view){
             });
             item.dept = VIEWS[view]?.dept || view;
             item.proj = spItem['Project Code'] || spItem['Project Name'] || spItem.Title || item['ProjectName'] || item['Project_x0020_Name'] || 'N/A';
-            item.status = spItem['Status'] || spItem['DRAWING STATUS'] || spItem['WorkStatus'] || 'Not Set';
+            item.status = spItem['Status'] || spItem['DRAWING STATUS'] || spItem['WorkStatus'] || spItem['Material Submitta STATUS'] || 'Not Set';
             if(item.status==='O')item.status='Open';
             if(item.status==='D')item.status='Delivered';
             item.priority = spItem['Priority'] || 'Medium';
@@ -1003,6 +1009,11 @@ async function connectSingleView(view){
                 'PRNumber':['pr'],'MfgStatus':['mfgStatus'],'ShippingStatus':['shipStatus'],
                 'ExpectedDeliveryDate':['expDel'],'ActualDeliveryDate':['actDel'],
                 'WarehouseStatus':['whStatus'],'InspectionStatus':['inspStatus'],
+                // Procurement Tracker Log columns
+                'Description':['matDesc','description'],'RFQ':['rfq'],
+                'PLANNED DELIVERY DATE':['expDel','plannedDelivery'],
+                'PROCUREMENT LEAD TIME':['leadTime'],'REMARKS':['remarks'],
+                'Material Submitta STATUS':['matSubStatus'],
                 'ActivityID':['actId','Activity_x0020_ID'],'ActivityName':['actName'],
                 'ProjectID':['id'],'ProjectName':['proj'],'Project_x0020_Name':['proj'],
                 'DueDate':['due','Due_x0020_Date'],'ResponsibleEngineer':['eng'],'DisciplineLead':['discLead'],
@@ -1610,15 +1621,18 @@ function renderDeptView(view){
               kpi('📅','Phases',phases,'#D92C2C')+
               kpi('📁','Parts',parts,'#4C5D71');
     }else if(view==='procurement'){
-        const rfqOpen=items.filter(x=>x.status==='RFQ Sent'||x.status==='Open').length;
-        const poIssued=items.filter(x=>x.po||x['PO #']||x['PO No.']).length;
-        const delayedDel=items.filter(x=>x.status==='Delayed'||x.status==='Overdue').length;
-        kpis=kpi('📦','Total Orders',total,'#4C5D71')+
-              kpi('📋','RFQs Open',rfqOpen,'#ED7D31',rfqOpen/total*100)+
-              kpi('📄','POs Issued',poIssued,'#00B7C3',poIssued/total*100)+
-              kpi('⏰','Overdue',overdue,'#D92C2C',null,null,'Delayed')+
-              kpi('⚠️','Delayed',delayedDel,'#D92C2C',null,null,'Delayed')+
-              kpi('✅','Completed',completed,'#107C10',completed/total*100,null,'Completed');
+        const withRFQ=items.filter(x=>x.rfq&&x.rfq!==''&&x.rfq!=='N/A').length;
+        const disciplines=new Set(items.map(x=>x.engDisc||x['Discipline']||'')).size;
+        // Status breakdown from Material Submitta STATUS
+        const statusCounts={};
+        items.forEach(x=>{const s=x.matSubStatus||x.status||'N/A';statusCounts[s]=(statusCounts[s]||0)+1;});
+        const topStatus=Object.entries(statusCounts).sort((a,b)=>b[1]-a[1]).slice(0,2).map(([s,c])=>s+' ('+c+')').join(', ');
+        kpis=kpi('📦','Total Items',total,'#4C5D71')+
+              kpi('⏰','Overdue',overdue,'#D92C2C')+
+              kpi('📋','With RFQ',withRFQ,'#00B7C3',total?withRFQ/total*100:0)+
+              kpi('✅','Completed',completed,'#107C10',total?completed/total*100:0,null,'Completed')+
+              kpi('🏷️','Disciplines',disciplines,'#ED7D31')+
+              kpi('📊','Status','','#8A8886',null,null,null,topStatus||'N/A');
     }else if(view==='construction'){
         const notStarted=items.filter(x=>x.status==='Not Started').length;
         const inProgress=items.filter(x=>x.status==='In Progress').length;
