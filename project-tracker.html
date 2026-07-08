@@ -1131,12 +1131,24 @@ function renderTable(){
     }
 
     let html='<thead><tr>';
-    html+=`<th onclick="sortBy('proj')" class="${sortCol==='proj'?'sorted':''}">Project Name<span class="sort-arrow">${arrow('proj')}</span></th>`;
+    const firstColLabel=currentView==='procurement'?'S. No':currentView==='construction'?'Activity ID':'Project Name';
+    html+=`<th onclick="sortBy('proj')" class="${sortCol==='proj'?'sorted':''}">${firstColLabel}<span class="sort-arrow">${arrow('proj')}</span></th>`;
     cols.forEach(c=>{if(c!=='proj')html+=`<th onclick="sortBy('${c}')" class="${sortCol===c?'sorted':''}">${COL_LABELS[c]||c}<span class="sort-arrow">${arrow(c)}</span></th>`;});
     html+='</tr></thead><tbody>';
 
-    filtered.forEach(item=>{
-        html+='<tr><td><span class="drawing-link" onclick="alert(\'Project: '+item.proj+'\')">'+(item.proj||item.Title||'')+'</span></td>';
+    filtered.forEach((item,i)=>{
+        let firstCell, clickLabel;
+        if(currentView==='procurement'){
+            firstCell=i+1;
+            clickLabel='S. No: '+(i+1);
+        }else if(currentView==='engineering'){
+            firstCell=item.MSL||'MSL';
+            clickLabel='MSL: '+(item.MSL||'MSL');
+        }else{
+            firstCell=item.proj||item.Title||'';
+            clickLabel='Project: '+firstCell;
+        }
+        html+='<tr><td><span class="drawing-link" onclick="alert(\''+clickLabel+'\')">'+firstCell+'</span></td>';
         cols.forEach(c=>{if(c!=='proj')html+=`<td>${cellValue(item,c)}</td>`;});
         html+='</tr>';
     });
