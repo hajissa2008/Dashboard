@@ -1524,43 +1524,52 @@ function renderDeptView(view){
     }
     const lastUpdated=items.reduce((latest,x)=>x.Modified&&x.Modified>latest?x.Modified:latest,'')||'';
 
-    function kpi(icon,label,value,color,pct,trend,tip){
+    function kpi(icon,label,value,color,pct,trend,tip,sub){
         const bar=pct!=null?`<div class="kpi-bar"><div class="kpi-bar-fill" style="width:${Math.min(100,pct)}%;background:${color}"></div></div>`:'';
         const trendHtml=trend?`<span class="kpi-trend ${trend.cls}">${trend.txt}</span>`:'';
+        const subHtml=sub!==undefined?`<div class="kpi-sub">${sub}</div>`:'';
         return `<div class="kpi-card" onclick="filterByStatus('${tip||''}')" title="Click to filter">
           <div class="kpi-accent" style="background:${color}"></div>
           <div class="kpi-icon">${icon}</div>
           <div class="kpi-label">${label} ${trendHtml}</div>
           <div class="kpi-value">${value}</div>
+          ${subHtml}
           ${bar}
         </div>`;
     }
 
     let kpis='';
     if(view==='engineering'){
-        // REV statuses – count items where each REV field is non-empty
-        const rev00=items.filter(x=>x.rev00||x['REV00']||x['REV 00']).length;
-        const rev01=items.filter(x=>x.rev01||x['REV01']||x['REV 01']).length;
-        const rev02=items.filter(x=>x.rev02||x['REV02']||x['REV 02']).length;
-        const rev03=items.filter(x=>x.rev03||x['REV03']||x['REV 03']).length;
+        // Determine each document's current revision level (highest non-empty REV field)
+        const revFields=[{key:'rev03',label:'REV 03'},{key:'rev02',label:'REV 02'},{key:'rev01',label:'REV 01'},{key:'rev00',label:'REV 00'}];
+        const revGroups={rev00:[],rev01:[],rev02:[],rev03:[]};
+        const revStatuses={rev00:{},rev01:{},rev02:{},rev03:{}};
+        items.forEach(item=>{
+            for(const rf of revFields){
+                const v=item[rf.key]||item[rf.label]||item[rf.label.replace(' ','_')];
+                if(v!==undefined&&v!==null&&v!==''){
+                    const s=String(v).trim();
+                    revGroups[rf.key].push(item);
+                    revStatuses[rf.key][s]=(revStatuses[rf.key][s]||0)+1;
+                    break;
+                }
+            }
+        });
         const disciplines=new Set(items.map(x=>x.engDisc||x['Discipline']||'')).size;
         const phases=new Set(items.map(x=>x.phase||x['ProjectPhase']||x['Phase']||'')).size;
         const parts=new Set(items.map(x=>x.part||x['Part']||'')).size;
-        // Status distribution
-        const statusSubmitted=items.filter(x=>x.status==='Submitted').length;
-        const statusUnderReview=items.filter(x=>x.status==='Under Review').length;
-        const statusApproved=items.filter(x=>x.status==='Approved').length;
-        const statusIFC=items.filter(x=>x.status==='IFC'||x.ifcDate||x['IFC Date']).length;
+        function revStatusSummary(levelKey,count){
+            if(!count)return'No docs';
+            const statuses=Object.entries(revStatuses[levelKey]).sort((a,b)=>b[1]-a[1]).slice(0,2);
+            return statuses.map(([s,c])=>s+' ('+c+')').join(', ');
+        }
+        const rev00=revGroups.rev00.length, rev01=revGroups.rev01.length, rev02=revGroups.rev02.length, rev03=revGroups.rev03.length;
         kpis=kpi('📐','Total Documents',total,'#4C5D71')+
               kpi('⏰','Overdue',overdue,'#D92C2C',null,null)+
-              kpi('🔢','REV 00',rev00,'#8A8886',total?rev00/total*100:0,null)+
-              kpi('🔢','REV 01',rev01,'#00B7C3',total?rev01/total*100:0,null)+
-              kpi('🔢','REV 02',rev02,'#ED7D31',total?rev02/total*100:0,null)+
-              kpi('🔢','REV 03',rev03,'#8764B8',total?rev03/total*100:0,null)+
-              kpi('📤','Submitted',statusSubmitted,'#4C5D71',total?statusSubmitted/total*100:0,null,'Submitted')+
-              kpi('🔄','Under Review',statusUnderReview,'#FFB900',total?statusUnderReview/total*100:0,null,'Under Review')+
-              kpi('✅','Approved',statusApproved,'#107C10',total?statusApproved/total*100:0,null,'Approved')+
-              kpi('📌','IFC Issued',statusIFC,'#00B7C3',total?statusIFC/total*100:0,null)+
+              kpi('⬜','Rev 00',rev00,'#8A8886',total?rev00/total*100:0,null,null,revStatusSummary('rev00',rev00))+
+              kpi('1️⃣','Rev 01',rev01,'#00B7C3',total?rev01/total*100:0,null,null,revStatusSummary('rev01',rev01))+
+              kpi('2️⃣','Rev 02',rev02,'#ED7D31',total?rev02/total*100:0,null,null,revStatusSummary('rev02',rev02))+
+              kpi('3️⃣','Rev 03',rev03,'#8764B8',total?rev03/total*100:0,null,null,revStatusSummary('rev03',rev03))+
               kpi('🏷️','Disciplines',disciplines,'#0078D4')+
               kpi('📅','Phases',phases,'#D92C2C')+
               kpi('📁','Parts',parts,'#4C5D71');
