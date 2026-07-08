@@ -931,6 +931,12 @@ async function connectSingleView(view){
         // Use raw SharePoint fields (no predefined mapping) for any view
         const skipKeys = ['ID','id','Title','ContentType','Modified','Created','AuthorLookupId','EditorLookupId','_UIVersionString','Attachments','Edit','LinkTitleNoMenu','LinkTitle','ItemChildCount','FolderChildCount','_ComplianceFlags','_ComplianceTag','_ComplianceTagWrittenTime','_ComplianceTagUserId','AppAuthorLookupId','AppEditorLookupId','@odata.etag'];
         const rawKeys = Object.keys(items[0]).filter(k=>!skipKeys.includes(k));
+        // Debug: log raw column names from SharePoint to help with alias mapping
+        if(!window._spColsLogged){window._spColsLogged={};}
+        if(!window._spColsLogged[view]){
+            window._spColsLogged[view]=true;
+            console.log('[SP Columns] '+view+':',rawKeys.filter(k=>!k.startsWith('@')).join(', '));
+        }
         vd.data=items.map(spItem=>{
             const item={};
             rawKeys.forEach(k => {
@@ -955,6 +961,7 @@ async function connectSingleView(view){
                 'PlannedFinish':['pFinish'],'Planned_x0020_Finish':['pFinish'],
                 'PlanStartDate':['pStart'],'PlanFinishDate':['pFinish'],
                 'StartDate':['pStart'],'EndDate':['pFinish'],'FinishDate':['pFinish'],
+                'Start':['pStart'],'Finish':['pFinish'],  // Maseel Activity uses Start/Finish
                 'ActualStart':['aStart'],'Actual_x0020_Start':['aStart'],
                 'ActualFinish':['aFinish'],'Actual_x0020_Finish':['aFinish'],
                 'ActualStartDate':['aStart'],'ActualEndDate':['aFinish'],'ActualFinishDate':['aFinish'],
@@ -988,6 +995,13 @@ async function connectSingleView(view){
                 if(item[spName]!==undefined&&item[spName]!==''&&item[spName]!==null){
                     shortNames.forEach(sn=>{if(item[sn]===undefined||item[sn]==='')item[sn]=item[spName];});
                 }
+            }
+            // Derive status from CompletionPct if no status column exists
+            if((item.status==='Not Set'||!item.status)&&item.prog!==undefined&&item.prog!==null&&item.prog!==''){
+                const p=Number(item.prog);
+                if(p>=100)item.status='Completed';
+                else if(p>0)item.status='In Progress';
+                else item.status='Not Started';
             }
             return item;
         });
