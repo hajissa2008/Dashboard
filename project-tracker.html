@@ -519,7 +519,7 @@ VIEW_KEYS.forEach(k => { viewData[k] = { site:'', list:'', data:[], connected:fa
 
 const VIEWS = {
   dashboard:{title:'Executive Dashboard',dept:null,cols:['proj','prog','status','budget','actual','forecast','delayDays','priority','dept','pm'],group:'proj'},
-  procurement:{title:'Procurement Tracker',dept:'Procurement',cols:['id','proj','engDisc','matDesc','rfq','expDel','leadTime','status','remarks']},
+  procurement:{title:'Procurement Tracker',dept:'Procurement',cols:['id','engDisc','matDesc','manufacturer','subcontractor','rfq','poRef','poDate','expDel','leadTime','pqStatus','matSubStatus','deliveryStatus','remarks']},
   engineering:{title:'Engineering - Shop Drawings',dept:'Engineering',cols:['id','dwgNo','dwgTitle','dwgType','rev00','rev01','rev02','rev03','eng','checker','appr','subDate','clientReview','apprDate','ifcDate','engDisc','spec','calc','rfi','tq','status','priority','phase','part','remarks']},
   construction:{title:'Construction Tracker',dept:'Construction',cols:['id','proj','actId','actName','workFront','cArea','contractor','foreman','workStatus','dailyProg','weeklyProg','compPct','status','pStart','pFinish','aStart','aFinish','inspReq','siteIssue','ncr','punch','permit','priority','remarks']},
   cost:{title:'Cost Control Tracker',dept:'Cost Control',cols:['id','proj','actId','actName','wbs','budget','committed','actual','forecast','costVar','ev','pv','cpi','spi','prog','status']},
@@ -553,9 +553,26 @@ const COL_LABELS = {
   rev00:'REV 00',rev01:'REV 01',rev02:'REV 02',rev03:'REV 03',
   // Procurement Tracker Log column labels
   'Discipline':'Discipline','Description':'Description','RFQ':'RFQ',
-  'Material Submitta STATUS':'Material Status','PROCUREMENT LEAD TIME':'Lead Time',
-  'PLANNED DELIVERY DATE':'Planned Delivery','REMARKS':'Remarks',
+  'S.No':'S.No','Technical Evaluation':'Tech Eval','Commercial Comparision':'Comm Comp',
+  'PQ Planned Submitta Date':'PQ Planned','PQ Actual Submitta DATE':'PQ Actual',
+  'PQ Submittal Ref No':'PQ Ref','PQ  Status':'PQ Status',
+  'PLANNED Material Submitta':'Planned Mat. Submittal',
+  'ACTUAL Material Submitta DATE':'Actual Mat. Submittal',
+  'FORECAST DATE OF SUBMISSION':'Forecast Date',
+  'Material Submittal Ref No':'Mat. Ref','Material Submitta STATUS':'Mat. Status',
+  'MANUFACTURER/SUPPLIER/SUB CONTRACTOR':'Manufacturer',
+  'SUPPLIER / SUBCONTRACTOR':'Subcontractor',
+  'PLANNED PO DATE':'Planned PO','PO / LOA REFERENCE':'PO/LOA Ref',
+  'ACTUAL PO DATE':'Actual PO','PROCUREMENT LEAD TIME':'Lead Time',
+  'METHOD OF SHIPPING':'Shipping','PLANNED DELIVERY DATE':'Planned Delivery',
+  'ESTIMATED TIME OF ARRIVAL (ETA)':'ETA','ACTUAL DELIVERY STATUS':'Delivery Status',
+  'REMARKS':'Remarks',
   leadTime:'Lead Time',plannedDelivery:'Planned Delivery',matSubStatus:'Mat. Status',
+  pqPlanned:'PQ Planned',pqActual:'PQ Actual',pqRef:'PQ Ref',pqStatus:'PQ Status',
+  matPlanned:'Planned Mat.',matActual:'Actual Mat.',forecastDate:'Forecast Date',
+  matRef:'Mat. Ref',manufacturer:'Manufacturer',subcontractor:'Subcontractor',
+  poRef:'PO/LOA Ref',actualPoDate:'Actual PO',shipMethod:'Shipping',
+  eta:'ETA',deliveryStatus:'Delivery Status',plannedPoDate:'Planned PO',
   // Raw REV column labels for SharePoint Shop Drawing Status
   'REV 00 (OUT MDH)':'REV 00 OUT MDH','REV 00  IN':'REV 00 IN',
   'REV 01 OUT(MDH)':'REV 01 OUT','REV 01  IN':'REV 01 IN',
@@ -582,7 +599,10 @@ const ALIAS_SHORTS = new Set([
   'hseAction','hseClose','budget','committed','actual','forecast','costVar','ev','pv','cpi','spi',
   'primId','schedStatus','baseFinish','curFinish','recovery','critical','floatDays',
   'rev00','rev01','rev02','rev03','part','proj','status','priority','dept',
-  'leadTime','plannedDelivery','matSubStatus','description'
+  'leadTime','plannedDelivery','matSubStatus','description',
+  'techEval','commEval','pqPlanned','pqActual','pqRef','pqStatus',
+  'matPlanned','matActual','forecastDate','matRef','manufacturer','subcontractor',
+  'poRef','actualPoDate','shipMethod','eta','deliveryStatus','plannedPoDate'
 ]);
 function fmtCurrency(n){return typeof n==='number'?'$'+n.toLocaleString():n}
 function getVal(item,col){return item[col]??''}
@@ -1011,9 +1031,21 @@ async function connectSingleView(view){
                 'WarehouseStatus':['whStatus'],'InspectionStatus':['inspStatus'],
                 // Procurement Tracker Log columns
                 'Description':['matDesc','description'],'RFQ':['rfq'],
+                'Technical Evaluation':['techEval'],'Commercial Comparision':['commEval'],
+                'S.No':['id'],'S_x002e_No_x002e_':['id'],
+                'PQ Planned Submitta Date':['pqPlanned'],'PQ Actual Submitta DATE':['pqActual'],
+                'PQ Submittal Ref No':['pqRef'],'PQ  Status':['pqStatus'],'PQ_x0020__x0020_Status':['pqStatus'],
+                'PLANNED Material Submitta':['matPlanned'],
+                'ACTUAL Material Submitta DATE':['matActual'],'FORECAST DATE OF SUBMISSION':['forecastDate'],
+                'Material Submittal Ref No':['matRef'],'Material Submitta STATUS':['matSubStatus'],
+                'MANUFACTURER/SUPPLIER/SUB CONTRACTOR':['manufacturer'],
+                'SUPPLIER / SUBCONTRACTOR':['subcontractor'],
+                'PLANNED PO DATE':['poDate','plannedPoDate'],'PO / LOA REFERENCE':['poRef'],
+                'ACTUAL PO DATE':['actualPoDate'],
+                'PROCUREMENT LEAD TIME':['leadTime'],'METHOD OF SHIPPING':['shipMethod'],
                 'PLANNED DELIVERY DATE':['expDel','plannedDelivery'],
-                'PROCUREMENT LEAD TIME':['leadTime'],'REMARKS':['remarks'],
-                'Material Submitta STATUS':['matSubStatus'],
+                'ESTIMATED TIME OF ARRIVAL (ETA)':['eta'],
+                'ACTUAL DELIVERY STATUS':['deliveryStatus'],'REMARKS':['remarks'],
                 'ActivityID':['actId','Activity_x0020_ID'],'ActivityName':['actName'],
                 'ProjectID':['id'],'ProjectName':['proj'],'Project_x0020_Name':['proj'],
                 'DueDate':['due','Due_x0020_Date'],'ResponsibleEngineer':['eng'],'DisciplineLead':['discLead'],
@@ -1621,8 +1653,10 @@ function renderDeptView(view){
               kpi('📅','Phases',phases,'#D92C2C')+
               kpi('📁','Parts',parts,'#4C5D71');
     }else if(view==='procurement'){
-        const withRFQ=items.filter(x=>x.rfq&&x.rfq!==''&&x.rfq!=='N/A').length;
+        const withRFQ=items.filter(x=>x.rfq&&x.rfq!==''&&x.rfq!=='N/A'&&x.rfq!=='0').length;
+        const withPO=items.filter(x=>x.poRef&&x.poRef!=='').length;
         const disciplines=new Set(items.map(x=>x.engDisc||x['Discipline']||'')).size;
+        const manuf=new Set(items.map(x=>x.manufacturer||x['MANUFACTURER/SUPPLIER/SUB CONTRACTOR']||'')).size;
         // Status breakdown from Material Submitta STATUS
         const statusCounts={};
         items.forEach(x=>{const s=x.matSubStatus||x.status||'N/A';statusCounts[s]=(statusCounts[s]||0)+1;});
@@ -1630,8 +1664,9 @@ function renderDeptView(view){
         kpis=kpi('📦','Total Items',total,'#4C5D71')+
               kpi('⏰','Overdue',overdue,'#D92C2C')+
               kpi('📋','With RFQ',withRFQ,'#00B7C3',total?withRFQ/total*100:0)+
-              kpi('✅','Completed',completed,'#107C10',total?completed/total*100:0,null,'Completed')+
-              kpi('🏷️','Disciplines',disciplines,'#ED7D31')+
+              kpi('📄','With PO',withPO,'#ED7D31',total?withPO/total*100:0)+
+              kpi('🏷️','Disciplines',disciplines,'#0078D4')+
+              kpi('🏭','Suppliers',manuf,'#8764B8')+
               kpi('📊','Status','','#8A8886',null,null,null,topStatus||'N/A');
     }else if(view==='construction'){
         const notStarted=items.filter(x=>x.status==='Not Started').length;
