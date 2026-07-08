@@ -201,7 +201,7 @@ body.dark th .sort-arrow{color:var(--text-secondary)}
     </a>
     <div class="nav-section">Department Views</div>
     <a class="nav-item" data-view="procurement" onclick="switchView('procurement')">
-      <span class="icon">📦</span> Procurement <span class="count" id="count-procurement">0</span>
+      <span class="icon">📦</span> Procurement <span class="count" id="count-procurement">0</span><span class="status-dot" id="dot-procurement" style="display:inline-block;vertical-align:middle;margin-left:4px"></span>
     </a>
     <a class="nav-item" data-view="engineering" onclick="switchView('engineering')">
       <span class="icon">📐</span> Engineering <span class="count" id="count-engineering">0</span><span class="status-dot" id="dot-engineering" style="display:inline-block;vertical-align:middle;margin-left:4px"></span>
@@ -1114,11 +1114,9 @@ function renderTable(){
 
     let cols;
     if(currentView!=='dashboard'&&d.length>0){
-        // Use actual SharePoint data keys as columns (skip internal keys)
-        const predefinedCols=(currentView==='dashboard'?VIEWS.dashboard:VIEWS[currentView]).cols;
+        // Always use actual data keys (SharePoint columns) when connected or data exists
         const dataKeys=Object.keys(d[0]).filter(k=>!['dept','priority','proj','status','Title'].includes(k)&&!k.startsWith('@')&&!k.startsWith('_'));
-        const matchesPredefined=dataKeys.filter(k=>predefinedCols.includes(k)).length;
-        cols=matchesPredefined<dataKeys.length*0.5?dataKeys:predefinedCols;
+        cols=dataKeys;
     }else{
         cols=(currentView==='dashboard'?VIEWS.dashboard:VIEWS[currentView]).cols;
     }
