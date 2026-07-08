@@ -979,6 +979,11 @@ async function connectSingleView(view){
                 'ActivityID':['actId','Activity_x0020_ID'],'ActivityName':['actName'],
                 'ProjectID':['id'],'ProjectName':['proj'],'Project_x0020_Name':['proj'],
                 'DueDate':['due','Due_x0020_Date'],'ResponsibleEngineer':['eng'],'DisciplineLead':['discLead'],
+                'REV00':['rev00'],'REV 00':['rev00'],'REV_00':['rev00'],'REV_x0020_00':['rev00'],
+                'REV01':['rev01'],'REV 01':['rev01'],'REV_01':['rev01'],'REV_x0020_01':['rev01'],
+                'REV02':['rev02'],'REV 02':['rev02'],'REV_02':['rev02'],'REV_x0020_02':['rev02'],
+                'REV03':['rev03'],'REV 03':['rev03'],'REV_03':['rev03'],'REV_x0020_03':['rev03'],
+                'Phase':['phase'],'Part':['part'],
                 'ProjectPhase':['phase'],'Drawing_x0020_Number':['dwgNo'],'Drawing_x0020_Title':['dwgTitle'],'Drawing_x0020_Type':['dwgType'],
                 'Assigned_x0020_To':['assigned'],'AssignedTo':['assigned'],'ResponsibleDepartment':['dept'],
                 'DelayDays':['delayDays'],'Delay_x0020_Days':['delayDays'],'RiskLevel':['risk'],
@@ -1533,19 +1538,31 @@ function renderDeptView(view){
 
     let kpis='';
     if(view==='engineering'){
-        const revised=items.filter(x=>x.rev||x['Revision']||x['Drawing_x0020_Number']).length;
+        // REV statuses – count items where each REV field is non-empty
+        const rev00=items.filter(x=>x.rev00||x['REV00']||x['REV 00']).length;
+        const rev01=items.filter(x=>x.rev01||x['REV01']||x['REV 01']).length;
+        const rev02=items.filter(x=>x.rev02||x['REV02']||x['REV 02']).length;
+        const rev03=items.filter(x=>x.rev03||x['REV03']||x['REV 03']).length;
         const disciplines=new Set(items.map(x=>x.engDisc||x['Discipline']||'')).size;
         const phases=new Set(items.map(x=>x.phase||x['ProjectPhase']||x['Phase']||'')).size;
         const parts=new Set(items.map(x=>x.part||x['Part']||'')).size;
-        const submitted=items.filter(x=>x.status==='Submitted'||x.status==='Under Review').length;
-        const ifcIssued=items.filter(x=>x.status==='Approved'||x.ifcDate||x['IFC Date']).length;
+        // Status distribution
+        const statusSubmitted=items.filter(x=>x.status==='Submitted').length;
+        const statusUnderReview=items.filter(x=>x.status==='Under Review').length;
+        const statusApproved=items.filter(x=>x.status==='Approved').length;
+        const statusIFC=items.filter(x=>x.status==='IFC'||x.ifcDate||x['IFC Date']).length;
         kpis=kpi('📐','Total Documents',total,'#4C5D71')+
               kpi('⏰','Overdue',overdue,'#D92C2C',null,null)+
-              kpi('🔁','Revised',revised,'#8764B8',total?revised/total*100:0,null)+
-              kpi('📤','Submitted / Review',submitted,'#ED7D31',total?submitted/total*100:0,null,'Submitted')+
-              kpi('✅','IFC / Approved',ifcIssued,'#107C10',total?ifcIssued/total*100:0,null,'Approved')+
-              kpi('🏷️','Disciplines',disciplines,'#00B7C3')+
-              kpi('📅','Phases',phases,'#FFB900')+
+              kpi('🔢','REV 00',rev00,'#8A8886',total?rev00/total*100:0,null)+
+              kpi('🔢','REV 01',rev01,'#00B7C3',total?rev01/total*100:0,null)+
+              kpi('🔢','REV 02',rev02,'#ED7D31',total?rev02/total*100:0,null)+
+              kpi('🔢','REV 03',rev03,'#8764B8',total?rev03/total*100:0,null)+
+              kpi('📤','Submitted',statusSubmitted,'#4C5D71',total?statusSubmitted/total*100:0,null,'Submitted')+
+              kpi('🔄','Under Review',statusUnderReview,'#FFB900',total?statusUnderReview/total*100:0,null,'Under Review')+
+              kpi('✅','Approved',statusApproved,'#107C10',total?statusApproved/total*100:0,null,'Approved')+
+              kpi('📌','IFC Issued',statusIFC,'#00B7C3',total?statusIFC/total*100:0,null)+
+              kpi('🏷️','Disciplines',disciplines,'#0078D4')+
+              kpi('📅','Phases',phases,'#D92C2C')+
               kpi('📁','Parts',parts,'#4C5D71');
     }else if(view==='procurement'){
         const rfqOpen=items.filter(x=>x.status==='RFQ Sent'||x.status==='Open').length;
