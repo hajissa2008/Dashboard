@@ -305,7 +305,7 @@ var CIRC=251.33;
 function esc(s){if(s==null)return'';var d=document.createElement('div');d.textContent=s;return d.innerHTML}
 function abbr(s){if(!s)return'';var m=s.match(/(.+)@/);return m?m[1]:s}
 function cd(s){if(!s)return null;var d=new Date(s);if(isNaN(d))return null;d.setHours(0,0,0,0);return d}
-function od(fin,st){if(!fin||!st||st==='Done'||st==='ACC Done')return false;var fd=new Date(fin);if(isNaN(fd))return false;var td=new Date();return Date.UTC(fd.getUTCFullYear(),fd.getUTCMonth(),fd.getUTCDate())<Date.UTC(td.getUTCFullYear(),td.getUTCMonth(),td.getUTCDate())}
+function od(fin,st){if(!fin||!st||st.indexOf('Done')>=0)return false;var fd=new Date(fin);if(isNaN(fd))return false;var td=new Date();return Date.UTC(fd.getUTCFullYear(),fd.getUTCMonth(),fd.getUTCDate())<Date.UTC(td.getUTCFullYear(),td.getUTCMonth(),td.getUTCDate())}
 function dod(fin){if(!fin)return 0;var fd=new Date(fin);if(isNaN(fd))return 0;var td=new Date();return Math.round((Date.UTC(td.getUTCFullYear(),td.getUTCMonth(),td.getUTCDate())-Date.UTC(fd.getUTCFullYear(),fd.getUTCMonth(),fd.getUTCDate()))/86400000)}
 function pct(a,b){return b?Math.round(a/b*100):0}
 function phFromName(name){if(!name)return '';var m=name.match(/ph0([1-5])/i);return m?'P'+m[1]:''}
