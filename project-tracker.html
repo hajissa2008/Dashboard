@@ -745,7 +745,7 @@ function graphListColumnsUrl(siteUrl, listName){
     return graphListUrl(siteUrl, listName) + `/columns`;
 }
 
-let columnNameMap = {}; // per-list cache: { listName: { field_N: displayName } }
+let columnNameMap = {}; // per-list cache: { listName: { rename: {...}, allColumns: [...] } }
 
 async function fetchColumnNames(siteUrl, listName){
     const url = graphListColumnsUrl(siteUrl, listName);
@@ -755,11 +755,14 @@ async function fetchColumnNames(siteUrl, listName){
     if(!resp.ok) return null;
     const json = await resp.json();
     const skip = ['ID','ContentType','Modified','Created','AuthorLookupId','EditorLookupId','_UIVersionString','Attachments','Edit','LinkTitleNoMenu','LinkTitle','ItemChildCount','FolderChildCount','_ComplianceFlags','_ComplianceTag','_ComplianceTagWrittenTime','_ComplianceTagUserId','AppAuthorLookupId','AppEditorLookupId'];
-    const map = {}, pairs=[];
+    const rename = {}, pairs=[], allCols=[];
     (json.value||[]).forEach(col => {
-        if(col.name && col.displayName && col.name!==col.displayName && !skip.includes(col.name) && !col.name.startsWith('_')){
-            map[col.name] = col.displayName;
-            pairs.push(col.name+' → '+col.displayName);
+        const n=col.name;
+        if(!n||skip.includes(n)||n.startsWith('_'))return;
+        allCols.push(n);
+        if(col.displayName && n!==col.displayName){
+            rename[n] = col.displayName;
+            pairs.push(n+' → '+col.displayName);
         }
     });
     // Show column mapping on page
@@ -768,14 +771,14 @@ async function fetchColumnNames(siteUrl, listName){
         el.innerHTML += '<div style="margin-top:6px;font-size:10px;background:#e8f4fd;padding:6px;border-radius:3px">' +
             '<strong>📋 Column mapping:</strong><br><code>' + pairs.join('<br>') + '</code></div>';
     }
-    return map;
+    return { rename, allColumns: allCols };
 }
 
 async function fetchSPListItems(siteUrl, listName){
     if(spToken){
         // Fetch column definitions per-list and cache
-        if(!columnNameMap[listName]) columnNameMap[listName] = await fetchColumnNames(siteUrl, listName);
-        const rename = columnNameMap[listName] || {};
+        if(!columnNameMap[listName]) columnNameMap[listName] = await fetchColumnNames(siteUrl, listName) || {rename:{},allColumns:[]};
+        const rename = columnNameMap[listName].rename || {};
 
         // Fetch all pages of items
         let allItems = [], nextUrl = graphListItemsUrl(siteUrl, listName);
@@ -979,9 +982,12 @@ async function connectSingleView(view){
         const siteUrl=site.replace(/\/+$/,'');
         const items = await fetchSPListItems(siteUrl, list);
         if(!items||items.length===0)return false;
-        // Use raw SharePoint fields (no predefined mapping) for any view
+        // Use full column list from SharePoint schema (all columns even if empty on first item)
         const skipKeys = ['ID','id','Title','ContentType','Modified','Created','AuthorLookupId','EditorLookupId','_UIVersionString','Attachments','Edit','LinkTitleNoMenu','LinkTitle','ItemChildCount','FolderChildCount','_ComplianceFlags','_ComplianceTag','_ComplianceTagWrittenTime','_ComplianceTagUserId','AppAuthorLookupId','AppEditorLookupId','@odata.etag'];
-        const rawKeys = Object.keys(items[0]).filter(k=>!skipKeys.includes(k));
+        const schemaInfo = columnNameMap[list];
+        const schemaCols = schemaInfo?.allColumns;
+        const rename = schemaInfo?.rename || {};
+        const rawKeys = (schemaCols&&schemaCols.length>0) ? schemaCols.map(k=>rename[k]||k).filter(k=>!skipKeys.includes(k)) : Object.keys(items[0]).filter(k=>!skipKeys.includes(k));
         // Debug: log raw column names from SharePoint to help with alias mapping
         if(!window._spColsLogged){window._spColsLogged={};}
         if(!window._spColsLogged[view]){
