@@ -11,7 +11,6 @@
 body.dark{--primary:#7A8FA5;--primary-dark:#8DA3B9;--primary-light:#2A3540;--green:#4CAF50;--green-light:#1B3A1B;--red:#F44336;--red-light:#3D1A1A;--orange:#FF9800;--orange-light:#3D2A0A;--yellow:#FFC107;--gray:#A09E9C;--gray-light:#2D2D2D;--gray-border:#3D3D3D;--text-primary:#E0E0E0;--text-secondary:#B0B0B0;--white:#1E1E1E;--bg:#121212;--shadow:0 1px 3px rgba(0,0,0,.3);--blue:#4FC3F7}
 html,body{height:100%;font-family:'Segoe UI',-apple-system,system-ui,sans-serif;font-size:14px;color:var(--text-primary);background:var(--bg)}
 .app{display:flex;flex-direction:column;height:100vh;overflow:hidden}
-/* HEADER */
 .header{height:var(--header-h);background:var(--white);border-bottom:1px solid var(--gray-border);display:flex;align-items:center;padding:0 20px;gap:12px;flex-shrink:0;z-index:100}
 .header .logo{width:28px;height:28px;background:var(--primary);border-radius:4px;display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:14px;flex-shrink:0}
 .header h1{font-size:15px;font-weight:600;flex-shrink:0}
@@ -20,6 +19,7 @@ html,body{height:100%;font-family:'Segoe UI',-apple-system,system-ui,sans-serif;
 .dept-select label{font-size:12px;font-weight:600;color:var(--text-secondary);white-space:nowrap}
 .dept-select select{padding:5px 10px;border:1px solid var(--gray-border);border-radius:4px;font-size:13px;background:var(--white);color:var(--text-primary);outline:none;cursor:pointer}
 .dept-select select:focus{border-color:var(--primary)}
+.dept-select select:disabled{opacity:.5;cursor:not-allowed}
 .auth-area{display:flex;align-items:center;gap:8px;flex-shrink:0}
 .auth-area .user-name{font-size:12px;color:var(--text-secondary);white-space:nowrap}
 .auth-btn{padding:5px 14px;border-radius:4px;font-size:12px;font-weight:600;cursor:pointer;border:none;transition:all .15s}
@@ -27,7 +27,6 @@ html,body{height:100%;font-family:'Segoe UI',-apple-system,system-ui,sans-serif;
 .auth-btn.login:hover{background:var(--primary-dark)}
 .auth-btn.logout{background:var(--red-light);color:var(--red);border:1px solid var(--red)}
 .auth-btn.logout:hover{background:var(--red);color:white}
-/* TOOLBAR */
 .toolbar{display:flex;align-items:center;gap:10px;padding:12px 20px;background:var(--white);border-bottom:1px solid var(--gray-border);flex-wrap:wrap;flex-shrink:0}
 .toolbar .search-box{flex:1;min-width:200px;position:relative}
 .toolbar .search-box input{width:100%;padding:7px 12px 7px 32px;border:1px solid var(--gray-border);border-radius:20px;font-size:13px;outline:none;background:var(--bg);color:var(--text-primary)}
@@ -41,9 +40,8 @@ html,body{height:100%;font-family:'Segoe UI',-apple-system,system-ui,sans-serif;
 .toolbar .btn-outline{background:transparent;border:1px solid var(--gray-border);color:var(--text-primary)}
 .toolbar .btn-outline:hover{background:var(--gray-light)}
 .toolbar .count-badge{font-size:12px;color:var(--text-secondary);padding:3px 10px;background:var(--gray-light);border-radius:10px;white-space:nowrap}
-/* MAIN LAYOUT */
+.toolbar .status-msg{font-size:11px;color:var(--text-secondary);padding:3px 10px;background:var(--yellow-light);border-radius:10px;display:none;white-space:nowrap}
 .main{display:flex;flex:1;overflow:hidden}
-/* RESULTS TABLE */
 .results-panel{flex:1;display:flex;flex-direction:column;overflow:hidden}
 .results-panel .table-wrap{flex:1;overflow:auto;padding:0 20px 20px}
 .results-panel table{width:100%;border-collapse:collapse;font-size:12px}
@@ -56,7 +54,6 @@ html,body{height:100%;font-family:'Segoe UI',-apple-system,system-ui,sans-serif;
 .results-panel .empty-state .icon{font-size:48px;margin-bottom:12px}
 .results-panel .empty-state h3{font-size:16px;font-weight:600;margin-bottom:4px;color:var(--text-primary)}
 .results-panel .empty-state p{font-size:13px}
-/* FORM PANEL */
 .form-panel{width:420px;max-width:90vw;background:var(--white);border-left:1px solid var(--gray-border);display:flex;flex-direction:column;overflow:hidden;flex-shrink:0;transition:width .3s}
 .form-panel.hidden{width:0;min-width:0;border-left:none;overflow:hidden}
 .form-panel .form-header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--gray-border);flex-shrink:0}
@@ -64,7 +61,7 @@ html,body{height:100%;font-family:'Segoe UI',-apple-system,system-ui,sans-serif;
 .form-panel .form-close{background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-secondary);padding:2px 6px;border-radius:4px}
 .form-panel .form-close:hover{background:var(--gray-light)}
 .form-panel .form-body{flex:1;overflow-y:auto;padding:12px 16px 16px}
-.form-panel .form-footer{display:flex;gap:8px;padding:12px 16px;border-top:1px solid var(--gray-border);flex-shrink:0;justify-content:flex-end}
+.form-panel .form-footer{display:flex;gap:8px;padding:12px 16px;border-top:1px solid var(--gray-border);flex-shrink:0;justify-content:flex-end;align-items:center}
 .form-panel .form-footer .btn{padding:7px 20px;border-radius:4px;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:all .15s}
 .form-panel .form-footer .btn-primary{background:var(--primary);color:white}
 .form-panel .form-footer .btn-primary:hover{background:var(--primary-dark)}
@@ -73,7 +70,6 @@ html,body{height:100%;font-family:'Segoe UI',-apple-system,system-ui,sans-serif;
 .form-panel .form-footer .btn-danger:hover{background:#b71c1c}
 .form-panel .form-footer .btn-outline{background:transparent;border:1px solid var(--gray-border);color:var(--text-primary)}
 .form-panel .form-footer .btn-outline:hover{background:var(--gray-light)}
-/* FORM FIELDS */
 .form-group{margin-bottom:14px}
 .form-group label{display:block;font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:3px}
 .form-group .required::after{content:' *';color:var(--red)}
@@ -82,28 +78,26 @@ html,body{height:100%;font-family:'Segoe UI',-apple-system,system-ui,sans-serif;
 .form-group textarea{resize:vertical;min-height:60px}
 .form-group .hint{font-size:11px;color:var(--text-secondary);margin-top:2px}
 .form-group input[type=date]{padding:6px 10px}
-.form-group .field-row{display:flex;gap:8px}
-.form-group .field-row>*{flex:1}
-/* SAVED STATUS */
+.form-group .chk-group{display:flex;flex-wrap:wrap;gap:6px}
+.form-group .chk-group label{display:flex;align-items:center;gap:4px;font-weight:400;font-size:12px;cursor:pointer;padding:3px 8px;border:1px solid var(--gray-border);border-radius:4px;transition:all .1s}
+.form-group .chk-group label:hover{background:var(--gray-light)}
+.form-group .chk-group input[type=checkbox]{width:auto;margin:0;cursor:pointer}
+.form-group .chk-group label.selected{background:var(--primary-light);border-color:var(--primary);color:var(--primary)}
 .save-status{padding:4px 12px;border-radius:4px;font-size:12px;font-weight:600;display:none}
 .save-status.saving{display:inline-block;background:var(--yellow-light);color:#8A6D00}
 .save-status.saved{display:inline-block;background:var(--green-light);color:var(--green)}
 .save-status.error{display:inline-block;background:var(--red-light);color:var(--red)}
-/* LOADING OVERLAY */
 .loading-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.15);z-index:500;align-items:center;justify-content:center}
 .loading-overlay.show{display:flex}
 .loading-overlay .spinner{width:40px;height:40px;border:4px solid var(--gray-border);border-top-color:var(--primary);border-radius:50%;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
-/* TOAST */
 .toast{position:fixed;bottom:24px;right:24px;padding:12px 20px;border-radius:6px;font-size:13px;font-weight:600;z-index:600;box-shadow:0 4px 16px rgba(0,0,0,.15);display:none;animation:slideUp .3s ease}
 .toast.show{display:block}
 .toast.success{background:var(--green);color:white}
 .toast.error{background:var(--red);color:white}
 @keyframes slideUp{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
-/* CONFIG PANEL */
 .dark-toggle{background:none;border:none;font-size:18px;cursor:pointer;padding:4px;border-radius:50%;color:var(--text-primary);transition:background .15s;line-height:1}
 .dark-toggle:hover{background:var(--gray-light)}
-/* RESPONSIVE */
 @media(max-width:768px){
   .main{flex-direction:column}
   .form-panel{width:100%;border-left:none;border-top:1px solid var(--gray-border);max-height:60vh}
@@ -111,17 +105,10 @@ html,body{height:100%;font-family:'Segoe UI',-apple-system,system-ui,sans-serif;
   .toolbar{flex-wrap:wrap}
   .header h1{font-size:13px}
 }
-/* FIELD TYPE HINTS */
-.form-group .chk-group{display:flex;flex-wrap:wrap;gap:6px}
-.form-group .chk-group label{display:flex;align-items:center;gap:4px;font-weight:400;font-size:12px;cursor:pointer;padding:3px 8px;border:1px solid var(--gray-border);border-radius:4px;transition:all .1s}
-.form-group .chk-group label:hover{background:var(--gray-light)}
-.form-group .chk-group input[type=checkbox]{width:auto;margin:0;cursor:pointer}
-.form-group .chk-group label.selected{background:var(--primary-light);border-color:var(--primary);color:var(--primary)}
 </style>
 </head>
 <body>
 <div class="app">
-  <!-- HEADER -->
   <header class="header">
     <div class="logo">AE</div>
     <h1>Data Entry Forms</h1>
@@ -137,28 +124,24 @@ html,body{height:100%;font-family:'Segoe UI',-apple-system,system-ui,sans-serif;
       <button class="auth-btn logout" id="logout-btn" onclick="logoutSP()" style="display:none">Sign Out</button>
     </div>
   </header>
-
-  <!-- TOOLBAR -->
   <div class="toolbar">
     <div class="search-box">
       <span class="icon">🔍</span>
       <input type="text" id="search-input" placeholder="Search items..." oninput="onSearch()">
     </div>
     <span class="count-badge" id="result-count">0 items</span>
-    <button class="btn btn-success" onclick="startCreate()">+ New Item</button>
-    <button class="btn btn-outline" onclick="refreshItems()">🔄 Refresh</button>
+    <button class="btn btn-success" onclick="startCreate()" id="btn-new" style="display:none">+ New Item</button>
+    <button class="btn btn-outline" onclick="refreshItems()" id="btn-refresh" style="display:none">🔄 Refresh</button>
+    <span class="status-msg" id="status-msg"></span>
     <button class="btn btn-outline" onclick="showConfig()">⚙️ Config</button>
   </div>
-
-  <!-- MAIN -->
   <div class="main">
-    <!-- RESULTS -->
     <div class="results-panel">
       <div class="table-wrap" id="table-wrap">
         <div class="empty-state" id="empty-state">
-          <div class="icon">📋</div>
-          <h3>Select a department</h3>
-          <p>Choose a department above to load items from SharePoint.</p>
+          <div class="icon" id="empty-icon">📋</div>
+          <h3 id="empty-title">Welcome</h3>
+          <p id="empty-msg">Sign in with your Microsoft account, then select a department to get started.</p>
         </div>
         <table id="results-table" style="display:none">
           <thead id="table-head"></thead>
@@ -166,8 +149,6 @@ html,body{height:100%;font-family:'Segoe UI',-apple-system,system-ui,sans-serif;
         </table>
       </div>
     </div>
-
-    <!-- FORM PANEL -->
     <div class="form-panel hidden" id="form-panel">
       <div class="form-header">
         <h3 id="form-title">New Item</h3>
@@ -182,65 +163,95 @@ html,body{height:100%;font-family:'Segoe UI',-apple-system,system-ui,sans-serif;
     </div>
   </div>
 </div>
-
-<!-- LOADING -->
 <div class="loading-overlay" id="loading"><div class="spinner"></div></div>
-
-<!-- TOAST -->
 <div class="toast" id="toast"></div>
 
 <script>
 const storage = localStorage;
 
-// ======================== DEPARTMENTS ========================
 const DEPTS = [
-  { id:'construction',    title:'Construction',    site:'https://sascontractingsa.sharepoint.com/sites/Alenshaiah', list:'Maseel Activity' },
-  { id:'engineering',     title:'Engineering',     site:'https://sascontractingsa.sharepoint.com/sites/Alenshaiah', list:'Shop Drawing Status' },
-  { id:'procurement',     title:'Procurement',     site:'https://sascontractingsa.sharepoint.com/sites/Alenshaiah', list:'Procurement_Tracker Log' },
-  { id:'cost',            title:'Cost Control',    site:'https://sascontractingsa.sharepoint.com/sites/Alenshaiah', list:'Construction Cost' },
-  { id:'planning',        title:'Planning',        site:'https://sascontractingsa.sharepoint.com/sites/Alenshaiah', list:'Planning Tracker' },
-  { id:'qaqc',            title:'QA/QC',           site:'https://sascontractingsa.sharepoint.com/sites/Alenshaiah', list:'QA QC Tracker' },
-  { id:'hse',             title:'HSE',             site:'https://sascontractingsa.sharepoint.com/sites/Alenshaiah', list:'HSE Tracker' }
+  { id:'construction', title:'Construction', site:'https://sascontractingsa.sharepoint.com/sites/Alenshaiah', list:'Maseel Activity' },
+  { id:'engineering',  title:'Engineering',  site:'https://sascontractingsa.sharepoint.com/sites/Alenshaiah', list:'Shop Drawing Status' },
+  { id:'procurement',  title:'Procurement',  site:'https://sascontractingsa.sharepoint.com/sites/Alenshaiah', list:'Procurement_Tracker Log' },
+  { id:'cost',         title:'Cost Control', site:'https://sascontractingsa.sharepoint.com/sites/Alenshaiah', list:'Construction Cost' },
+  { id:'planning',     title:'Planning',     site:'https://sascontractingsa.sharepoint.com/sites/Alenshaiah', list:'Planning Tracker' },
+  { id:'qaqc',         title:'QA/QC',        site:'https://sascontractingsa.sharepoint.com/sites/Alenshaiah', list:'QA QC Tracker' },
+  { id:'hse',          title:'HSE',          site:'https://sascontractingsa.sharepoint.com/sites/Alenshaiah', list:'HSE Tracker' }
 ];
 
 let currentDept = null;
 let allItems = [];
 let filteredItems = [];
 let selectedItem = null;
-let editingId = null; // null = create mode, string = edit mode
-let columnDefs = []; // fetched schema columns
+let editingId = null;
+let columnDefs = [];
 let renameMap = {};
 
-// ======================== MSAL / SSO ========================
-const SP_SCOPES = ['Sites.ReadWrite.All', 'User.Read'];
+// MSAL
+const SP_SCOPES = ['Sites.ReadWrite.All','User.Read'];
 let msalApp = null;
 let spToken = null;
 let spUser = null;
 
+// ======================== HELPERS ========================
+function showToast(msg,type){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.className='toast '+type+' show';
+  setTimeout(()=>t.classList.remove('show'),3000);
+}
+
+function setLoading(on){
+  document.getElementById('loading').classList.toggle('show',on);
+}
+
+function setEmpty(icon,title,msg){
+  const es=document.getElementById('empty-state');
+  es.style.display='';
+  document.getElementById('results-table').style.display='none';
+  document.getElementById('empty-icon').textContent=icon||'📋';
+  document.getElementById('empty-title').textContent=title||'';
+  document.getElementById('empty-msg').textContent=msg||'';
+}
+
+function setStatusMsg(msg,isError){
+  const el=document.getElementById('status-msg');
+  el.textContent=msg||'';
+  el.style.display=msg?'':'none';
+  el.style.background=isError?'var(--red-light)':'var(--yellow-light)';
+  el.style.color=isError?'var(--red)':'#8A6D00';
+}
+
+// ======================== AUTH ========================
 function initMsal(){
-  const tenant = storage.getItem('pmt-tenant') || 'f1be5251-1f84-4f1e-810d-7e4aa54b85ab';
-  const client = storage.getItem('pmt-client') || '19e206ad-91a0-4d20-9351-59db5fb08f1d';
+  const tenant=storage.getItem('pmt-tenant')||'f1be5251-1f84-4f1e-810d-7e4aa54b85ab';
+  const client=storage.getItem('pmt-client')||'19e206ad-91a0-4d20-9351-59db5fb08f1d';
   if(!tenant||!client) return false;
-  const redirectUri = location.origin + location.pathname;
-  msalApp = new msal.PublicClientApplication({
-    auth:{ clientId:client, authority:'https://login.microsoftonline.com/'+tenant, redirectUri },
-    cache:{ cacheLocation:'localStorage' },
-    system:{ allowNativeBroker:false, loggerOptions:{ loggerCallback:()=>{}, piiLoggingEnabled:false } }
-  });
-  return true;
+  try{
+    msalApp = new msal.PublicClientApplication({
+      auth:{ clientId:client, authority:'https://login.microsoftonline.com/'+tenant, redirectUri:location.origin+location.pathname },
+      cache:{ cacheLocation:'localStorage' },
+      system:{ allowNativeBroker:false, loggerOptions:{ loggerCallback:()=>{}, piiLoggingEnabled:false } }
+    });
+    return true;
+  }catch(e){
+    console.error('MSAL init failed:',e);
+    return false;
+  }
 }
 
 async function loginSP(){
-  if(!initMsal()){ showToast('Azure AD not configured. Check ⚙️ Config.','error'); return; }
-  msalApp.loginRedirect({ scopes: SP_SCOPES });
+  if(location.protocol==='file:'){ showToast('Cannot sign in from file://. Use a web server or GitHub Pages.','error'); return; }
+  if(typeof msal==='undefined'){ showToast('MSAL library not loaded (CDN blocked?). Check network.','error'); return; }
+  if(!initMsal()){ showToast('Azure AD not configured. Click ⚙️ Config.','error'); return; }
+  try{ msalApp.loginRedirect({ scopes: SP_SCOPES }); }
+  catch(e){ showToast('Login failed: '+e.message,'error'); }
 }
 
 async function getTokenSP(){
   if(!msalApp||!spUser) return null;
   try{
     const resp = await msalApp.acquireTokenSilent({ scopes: SP_SCOPES, account: spUser });
-    spToken = resp.accessToken;
-    return spToken;
+    spToken = resp.accessToken; return spToken;
   }catch(e){
     if(spToken) return spToken;
     return null;
@@ -248,9 +259,9 @@ async function getTokenSP(){
 }
 
 function logoutSP(){
-  spToken = null; spUser = null;
+  spToken=null; spUser=null;
   if(msalApp) msalApp.logoutRedirect();
-  updateAuthUI();
+  updateAuthUI(); onDeptChange();
 }
 
 function updateAuthUI(){
@@ -274,130 +285,83 @@ function toggleDark(){
   storage.setItem('forms-dark',document.body.classList.contains('dark')?'1':'');
 }
 
-// ======================== TOAST & LOADING ========================
-function showToast(msg,type){
-  const t=document.getElementById('toast');
-  t.textContent=msg; t.className='toast '+type+' show';
-  setTimeout(()=>t.classList.remove('show'),3000);
-}
-
-function setLoading(on){
-  document.getElementById('loading').classList.toggle('show',on);
-}
-
 // ======================== SHAREPOINT API ========================
 function siteToGraphPath(siteUrl){
   const u=new URL(siteUrl);
   return u.hostname+':'+u.pathname.replace(/\/+$/,'');
 }
-
 function graphListUrl(siteUrl,listName){
-  const path=siteToGraphPath(siteUrl);
-  return `https://graph.microsoft.com/v1.0/sites/${path}:/lists/${encodeURIComponent(listName)}`;
+  return `https://graph.microsoft.com/v1.0/sites/${siteToGraphPath(siteUrl)}:/lists/${encodeURIComponent(listName)}`;
 }
-
-function graphListItemsUrl(siteUrl,listName){
-  return graphListUrl(siteUrl,listName)+`/items?$top=5000&expand=fields`;
-}
-
 function graphListColumnsUrl(siteUrl,listName){
   return graphListUrl(siteUrl,listName)+'/columns';
 }
-
+function graphListItemsUrl(siteUrl,listName){
+  return graphListUrl(siteUrl,listName)+'/items?$top=5000&expand=fields';
+}
 function graphItemFieldsUrl(siteUrl,listName,itemId){
   return graphListUrl(siteUrl,listName)+`/items/${itemId}/fields`;
 }
 
 const SKIP_COLS = new Set(['ID','ContentType','Modified','Created','AuthorLookupId','EditorLookupId','_UIVersionString','Attachments','Edit','LinkTitleNoMenu','LinkTitle','ItemChildCount','FolderChildCount','_ComplianceFlags','_ComplianceTag','_ComplianceTagWrittenTime','_ComplianceTagUserId','AppAuthorLookupId','AppEditorLookupId','@odata.etag']);
 
-const TEXTUAL_TYPES = new Set(['note','text','choice','multiChoice','location','url','thumbnail','contentApproval']);
+async function apiCall(url,method,body){
+  const opts={method:method||'GET',headers:{'Authorization':'Bearer '+spToken,'Accept':'application/json'}};
+  if(body){opts.headers['Content-Type']='application/json'; opts.body=JSON.stringify(body);}
+  const resp=await fetch(url,opts);
+  if(!resp.ok){
+    const txt=await resp.text().catch(()=>'');
+    throw new Error(`HTTP ${resp.status}: ${txt.substring(0,200)}`);
+  }
+  return await resp.json();
+}
 
 async function fetchColumnDefinitions(siteUrl,listName){
-  const url=graphListColumnsUrl(siteUrl,listName);
-  const resp=await fetch(url,{headers:{'Authorization':'Bearer '+spToken,'Accept':'application/json'}});
-  if(!resp.ok) return [];
-  const json=await resp.json();
+  const json=await apiCall(graphListColumnsUrl(siteUrl,listName));
   const cols=[];
   (json.value||[]).forEach(col=>{
     const n=col.name;
     if(!n||SKIP_COLS.has(n)||n.startsWith('_')||col.readOnly||col.hidden)return;
-    let type='text', choices=null, subfields=null;
+    let type='text',choices=null;
     if(col.text)type='text';
     else if(col.note)type='note';
-    else if(col.choice){type='choice'; choices=col.choice.choices||[];}
+    else if(col.choice){type='choice';choices=col.choice.choices||[];}
     else if(col.number)type='number';
     else if(col.currency)type='currency';
-    else if(col.dateTime){type='date';}
+    else if(col.dateTime)type='date';
     else if(col.boolean)type='boolean';
-    else if(col.lookup){type='lookup';}
+    else if(col.lookup)type='lookup';
     else if(col.personOrGroup)type='person';
     else if(col.taxonomy)type='taxonomy';
-    else continue;
-    cols.push({
-      name:n,
-      displayName:col.displayName||n,
-      type,
-      choices,
-      required:col.required||false,
-      description:col.description||'',
-      indexed:col.indexed||false
-    });
+    else return;
+    cols.push({name:n,displayName:col.displayName||n,type,choices,required:col.required||false,description:col.description||''});
   });
   return cols;
 }
 
 async function fetchSPItems(siteUrl,listName){
-  const url=graphListItemsUrl(siteUrl,listName);
-  const resp=await fetch(url,{headers:{'Authorization':'Bearer '+spToken,'Accept':'application/json'}});
-  if(!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
-  const json=await resp.json();
+  const json=await apiCall(graphListItemsUrl(siteUrl,listName));
   return (json.value||[]).map(item=>{
     const fields={};
     for(const [k,v] of Object.entries(item.fields||{})){
       const dn=renameMap[k]||k;
       fields[dn]=v;
-      if(dn!==k)fields[k]=v; // keep both display & internal name
+      if(dn!==k)fields[k]=v;
     }
-    return {...fields, _id:item.id, _etag:item?.fields?.['@odata.etag']||''};
+    return {...fields,_id:item.id,_etag:item?.fields?.['@odata.etag']||''};
   });
 }
 
-async function createSPItem(siteUrl,listName,fields){
-  const url=graphListUrl(siteUrl,listName)+'/items';
+async function createSPItem(siteUrl,listName,itemFields){
   const body={fields:{}};
-  for(const [k,v] of Object.entries(fields)){
-    if(k.startsWith('_'))continue;
-    body.fields[k]=v;
-  }
-  const resp=await fetch(url,{
-    method:'POST',
-    headers:{'Authorization':'Bearer '+spToken,'Content-Type':'application/json','Accept':'application/json'},
-    body:JSON.stringify(body)
-  });
-  if(!resp.ok){
-    const txt=await resp.text().catch(()=>'');
-    throw new Error(`HTTP ${resp.status}: ${resp.statusText}. ${txt.substring(0,200)}`);
-  }
-  return await resp.json();
+  for(const [k,v] of Object.entries(itemFields)){if(!k.startsWith('_'))body.fields[k]=v;}
+  return await apiCall(graphListUrl(siteUrl,listName)+'/items','POST',body);
 }
 
-async function updateSPItem(siteUrl,listName,itemId,fields){
-  const url=graphItemFieldsUrl(siteUrl,listName,itemId);
+async function updateSPItem(siteUrl,listName,itemId,itemFields){
   const body={};
-  for(const [k,v] of Object.entries(fields)){
-    if(k.startsWith('_'))continue;
-    body[k]=v;
-  }
-  const resp=await fetch(url,{
-    method:'PATCH',
-    headers:{'Authorization':'Bearer '+spToken,'Content-Type':'application/json','Accept':'application/json'},
-    body:JSON.stringify(body)
-  });
-  if(!resp.ok){
-    const txt=await resp.text().catch(()=>'');
-    throw new Error(`HTTP ${resp.status}: ${resp.statusText}. ${txt.substring(0,200)}`);
-  }
-  return await resp.json();
+  for(const [k,v] of Object.entries(itemFields)){if(!k.startsWith('_'))body[k]=v;}
+  return await apiCall(graphItemFieldsUrl(siteUrl,listName,itemId),'PATCH',body);
 }
 
 // ======================== DEPT MANAGEMENT ========================
@@ -405,56 +369,57 @@ function initDeptSelect(){
   const sel=document.getElementById('dept-select');
   sel.innerHTML='<option value="">— Select Department —</option>'+DEPTS.map(d=>`<option value="${d.id}">${d.title}</option>`).join('');
   const saved=storage.getItem('forms-last-dept');
-  if(saved){sel.value=saved; if(saved)onDeptChange();}
+  if(saved&&DEPTS.find(d=>d.id===saved)){sel.value=saved; onDeptChange();}
 }
 
 async function onDeptChange(){
   const id=document.getElementById('dept-select').value;
-  if(!id){currentDept=null; showEmpty(); return;}
+  document.getElementById('btn-new').style.display='none';
+  document.getElementById('btn-refresh').style.display='none';
+  document.getElementById('form-panel').classList.add('hidden');
+  selectedItem=null; editingId=null;
+  if(!id){currentDept=null; setEmpty('📋','Select a department','Choose a department above to load items from SharePoint.'); return;}
   currentDept=DEPTS.find(d=>d.id===id);
   storage.setItem('forms-last-dept',id);
   if(!spToken||!spUser){
-    showEmpty('🔒 Sign in required','Please sign in with your Microsoft account to access SharePoint.');
+    setEmpty('🔒','Sign in required','Sign in with your Microsoft account above, then select this department again.');
     return;
   }
-  await loadDeptColumns();
+  await loadDeptData();
 }
 
-async function loadDeptColumns(){
+async function loadDeptData(){
   if(!currentDept)return;
   setLoading(true);
+  setStatusMsg('Loading schema...');
   try{
-    const dept=currentDept;
-    columnDefs=[];
-    renameMap={};
-    const cols=await fetchColumnDefinitions(dept.site,dept.list);
+    columnDefs=[]; renameMap={};
+    const cols=await fetchColumnDefinitions(currentDept.site,currentDept.list);
     columnDefs=cols;
     cols.forEach(c=>{if(c.name!==c.displayName)renameMap[c.name]=c.displayName;});
-    document.getElementById('form-panel').classList.add('hidden');
-    selectedItem=null; editingId=null;
-    await loadItems();
-    renderTable();
+    setStatusMsg('Loading items ('+cols.length+' columns)...');
+    allItems=await fetchSPItems(currentDept.site,currentDept.list);
+    filteredItems=[...allItems];
+    setStatusMsg('');
+    document.getElementById('btn-new').style.display='';
+    document.getElementById('btn-refresh').style.display='';
+    onSearch();
   }catch(e){
-    console.error('Failed to load columns:',e);
-    showEmpty('❌ Connection failed',e.message);
+    console.error('loadDeptData:',e);
+    setStatusMsg('Error: '+e.message,true);
+    setEmpty('❌','Failed to load data',e.message);
   }
   setLoading(false);
-}
-
-async function loadItems(){
-  if(!currentDept)return;
-  allItems=await fetchSPItems(currentDept.site,currentDept.list);
-  filteredItems=[...allItems];
-  onSearch();
 }
 
 async function refreshItems(){
   if(!currentDept||!spToken)return;
   setLoading(true);
   try{
-    await loadItems();
-    renderTable();
-    showToast('Items refreshed','success');
+    allItems=await fetchSPItems(currentDept.site,currentDept.list);
+    filteredItems=[...allItems];
+    onSearch();
+    showToast('Refreshed: '+allItems.length+' items','success');
   }catch(e){showToast('Refresh failed: '+e.message,'error');}
   setLoading(false);
 }
@@ -462,72 +427,36 @@ async function refreshItems(){
 // ======================== SEARCH ========================
 function onSearch(){
   const q=document.getElementById('search-input').value.trim().toLowerCase();
-  if(!q){filteredItems=[...allItems];}
-  else{
-    filteredItems=allItems.filter(item=>{
-      for(const v of Object.values(item)){
-        if(v&&String(v).toLowerCase().includes(q))return true;
-      }
-      return false;
-    });
-  }
+  filteredItems=q?allItems.filter(item=>{for(const v of Object.values(item)){if(v&&String(v).toLowerCase().includes(q))return true;}return false;}):[...allItems];
   renderTable();
 }
 
-// ======================== TABLE RENDER ========================
-function showEmpty(icon,msg){
-  const es=document.getElementById('empty-state');
-  es.style.display='';
-  const t=document.getElementById('results-table');
-  t.style.display='none';
-  if(icon)es.querySelector('h3').textContent=icon;
-  if(msg)es.querySelector('p').textContent=msg;
-  document.getElementById('result-count').textContent='0 items';
-}
-
+// ======================== TABLE ========================
 function renderTable(){
-  const es=document.getElementById('empty-state');
-  const tbl=document.getElementById('results-table');
-  const thead=document.getElementById('table-head');
-  const tbody=document.getElementById('table-body');
-  const rc=document.getElementById('result-count');
-
   if(!currentDept||filteredItems.length===0){
-    es.style.display='';
-    tbl.style.display='none';
-    rc.textContent='0 items';
-    if(currentDept){
-      es.querySelector('h3').textContent='🔍 No results';
-      es.querySelector('p').textContent='Try a different search or add a new item.';
-    }
+    if(currentDept)setEmpty('🔍','No results','Try a different search or click + New Item.');
+    else setEmpty('📋','Select a department','Choose a department above.');
+    document.getElementById('result-count').textContent='0 items';
     return;
   }
+  document.getElementById('empty-state').style.display='none';
+  document.getElementById('results-table').style.display='';
+  document.getElementById('result-count').textContent=filteredItems.length+' items';
 
-  es.style.display='none';
-  tbl.style.display='';
-
-  // Determine columns to show
-  const shownCols=columnDefs.filter(c=>!SKIP_COLS.has(c.name)&&c.name!=='Title'&&c.name!=='_id'&&c.name!=='_etag').slice(0,12);
-  // Always include Title
+  const shownCols=columnDefs.filter(c=>!SKIP_COLS.has(c.name)&&c.name!=='Title').slice(0,12);
   const titleCol=columnDefs.find(c=>c.name==='Title');
   if(titleCol&&!shownCols.includes(titleCol))shownCols.unshift(titleCol);
 
-  rc.textContent=filteredItems.length+' items';
+  document.getElementById('table-head').innerHTML='<tr><th style="width:30px">#</th>'+shownCols.map(c=>`<th>${c.displayName}</th>`).join('')+'<th style="width:50px"></th></tr>';
 
-  thead.innerHTML='<tr><th style="width:30px">#</th>'+shownCols.map(c=>`<th>${c.displayName}</th>`).join('')+'<th style="width:50px"></th></tr>';
-
-  tbody.innerHTML=filteredItems.map((item,i)=>{
+  document.getElementById('table-body').innerHTML=filteredItems.map((item,i)=>{
     const isSel=selectedItem&&item._id===selectedItem._id;
     return `<tr class="${isSel?'selected':''}" onclick="selectItem(${i})">
       <td style="color:var(--text-secondary)">${i+1}</td>
       ${shownCols.map(c=>{
-        const colKey=c.displayName||c.name;
-        let v=item[colKey]!==undefined?item[colKey]:'';
-        if(v&&typeof v==='object'){
-          if(v.LookupValue!==undefined)v=v.LookupValue;
-          else if(v.Title!==undefined)v=v.Title;
-          else v=JSON.stringify(v).substring(0,50);
-        }
+        const lookup=c.displayName||c.name;
+        let v=item[lookup]!==undefined?item[lookup]:'';
+        if(v&&typeof v==='object'){v=v.LookupValue||v.Title||v.Email||JSON.stringify(v).substring(0,50);}
         if(c.type==='boolean')v=v?'✓':'';
         const s=String(v);
         return `<td title="${s.replace(/"/g,'&quot;')}">${s.substring(0,80)}</td>`;
@@ -537,132 +466,92 @@ function renderTable(){
   }).join('');
 }
 
-// ======================== SELECT / EDIT / CREATE ========================
+// ======================== SELECT / CREATE / EDIT / FORM ========================
 function selectItem(idx){
   if(idx<0||idx>=filteredItems.length)return;
-  selectedItem=filteredItems[idx];
-  renderTable();
+  selectedItem=filteredItems[idx]; renderTable();
 }
 
 function startEdit(idx){
   if(idx<0||idx>=filteredItems.length)return;
-  selectedItem=filteredItems[idx];
-  renderTable();
+  selectedItem=filteredItems[idx]; renderTable();
   editingId=selectedItem._id;
   openForm('Edit Item',selectedItem);
 }
 
 function startCreate(){
-  editingId=null;
-  selectedItem=null;
-  renderTable();
+  editingId=null; selectedItem=null; renderTable();
   openForm('New Item',{});
 }
 
 function openForm(title,data){
   document.getElementById('form-title').textContent=title;
   const body=document.getElementById('form-body');
-  const isEdit=!!editingId;
-  const isCreate=!editingId;
-
-  // Build fields from column defs
-  let html='';
-  // Fields to skip from form
   const skipForm=new Set(['_id','_etag','ID','ContentType','AppAuthor','AppEditor','Author','Editor','Created','Modified']);
-  
+  let html='';
   columnDefs.forEach(c=>{
     if(skipForm.has(c.name))return;
-    const colKey=c.displayName||c.name;
-    const val=data[colKey]!==undefined&&data[colKey]!==null?data[colKey]:data[c.name]!==undefined?data[c.name]:'';
-    let vDisplay=val;
-    if(val&&typeof val==='object'){
-      if(val.LookupValue!==undefined)vDisplay=val.LookupValue;
-      else if(val.Title!==undefined)vDisplay=val.Title;
-      else if(val.Email!==undefined)vDisplay=val.Email;
-      else vDisplay='';
-    }
+    const lookup=c.displayName||c.name;
+    let raw=data[lookup]!==undefined&&data[lookup]!==null?data[lookup]:data[c.name]!==undefined?data[c.name]:'';
+    let vDisplay=raw;
+    if(raw&&typeof raw==='object'){vDisplay=raw.LookupValue||raw.Title||raw.Email||'';}
     const req=c.required?' required':'';
     const reqStar=c.required?' class="required"':'';
     const desc=c.description?`<div class="hint">${c.description}</div>`:'';
-    const fid='fld-'+c.name.replace(/[^a-zA-Z0-9_-]/g,'_');
-    
+    const fid='f_'+c.name.replace(/[^a-zA-Z0-9_-]/g,'_');
     html+=`<div class="form-group"><label for="${fid}"${reqStar}>${c.displayName}</label>${desc}`;
-    
     switch(c.type){
       case 'choice':
         html+=`<select id="${fid}"${req}>`;
         if(!c.required)html+=`<option value="">—</option>`;
-        (c.choices||[]).forEach(ch=>{
-          const sel=String(vDisplay)===String(ch)?' selected':'';
-          html+=`<option value="${ch.replace(/"/g,'&quot;')}"${sel}>${ch}</option>`;
-        });
-        html+=`</select>`;
-        break;
-      case 'multiChoice':
+        (c.choices||[]).forEach(ch=>{html+=`<option value="${ch.replace(/"/g,'&quot;')}"${String(vDisplay)===String(ch)?' selected':''}>${ch}</option>`;});
+        html+=`</select>`; break;
+      case 'multiChoice':{
         const vals=new Set(String(vDisplay).split(';').map(s=>s.trim()).filter(Boolean));
         html+=`<div class="chk-group" id="${fid}">`;
-        (c.choices||[]).forEach(ch=>{
-          const checked=vals.has(ch)?' checked':'';
-          html+=`<label class="${checked?'selected':''}"><input type="checkbox" value="${ch.replace(/"/g,'&quot;')}"${checked} onchange="this.parentElement.classList.toggle('selected')"> ${ch}</label>`;
-        });
-        html+=`</div>`;
-        break;
+        (c.choices||[]).forEach(ch=>{const ck=vals.has(ch)?' checked':'';html+=`<label class="${ck?'selected':''}"><input type="checkbox" value="${ch.replace(/"/g,'&quot;')}"${ck} onchange="this.parentElement.classList.toggle('selected')"> ${ch}</label>`;});
+        html+=`</div>`; break;
+      }
       case 'boolean':
-        html+=`<select id="${fid}"><option value="">—</option><option value="1"${vDisplay===true||vDisplay==='1'||vDisplay==='Yes'?' selected':''}>Yes</option><option value="0"${vDisplay===false||vDisplay==='0'||vDisplay==='No'?' selected':''}>No</option></select>`;
-        break;
-      case 'date':
+        html+=`<select id="${fid}"><option value="">—</option><option value="1"${vDisplay===true||vDisplay==='1'||vDisplay==='Yes'?' selected':''}>Yes</option><option value="0"${vDisplay===false||vDisplay==='0'||vDisplay==='No'?' selected':''}>No</option></select>`; break;
+      case 'date':{
         let dval='';
-        if(vDisplay){
-          const d=new Date(vDisplay);
-          if(!isNaN(d))dval=d.toISOString().split('T')[0];
-        }
-        html+=`<input type="date" id="${fid}" value="${dval}"${req}>`;
-        break;
-      case 'number':
-      case 'currency':
-        html+=`<input type="number" id="${fid}" value="${vDisplay}" step="${c.type==='currency'?'0.01':'1'}"${req}>`;
-        break;
+        if(vDisplay){const d=new Date(vDisplay);if(!isNaN(d))dval=d.toISOString().split('T')[0];}
+        html+=`<input type="date" id="${fid}" value="${dval}"${req}>`; break;
+      }
+      case 'number': case 'currency':
+        html+=`<input type="number" id="${fid}" value="${vDisplay}" step="${c.type==='currency'?'0.01':'1'}"${req}>`; break;
       case 'note':
-        html+=`<textarea id="${fid}"${req}>${String(vDisplay)}</textarea>`;
-        break;
-      case 'person':
-      case 'lookup':
-      case 'taxonomy':
-        html+=`<input type="text" id="${fid}" value="${String(vDisplay)}"${req} placeholder="${c.displayName}">`;
-        break;
+        html+=`<textarea id="${fid}"${req}>${String(vDisplay)}</textarea>`; break;
+      case 'person': case 'lookup': case 'taxonomy':
+        html+=`<input type="text" id="${fid}" value="${String(vDisplay)}"${req} placeholder="${c.displayName}">`; break;
       default:
         html+=`<input type="text" id="${fid}" value="${String(vDisplay)}"${req}>`;
     }
     html+=`</div>`;
   });
-
   body.innerHTML=html;
   document.getElementById('form-panel').classList.remove('hidden');
   document.getElementById('save-status').className='save-status';
-  document.getElementById('save-btn').textContent=isEdit?'💾 Update':'💾 Create';
+  document.getElementById('save-btn').textContent=editingId?'💾 Update':'💾 Create';
 }
 
 function closeForm(){
   document.getElementById('form-panel').classList.add('hidden');
-  editingId=null;
-  selectedItem=null;
-  renderTable();
+  editingId=null; selectedItem=null; renderTable();
 }
 
 // ======================== SAVE ========================
 async function saveItem(){
-  const btn=document.getElementById('save-btn');
-  btn.disabled=true;
+  document.getElementById('save-btn').disabled=true;
   const statusEl=document.getElementById('save-status');
-  statusEl.className='save-status saving';
-  statusEl.textContent='Saving...';
-  
+  statusEl.className='save-status saving'; statusEl.textContent='Saving...';
   try{
     const fields={};
+    const skipForm=new Set(['_id','_etag','ID','ContentType','AppAuthor','AppEditor','Author','Editor','Created','Modified']);
     columnDefs.forEach(c=>{
-      const skipForm=new Set(['_id','_etag','ID','ContentType','AppAuthor','AppEditor','Author','Editor','Created','Modified']);
       if(skipForm.has(c.name))return;
-      const fid='fld-'+c.name.replace(/[^a-zA-Z0-9_-]/g,'_');
+      const fid='f_'+c.name.replace(/[^a-zA-Z0-9_-]/g,'_');
       const el=document.getElementById(fid);
       if(!el)return;
       let val;
@@ -670,69 +559,38 @@ async function saveItem(){
         const inputs=document.querySelectorAll('#'+fid+' input[type=checkbox]:checked');
         val=inputs.length>0?Array.from(inputs).map(inp=>inp.value).join('; '):null;
       }else if(c.type==='boolean'){
-        val=el.value;
-        if(val==='1'||val==='true')val=true;
-        else if(val==='0'||val==='false')val=false;
-        else val=null;
-      }else if(c.type==='number'||c.type==='currency'){
-        val=el.value!==''?Number(el.value):null;
-      }else if(c.type==='date'){
-        val=el.value||null;
-      }else{
-        val=el.value||null;
-      }
+        val=el.value; if(val==='1'||val==='true')val=true; else if(val==='0'||val==='false')val=false; else val=null;
+      }else if(c.type==='number'||c.type==='currency'){val=el.value!==''?Number(el.value):null;}
+      else if(c.type==='date'){val=el.value||null;}
+      else{val=el.value||null;}
       if(val!==null&&val!=='')fields[c.name]=val;
     });
-    
     if(!currentDept)throw new Error('No department selected');
-    
-    if(editingId){
-      await updateSPItem(currentDept.site,currentDept.list,editingId,fields);
-      statusEl.className='save-status saved';
-      statusEl.textContent='✓ Updated';
-      showToast('Item updated successfully','success');
-    }else{
-      await createSPItem(currentDept.site,currentDept.list,fields);
-      statusEl.className='save-status saved';
-      statusEl.textContent='✓ Created';
-      showToast('Item created successfully','success');
-    }
-    
-    // Refresh items
-    await loadItems();
-    renderTable();
-    setTimeout(()=>{closeForm();},800);
+    if(editingId){await updateSPItem(currentDept.site,currentDept.list,editingId,fields); statusEl.textContent='✓ Updated'; showToast('Item updated','success');}
+    else{await createSPItem(currentDept.site,currentDept.list,fields); statusEl.textContent='✓ Created'; showToast('Item created','success');}
+    statusEl.className='save-status saved';
+    await refreshItems();
+    setTimeout(()=>closeForm(),600);
   }catch(e){
-    console.error('Save failed:',e);
-    statusEl.className='save-status error';
-    statusEl.textContent='✗ Failed: '+e.message;
+    console.error('Save:',e);
+    statusEl.className='save-status error'; statusEl.textContent='✗ '+e.message;
     showToast('Save failed: '+e.message,'error');
   }
-  btn.disabled=false;
+  document.getElementById('save-btn').disabled=false;
 }
 
 // ======================== CONFIG ========================
 function showConfig(){
-  const tenant=storage.getItem('pmt-tenant')||'f1be5251-1f84-4f1e-810d-7e4aa54b85ab';
-  const client=storage.getItem('pmt-client')||'19e206ad-91a0-4d20-9351-59db5fb08f1d';
-  const html=`
-    <div style="padding:20px;max-width:400px">
-      <h3 style="margin-bottom:16px;font-size:16px">⚙️ Azure AD Configuration</h3>
-      <div class="form-group"><label class="required">Tenant ID</label>
-        <input type="text" id="cfg-tenant" value="${tenant}" placeholder="Azure AD Tenant ID">
-      </div>
-      <div class="form-group"><label class="required">Client ID</label>
-        <input type="text" id="cfg-client" value="${client}" placeholder="Azure AD App Registration Client ID">
-      </div>
-      <div class="form-group">
-        <div class="hint">Redirect URI must be: <code>${location.origin+location.pathname}</code> (SPA type)</div>
-      </div>
-      <button class="btn btn-primary" onclick="saveConfig()" style="width:100%;padding:8px">Save &amp; Re-authenticate</button>
-    </div>`;
-  
   const overlay=document.createElement('div');
   overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:400;display:flex;align-items:center;justify-content:center';
-  overlay.innerHTML=`<div style="background:var(--white);border-radius:8px;box-shadow:0 8px 30px rgba(0,0,0,.25);width:90vw;max-width:480px">${html}</div>`;
+  overlay.innerHTML=`<div style="background:var(--white);border-radius:8px;box-shadow:0 8px 30px rgba(0,0,0,.25);width:90vw;max-width:480px;padding:20px">
+    <h3 style="margin-bottom:16px;font-size:16px">⚙️ Azure AD Configuration</h3>
+    <div class="form-group"><label class="required">Tenant ID</label><input type="text" id="cfg-tenant" value="${storage.getItem('pmt-tenant')||'f1be5251-1f84-4f1e-810d-7e4aa54b85ab'}" placeholder="Azure AD Tenant ID"></div>
+    <div class="form-group"><label class="required">Client ID</label><input type="text" id="cfg-client" value="${storage.getItem('pmt-client')||'19e206ad-91a0-4d20-9351-59db5fb08f1d'}" placeholder="Azure AD App Registration Client ID"></div>
+    <div class="form-group"><div class="hint">Redirect URI: <code>${location.origin+location.pathname}</code> (SPA type)${location.protocol==='file:'?'<br><strong>⚠️ file:// not supported</strong> — use GitHub Pages or a local web server.':''}</div></div>
+    <button class="btn btn-primary" onclick="saveConfig()" style="width:100%;padding:8px;margin-top:8px">Save &amp; Re-authenticate</button>
+    <button class="btn btn-outline" onclick="this.closest('div').parentElement.remove()" style="width:100%;padding:8px;margin-top:8px">Close</button>
+  </div>`;
   overlay.onclick=e=>{if(e.target===overlay)overlay.remove();};
   document.body.appendChild(overlay);
 }
@@ -743,32 +601,40 @@ function saveConfig(){
   if(t)storage.setItem('pmt-tenant',t);
   if(c)storage.setItem('pmt-client',c);
   showToast('Config saved. Re-authenticating...','success');
-  setTimeout(()=>{location.reload();},500);
+  setTimeout(()=>location.reload(),500);
 }
 
 // ======================== INIT ========================
 (function init(){
+  if(storage.getItem('forms-dark')){document.body.classList.add('dark');document.getElementById('dark-toggle').textContent='☀️';}
   initDeptSelect();
-  
-  // MSAL init
-  const savedTenant=storage.getItem('pmt-tenant')||'f1be5251-1f84-4f1e-810d-7e4aa54b85ab';
-  const savedClient=storage.getItem('pmt-client')||'19e206ad-91a0-4d20-9351-59db5fb08f1d';
-  if(savedTenant&&savedClient&&typeof msal!=='undefined'){
-    try{initMsal();}catch(e){}
-    if(msalApp){
-      const accounts=msalApp.getAllAccounts();
-      if(accounts.length>0){
-        spUser=accounts[0];
-        msalApp.acquireTokenSilent({scopes:SP_SCOPES,account:spUser})
-          .then(r=>{spToken=r.accessToken;updateAuthUI();const d=storage.getItem('forms-last-dept');if(d)onDeptChange();})
-          .catch(()=>{spToken=null;updateAuthUI();});
-      }else{
-        msalApp.handleRedirectPromise().then(resp=>{
-          if(resp&&resp.account){spUser=resp.account;spToken=resp.accessToken;updateAuthUI();const d=storage.getItem('forms-last-dept');if(d)onDeptChange();}
-          else updateAuthUI();
-        }).catch(e=>{console.error('[MSAL]',e);updateAuthUI();});
-      }
+  if(location.protocol==='file:'){
+    setEmpty('⚠️','file:// protocol detected','This app needs a web server (GitHub Pages, IIS, or any HTTP server). MSAL authentication and SharePoint API calls do not work from local file:// paths.');
+    return;
+  }
+  if(typeof msal==='undefined'){
+    setEmpty('❌','MSAL library not loaded','The MSAL.js CDN script failed to load. Check your internet connection or ad blocker.');
+    return;
+  }
+  const tenant=storage.getItem('pmt-tenant')||'f1be5251-1f84-4f1e-810d-7e4aa54b85ab';
+  const client=storage.getItem('pmt-client')||'19e206ad-91a0-4d20-9351-59db5fb08f1d';
+  if(!initMsal()){ setEmpty('❌','MSAL init failed','Check Tenant ID and Client ID in ⚙️ Config.'); return; }
+  try{
+    const accounts=msalApp.getAllAccounts();
+    if(accounts.length>0){
+      spUser=accounts[0];
+      msalApp.acquireTokenSilent({scopes:SP_SCOPES,account:spUser})
+        .then(r=>{spToken=r.accessToken;updateAuthUI();const d=storage.getItem('forms-last-dept');if(d)onDeptChange();})
+        .catch(()=>{spToken=null;updateAuthUI();});
+    }else{
+      msalApp.handleRedirectPromise().then(resp=>{
+        if(resp&&resp.account){spUser=resp.account;spToken=resp.accessToken;updateAuthUI();const d=storage.getItem('forms-last-dept');if(d)onDeptChange();}
+        else updateAuthUI();
+      }).catch(e=>{console.error('[MSAL]',e);showToast('Auth failed. Check Azure AD config.','error');updateAuthUI();});
     }
+  }catch(e){
+    console.error('Init error:',e);
+    setEmpty('❌','Initialization error',e.message);
   }
 })();
 </script>
