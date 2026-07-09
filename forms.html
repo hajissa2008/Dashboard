@@ -194,6 +194,8 @@ let spToken = null;
 let spUser = null;
 
 // ======================== HELPERS ========================
+function htmlEscape(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
 function showToast(msg,type){
   const t=document.getElementById('toast');
   t.textContent=msg; t.className='toast '+type+' show';
@@ -447,7 +449,7 @@ function renderTable(){
   const titleCol=columnDefs.find(c=>c.name==='Title');
   if(titleCol&&!shownCols.includes(titleCol))shownCols.unshift(titleCol);
 
-  document.getElementById('table-head').innerHTML='<tr><th style="width:30px">#</th>'+shownCols.map(c=>`<th>${c.displayName}</th>`).join('')+'<th style="width:50px"></th></tr>';
+  document.getElementById('table-head').innerHTML='<tr><th style="width:30px">#</th>'+shownCols.map(c=>`<th>${htmlEscape(c.displayName)}</th>`).join('')+'<th style="width:50px"></th></tr>';
 
   document.getElementById('table-body').innerHTML=filteredItems.map((item,i)=>{
     const isSel=selectedItem&&item._id===selectedItem._id;
@@ -458,8 +460,8 @@ function renderTable(){
         let v=item[lookup]!==undefined?item[lookup]:'';
         if(v&&typeof v==='object'){v=v.LookupValue||v.Title||v.Email||JSON.stringify(v).substring(0,50);}
         if(c.type==='boolean')v=v?'✓':'';
-        const s=String(v);
-        return `<td title="${s.replace(/"/g,'&quot;')}">${s.substring(0,80)}</td>`;
+        const s=htmlEscape(v);
+        return `<td title="${s}">${s.substring(0,80)}</td>`;
       }).join('')}
       <td><span style="color:var(--blue);font-size:11px;cursor:pointer" onclick="event.stopPropagation();startEdit(${i})">✏️</span></td>
     </tr>`;
@@ -497,19 +499,19 @@ function openForm(title,data){
     if(raw&&typeof raw==='object'){vDisplay=raw.LookupValue||raw.Title||raw.Email||'';}
     const req=c.required?' required':'';
     const reqStar=c.required?' class="required"':'';
-    const desc=c.description?`<div class="hint">${c.description}</div>`:'';
+    const desc=c.description?`<div class="hint">${htmlEscape(c.description)}</div>`:'';
     const fid='f_'+c.name.replace(/[^a-zA-Z0-9_-]/g,'_');
-    html+=`<div class="form-group"><label for="${fid}"${reqStar}>${c.displayName}</label>${desc}`;
+    html+=`<div class="form-group"><label for="${fid}"${reqStar}>${htmlEscape(c.displayName)}</label>${desc}`;
     switch(c.type){
       case 'choice':
         html+=`<select id="${fid}"${req}>`;
         if(!c.required)html+=`<option value="">—</option>`;
-        (c.choices||[]).forEach(ch=>{html+=`<option value="${ch.replace(/"/g,'&quot;')}"${String(vDisplay)===String(ch)?' selected':''}>${ch}</option>`;});
+        (c.choices||[]).forEach(ch=>{const eh=htmlEscape(ch);html+=`<option value="${eh}"${String(vDisplay)===String(ch)?' selected':''}>${eh}</option>`;});
         html+=`</select>`; break;
       case 'multiChoice':{
         const vals=new Set(String(vDisplay).split(';').map(s=>s.trim()).filter(Boolean));
         html+=`<div class="chk-group" id="${fid}">`;
-        (c.choices||[]).forEach(ch=>{const ck=vals.has(ch)?' checked':'';html+=`<label class="${ck?'selected':''}"><input type="checkbox" value="${ch.replace(/"/g,'&quot;')}"${ck} onchange="this.parentElement.classList.toggle('selected')"> ${ch}</label>`;});
+        (c.choices||[]).forEach(ch=>{const ck=vals.has(ch)?' checked':'';const eh=htmlEscape(ch);html+=`<label class="${ck?'selected':''}"><input type="checkbox" value="${eh}"${ck} onchange="this.parentElement.classList.toggle('selected')"> ${eh}</label>`;});
         html+=`</div>`; break;
       }
       case 'boolean':
@@ -517,16 +519,16 @@ function openForm(title,data){
       case 'date':{
         let dval='';
         if(vDisplay){const d=new Date(vDisplay);if(!isNaN(d))dval=d.toISOString().split('T')[0];}
-        html+=`<input type="date" id="${fid}" value="${dval}"${req}>`; break;
+        html+=`<input type="date" id="${fid}" value="${htmlEscape(dval)}"${req}>`; break;
       }
       case 'number': case 'currency':
-        html+=`<input type="number" id="${fid}" value="${vDisplay}" step="${c.type==='currency'?'0.01':'1'}"${req}>`; break;
+        html+=`<input type="number" id="${fid}" value="${htmlEscape(vDisplay)}" step="${c.type==='currency'?'0.01':'1'}"${req}>`; break;
       case 'note':
-        html+=`<textarea id="${fid}"${req}>${String(vDisplay)}</textarea>`; break;
+        html+=`<textarea id="${fid}"${req}>${htmlEscape(vDisplay)}</textarea>`; break;
       case 'person': case 'lookup': case 'taxonomy':
-        html+=`<input type="text" id="${fid}" value="${String(vDisplay)}"${req} placeholder="${c.displayName}">`; break;
+        html+=`<input type="text" id="${fid}" value="${htmlEscape(vDisplay)}"${req} placeholder="${htmlEscape(c.displayName)}">`; break;
       default:
-        html+=`<input type="text" id="${fid}" value="${String(vDisplay)}"${req}>`;
+        html+=`<input type="text" id="${fid}" value="${htmlEscape(vDisplay)}"${req}>`;
     }
     html+=`</div>`;
   });
