@@ -84,6 +84,22 @@ html,body{height:100%;font-family:'Segoe UI',-apple-system,system-ui,sans-serif;
 .form-group .chk-group label:hover{background:var(--gray-light)}
 .form-group .chk-group input[type=checkbox]{width:auto;margin:0;cursor:pointer}
 .form-group .chk-group label.selected{background:var(--primary-light);border-color:var(--primary);color:var(--primary)}
+.attachment-section{border-top:1px solid var(--gray-border);margin-top:8px;padding-top:12px}
+.attachment-section>label{display:block;font-size:12px;font-weight:600;margin-bottom:8px;color:var(--text-secondary)}
+.attachment-item{display:flex;align-items:center;gap:8px;padding:6px 8px;border:1px solid var(--gray-border);border-radius:4px;margin-bottom:4px;font-size:12px}
+.attachment-item .name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.attachment-item .size{color:var(--text-secondary);flex-shrink:0;font-size:11px}
+.attachment-item .btn-icon{background:none;border:none;cursor:pointer;padding:2px 6px;border-radius:3px;font-size:13px;color:var(--text-secondary);flex-shrink:0;transition:all .1s}
+.attachment-item .btn-icon:hover{background:var(--gray-light)}
+.attachment-item .btn-icon.download{color:var(--blue)}
+.attachment-item .btn-icon.download:hover{background:var(--primary-light)}
+.attachment-item .btn-icon.delete{color:var(--red)}
+.attachment-item .btn-icon.delete:hover{background:var(--red-light)}
+.attachment-upload{display:flex;gap:6px;margin-top:8px;align-items:center}
+.attachment-upload input[type=file]{flex:1;font-size:12px}
+.attachment-upload .btn{padding:6px 14px;font-size:12px}
+.attachment-loading{text-align:center;padding:16px;color:var(--text-secondary);font-size:12px}
+.attachment-empty{text-align:center;padding:16px;color:var(--text-secondary);font-size:12px}
 .save-status{padding:4px 12px;border-radius:4px;font-size:12px;font-weight:600;display:none}
 .save-status.saving{display:inline-block;background:var(--yellow-light);color:#8A6D00}
 .save-status.saved{display:inline-block;background:var(--green-light);color:var(--green)}
@@ -306,6 +322,9 @@ function graphListItemsUrl(siteUrl,listName){
 function graphItemFieldsUrl(siteUrl,listName,itemId){
   return graphListUrl(siteUrl,listName)+`/items/${itemId}/fields`;
 }
+function graphItemAttachmentsUrl(siteUrl,listName,itemId){
+  return graphListUrl(siteUrl,listName)+`/items/${itemId}/attachments`;
+}
 
 const SKIP_COLS = new Set(['ID','ContentType','Modified','Created','AuthorLookupId','EditorLookupId','_UIVersionString','Attachments','Edit','LinkTitleNoMenu','LinkTitle','ItemChildCount','FolderChildCount','_ComplianceFlags','_ComplianceTag','_ComplianceTagWrittenTime','_ComplianceTagUserId','AppAuthorLookupId','AppEditorLookupId','@odata.etag']);
 
@@ -366,6 +385,92 @@ async function updateSPItem(siteUrl,listName,itemId,itemFields){
   const body={};
   for(const [k,v] of Object.entries(itemFields)){if(!k.startsWith('_'))body[k]=v;}
   return await apiCall(graphItemFieldsUrl(siteUrl,listName,itemId),'PATCH',body);
+}
+
+async function fetchAttachments(siteUrl,listName,itemId){
+  const json=await apiCall(graphItemAttachmentsUrl(siteUrl,listName,itemId));
+  return json.value||[];
+}
+async function deleteAttachment(siteUrl,listName,itemId,attachmentId){
+  await apiCall(graphItemAttachmentsUrl(siteUrl,listName,itemId)+'/'+attachmentId,'DELETE');
+}
+async function uploadAttachment(siteUrl,listName,itemId,fileName,contentBytes){
+  const url=graphItemAttachmentsUrl(siteUrl,listName,itemId);
+  const resp=await fetch(url,{method:'POST',headers:{'Authorization':'Bearer '+spToken,'Content-Type':'application/json'},body:JSON.stringify({'@microsoft.graph.conflictBehavior':'rename',name:fileName,contentBytes})});
+  if(!resp.ok){const t=await resp.text().catch(()=>'');throw new Error(`HTTP ${resp.status}: ${t.substring(0,200)}`);}
+  return await resp.json();
+}
+async function downloadAttachment(attachmentId,fileName){
+  fileName=decodeURIComponent(fileName);
+  const url=graphItemAttachmentsUrl(currentDept.site,currentDept.list,editingId)+'/'+attachmentId+'/$value';
+  const resp=await fetch(url,{headers:{'Authorization':'Bearer '+spToken}});
+  if(!resp.ok)throw new Error('Download failed');
+  const blob=await resp.blob();
+  const blobUrl=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=blobUrl;a.download=fileName;a.click();
+  URL.revokeObjectURL(blobUrl);
+}
+
+async function loadAttachmentsList(){
+  const el=document.getElementById('attachment-list');
+  if(!el)return;
+  try{
+    const atts=await fetchAttachments(currentDept.site,currentDept.list,editingId);
+    if(!atts.length){el.innerHTML='<div class="attachment-empty">No attachments</div>';return;}
+    el.innerHTML=atts.map(a=>{
+      const name=htmlEscape(a.name);
+      const size=a.size?` <span class="size">${fmtSize(a.size)}</span>`:'';
+      const jsName=encodeURIComponent(a.name);
+      return `<div class="attachment-item"><span class="name">${name}</span>${size}<button class="btn-icon download" title="Download" onclick="downloadAttachment('${a.id}','${jsName}')">⬇</button><button class="btn-icon delete" title="Delete" onclick="deleteAttachmentItem('${a.id}','${jsName}')">✕</button></div>`;
+    }).join('');
+  }catch(e){
+    console.error('loadAttachments:',e);
+    el.innerHTML='<div class="attachment-empty">Failed to load attachments</div>';
+  }
+}
+
+function fmtSize(bytes){
+  if(!bytes)return '';
+  if(bytes<1024)return bytes+' B';
+  if(bytes<1048576)return (bytes/1024).toFixed(1)+' KB';
+  return (bytes/1048576).toFixed(1)+' MB';
+}
+
+async function uploadSelectedAttachments(){
+  const input=document.getElementById('attachment-file');
+  if(!input||!input.files||!input.files.length){showToast('Select files first','error');return;}
+  const btn=input.nextElementSibling;
+  btn.disabled=true;btn.textContent='Uploading...';
+  try{
+    for(const file of input.files){
+      const buf=await file.arrayBuffer();
+      const bytes=new Uint8Array(buf);
+      let binary='';
+      for(let i=0;i<bytes.length;i++)binary+=String.fromCharCode(bytes[i]);
+      const base64=btoa(binary);
+      await uploadAttachment(currentDept.site,currentDept.list,editingId,file.name,base64);
+    }
+    input.value='';
+    showToast('Uploaded','success');
+    await loadAttachmentsList();
+  }catch(e){
+    console.error('upload:',e);
+    showToast('Upload failed: '+e.message,'error');
+  }
+  btn.disabled=false;btn.textContent='Upload';
+}
+
+async function deleteAttachmentItem(attachmentId,fileName){
+  fileName=decodeURIComponent(fileName);
+  if(!confirm('Delete attachment "'+fileName+'"?'))return;
+  try{
+    await deleteAttachment(currentDept.site,currentDept.list,editingId,attachmentId);
+    showToast('Deleted','success');
+    await loadAttachmentsList();
+  }catch(e){
+    console.error('delete:',e);
+    showToast('Delete failed: '+e.message,'error');
+  }
 }
 
 // ======================== DEPT MANAGEMENT ========================
@@ -534,10 +639,12 @@ function openForm(title,data){
     }
     html+=`</div>`;
   });
+  html+=`<div class="attachment-section"><label>Attachments</label><div id="attachment-list">${editingId?'<div class="attachment-loading">Loading...</div>':'<div class="attachment-empty">Save the item first to add attachments.</div>'}</div>${editingId?'<div class="attachment-upload"><input type="file" id="attachment-file" multiple><button class="btn btn-primary" onclick="uploadSelectedAttachments()">Upload</button></div>':''}</div>`;
   body.innerHTML=html;
   document.getElementById('form-overlay').classList.remove('hidden');
   document.getElementById('save-status').className='save-status';
   document.getElementById('save-btn').textContent=editingId?'💾 Update':'💾 Create';
+  if(editingId)loadAttachmentsList();
 }
 
 function closeForm(){
