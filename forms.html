@@ -354,7 +354,9 @@ async function fetchSPItems(siteUrl,listName){
   return (json.value||[]).map(item=>{
     const fields={};
     for(const [k,v] of Object.entries(item.fields||{})){
-      fields[renameMap[k]||k]=v;
+      const dn=renameMap[k]||k;
+      fields[dn]=v;
+      if(dn!==k)fields[k]=v; // keep both display & internal name
     }
     return {...fields, _id:item.id, _etag:item?.fields?.['@odata.etag']||''};
   });
@@ -519,7 +521,8 @@ function renderTable(){
     return `<tr class="${isSel?'selected':''}" onclick="selectItem(${i})">
       <td style="color:var(--text-secondary)">${i+1}</td>
       ${shownCols.map(c=>{
-        let v=item[c.name]!==undefined?item[c.name]:'';
+        const colKey=c.displayName||c.name;
+        let v=item[colKey]!==undefined?item[colKey]:'';
         if(v&&typeof v==='object'){
           if(v.LookupValue!==undefined)v=v.LookupValue;
           else if(v.Title!==undefined)v=v.Title;
@@ -569,7 +572,8 @@ function openForm(title,data){
   
   columnDefs.forEach(c=>{
     if(skipForm.has(c.name))return;
-    const val=data[c.name]!==undefined&&data[c.name]!==null?data[c.name]:'';
+    const colKey=c.displayName||c.name;
+    const val=data[colKey]!==undefined&&data[colKey]!==null?data[colKey]:data[c.name]!==undefined?data[c.name]:'';
     let vDisplay=val;
     if(val&&typeof val==='object'){
       if(val.LookupValue!==undefined)vDisplay=val.LookupValue;
