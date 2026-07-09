@@ -115,16 +115,57 @@ html,body{height:100%;font-family:'Segoe UI',-apple-system,system-ui,sans-serif;
 @keyframes slideUp{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
 .dark-toggle{background:none;border:none;font-size:18px;cursor:pointer;padding:4px;border-radius:50%;color:var(--text-primary);transition:background .15s;line-height:1}
 .dark-toggle:hover{background:var(--gray-light)}
+.signin-overlay{position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#2C3A4B 0%,var(--primary) 50%,#6B7F95 100%);overflow:hidden}
+.signin-overlay.hidden{display:none}
+.signin-overlay.hidden~.app{display:flex}
+.app{display:none}
+.signin-overlay::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 20% 50%,rgba(255,255,255,.06) 0%,transparent 60%),radial-gradient(ellipse at 80% 20%,rgba(255,255,255,.04) 0%,transparent 50%)}
+.signin-card{position:relative;width:400px;max-width:90vw;background:var(--white);border-radius:16px;box-shadow:0 25px 60px rgba(0,0,0,.3),0 0 0 1px rgba(255,255,255,.08);padding:48px 40px 36px;text-align:center;animation:fadeSlideUp .5s ease}
+@keyframes fadeSlideUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
+.signin-logo{margin-bottom:8px}
+.signin-logo-mark{width:72px;height:72px;margin:0 auto;background:linear-gradient(135deg,var(--primary-dark),var(--primary));border-radius:18px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:24px;font-weight:700;letter-spacing:1px;box-shadow:0 8px 24px rgba(0,0,0,.2)}
+.signin-badge{display:inline-block;padding:3px 12px;background:var(--primary-light);color:var(--primary);font-size:11px;font-weight:600;border-radius:12px;text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px}
+.signin-title{font-size:26px;font-weight:700;color:var(--text-primary);margin-bottom:4px}
+.signin-subtitle{font-size:14px;color:var(--text-secondary);margin-bottom:28px}
+.signin-error{display:none;background:#FDE8E8;color:#D92C2C;font-size:12px;padding:10px 14px;border-radius:8px;margin-bottom:16px;text-align:left;line-height:1.4}
+.signin-error.show{display:block}
+.signin-progress{display:none;align-items:center;justify-content:center;gap:10px;padding:10px 0;margin-bottom:16px;font-size:13px;color:var(--text-secondary)}
+.signin-progress.show{display:flex}
+.signin-progress .spinner{width:18px;height:18px;border:2px solid var(--gray-border);border-top-color:var(--primary);border-radius:50%;animation:spin .8s linear infinite;flex-shrink:0}
+.signin-btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:13px 24px;background:var(--primary);color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;transition:all .2s;box-shadow:0 4px 14px rgba(0,0,0,.2)}
+.signin-btn:hover{background:var(--primary-dark);box-shadow:0 6px 20px rgba(0,0,0,.25);transform:translateY(-1px)}
+.signin-btn:active{transform:translateY(0);box-shadow:0 2px 8px rgba(0,0,0,.15)}
+.signin-btn:disabled{opacity:.6;cursor:not-allowed;transform:none}
+.signin-footer{font-size:11px;color:var(--text-secondary);margin-top:20px}
 @media(max-width:768px){
   .main{flex-direction:column}
   .form-panel{width:95vw;max-height:90vh}
   .toolbar{flex-wrap:wrap}
   .header h1{font-size:13px}
+  .signin-card{padding:36px 24px 28px}
+  .signin-title{font-size:22px}
 }
 </style>
 </head>
 <body>
-<div class="app">
+<div class="signin-overlay" id="signin-overlay">
+  <div class="signin-card" id="signin-card">
+    <div class="signin-logo" id="signin-logo">
+      <div class="signin-logo-mark">AE</div>
+    </div>
+    <div class="signin-badge" id="signin-badge">Data Entry</div>
+    <h1 class="signin-title">AlEnshaiah</h1>
+    <p class="signin-subtitle">Project Management System</p>
+    <div class="signin-error" id="signin-error"></div>
+    <div class="signin-progress" id="signin-progress"><div class="spinner"></div><span>Authenticating...</span></div>
+    <button class="signin-btn" id="signin-btn" onclick="loginSP()">
+      <svg width="18" height="18" viewBox="0 0 21 21" fill="none"><rect x="1" y="1" width="9" height="9" fill="#F25022"/><rect x="11" y="1" width="9" height="9" fill="#7FBA00"/><rect x="1" y="11" width="9" height="9" fill="#00A4EF"/><rect x="11" y="11" width="9" height="9" fill="#FFB900"/></svg>
+      Sign in with Microsoft
+    </button>
+    <p class="signin-footer">Access your project data · Secure SSO · <a href="#" onclick="showConfig();return false" style="color:var(--primary);text-decoration:none;font-weight:600">⚙️ Config</a></p>
+  </div>
+</div>
+<div class="app" id="app-root">
   <header class="header">
     <div class="logo">AE</div>
     <h1>Data Entry Forms</h1>
@@ -262,11 +303,12 @@ function initMsal(){
 }
 
 async function loginSP(){
-  if(location.protocol==='file:'){ showToast('Cannot sign in from file://. Use a web server or GitHub Pages.','error'); return; }
-  if(typeof msal==='undefined'){ showToast('MSAL library not loaded (CDN blocked?). Check network.','error'); return; }
-  if(!initMsal()){ showToast('Azure AD not configured. Click ⚙️ Config.','error'); return; }
+  if(location.protocol==='file:'){ showSigninError('⚠️ Cannot sign in from a local file. Deploy to GitHub Pages or a web server to use SSO authentication.'); return; }
+  if(typeof msal==='undefined'){ showSigninError('⚠️ Microsoft Authentication Library (MSAL) failed to load. Check your internet connection or ad blocker and reload.'); return; }
+  if(!initMsal()){ showSigninError('⚠️ Azure AD is not configured. Click the ⚙️ link below to set up your Tenant ID and Client ID.'); return; }
+  showSigninProgress(true);
   try{ msalApp.loginRedirect({ scopes: SP_SCOPES }); }
-  catch(e){ showToast('Login failed: '+e.message,'error'); }
+  catch(e){ showSigninProgress(false); showSigninError('Login failed: '+e.message); }
 }
 
 async function getTokenSP(){
@@ -281,9 +323,28 @@ async function getTokenSP(){
 }
 
 function logoutSP(){
-  spToken=null; spUser=null;
+  spToken=null; spUser=null; spSiteToken=null;
   if(msalApp) msalApp.logoutRedirect();
   updateAuthUI(); onDeptChange();
+}
+
+function showSigninError(msg){
+  const el=document.getElementById('signin-error');
+  const card=document.getElementById('signin-card');
+  if(el){el.textContent=msg;el.classList.add('show');}
+  if(card)card.style.animation='none';
+}
+function showSigninProgress(show){
+  const el=document.getElementById('signin-progress');
+  const btn=document.getElementById('signin-btn');
+  if(el)el.classList.toggle('show',show);
+  if(btn)btn.disabled=show;
+}
+function hideSigninOverlay(){
+  document.getElementById('signin-overlay').classList.add('hidden');
+}
+function showSigninOverlay(){
+  document.getElementById('signin-overlay').classList.remove('hidden');
 }
 
 function updateAuthUI(){
@@ -294,10 +355,12 @@ function updateAuthUI(){
     if(li)li.style.display='none';
     if(lo)lo.style.display='';
     if(un){un.style.display=''; un.textContent='👤 '+(spUser.name||spUser.username);}
+    hideSigninOverlay();
   }else{
     if(li)li.style.display='';
     if(lo)lo.style.display='none';
     if(un)un.style.display='none';
+    showSigninOverlay();
   }
 }
 
@@ -736,7 +799,7 @@ async function saveItem(){
 // ======================== CONFIG ========================
 function showConfig(){
   const overlay=document.createElement('div');
-  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:400;display:flex;align-items:center;justify-content:center';
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:1100;display:flex;align-items:center;justify-content:center';
   overlay.innerHTML=`<div style="background:var(--white);border-radius:8px;box-shadow:0 8px 30px rgba(0,0,0,.25);width:90vw;max-width:480px;padding:20px">
     <h3 style="margin-bottom:16px;font-size:16px">⚙️ Azure AD Configuration</h3>
     <div class="form-group"><label class="required">Tenant ID</label><input type="text" id="cfg-tenant" value="${storage.getItem('pmt-tenant')||'f1be5251-1f84-4f1e-810d-7e4aa54b85ab'}" placeholder="Azure AD Tenant ID"></div>
@@ -763,32 +826,34 @@ function saveConfig(){
   if(storage.getItem('forms-dark')){document.body.classList.add('dark');document.getElementById('dark-toggle').textContent='☀️';}
   initDeptSelect();
   if(location.protocol==='file:'){
-    setEmpty('⚠️','file:// protocol detected','This app needs a web server (GitHub Pages, IIS, or any HTTP server). MSAL authentication and SharePoint API calls do not work from local file:// paths.');
+    showSigninError('⚠️ This app cannot run from a local file path. Deploy to GitHub Pages, IIS, or any web server for SSO and SharePoint access.');
     return;
   }
   if(typeof msal==='undefined'){
-    setEmpty('❌','MSAL library not loaded','The MSAL.js CDN script failed to load. Check your internet connection or ad blocker.');
+    showSigninError('⚠️ Microsoft Authentication Library (MSAL) failed to load. Check your internet connection or ad blocker, then reload the page.');
     return;
   }
   const tenant=storage.getItem('pmt-tenant')||'f1be5251-1f84-4f1e-810d-7e4aa54b85ab';
   const client=storage.getItem('pmt-client')||'19e206ad-91a0-4d20-9351-59db5fb08f1d';
-  if(!initMsal()){ setEmpty('❌','MSAL init failed','Check Tenant ID and Client ID in ⚙️ Config.'); return; }
+  if(!initMsal()){ showSigninError('⚠️ Azure AD initialization failed. Click ⚙️ to check Tenant ID and Client ID in Config.'); return; }
+  showSigninProgress(true);
   try{
     const accounts=msalApp.getAllAccounts();
     if(accounts.length>0){
       spUser=accounts[0];
       msalApp.acquireTokenSilent({scopes:SP_SCOPES,account:spUser})
-        .then(r=>{spToken=r.accessToken;updateAuthUI();const d=storage.getItem('forms-last-dept');if(d)onDeptChange();})
-        .catch(()=>{spToken=null;updateAuthUI();});
+        .then(r=>{spToken=r.accessToken;showSigninProgress(false);updateAuthUI();const d=storage.getItem('forms-last-dept');if(d)onDeptChange();})
+        .catch(()=>{spToken=null;showSigninProgress(false);updateAuthUI();});
     }else{
       msalApp.handleRedirectPromise().then(resp=>{
-        if(resp&&resp.account){spUser=resp.account;spToken=resp.accessToken;updateAuthUI();const d=storage.getItem('forms-last-dept');if(d)onDeptChange();}
-        else updateAuthUI();
-      }).catch(e=>{console.error('[MSAL]',e);showToast('Auth failed. Check Azure AD config.','error');updateAuthUI();});
+        if(resp&&resp.account){spUser=resp.account;spToken=resp.accessToken;showSigninProgress(false);updateAuthUI();const d=storage.getItem('forms-last-dept');if(d)onDeptChange();}
+        else{showSigninProgress(false);updateAuthUI();}
+      }).catch(e=>{showSigninProgress(false);console.error('[MSAL]',e);showSigninError('Authentication failed: '+e.message+'. Check your Azure AD config (⚙️) and try again.');});
     }
   }catch(e){
+    showSigninProgress(false);
     console.error('Init error:',e);
-    setEmpty('❌','Initialization error',e.message);
+    showSigninError('Initialization error: '+e.message);
   }
 })();
 </script>
