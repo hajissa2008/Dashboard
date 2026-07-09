@@ -1007,8 +1007,16 @@ async function connectSingleView(view){
     try{
         const siteUrl=site.replace(/\/+$/,'');
         const items = await fetchSPListItems(siteUrl, list);
-        if(!items||items.length===0)return false;
+        if(!items)return false;
         // Use full column list from SharePoint schema (all columns even if empty on first item)
+        if(items.length===0){
+            // Connected but empty list — still mark as online
+            vd.data=[];
+            vd.connected=true;
+            updateViewDot(view,'online');
+            updateViewNavDot(view,'online');
+            return true;
+        }
         const skipKeys = ['ID','id','Title','ContentType','Modified','Created','AuthorLookupId','EditorLookupId','_UIVersionString','Attachments','Edit','LinkTitleNoMenu','LinkTitle','ItemChildCount','FolderChildCount','_ComplianceFlags','_ComplianceTag','_ComplianceTagWrittenTime','_ComplianceTagUserId','AppAuthorLookupId','AppEditorLookupId','@odata.etag'];
         const schemaInfo = columnNameMap[list];
         const schemaCols = schemaInfo?.allColumns;
@@ -2140,7 +2148,7 @@ function toggleDark(){
     // Pre-fill QA/QC view
     if(!viewData.qaqc.site){
         viewData.qaqc.site='https://sascontractingsa.sharepoint.com/sites/Alenshaiah';
-        viewData.qaqc.list='QAQC Tracker';
+        viewData.qaqc.list='QA/QC Tracker';
     }
     // Pre-fill Cost Control view
     if(!viewData.cost.site){
