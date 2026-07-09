@@ -205,6 +205,7 @@ let editingId = null;
 let columnDefs = [];
 let renameMap = {};
 let attachmentCounts = {};
+let attachmentsSupported = null;
 
 // MSAL
 const SP_SCOPES = ['Sites.ReadWrite.All','User.Read'];
@@ -414,7 +415,7 @@ async function downloadAttachment(attachmentId,fileName){
 
 async function loadAttachmentsList(){
   const el=document.getElementById('attachment-list');
-  if(!el)return;
+  if(!el||attachmentsSupported===false)return;
   try{
     const atts=await fetchAttachments(currentDept.site,currentDept.list,editingId);
     if(!atts.length){el.innerHTML='<div class="attachment-empty">No attachments</div>';return;}
@@ -426,7 +427,12 @@ async function loadAttachmentsList(){
     }).join('');
   }catch(e){
     console.error('loadAttachments:',e);
-    el.innerHTML='<div class="attachment-empty">Failed to load attachments</div>';
+    if(e.message.includes('400')||e.message.includes('BadRequest')||e.message.includes('attachments')){
+      attachmentsSupported=false;
+      el.innerHTML='<div class="attachment-empty">Not available</div>';
+    }else{
+      el.innerHTML='<div class="attachment-empty">Failed to load attachments</div>';
+    }
   }
 }
 
@@ -475,7 +481,7 @@ async function deleteAttachmentItem(attachmentId,fileName){
 }
 
 async function fetchAllAttachmentCounts(){
-  if(!currentDept||!allItems.length)return;
+  if(!currentDept||!allItems.length||attachmentsSupported===false)return;
   const ids=allItems.map(i=>i._id);
   for(let i=0;i<ids.length;i+=20){
     const batch=ids.slice(i,i+20);
@@ -516,7 +522,7 @@ async function loadDeptData(){
   setLoading(true);
   setStatusMsg('Loading schema...');
   try{
-    columnDefs=[]; renameMap={}; attachmentCounts={};
+    columnDefs=[]; renameMap={}; attachmentCounts={}; attachmentsSupported=null;
     const cols=await fetchColumnDefinitions(currentDept.site,currentDept.list);
     columnDefs=cols;
     cols.forEach(c=>{if(c.name!==c.displayName)renameMap[c.name]=c.displayName;});
@@ -533,7 +539,19 @@ async function loadDeptData(){
     setEmpty('❌','Failed to load data',e.message);
   }
   setLoading(false);
-  fetchAllAttachmentCounts();
+  if(allItems.length)detectAttachmentSupport();
+}
+
+async function detectAttachmentSupport(){
+  if(!currentDept||!allItems.length)return;
+  try{
+    await fetchAttachments(currentDept.site,currentDept.list,allItems[0]._id);
+    attachmentsSupported=true;
+    fetchAllAttachmentCounts();
+  }catch(e){
+    attachmentsSupported=false;
+    renderTable();
+  }
 }
 
 async function refreshItems(){
@@ -547,7 +565,7 @@ async function refreshItems(){
     showToast('Refreshed: '+allItems.length+' items','success');
   }catch(e){showToast('Refresh failed: '+e.message,'error');}
   setLoading(false);
-  fetchAllAttachmentCounts();
+  if(attachmentsSupported!==false&&allItems.length)detectAttachmentSupport();
 }
 
 // ======================== SEARCH ========================
@@ -572,16 +590,18 @@ function renderTable(){
   const shownCols=columnDefs.filter(c=>!SKIP_COLS.has(c.name)&&c.name!=='Title').slice(0,12);
   const titleCol=columnDefs.find(c=>c.name==='Title');
   if(titleCol&&!shownCols.includes(titleCol))shownCols.unshift(titleCol);
+    const attCol=attachmentsSupported!==false?'<th style="width:32px;text-align:center" title="Attachments">📎</th>':'';
+  document.getElementById('table-head').innerHTML='<tr><th style="width:18px"></th><th style="width:30px">#</th>'+attCol+shownCols.map(c=>`<th>${htmlEscape(c.displayName)}</th>`).join('')+'</tr>';
 
-  document.getElementById('table-head').innerHTML='<tr><th style="width:18px"></th><th style="width:30px">#</th><th style="width:32px;text-align:center" title="Attachments">📎</th>'+shownCols.map(c=>`<th>${htmlEscape(c.displayName)}</th>`).join('')+'</tr>';
-
+  const attBody=attachmentsSupported!==false;
   document.getElementById('table-body').innerHTML=filteredItems.map((item,i)=>{
     const isSel=selectedItem&&item._id===selectedItem._id;
     const aN=attachmentCounts[item._id];
+    const attCell=attBody?`<td style="text-align:center;font-size:12px;color:var(--text-secondary)">${aN>0?'📎'+aN:aN===0?'—':''}</td>`:'';
     return `<tr class="${isSel?'selected':''}" onclick="selectItem(${i})">
       <td><span style="color:var(--blue);font-size:11px;cursor:pointer" onclick="event.stopPropagation();startEdit(${i})">✏️</span></td>
       <td style="color:var(--text-secondary)">${i+1}</td>
-      <td style="text-align:center;font-size:12px;color:var(--text-secondary)">${aN>0?'📎'+aN:aN===0?'—':''}</td>
+      ${attCell}
       ${shownCols.map(c=>{
         const lookup=c.displayName||c.name;
         let v=item[lookup]!==undefined?item[lookup]:'';
@@ -658,12 +678,14 @@ function openForm(title,data){
     }
     html+=`</div>`;
   });
-  html+=`<div class="attachment-section"><label>Attachments</label><div id="attachment-list">${editingId?'<div class="attachment-loading">Loading...</div>':'<div class="attachment-empty">Save the item first to add attachments.</div>'}</div>${editingId?'<div class="attachment-upload"><input type="file" id="attachment-file" multiple><button class="btn btn-primary" onclick="uploadSelectedAttachments()">Upload</button></div>':''}</div>`;
+  if(attachmentsSupported!==false){
+    html+=`<div class="attachment-section"><label>Attachments</label><div id="attachment-list">${editingId?'<div class="attachment-loading">Loading...</div>':'<div class="attachment-empty">Save the item first to add attachments.</div>'}</div>${editingId?'<div class="attachment-upload"><input type="file" id="attachment-file" multiple><button class="btn btn-primary" onclick="uploadSelectedAttachments()">Upload</button></div>':''}</div>`;
+  }
   body.innerHTML=html;
   document.getElementById('form-overlay').classList.remove('hidden');
   document.getElementById('save-status').className='save-status';
   document.getElementById('save-btn').textContent=editingId?'💾 Update':'💾 Create';
-  if(editingId)loadAttachmentsList();
+  if(editingId&&attachmentsSupported!==false)loadAttachmentsList();
 }
 
 function closeForm(){
