@@ -204,6 +204,7 @@ let selectedItem = null;
 let editingId = null;
 let columnDefs = [];
 let renameMap = {};
+let attachmentCounts = {};
 
 // MSAL
 const SP_SCOPES = ['Sites.ReadWrite.All','User.Read'];
@@ -473,6 +474,19 @@ async function deleteAttachmentItem(attachmentId,fileName){
   }
 }
 
+async function fetchAllAttachmentCounts(){
+  if(!currentDept||!allItems.length)return;
+  const ids=allItems.map(i=>i._id);
+  for(let i=0;i<ids.length;i+=20){
+    const batch=ids.slice(i,i+20);
+    const results=await Promise.allSettled(batch.map(id=>
+      fetchAttachments(currentDept.site,currentDept.list,id).then(atts=>({id,count:atts.length}))
+    ));
+    results.forEach(r=>{if(r.status==='fulfilled')attachmentCounts[r.value.id]=r.value.count;});
+  }
+  if(currentDept)renderTable();
+}
+
 // ======================== DEPT MANAGEMENT ========================
 function initDeptSelect(){
   const sel=document.getElementById('dept-select');
@@ -502,7 +516,7 @@ async function loadDeptData(){
   setLoading(true);
   setStatusMsg('Loading schema...');
   try{
-    columnDefs=[]; renameMap={};
+    columnDefs=[]; renameMap={}; attachmentCounts={};
     const cols=await fetchColumnDefinitions(currentDept.site,currentDept.list);
     columnDefs=cols;
     cols.forEach(c=>{if(c.name!==c.displayName)renameMap[c.name]=c.displayName;});
@@ -519,6 +533,7 @@ async function loadDeptData(){
     setEmpty('❌','Failed to load data',e.message);
   }
   setLoading(false);
+  fetchAllAttachmentCounts();
 }
 
 async function refreshItems(){
@@ -527,10 +542,12 @@ async function refreshItems(){
   try{
     allItems=await fetchSPItems(currentDept.site,currentDept.list);
     filteredItems=[...allItems];
+    attachmentCounts={};
     onSearch();
     showToast('Refreshed: '+allItems.length+' items','success');
   }catch(e){showToast('Refresh failed: '+e.message,'error');}
   setLoading(false);
+  fetchAllAttachmentCounts();
 }
 
 // ======================== SEARCH ========================
@@ -556,13 +573,15 @@ function renderTable(){
   const titleCol=columnDefs.find(c=>c.name==='Title');
   if(titleCol&&!shownCols.includes(titleCol))shownCols.unshift(titleCol);
 
-  document.getElementById('table-head').innerHTML='<tr><th style="width:18px"></th><th style="width:30px">#</th>'+shownCols.map(c=>`<th>${htmlEscape(c.displayName)}</th>`).join('')+'</tr>';
+  document.getElementById('table-head').innerHTML='<tr><th style="width:18px"></th><th style="width:30px">#</th><th style="width:32px;text-align:center" title="Attachments">📎</th>'+shownCols.map(c=>`<th>${htmlEscape(c.displayName)}</th>`).join('')+'</tr>';
 
   document.getElementById('table-body').innerHTML=filteredItems.map((item,i)=>{
     const isSel=selectedItem&&item._id===selectedItem._id;
+    const aN=attachmentCounts[item._id];
     return `<tr class="${isSel?'selected':''}" onclick="selectItem(${i})">
       <td><span style="color:var(--blue);font-size:11px;cursor:pointer" onclick="event.stopPropagation();startEdit(${i})">✏️</span></td>
       <td style="color:var(--text-secondary)">${i+1}</td>
+      <td style="text-align:center;font-size:12px;color:var(--text-secondary)">${aN>0?'📎'+aN:aN===0?'—':''}</td>
       ${shownCols.map(c=>{
         const lookup=c.displayName||c.name;
         let v=item[lookup]!==undefined?item[lookup]:'';
@@ -650,6 +669,7 @@ function openForm(title,data){
 function closeForm(){
   document.getElementById('form-overlay').classList.add('hidden');
   editingId=null; selectedItem=null; renderTable();
+  if(currentDept&&allItems.length)fetchAllAttachmentCounts();
 }
 
 // ======================== SAVE ========================
