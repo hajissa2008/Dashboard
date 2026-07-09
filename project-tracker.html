@@ -2137,6 +2137,26 @@ function toggleDark(){
         viewData.procurement.site='https://sascontractingsa.sharepoint.com/sites/Alenshaiah';
         viewData.procurement.list='Procurement_Tracker Log';
     }
+    // Pre-fill QA/QC view
+    if(!viewData.qaqc.site){
+        viewData.qaqc.site='https://sascontractingsa.sharepoint.com/sites/Alenshaiah';
+        viewData.qaqc.list='QA QC Tracker';
+    }
+    // Pre-fill Cost Control view
+    if(!viewData.cost.site){
+        viewData.cost.site='https://sascontractingsa.sharepoint.com/sites/Alenshaiah';
+        viewData.cost.list='Construction Cost';
+    }
+    // Pre-fill Planning view
+    if(!viewData.planning.site){
+        viewData.planning.site='https://sascontractingsa.sharepoint.com/sites/Alenshaiah';
+        viewData.planning.list='Planning Tracker';
+    }
+    // Pre-fill HSE view
+    if(!viewData.hse.site){
+        viewData.hse.site='https://sascontractingsa.sharepoint.com/sites/Alenshaiah';
+        viewData.hse.list='HSE Tracker';
+    }
     // Restore or save default Azure AD config
     let savedTenant=storage.getItem('pmt-tenant');
     let savedClient=storage.getItem('pmt-client');
