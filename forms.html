@@ -205,13 +205,13 @@ let editingId = null;
 let columnDefs = [];
 let renameMap = {};
 let attachmentCounts = {};
-let attachmentsSupported = null;
 
 // MSAL
 const SP_SCOPES = ['Sites.ReadWrite.All','User.Read'];
 let msalApp = null;
 let spToken = null;
 let spUser = null;
+let spSiteToken = null;
 
 // ======================== HELPERS ========================
 function htmlEscape(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
@@ -324,8 +324,30 @@ function graphListItemsUrl(siteUrl,listName){
 function graphItemFieldsUrl(siteUrl,listName,itemId){
   return graphListUrl(siteUrl,listName)+`/items/${itemId}/fields`;
 }
-function graphItemAttachmentsUrl(siteUrl,listName,itemId){
-  return graphListUrl(siteUrl,listName)+`/items/${itemId}/attachments`;
+function spRestListUrl(siteUrl,listName){
+  const s=siteUrl.replace(/\/+$/,'');
+  return `${s}/_api/web/lists/getbytitle('${listName.replace(/'/g,"''")}')`;
+}
+function spRestAttachmentsUrl(siteUrl,listName,itemId){
+  return `${spRestListUrl(siteUrl,listName)}/items(${itemId})/AttachmentFiles`;
+}
+
+async function ensureSpSiteToken(siteUrl){
+  if(spSiteToken)return spSiteToken;
+  if(!msalApp||!spUser)throw new Error('Not authenticated');
+  const u=new URL(siteUrl);
+  const resp=await msalApp.acquireTokenSilent({scopes:[u.origin+'/.default'],account:spUser});
+  spSiteToken=resp.accessToken;
+  return spSiteToken;
+}
+async function spApiCall(url,method,body,binary){
+  const token=await ensureSpSiteToken(currentDept.site);
+  const opts={method:method||'GET',headers:{'Authorization':'Bearer '+token,'Accept':'application/json'}};
+  if(body&&!binary){opts.headers['Content-Type']='application/json';opts.body=JSON.stringify(body);}
+  else if(body&&binary){opts.headers['Content-Type']='application/octet-stream';opts.body=body;}
+  const resp=await fetch(url,opts);
+  if(!resp.ok){const t=await resp.text().catch(()=>'');throw new Error(`HTTP ${resp.status}: ${t.substring(0,200)}`);}
+  return resp;
 }
 
 const SKIP_COLS = new Set(['ID','ContentType','Modified','Created','AuthorLookupId','EditorLookupId','_UIVersionString','Attachments','Edit','LinkTitleNoMenu','LinkTitle','ItemChildCount','FolderChildCount','_ComplianceFlags','_ComplianceTag','_ComplianceTagWrittenTime','_ComplianceTagUserId','AppAuthorLookupId','AppEditorLookupId','@odata.etag']);
@@ -389,24 +411,30 @@ async function updateSPItem(siteUrl,listName,itemId,itemFields){
   return await apiCall(graphItemFieldsUrl(siteUrl,listName,itemId),'PATCH',body);
 }
 
-async function fetchAttachments(siteUrl,listName,itemId){
-  const json=await apiCall(graphItemAttachmentsUrl(siteUrl,listName,itemId));
-  return json.value||[];
-}
-async function deleteAttachment(siteUrl,listName,itemId,attachmentId){
-  await apiCall(graphItemAttachmentsUrl(siteUrl,listName,itemId)+'/'+attachmentId,'DELETE');
-}
-async function uploadAttachment(siteUrl,listName,itemId,fileName,contentBytes){
-  const url=graphItemAttachmentsUrl(siteUrl,listName,itemId);
-  const resp=await fetch(url,{method:'POST',headers:{'Authorization':'Bearer '+spToken,'Content-Type':'application/json'},body:JSON.stringify({'@microsoft.graph.conflictBehavior':'rename',name:fileName,contentBytes})});
-  if(!resp.ok){const t=await resp.text().catch(()=>'');throw new Error(`HTTP ${resp.status}: ${t.substring(0,200)}`);}
+async function spApiCallJson(url,method,body,binary){
+  const resp=await spApiCall(url,method,body,binary);
   return await resp.json();
 }
-async function downloadAttachment(attachmentId,fileName){
+
+async function fetchAttachments(siteUrl,listName,itemId){
+  const url=spRestAttachmentsUrl(siteUrl,listName,itemId);
+  const json=await spApiCallJson(url);
+  const files=json.value||(json.d&&json.d.results)||[];
+  return files.map(f=>({id:f.FileName||f.id,name:f.FileName||f.name,size:f.Length||f.size||0,fileName:f.FileName||f.name}));
+}
+async function deleteAttachment(siteUrl,listName,itemId,attachmentName){
+  const url=spRestAttachmentsUrl(siteUrl,listName,itemId)+`/getByFileName('${attachmentName.replace(/'/g,"''")}')/deleteObject`;
+  await spApiCall(url,'POST');
+}
+async function uploadAttachment(siteUrl,listName,itemId,fileName,binaryBlob){
+  const url=spRestAttachmentsUrl(siteUrl,listName,itemId)+`/add(FileName='${fileName.replace(/'/g,"''")}')`;
+  await spApiCall(url,'POST',binaryBlob,true);
+}
+async function downloadAttachment(attachmentName,fileName){
   fileName=decodeURIComponent(fileName);
-  const url=graphItemAttachmentsUrl(currentDept.site,currentDept.list,editingId)+'/'+attachmentId+'/$value';
-  const resp=await fetch(url,{headers:{'Authorization':'Bearer '+spToken}});
-  if(!resp.ok)throw new Error('Download failed');
+  const name=decodeURIComponent(attachmentName);
+  const url=spRestAttachmentsUrl(currentDept.site,currentDept.list,editingId)+`/getByFileName('${name.replace(/'/g,"''")}')/$value`;
+  const resp=await spApiCall(url);
   const blob=await resp.blob();
   const blobUrl=URL.createObjectURL(blob);
   const a=document.createElement('a');a.href=blobUrl;a.download=fileName;a.click();
@@ -415,7 +443,7 @@ async function downloadAttachment(attachmentId,fileName){
 
 async function loadAttachmentsList(){
   const el=document.getElementById('attachment-list');
-  if(!el||attachmentsSupported===false)return;
+  if(!el)return;
   try{
     const atts=await fetchAttachments(currentDept.site,currentDept.list,editingId);
     if(!atts.length){el.innerHTML='<div class="attachment-empty">No attachments</div>';return;}
@@ -423,16 +451,11 @@ async function loadAttachmentsList(){
       const name=htmlEscape(a.name);
       const size=a.size?` <span class="size">${fmtSize(a.size)}</span>`:'';
       const jsName=encodeURIComponent(a.name);
-      return `<div class="attachment-item"><span class="name">${name}</span>${size}<button class="btn-icon download" title="Download" onclick="downloadAttachment('${a.id}','${jsName}')">⬇</button><button class="btn-icon delete" title="Delete" onclick="deleteAttachmentItem('${a.id}','${jsName}')">✕</button></div>`;
+      return `<div class="attachment-item"><span class="name">${name}</span>${size}<button class="btn-icon download" title="Download" onclick="downloadAttachment('${jsName}','${jsName}')">⬇</button><button class="btn-icon delete" title="Delete" onclick="deleteAttachmentItem('${jsName}')">✕</button></div>`;
     }).join('');
   }catch(e){
     console.error('loadAttachments:',e);
-    if(e.message.includes('400')||e.message.includes('BadRequest')||e.message.includes('attachments')){
-      attachmentsSupported=false;
-      el.innerHTML='<div class="attachment-empty">Not available</div>';
-    }else{
-      el.innerHTML='<div class="attachment-empty">Failed to load attachments</div>';
-    }
+    el.innerHTML='<div class="attachment-empty">Failed to load attachments</div>';
   }
 }
 
@@ -450,12 +473,7 @@ async function uploadSelectedAttachments(){
   btn.disabled=true;btn.textContent='Uploading...';
   try{
     for(const file of input.files){
-      const buf=await file.arrayBuffer();
-      const bytes=new Uint8Array(buf);
-      let binary='';
-      for(let i=0;i<bytes.length;i++)binary+=String.fromCharCode(bytes[i]);
-      const base64=btoa(binary);
-      await uploadAttachment(currentDept.site,currentDept.list,editingId,file.name,base64);
+      await uploadAttachment(currentDept.site,currentDept.list,editingId,file.name,file);
     }
     input.value='';
     showToast('Uploaded','success');
@@ -467,11 +485,11 @@ async function uploadSelectedAttachments(){
   btn.disabled=false;btn.textContent='Upload';
 }
 
-async function deleteAttachmentItem(attachmentId,fileName){
+async function deleteAttachmentItem(fileName){
   fileName=decodeURIComponent(fileName);
   if(!confirm('Delete attachment "'+fileName+'"?'))return;
   try{
-    await deleteAttachment(currentDept.site,currentDept.list,editingId,attachmentId);
+    await deleteAttachment(currentDept.site,currentDept.list,editingId,fileName);
     showToast('Deleted','success');
     await loadAttachmentsList();
   }catch(e){
@@ -481,7 +499,7 @@ async function deleteAttachmentItem(attachmentId,fileName){
 }
 
 async function fetchAllAttachmentCounts(){
-  if(!currentDept||!allItems.length||attachmentsSupported===false)return;
+  if(!currentDept||!allItems.length)return;
   const ids=allItems.map(i=>i._id);
   for(let i=0;i<ids.length;i+=20){
     const batch=ids.slice(i,i+20);
@@ -522,7 +540,7 @@ async function loadDeptData(){
   setLoading(true);
   setStatusMsg('Loading schema...');
   try{
-    columnDefs=[]; renameMap={}; attachmentCounts={}; attachmentsSupported=null;
+    columnDefs=[]; renameMap={}; attachmentCounts={}; spSiteToken=null;
     const cols=await fetchColumnDefinitions(currentDept.site,currentDept.list);
     columnDefs=cols;
     cols.forEach(c=>{if(c.name!==c.displayName)renameMap[c.name]=c.displayName;});
@@ -539,19 +557,7 @@ async function loadDeptData(){
     setEmpty('❌','Failed to load data',e.message);
   }
   setLoading(false);
-  if(allItems.length)detectAttachmentSupport();
-}
-
-async function detectAttachmentSupport(){
-  if(!currentDept||!allItems.length)return;
-  try{
-    await fetchAttachments(currentDept.site,currentDept.list,allItems[0]._id);
-    attachmentsSupported=true;
-    fetchAllAttachmentCounts();
-  }catch(e){
-    attachmentsSupported=false;
-    renderTable();
-  }
+  if(allItems.length)fetchAllAttachmentCounts();
 }
 
 async function refreshItems(){
@@ -565,7 +571,7 @@ async function refreshItems(){
     showToast('Refreshed: '+allItems.length+' items','success');
   }catch(e){showToast('Refresh failed: '+e.message,'error');}
   setLoading(false);
-  if(attachmentsSupported!==false&&allItems.length)detectAttachmentSupport();
+  if(allItems.length)fetchAllAttachmentCounts();
 }
 
 // ======================== SEARCH ========================
@@ -590,18 +596,15 @@ function renderTable(){
   const shownCols=columnDefs.filter(c=>!SKIP_COLS.has(c.name)&&c.name!=='Title').slice(0,12);
   const titleCol=columnDefs.find(c=>c.name==='Title');
   if(titleCol&&!shownCols.includes(titleCol))shownCols.unshift(titleCol);
-    const attCol=attachmentsSupported!==false?'<th style="width:32px;text-align:center" title="Attachments">📎</th>':'';
-  document.getElementById('table-head').innerHTML='<tr><th style="width:18px"></th><th style="width:30px">#</th>'+attCol+shownCols.map(c=>`<th>${htmlEscape(c.displayName)}</th>`).join('')+'</tr>';
+  document.getElementById('table-head').innerHTML='<tr><th style="width:18px"></th><th style="width:30px">#</th><th style="width:32px;text-align:center" title="Attachments">📎</th>'+shownCols.map(c=>`<th>${htmlEscape(c.displayName)}</th>`).join('')+'</tr>';
 
-  const attBody=attachmentsSupported!==false;
   document.getElementById('table-body').innerHTML=filteredItems.map((item,i)=>{
     const isSel=selectedItem&&item._id===selectedItem._id;
     const aN=attachmentCounts[item._id];
-    const attCell=attBody?`<td style="text-align:center;font-size:12px;color:var(--text-secondary)">${aN>0?'📎'+aN:aN===0?'—':''}</td>`:'';
     return `<tr class="${isSel?'selected':''}" onclick="selectItem(${i})">
       <td><span style="color:var(--blue);font-size:11px;cursor:pointer" onclick="event.stopPropagation();startEdit(${i})">✏️</span></td>
       <td style="color:var(--text-secondary)">${i+1}</td>
-      ${attCell}
+      <td style="text-align:center;font-size:12px;color:var(--text-secondary)">${aN>0?'📎'+aN:aN===0?'—':''}</td>
       ${shownCols.map(c=>{
         const lookup=c.displayName||c.name;
         let v=item[lookup]!==undefined?item[lookup]:'';
@@ -678,14 +681,12 @@ function openForm(title,data){
     }
     html+=`</div>`;
   });
-  if(attachmentsSupported!==false){
-    html+=`<div class="attachment-section"><label>Attachments</label><div id="attachment-list">${editingId?'<div class="attachment-loading">Loading...</div>':'<div class="attachment-empty">Save the item first to add attachments.</div>'}</div>${editingId?'<div class="attachment-upload"><input type="file" id="attachment-file" multiple><button class="btn btn-primary" onclick="uploadSelectedAttachments()">Upload</button></div>':''}</div>`;
-  }
+  html+=`<div class="attachment-section"><label>Attachments</label><div id="attachment-list">${editingId?'<div class="attachment-loading">Loading...</div>':'<div class="attachment-empty">Save the item first to add attachments.</div>'}</div>${editingId?'<div class="attachment-upload"><input type="file" id="attachment-file" multiple><button class="btn btn-primary" onclick="uploadSelectedAttachments()">Upload</button></div>':''}</div>`;
   body.innerHTML=html;
   document.getElementById('form-overlay').classList.remove('hidden');
   document.getElementById('save-status').className='save-status';
   document.getElementById('save-btn').textContent=editingId?'💾 Update':'💾 Create';
-  if(editingId&&attachmentsSupported!==false)loadAttachmentsList();
+  if(editingId)loadAttachmentsList();
 }
 
 function closeForm(){
