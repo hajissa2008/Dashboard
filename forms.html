@@ -54,8 +54,9 @@ html,body{height:100%;font-family:'Segoe UI',-apple-system,system-ui,sans-serif;
 .results-panel .empty-state .icon{font-size:48px;margin-bottom:12px}
 .results-panel .empty-state h3{font-size:16px;font-weight:600;margin-bottom:4px;color:var(--text-primary)}
 .results-panel .empty-state p{font-size:13px}
-.form-panel{width:420px;max-width:90vw;background:var(--white);border-left:1px solid var(--gray-border);display:flex;flex-direction:column;overflow:hidden;flex-shrink:0;transition:width .3s}
-.form-panel.hidden{width:0;min-width:0;border-left:none;overflow:hidden}
+.form-overlay{position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:300;display:flex;align-items:center;justify-content:center}
+.form-overlay.hidden{display:none}
+.form-panel{width:90vw;max-width:520px;max-height:85vh;background:var(--white);border-radius:8px;box-shadow:0 8px 30px rgba(0,0,0,.25);display:flex;flex-direction:column;overflow:hidden}
 .form-panel .form-header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--gray-border);flex-shrink:0}
 .form-panel .form-header h3{font-size:14px;font-weight:600}
 .form-panel .form-close{background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-secondary);padding:2px 6px;border-radius:4px}
@@ -100,8 +101,7 @@ html,body{height:100%;font-family:'Segoe UI',-apple-system,system-ui,sans-serif;
 .dark-toggle:hover{background:var(--gray-light)}
 @media(max-width:768px){
   .main{flex-direction:column}
-  .form-panel{width:100%;border-left:none;border-top:1px solid var(--gray-border);max-height:60vh}
-  .form-panel.hidden{display:none}
+  .form-panel{width:95vw;max-height:90vh}
   .toolbar{flex-wrap:wrap}
   .header h1{font-size:13px}
 }
@@ -149,16 +149,18 @@ html,body{height:100%;font-family:'Segoe UI',-apple-system,system-ui,sans-serif;
         </table>
       </div>
     </div>
-    <div class="form-panel hidden" id="form-panel">
-      <div class="form-header">
-        <h3 id="form-title">New Item</h3>
-        <button class="form-close" onclick="closeForm()">✕</button>
-      </div>
-      <div class="form-body" id="form-body"></div>
-      <div class="form-footer">
-        <span class="save-status" id="save-status"></span>
-        <button class="btn btn-outline" onclick="closeForm()">Cancel</button>
-        <button class="btn btn-primary" id="save-btn" onclick="saveItem()">💾 Save</button>
+    <div class="form-overlay hidden" id="form-overlay" onclick="if(event.target===this)closeForm()">
+      <div class="form-panel" id="form-panel">
+        <div class="form-header">
+          <h3 id="form-title">New Item</h3>
+          <button class="form-close" onclick="closeForm()">✕</button>
+        </div>
+        <div class="form-body" id="form-body"></div>
+        <div class="form-footer">
+          <span class="save-status" id="save-status"></span>
+          <button class="btn btn-outline" onclick="closeForm()">Cancel</button>
+          <button class="btn btn-primary" id="save-btn" onclick="saveItem()">💾 Save</button>
+        </div>
       </div>
     </div>
   </div>
@@ -378,7 +380,7 @@ async function onDeptChange(){
   const id=document.getElementById('dept-select').value;
   document.getElementById('btn-new').style.display='none';
   document.getElementById('btn-refresh').style.display='none';
-  document.getElementById('form-panel').classList.add('hidden');
+  closeForm();
   selectedItem=null; editingId=null;
   if(!id){currentDept=null; setEmpty('📋','Select a department','Choose a department above to load items from SharePoint.'); return;}
   currentDept=DEPTS.find(d=>d.id===id);
@@ -449,11 +451,12 @@ function renderTable(){
   const titleCol=columnDefs.find(c=>c.name==='Title');
   if(titleCol&&!shownCols.includes(titleCol))shownCols.unshift(titleCol);
 
-  document.getElementById('table-head').innerHTML='<tr><th style="width:30px">#</th>'+shownCols.map(c=>`<th>${htmlEscape(c.displayName)}</th>`).join('')+'<th style="width:50px"></th></tr>';
+  document.getElementById('table-head').innerHTML='<tr><th style="width:18px"></th><th style="width:30px">#</th>'+shownCols.map(c=>`<th>${htmlEscape(c.displayName)}</th>`).join('')+'</tr>';
 
   document.getElementById('table-body').innerHTML=filteredItems.map((item,i)=>{
     const isSel=selectedItem&&item._id===selectedItem._id;
     return `<tr class="${isSel?'selected':''}" onclick="selectItem(${i})">
+      <td><span style="color:var(--blue);font-size:11px;cursor:pointer" onclick="event.stopPropagation();startEdit(${i})">✏️</span></td>
       <td style="color:var(--text-secondary)">${i+1}</td>
       ${shownCols.map(c=>{
         const lookup=c.displayName||c.name;
@@ -463,7 +466,6 @@ function renderTable(){
         const s=htmlEscape(v);
         return `<td title="${s}">${s.substring(0,80)}</td>`;
       }).join('')}
-      <td><span style="color:var(--blue);font-size:11px;cursor:pointer" onclick="event.stopPropagation();startEdit(${i})">✏️</span></td>
     </tr>`;
   }).join('');
 }
@@ -533,13 +535,13 @@ function openForm(title,data){
     html+=`</div>`;
   });
   body.innerHTML=html;
-  document.getElementById('form-panel').classList.remove('hidden');
+  document.getElementById('form-overlay').classList.remove('hidden');
   document.getElementById('save-status').className='save-status';
   document.getElementById('save-btn').textContent=editingId?'💾 Update':'💾 Create';
 }
 
 function closeForm(){
-  document.getElementById('form-panel').classList.add('hidden');
+  document.getElementById('form-overlay').classList.add('hidden');
   editingId=null; selectedItem=null; renderTable();
 }
 
