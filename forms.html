@@ -496,7 +496,16 @@ async function deleteAttachment(siteUrl,listName,itemId,attachmentName){
 }
 async function uploadAttachment(siteUrl,listName,itemId,fileName,binaryBlob){
   const url=spRestAttachmentsUrl(siteUrl,listName,itemId)+`/add(FileName='${fileName.replace(/'/g,"''")}')`;
-  await spApiCall(url,'POST',binaryBlob,true);
+  try{
+    await spApiCall(url,'POST',binaryBlob,true);
+  }catch(e){
+    if(e.message&&e.message.includes('already in use')){
+      await deleteAttachment(siteUrl,listName,itemId,fileName);
+      await spApiCall(url,'POST',binaryBlob,true);
+    }else{
+      throw e;
+    }
+  }
 }
 async function downloadAttachment(attachmentName,fileName){
   fileName=decodeURIComponent(fileName);
@@ -506,6 +515,15 @@ async function downloadAttachment(attachmentName,fileName){
   const blob=await resp.blob();
   const blobUrl=URL.createObjectURL(blob);
   const a=document.createElement('a');a.href=blobUrl;a.download=fileName;a.click();
+  URL.revokeObjectURL(blobUrl);
+}
+async function downloadViewAttachment(attachmentName,itemId){
+  const name=decodeURIComponent(attachmentName);
+  const url=spRestAttachmentsUrl(currentDept.site,currentDept.list,itemId)+`/getByFileName('${name.replace(/'/g,"''")}')/$value`;
+  const resp=await spApiCall(url);
+  const blob=await resp.blob();
+  const blobUrl=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=blobUrl;a.download=name;a.click();
   URL.revokeObjectURL(blobUrl);
 }
 
@@ -719,11 +737,27 @@ function openDetail(idx){
     html+=`<div class="form-group"><label>${htmlEscape(c.displayName)}</label>${desc}<div style="padding:6px 0;font-size:13px;color:var(--text-primary);word-break:break-word;border-bottom:1px solid var(--gray-border)">${vDisplay?htmlEscape(vDisplay):'<span style="color:var(--text-secondary);font-style:italic">Not set</span>'}</div></div>`;
   });
   const aN=attachmentCounts[item._id];
-  html+=`<div class="form-group"><label>Attachments</label><div style="padding:6px 0;font-size:13px">${aN>0?'📎 '+aN+' file(s)':'<span style="color:var(--text-secondary);font-style:italic">None</span>'}</div></div>`;
+  html+=`<div class="form-group"><label>Attachments</label><div id="attachment-list-view" style="padding:6px 0;font-size:13px">${aN>0?'<div class="attachment-loading">Loading...</div>':'<span style="color:var(--text-secondary);font-style:italic">None</span>'}</div></div>`;
   body.innerHTML=html;
   document.getElementById('save-status').className='save-status';
   document.getElementById('save-status').textContent='';
   // Footer: only Close button
+  // Load attachment files with download buttons in view mode
+  if(aN>0&&item._id){
+    fetchAttachments(currentDept.site,currentDept.list,item._id).then(atts=>{
+      const el=document.getElementById('attachment-list-view');
+      if(!el)return;
+      el.innerHTML=atts.map(a=>{
+        const name=htmlEscape(a.name);
+        const size=a.size?` <span class="size">${fmtSize(a.size)}</span>`:'';
+        const jsName=encodeURIComponent(a.name);
+        return `<div class="attachment-item"><span class="name">${name}</span>${size}<button class="btn-icon download" title="Download" onclick="downloadViewAttachment('${jsName}','${item._id}')">⬇</button></div>`;
+      }).join('');
+    }).catch(()=>{
+      const el=document.getElementById('attachment-list-view');
+      if(el)el.innerHTML='<span style="color:var(--text-secondary)">Failed to load</span>';
+    });
+  }
   if(!document.getElementById('save-btn')){
     document.querySelector('.form-footer').innerHTML='<span class="save-status" id="save-status"></span><button class="btn btn-outline" onclick="closeForm()">Close</button>';
   }else{
