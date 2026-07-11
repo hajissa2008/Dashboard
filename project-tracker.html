@@ -1285,7 +1285,8 @@ function updateCounts(){
         const label=v==='cost'?'Cost Control':v==='qaqc'?'QA/QC':deptName;
         const vd=viewData[v];
         const cnt=(vd.connected&&vd.data.length>0)?vd.data.length:countByDept(label);
-        document.getElementById('count-'+v).textContent=cnt;
+        const countEl=document.getElementById('count-'+v);
+        if(countEl)countEl.textContent=cnt;
     });
 }
 
