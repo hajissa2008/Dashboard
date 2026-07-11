@@ -1182,11 +1182,11 @@ async function connectSingleView(view){
                 'Corrective_x0020_Action':['hseAction'],'CorrectiveAction':['hseAction'],
                 'Closeout_x0020_Date':['hseClose'],'CloseoutDate':['hseClose'],
                 'Close_x0020_Date':['closeDate'],'CloseDate':['closeDate'],
-                'Requested_x0020_Date':['reqDate'],'RequestedDate':['reqDate'],
+                'Date_x0020_Requested':['reqDate'],'DateRequested':['reqDate'],'Requested_x0020_Date':['reqDate'],'RequestedDate':['reqDate'],
                 'Work_x0020_Permit':['permit'],'WorkPermit':['permit'],'WorkPermitNumber':['permit'],
                 'Category':['cat'],
                 'Target_x0020_Date':['targetDate'],'TargetDate':['targetDate'],
-                'Status':['status'],'Priority':['priority'],'Progress':['prog'],'Remarks':['remarks'],
+                'Status':['status'],'Priority':['priority'],'Progress':['prog'],'Progress_x0020__x0025_':['prog'],'Remarks':['remarks'],
                 // Method Statement tracker aliases
                 'Contractor_x0020_Ref_x002e_':['contractorRef'],'ContractorRef':['contractorRef'],
                 'Final_x0020_Rev_x002e_':['finalRev'],'FinalRev':['finalRev'],
@@ -1867,9 +1867,8 @@ function cellValue(item,col){
 function renderDeptView(view){
     const v=VIEWS[view];
     const vd=viewData[view];
-    const useViewData=vd&&vd.connected&&vd.data.length>0&&(view!=='hse'||vd.data.some(x=>x.reqDate||x.RequestedDate||x.Requested_x0020_Date));
+    const useViewData=vd&&vd.connected&&vd.data.length>0;
     const items=useViewData?vd.data:DATA.filter(x=>x.dept===v.dept);
-    if(view==='hse')console.log('[HSE] useViewData:',useViewData,'vd.connected:',vd?.connected,'vd.data.length:',vd?.data?.length,'items.length:',items.length,'items[0]?.reqDate:',items[0]?.reqDate);
     // Compute view columns (same logic as renderTable)
     const _skipKeys=new Set(['dept','priority','proj','status','Title','Modified','Created','EditorLookupId','AuthorLookupId','ID','id','ContentType']);
     const _dataKeys=items.length>0?Object.keys(items[0]).filter(k=>!_skipKeys.has(k)&&!k.startsWith('@')&&!k.startsWith('_')&&!ALIAS_SHORTS.has(k)):[];
