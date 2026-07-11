@@ -2001,35 +2001,11 @@ function renderDeptView(view){
         const topCats=Object.entries(catCount).sort((a,b)=>b[1]-a[1]);
         const catColors=['#4C5D71','#ED7D31','#00B7C3','#107C10','#8764B8','#D92C2C','#FFB900','#0078D4','#8A8886','#E8ECF0'];
         const catChartId='hse-cat-chart-'+Date.now();
-        setTimeout(()=>{
-            const canvas=document.getElementById(catChartId);
-            if(!canvas||typeof Chart==='undefined')return;
-            const ctx=canvas.getContext('2d');
-            const catChart=new Chart(ctx,{
-                type:'doughnut',
-                data:{
-                    labels:topCats.map(([c])=>c),
-                    datasets:[{data:topCats.map(([,v])=>v),backgroundColor:topCats.map((_,i)=>catColors[i%catColors.length]),borderWidth:1,borderColor:'var(--white)'}]
-                },
-                options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{boxWidth:12,font:{size:10},padding:8}}},
-                    onClick:(e,els)=>{
-                        if(els.length===0)return;
-                        const i=els[0].index;
-                        const cat=catChart.data.labels[i];
-                        const filtered=items.filter(x=>(x.cat||x.Category||'Uncategorized')===cat);
-                        const ci=window._kpiCache.length;
-                        window._kpiCache.push({title:'Category: '+cat,items:filtered,cols:viewCols});
-                        showKpiModalFromCache(ci);
-                    }
-                }
-            });
-        },50);
         // Monthly created vs closed (last 6 months)
         const monthLabels=[]; const createdCounts=[]; const closedCounts=[];
         const now=new Date();
         for(let m=5;m>=0;m--){
             const d=new Date(now.getFullYear(),now.getMonth()-m,1);
-            const key=d.toISOString().substring(0,7);
             monthLabels.push(d.toLocaleString('default',{month:'short',year:'2-digit'}));
             const monthStart=d.getTime();
             const monthEnd=new Date(now.getFullYear(),now.getMonth()-m+1,1).getTime();
@@ -2037,42 +2013,11 @@ function renderDeptView(view){
             closedCounts.push(items.filter(x=>{const cl=x.hseClose||x.CloseoutDate||x.Closeout_x0020_Date||x['Closeout Date'];if(!cl)return false;const cd=new Date(cl).getTime();return cd>=monthStart&&cd<monthEnd;}).length);
         }
         const monthChartId='hse-monthly-chart-'+Date.now();
-        setTimeout(()=>{
-            const canvas=document.getElementById(monthChartId);
-            if(!canvas||typeof Chart==='undefined')return;
-            const ctx=canvas.getContext('2d');
-            const barChart=new Chart(ctx,{
-                type:'bar',
-                data:{
-                    labels:monthLabels,
-                    datasets:[{label:'Created',data:createdCounts,backgroundColor:'#4C5D71',borderRadius:3},
-                              {label:'Closed',data:closedCounts,backgroundColor:'#107C10',borderRadius:3}]
-                },
-                options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:12,font:{size:11}}}},scales:{x:{grid:{display:false},ticks:{font:{size:10}}},y:{beginAtZero:true,ticks:{stepSize:1,font:{size:10}}}},
-                    onClick:(e,els)=>{
-                        if(els.length===0)return;
-                        const ds=els[0].datasetIndex;
-                        const i=els[0].index;
-                        const label=barChart.data.labels[i];
-                        const dsLabel=barChart.data.datasets[ds].label;
-                        const monthEnd=new Date(now.getFullYear(),now.getMonth()-5+i+1,1);
-                        const monthStart=new Date(now.getFullYear(),now.getMonth()-5+i,1);
-                        const filtered=ds===0?items.filter(x=>{const cd=x.Created||x.created;return cd&&new Date(cd).getTime()>=monthStart.getTime()&&new Date(cd).getTime()<monthEnd.getTime();})
-                            :items.filter(x=>{const cl=x.hseClose||x.CloseoutDate||x.Closeout_x0020_Date||x['Closeout Date'];if(!cl)return false;const cd=new Date(cl).getTime();return cd>=monthStart.getTime()&&cd<monthEnd.getTime();});
-                        const ci=window._kpiCache.length;
-                        window._kpiCache.push({title:dsLabel+' - '+label,items:filtered,cols:viewCols});
-                        showKpiModalFromCache(ci);
-                    }
-                }
-            });
-        },50);
-        const overdueCount=items.filter(isOverdue).length;
         kpis=kpi('🛡️','Total Tasks',total,'#4C5D71',null,null,null,null,items)+
               kpi('🔴','Critical/Urgent',priCritical,'#D92C2C',null,null,null,null,items.filter(x=>x.priority==='Critical'||x.priority==='Urgent'))+
               kpi('🟠','High',priHigh,'#ED7D31',null,null,null,null,items.filter(x=>x.priority==='High'))+
               kpi('🟡','Medium',priMedium,'#FFB900',null,null,null,null,items.filter(x=>x.priority==='Medium'||x.priority==='Normal'))+
-              kpi('🟢','Low',priLow,'#107C10',null,null,null,null,items.filter(x=>x.priority==='Low'))+
-              kpi('⏰','Overdue',overdueCount,'#D92C2C',null,null,'Delayed',null,items.filter(isOverdue));
+              kpi('🟢','Low',priLow,'#107C10',null,null,null,null,items.filter(x=>x.priority==='Low'));
         // Task by Status — one KPI per unique status value
         const statusCount={};
         items.forEach(x=>{const s=x.status||'Not Set';statusCount[s]=(statusCount[s]||0)+1;});
@@ -2133,6 +2078,29 @@ function renderDeptView(view){
       <div class="table-scroll"><table id="data-table"><tbody id="table-body"></tbody></table></div>
     </div>`;
     renderTable();
+    // Render HSE charts after DOM is ready
+    if(view==='hse'&&typeof Chart!=='undefined'){
+        requestAnimationFrame(()=>{
+            const catCanvas=document.getElementById(catChartId);
+            if(catCanvas){
+                const ctx=catCanvas.getContext('2d');
+                const catChart=new Chart(ctx,{
+                    type:'doughnut',
+                    data:{labels:topCats.map(([c])=>c),datasets:[{data:topCats.map(([,v])=>v),backgroundColor:topCats.map((_,i)=>catColors[i%catColors.length]),borderWidth:1,borderColor:'var(--white)'}]},
+                    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{boxWidth:12,font:{size:10},padding:8}}},onClick:(e,els)=>{if(!els.length)return;const i=els[0].index;const cat=catChart.data.labels[i];const filtered=items.filter(x=>(x.cat||x.Category||'Uncategorized')===cat);const ci=window._kpiCache.length;window._kpiCache.push({title:'Category: '+cat,items:filtered,cols:viewCols});showKpiModalFromCache(ci);}}
+                });
+            }
+            const monthCanvas=document.getElementById(monthChartId);
+            if(monthCanvas){
+                const ctx2=monthCanvas.getContext('2d');
+                const barChart=new Chart(ctx2,{
+                    type:'bar',
+                    data:{labels:monthLabels,datasets:[{label:'Created',data:createdCounts,backgroundColor:'#4C5D71',borderRadius:3},{label:'Closed',data:closedCounts,backgroundColor:'#107C10',borderRadius:3}]},
+                    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:12,font:{size:11}}}},scales:{x:{grid:{display:false},ticks:{font:{size:10}}},y:{beginAtZero:true,ticks:{stepSize:1,font:{size:10}}}},onClick:(e,els)=>{if(!els.length)return;const ds=els[0].datasetIndex;const i=els[0].index;const label=barChart.data.labels[i];const dsLabel=barChart.data.datasets[ds].label;const monthEnd=new Date(now.getFullYear(),now.getMonth()-5+i+1,1);const monthStart=new Date(now.getFullYear(),now.getMonth()-5+i,1);const filtered=ds===0?items.filter(x=>{const cd=x.Created||x.created;return cd&&new Date(cd).getTime()>=monthStart.getTime()&&new Date(cd).getTime()<monthEnd.getTime();}):items.filter(x=>{const cl=x.hseClose||x.CloseoutDate||x.Closeout_x0020_Date||x['Closeout Date'];if(!cl)return false;const cd=new Date(cl).getTime();return cd>=monthStart.getTime()&&cd<monthEnd.getTime();});const ci=window._kpiCache.length;window._kpiCache.push({title:dsLabel+' - '+label,items:filtered,cols:viewCols});showKpiModalFromCache(ci);}}
+                });
+            }
+        });
+    }
 }
 
 function switchView(view){
