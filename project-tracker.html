@@ -2044,7 +2044,6 @@ function renderDeptView(view){
         items.forEach(x=>{const c=x.cat||x.Category||'Uncategorized';catCount[c]=(catCount[c]||0)+1;});
         const topCats=Object.entries(catCount).sort((a,b)=>b[1]-a[1]);
         const catColors=['#4C5D71','#ED7D31','#00B7C3','#107C10','#8764B8','#D92C2C','#FFB900','#0078D4','#8A8886','#E8ECF0'];
-        const catChartId='hse-cat-chart-'+Date.now();
         // Monthly created vs closed (last 6 months)
         const monthLabels=[]; const createdCounts=[]; const closedCounts=[];
         const now=new Date();
@@ -2056,7 +2055,6 @@ function renderDeptView(view){
             createdCounts.push(items.filter(x=>{const cd=x.Created||x.created;return cd&&new Date(cd).getTime()>=monthStart&&new Date(cd).getTime()<monthEnd;}).length);
             closedCounts.push(items.filter(x=>{const cl=x.hseClose||x.CloseoutDate||x.Closeout_x0020_Date||x['Closeout Date'];if(!cl)return false;const cd=new Date(cl).getTime();return cd>=monthStart&&cd<monthEnd;}).length);
         }
-        const monthChartId='hse-monthly-chart-'+Date.now();
         kpis=kpi('🛡️','Total Tasks',total,'#4C5D71',null,null,null,null,items)+
               kpi('🔴','Critical/Urgent',priCritical,'#D92C2C',null,null,null,null,items.filter(x=>x.priority==='Critical'||x.priority==='Urgent'))+
               kpi('🟠','High',priHigh,'#ED7D31',null,null,null,null,items.filter(x=>x.priority==='High'))+
@@ -2076,17 +2074,19 @@ function renderDeptView(view){
             const icon=s==='Closed'||s==='Completed'?'✅':s==='In Progress'?'🔄':s==='Not Started'||s==='Not Set'?'⏳':s==='Overdue'||s==='Delayed'?'⏰':s==='Cancelled'?'🚫':'📋';
             kpis+=kpi(icon,s,cnt,color,null,null,null,null,items.filter(x=>x.status===s));
         });
-        // Category pie chart card
+        // Category bar chart card
         kpis+=`<div class="kpi-card" style="grid-column:span 2;padding:12px;cursor:default;overflow:visible">
           <div class="kpi-accent" style="background:#00B7C3"></div>
           <div class="kpi-label">📊 Tasks by Category</div>
-          <div style="height:150px;margin-top:4px;position:relative"><canvas id="${catChartId}" style="width:100%;height:100%"></canvas></div>
+          <div style="margin-top:6px;display:flex;flex-direction:column;gap:5px">${topCats.map(function(c){const max=topCats[0][1];const pct=max?(c[1]/max*100).toFixed(0):0;const ci=window._kpiCache?window._kpiCache.length:0;const cat=c[0];if(!window._kpiCache)window._kpiCache=[];window._kpiCache.push({title:'Category: '+cat,items:items.filter(function(x){return (x.cat||x.Category||'Uncategorized')===cat}),cols:viewCols});return '<div onclick="showKpiModalFromCache('+ci+')" style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:3px 0"><span style="width:80px;font-size:11px;color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+cat+'</span><div style="flex:1;height:16px;background:var(--gray-light);border-radius:3px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:'+catColors[topCats.indexOf(c)%catColors.length]+';border-radius:3px;transition:width .3s"></div></div><span style="width:24px;text-align:right;font-size:11px;font-weight:600;color:var(--text-primary)">'+c[1]+'</span></div>';}).join('')}</div>
         </div>`;
         // Monthly chart card
+        var mcMax=Math.max.apply(null,createdCounts.concat(closedCounts))||1;
         kpis+=`<div class="kpi-card" style="grid-column:span 2;padding:12px;cursor:default;overflow:visible">
           <div class="kpi-accent" style="background:#4C5D71"></div>
           <div class="kpi-label">📅 Monthly Tasks (Created vs Closed)</div>
-          <div style="height:140px;margin-top:4px;position:relative"><canvas id="${monthChartId}" style="width:100%;height:100%"></canvas></div>
+          <div style="margin-top:6px">${monthLabels.map(function(l,i){const cpct=(createdCounts[i]/mcMax*100).toFixed(0);const clpct=(closedCounts[i]/mcMax*100).toFixed(0);return '<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px"><span style="width:44px;font-size:10px;color:var(--text-secondary)">'+l+'</span><div style="flex:1;display:flex;flex-direction:column;gap:2px"><div style="height:12px;background:var(--gray-light);border-radius:3px;overflow:hidden;position:relative"><div style="height:100%;width:'+cpct+'%;background:#4C5D71;border-radius:3px;transition:width .3s"></div></div><div style="height:12px;background:var(--gray-light);border-radius:3px;overflow:hidden;position:relative"><div style="height:100%;width:'+clpct+'%;background:#107C10;border-radius:3px;transition:width .3s"></div></div></div><div style="width:40px;text-align:right;font-size:10px;color:var(--text-primary)"><span style="color:#4C5D71">'+createdCounts[i]+'</span> <span style="color:#107C10">'+closedCounts[i]+'</span></div></div>';}).join('')}
+          </div>
         </div>`;
     }else{
         kpis=kpi('📊','Total Items',total,'#4C5D71',null,null,null,null,items)+
@@ -2122,44 +2122,6 @@ function renderDeptView(view){
       <div class="table-scroll"><table id="data-table"><tbody id="table-body"></tbody></table></div>
     </div>`;
     renderTable();
-    // Render HSE charts after DOM is ready
-    if(view==='hse'&&typeof Chart!=='undefined'){
-        (function renderHseCharts(catId, monthId, cats, cColors, mLabels, cCounts, clCounts, dNow, allItems, vCols){
-            setTimeout(function(){
-                const catCanvas=document.getElementById(catId);
-                if(catCanvas){
-                    try{
-                        if(cats.length===0||cats.every(function(c){return c[1]===0})){
-                            catCanvas.parentElement.innerHTML='<div style="padding:40px 0;text-align:center;color:var(--text-secondary);font-size:13px">No category data</div>';
-                        }else{
-                            const ctx=catCanvas.getContext('2d');
-                            const catChart=new Chart(ctx,{
-                                type:'bar',
-                                data:{labels:cats.map(function(c){return c[0]}),datasets:[{data:cats.map(function(c){return c[1]}),backgroundColor:cats.map(function(_,i){return cColors[i%cColors.length]}),borderRadius:3}]},
-                                options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{font:{size:10}}},y:{beginAtZero:true,ticks:{stepSize:1,font:{size:10}}}},onClick:function(e,els){if(!els.length)return;var i=els[0].index;var cat=catChart.data.labels[i];var filtered=allItems.filter(function(x){return (x.cat||x.Category||'Uncategorized')===cat});var ci=window._kpiCache.length;window._kpiCache.push({title:'Category: '+cat,items:filtered,cols:vCols});showKpiModalFromCache(ci);}}
-                            });
-                        }
-                    }catch(e){catCanvas.parentElement.innerHTML='<div style="padding:40px 0;text-align:center;color:var(--text-secondary);font-size:13px">Chart error</div>';}
-                }
-                const monthCanvas=document.getElementById(monthId);
-                if(monthCanvas){
-                    try{
-                        var hasData=mLabels.some(function(_,i){return cCounts[i]>0||clCounts[i]>0});
-                        if(!hasData){
-                            monthCanvas.parentElement.innerHTML='<div style="padding:40px 0;text-align:center;color:var(--text-secondary);font-size:13px">No date data for monthly chart (requires Created and Closeout Date fields)</div>';
-                        }else{
-                            const ctx2=monthCanvas.getContext('2d');
-                            const barChart=new Chart(ctx2,{
-                                type:'bar',
-                                data:{labels:mLabels,datasets:[{label:'Created',data:cCounts,backgroundColor:'#4C5D71',borderRadius:3},{label:'Closed',data:clCounts,backgroundColor:'#107C10',borderRadius:3}]},
-                                options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:12,font:{size:11}}}},scales:{x:{grid:{display:false},ticks:{font:{size:10}}},y:{beginAtZero:true,ticks:{stepSize:1,font:{size:10}}}},onClick:function(e,els){if(!els.length)return;var ds=els[0].datasetIndex;var i=els[0].index;var label=barChart.data.labels[i];var dsLabel=barChart.data.datasets[ds].label;var monthEnd=new Date(dNow.getFullYear(),dNow.getMonth()-5+i+1,1);var monthStart=new Date(dNow.getFullYear(),dNow.getMonth()-5+i,1);var filtered=ds===0?allItems.filter(function(x){var cd=x.Created||x.created;return cd&&new Date(cd).getTime()>=monthStart.getTime()&&new Date(cd).getTime()<monthEnd.getTime();}):allItems.filter(function(x){var cl=x.hseClose||x.CloseoutDate||x.Closeout_x0020_Date||x['Closeout Date'];if(!cl)return false;var ccd=new Date(cl).getTime();return ccd>=monthStart.getTime()&&ccd<monthEnd.getTime();});var ci=window._kpiCache.length;window._kpiCache.push({title:dsLabel+' - '+label,items:filtered,cols:vCols});showKpiModalFromCache(ci);}}
-                            });
-                        }
-                    }catch(e){monthCanvas.parentElement.innerHTML='<div style="padding:40px 0;text-align:center;color:var(--text-secondary);font-size:13px">Chart error</div>';}
-                }
-            },100);
-        })(catChartId, monthChartId, topCats, catColors, monthLabels, createdCounts, closedCounts, now, items, viewCols);
-    }
 }
 
 function switchView(view){
