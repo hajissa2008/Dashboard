@@ -549,7 +549,7 @@ const VIEWS = {
   construction:{title:'Construction Tracker',dept:'Construction',cols:['id','proj','actId','actName','workFront','cArea','contractor','foreman','workStatus','dailyProg','weeklyProg','compPct','status','pStart','pFinish','aStart','aFinish','inspReq','siteIssue','ncr','punch','permit','priority','remarks']},
   cost:{title:'Cost Control Tracker',dept:'Cost Control',cols:['id','proj','actId','actName','wbs','budget','committed','actual','forecast','costVar','ev','pv','cpi','spi','prog','status']},
   planning:{title:'Planning Tracker',dept:'Planning',cols:['id','proj','actId','actName','primId','schedStatus','pStart','pFinish','baseFinish','curFinish','delayDays','floatDays','critical','recovery','prog','status','priority']},
-  qaqc:{title:'QA/QC Tracker',dept:'QA/QC',cols:['id','proj','actId','actName','qaInsp','matInsp','testReport','qaNcr','qaAction','qaStatus','qaClose','status','priority','assigned']},
+  qaqc:{title:'QA/QC - Method Statements',dept:'QA/QC',cols:['contractorRef','finalRev','finalCode','discipline','description','remarks']},
   hse:{title:'HSE Tracker',dept:'HSE',cols:['id','proj','actId','actName','risk','permitStat','incident','toolbox','safetyInsp','hseAction','hseClose','status','priority','assigned']}
 };
 
@@ -575,6 +575,8 @@ const COL_LABELS = {
   apprDate:'Approval Date',ifcDate:'IFC Date',spec:'Spec #',calc:'Calc Ref',phase:'Phase',discLead:'Disc Lead',
   hseAction:'HSE Action',hseClose:'HSE Closeout',
   qaInsp:'QA Insp Req',matInsp:'Material Inspection',testReport:'Test Report',qaNcr:'QA NCR',qaAction:'QA Action',qaStatus:'Quality Status',qaClose:'QA Closeout',
+  contractorRef:'Contractor Ref.',finalRev:'Final Rev.',finalCode:'Status Code',
+  discipline:'Discipline',description:'Subject / Description',remarks:'Remarks',
   rev00:'REV 00',rev01:'REV 01',rev02:'REV 02',rev03:'REV 03',
   // Procurement Tracker Log column labels
   'Discipline':'Discipline','Description':'Description','RFQ':'RFQ',
@@ -622,6 +624,7 @@ const ALIAS_SHORTS = new Set([
   'phase','assigned','delayDays','risk','permitStat','incident',
   'qaInsp','matInsp','testReport','qaNcr','qaAction','qaStatus','qaClose',
   'hseAction','hseClose','budget','committed','actual','forecast','costVar','ev','pv','cpi','spi',
+  'contractorRef','finalRev','finalCode','docType','discipline','description',
   'primId','schedStatus','baseFinish','curFinish','recovery','critical','floatDays',
   'rev00','rev01','rev02','rev03','part','proj','status','priority','dept',
   'leadTime','plannedDelivery','matSubStatus','description',
@@ -638,7 +641,7 @@ function countByDept(dept){return DATA.filter(d=>d.dept===dept).length}
 function countAll(){return DATA.length}
 
 // Date-based overdue logic: item is overdue if any of its end dates (planned/due) is before today AND status is not complete
-const COMPLETE_STATUSES = new Set(['Completed','Closed','Approved','Passed','Cancelled','Delivered','Issued','IFC','Submitted','SDC Completed','ACC Completed']);
+const COMPLETE_STATUSES = new Set(['Completed','Closed','Approved','Passed','Cancelled','Delivered','Issued','IFC','Submitted','SDC Completed','ACC Completed','Approved As Submitted','Approved As Noted']);
 function toDate(v){
     if(!v||v==='')return null;
     if(v instanceof Date&&!isNaN(v))return v;
@@ -1113,6 +1116,13 @@ async function connectSingleView(view){
                 'QAInspectionReq':['qaInsp'],'MaterialInspection':['matInsp'],'TestReport':['testReport'],
                 'QANCR':['qaNcr'],'QACorrectiveAction':['qaAction'],'QualityStatus':['qaStatus'],'QACloseoutDate':['qaClose'],
                 'HSECorrectiveAction':['hseAction'],'HSECloseoutDate':['hseClose'],
+                // Method Statement tracker aliases
+                'Contractor_x0020_Ref_x002e_':['contractorRef'],'ContractorRef':['contractorRef'],
+                'Final_x0020_Rev_x002e_':['finalRev'],'FinalRev':['finalRev'],
+                'Final_x0020_Code':['finalCode'],
+                'Doc_x0020_Type':['docType'],'DocType':['docType'],
+                'Discipline':['discipline'],
+                'Subject_x0020__x002f__x0020_Description':['description'],'SubjectDescription':['description'],'Subject':['description'],'Description':['description'],
                 'Budget':['budget'],'CommittedCost':['committed'],'ActualCost':['actual'],'ForecastCost':['forecast'],
                 'CostVariance':['costVar'],'EarnedValue':['ev'],'PlannedValue':['pv'],'CPI':['cpi'],'SPI':['spi'],
                 'PrimaveraActivityID':['primId'],'ScheduleStatus':['schedStatus'],'BaselineFinish':['baseFinish'],
@@ -1126,6 +1136,9 @@ async function connectSingleView(view){
                     shortNames.forEach(sn=>{if(item[sn]===undefined||item[sn]==='')item[sn]=item[spName];});
                 }
             }
+            // Normalize QA/QC Method Statement status from Final Code column
+            const fc=item.finalCode||item['Final Code']||item['Final_x0020_Code']||'';
+            if(fc){const codeMap={'A':'Approved As Submitted','B':'Approved As Noted','C':'Revise & Resubmit','D':'Rejected','E':'For Information','O':'Under Review'};if(codeMap[fc])item.status=codeMap[fc];}
             // Derive status from CompletionPct if no status column exists
             if((item.status==='Not Set'||!item.status)&&item.prog!==undefined&&item.prog!==null&&item.prog!==''){
                 const p=Number(item.prog);
@@ -1910,43 +1923,28 @@ function renderDeptView(view){
               kpi('✅','On Track',onTrack,'#107C10',onTrack/total*100,null,null,null,items.filter(x=>!isOverdue(x)))+
               kpi('📊','Completed',completed,'#00B7C3',completed/total*100,null,'Completed',null,items.filter(x=>x.status==='Completed'));
     }else if(view==='qaqc'){
-        // --- Dynamic KPI based on actual SharePoint data ---
-        const statusGroups = {};
-        items.forEach(x => {
-            const s = x.status || 'Not Set';
-            if (!statusGroups[s]) statusGroups[s] = [];
-            statusGroups[s].push(x);
+        // Method Statement status groups
+        const groups={};
+        items.forEach(x=>{
+            const s=x.status||'Not Set'; if(!groups[s])groups[s]=[];
+            groups[s].push(x);
         });
-        const meta = s => {
-            const l = s.toLowerCase();
-            if (l.includes('approv') || l.includes('pass') || l.includes('accept') || l === 'completed' || l === 'closed') return { icon: '✅', color: '#107C10' };
-            if (l.includes('reject') || l.includes('fail') || l === 'resubmit') return { icon: '❌', color: '#D92C2C' };
-            if (l.includes('review') || l.includes('submitted') || l.includes('forw')) return { icon: '📤', color: '#0078D4' };
-            if (l.includes('progress') || l.includes('start') || l.includes('open')) return { icon: '🔄', color: '#00B7C3' };
-            if (l.includes('draft') || l === 'not set') return { icon: '📝', color: '#8A8886' };
-            if (l === 'delayed' || l === 'overdue') return { icon: '⏰', color: '#D92C2C' };
-            return { icon: '📋', color: '#4C5D71' };
-        };
-        const statusKeys = Object.keys(statusGroups).sort();
-        kpis = kpi('📊', 'Total Items', total, '#4C5D71', null, null, null, null, items);
-        statusKeys.forEach(s => {
-            const grp = statusGroups[s];
-            const m = meta(s);
-            kpis += kpi(m.icon, s, grp.length, m.color, total ? grp.length / total * 100 : 0, null, null, null, grp);
-        });
-        kpis += kpi('⏰', 'Overdue', overdue, '#D92C2C', null, null, null, null, items.filter(isOverdue));
-        // If any date fields exist in data, show upcoming items
-        const first = items[0];
-        if (first && items.some(x => !COMPLETE_STATUSES.has(x.status))) {
-            const dateKeys = Object.keys(first).filter(k => items.some(x => x[k] && /^\d{4}[-\/]\d{2}[-\/]\d{2}/.test(String(x[k]))));
-            if (dateKeys.length > 0) {
-                const soon = items.filter(x => !COMPLETE_STATUSES.has(x.status) && dateKeys.some(f => {
-                    const d = new Date(x[f]);
-                    return !isNaN(d) && d >= new Date() && d <= new Date(Date.now() + 7 * 86400000);
-                }));
-                if (soon.length > 0) kpis += kpi('📅', 'Due This Week', soon.length, '#ED7D31', null, null, null, null, soon);
-            }
-        }
+        const approved=items.filter(x=>x.status==='Approved As Submitted'||x.status==='Approved As Noted').length;
+        const underReview=items.filter(x=>x.status==='Under Review').length;
+        const resubmit=items.filter(x=>x.status==='Revise & Resubmit').length;
+        const rejected=items.filter(x=>x.status==='Rejected').length;
+        const forInfo=items.filter(x=>x.status==='For Information').length;
+        const appRate=total?Math.round(approved/total*100):0;
+        const disciplines=items.filter((x,i,a)=>x.discipline&&a.findIndex(y=>y.discipline===x.discipline)===i).length;
+        kpis=kpi('📄','Total MS',total,'#4C5D71',null,null,null,null,items)+
+              kpi('✅','Approved',approved,'#107C10',total?approved/total*100:0,null,null,null,items.filter(x=>x.status==='Approved As Submitted'||x.status==='Approved As Noted'))+
+              kpi('🔍','Under Review',underReview,'#0078D4',total?underReview/total*100:0,null,null,null,items.filter(x=>x.status==='Under Review'))+
+              kpi('🔄','Revise & Resubmit',resubmit,'#ED7D31',total?resubmit/total*100:0,null,null,null,items.filter(x=>x.status==='Revise & Resubmit'))+
+              kpi('❌','Rejected',rejected,'#D92C2C',null,{txt:rejected+' item(s)',cls:'down'},null,null,items.filter(x=>x.status==='Rejected'))+
+              kpi('ℹ️','For Information',forInfo,'#8A8886',total?forInfo/total*100:0,null,null,null,items.filter(x=>x.status==='For Information'))+
+              kpi('⏰','Overdue',overdue,'#D92C2C',null,null,null,null,items.filter(isOverdue))+
+              kpi('📊','Approval Rate',appRate+'%','#00B7C3',appRate,null,null,null,items)+
+              kpi('🏷️','Disciplines',disciplines,'#8764B8',null,null,null,null,items);
     }else if(view==='hse'){
         const extreme=items.filter(x=>x.risk==='Extreme'||x.risk==='High'||x['Risk Level']==='Extreme'||x['Risk Level']==='High').length;
         const incidents=items.filter(x=>x.incident||x['Incident #']).length;
