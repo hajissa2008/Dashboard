@@ -668,7 +668,7 @@ function renderTable(){
   document.getElementById('table-body').innerHTML=filteredItems.map((item,i)=>{
     const isSel=selectedItem&&item._id===selectedItem._id;
     const aN=attachmentCounts[item._id];
-    return `<tr class="${isSel?'selected':''}" onclick="selectItem(${i})">
+    return `<tr class="${isSel?'selected':''}" onclick="openDetail(${i})">
       <td><span style="color:var(--blue);font-size:11px;cursor:pointer" onclick="event.stopPropagation();startEdit(${i})">✏️</span></td>
       <td style="color:var(--text-secondary)">${i+1}</td>
       <td style="text-align:center;font-size:12px;color:var(--text-secondary)">${aN>0?'📎'+aN:aN===0?'—':''}</td>
@@ -684,7 +684,35 @@ function renderTable(){
   }).join('');
 }
 
-// ======================== SELECT / CREATE / EDIT / FORM ========================
+// ======================== DETAIL VIEW / EDIT / FORM ========================
+function openDetail(idx){
+  if(idx<0||idx>=filteredItems.length)return;
+  selectedItem=filteredItems[idx]; renderTable();
+  const item=selectedItem;
+  const label=item.Title||item.title||'Item #'+(idx+1);
+  document.getElementById('form-title').textContent=label;
+  const body=document.getElementById('form-body');
+  const skipForm=new Set(['_id','_etag','ID','ContentType','AppAuthor','AppEditor','Author','Editor','Created','Modified']);
+  let html='';
+  columnDefs.forEach(c=>{
+    if(skipForm.has(c.name))return;
+    const lookup=c.displayName||c.name;
+    let raw=item[lookup]!==undefined&&item[lookup]!==null?item[lookup]:item[c.name]!==undefined?item[c.name]:'';
+    let vDisplay=raw;
+    if(raw&&typeof raw==='object'){vDisplay=raw.LookupValue||raw.Title||raw.Email||JSON.stringify(raw);}
+    vDisplay=stripHtml(vDisplay);
+    const desc=c.description?`<div class="hint">${htmlEscape(stripHtml(c.description))}</div>`:'';
+    html+=`<div class="form-group"><label>${htmlEscape(c.displayName)}</label>${desc}<div style="padding:6px 0;font-size:13px;color:var(--text-primary);word-break:break-word;border-bottom:1px solid var(--gray-border)">${vDisplay?htmlEscape(vDisplay):'<span style="color:var(--text-secondary);font-style:italic">Not set</span>'}</div></div>`;
+  });
+  const aN=attachmentCounts[item._id];
+  html+=`<div class="form-group"><label>Attachments</label><div style="padding:6px 0;font-size:13px">${aN>0?'📎 '+aN+' file(s)':'<span style="color:var(--text-secondary);font-style:italic">None</span>'}</div></div>`;
+  body.innerHTML=html;
+  document.getElementById('save-status').className='save-status';
+  document.getElementById('save-status').textContent='';
+  document.getElementById('save-btn').outerHTML=`<button class="btn btn-primary" onclick="startEdit(${idx})" id="edit-btn">✏️ Edit</button>`;
+  document.getElementById('form-overlay').classList.remove('hidden');
+}
+
 function selectItem(idx){
   if(idx<0||idx>=filteredItems.length)return;
   selectedItem=filteredItems[idx]; renderTable();
@@ -694,11 +722,21 @@ function startEdit(idx){
   if(idx<0||idx>=filteredItems.length)return;
   selectedItem=filteredItems[idx]; renderTable();
   editingId=selectedItem._id;
+  // Restore footer buttons if in detail view
+  if(!document.getElementById('save-btn')){
+    const f=document.querySelector('.form-footer');
+    f.innerHTML='<span class="save-status" id="save-status"></span><button class="btn btn-outline" onclick="closeForm()">Cancel</button><button class="btn btn-primary" id="save-btn" onclick="saveItem()">💾 Update</button>';
+  }
   openForm('Edit Item',selectedItem);
 }
 
 function startCreate(){
   editingId=null; selectedItem=null; renderTable();
+  // Restore footer buttons if in detail view
+  if(!document.getElementById('save-btn')){
+    const f=document.querySelector('.form-footer');
+    f.innerHTML='<span class="save-status" id="save-status"></span><button class="btn btn-outline" onclick="closeForm()">Cancel</button><button class="btn btn-primary" id="save-btn" onclick="saveItem()">💾 Create</button>';
+  }
   openForm('New Item',{});
 }
 
@@ -716,7 +754,7 @@ function openForm(title,data){
     vDisplay=stripHtml(vDisplay);
     const req=c.required?' required':'';
     const reqStar=c.required?' class="required"':'';
-    const desc=c.description?`<div class="hint">${htmlEscape(c.description)}</div>`:'';
+    const desc=c.description?`<div class="hint">${htmlEscape(stripHtml(c.description))}</div>`:'';
     const fid='f_'+c.name.replace(/[^a-zA-Z0-9_-]/g,'_');
     html+=`<div class="form-group"><label for="${fid}"${reqStar}>${htmlEscape(c.displayName)}</label>${desc}`;
     switch(c.type){
