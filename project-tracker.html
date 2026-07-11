@@ -580,6 +580,7 @@ const COL_LABELS = {
   eng:'Engineer',checker:'Checker',appr:'Approver',subDate:'Submission Date',clientReview:'Client Review',
   apprDate:'Approval Date',ifcDate:'IFC Date',spec:'Spec #',calc:'Calc Ref',phase:'Phase',discLead:'Disc Lead',
   hseAction:'HSE Action',hseClose:'HSE Closeout',
+  hazard:'Hazard',hazardType:'Hazard Type',location:'Location',cat:'Category',
   qaInsp:'QA Insp Req',matInsp:'Material Inspection',testReport:'Test Report',qaNcr:'QA NCR',qaAction:'QA Action',qaStatus:'Quality Status',qaClose:'QA Closeout',
   contractorRef:'Contractor Ref.',finalRev:'Final Rev.',finalCode:'Status Code',
   discipline:'Discipline',description:'Subject / Description',remarks:'Remarks',
@@ -633,6 +634,7 @@ const ALIAS_SHORTS = new Set([
   'contractorRef','finalRev','finalCode','docType','discipline','description',
   'primId','schedStatus','baseFinish','curFinish','recovery','critical','floatDays',
   'rev00','rev01','rev02','rev03','part','proj','status','priority','dept',
+  'toolbox','safetyInsp','hazard','hazardType','location',
   'leadTime','plannedDelivery','matSubStatus','description',
   'techEval','commEval','pqPlanned','pqActual','pqRef','pqStatus',
   'matPlanned','matActual','forecastDate','matRef','manufacturer','subcontractor',
@@ -1122,6 +1124,21 @@ async function connectSingleView(view){
                 'QAInspectionReq':['qaInsp'],'MaterialInspection':['matInsp'],'TestReport':['testReport'],
                 'QANCR':['qaNcr'],'QACorrectiveAction':['qaAction'],'QualityStatus':['qaStatus'],'QACloseoutDate':['qaClose'],
                 'HSECorrectiveAction':['hseAction'],'HSECloseoutDate':['hseClose'],
+                // HSE Task Management Platform aliases
+                'Title':['title'],'Hazard':['hazard'],'Hazard_x0020_Type':['hazardType'],'HazardType':['hazardType'],
+                'Location':['location'],'Location_x0020_Area':['location'],'LocationArea':['location'],
+                'Task_x0020_Description':['description'],'TaskDescription':['description'],
+                'Assigned_x0020_To':['assigned'],'AssignedTo':['assigned'],
+                'Risk_x0020_Level':['risk'],'RiskLevel':['risk'],
+                'Permit_x0020_Status':['permitStat'],'PermitStatus':['permitStat'],
+                'Incident_x0020_Number':['incident'],'IncidentNumber':['incident'],'Incident_x0020_':['incident'],
+                'Toolbox_x0020_Talk':['toolbox'],'ToolboxTalk':['toolbox'],
+                'Safety_x0020_Inspection':['safetyInsp'],'SafetyInspection':['safetyInsp'],
+                'Corrective_x0020_Action':['hseAction'],'CorrectiveAction':['hseAction'],
+                'Closeout_x0020_Date':['hseClose'],'CloseoutDate':['hseClose'],
+                'Work_x0020_Permit':['permit'],'WorkPermit':['permit'],'WorkPermitNumber':['permit'],
+                'Category':['cat'],
+                'Status':['status'],'Priority':['priority'],'Progress':['prog'],'Remarks':['remarks'],
                 // Method Statement tracker aliases
                 'Contractor_x0020_Ref_x002e_':['contractorRef'],'ContractorRef':['contractorRef'],
                 'Final_x0020_Rev_x002e_':['finalRev'],'FinalRev':['finalRev'],
@@ -1972,13 +1989,13 @@ function renderDeptView(view){
               kpi('📊','Approval Rate',appRate+'%','#00B7C3',appRate,null,null,null,items)+
               kpi('🏷️','Disciplines',disciplines,'#8764B8',null,null,null,null,items);
     }else if(view==='hse'){
-        const extreme=items.filter(x=>x.risk==='Extreme'||x.risk==='High'||x['Risk Level']==='Extreme'||x['Risk Level']==='High').length;
-        const incidents=items.filter(x=>x.incident||x['Incident #']).length;
-        const permits=items.filter(x=>x.permit||x['Work Permit']||x.permitStat==='Approved').length;
+        const extreme=items.filter(x=>x.risk==='Extreme'||x.risk==='High').length;
+        const incidents=items.filter(x=>x.incident).length;
+        const permits=items.filter(x=>x.permit||x.permitStat==='Approved').length;
         kpis=kpi('🛡️','Total Assessments',total,'#4C5D71',null,null,null,null,items)+
-              kpi('🔴','High/Extreme Risk',extreme,'#D92C2C',extreme/total*100,null,null,null,items.filter(x=>x.risk==='Extreme'||x.risk==='High'||x['Risk Level']==='Extreme'||x['Risk Level']==='High'))+
-              kpi('⚠️','Incidents',incidents,'#ED7D31',null,null,null,null,items.filter(x=>x.incident||x['Incident #']))+
-              kpi('📋','Permits Issued',permits,'#00B7C3',null,null,null,null,items.filter(x=>x.permit||x['Work Permit']||x.permitStat==='Approved'))+
+              kpi('🔴','High/Extreme Risk',extreme,'#D92C2C',extreme/total*100,null,null,null,items.filter(x=>x.risk==='Extreme'||x.risk==='High'))+
+              kpi('⚠️','Incidents',incidents,'#ED7D31',null,null,null,null,items.filter(x=>x.incident))+
+              kpi('📋','Permits Issued',permits,'#00B7C3',null,null,null,null,items.filter(x=>x.permit||x.permitStat==='Approved'))+
               kpi('⏰','Overdue',overdue,'#D92C2C',null,null,'Delayed',null,items.filter(isOverdue))+
               kpi('✅','Completed',completed,'#107C10',completed/total*100,null,'Completed',null,items.filter(x=>x.status==='Completed'));
     }else{
@@ -2201,6 +2218,11 @@ function toggleDark(){
     if(!viewData.qaqc.site){
         viewData.qaqc.site='https://sascontractingsa.sharepoint.com/sites/Alenshaiah';
         viewData.qaqc.list='QAQC Tracker';
+    }
+    // Pre-fill HSE view
+    if(!viewData.hse.site){
+        viewData.hse.site='https://sascontractingsa.sharepoint.com/sites/Alenshaiah';
+        viewData.hse.list='HSE_Task_Management_Platform';
     }
 
     // Restore or save default Azure AD config
