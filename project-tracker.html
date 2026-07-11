@@ -1910,15 +1910,43 @@ function renderDeptView(view){
               kpi('✅','On Track',onTrack,'#107C10',onTrack/total*100,null,null,null,items.filter(x=>!isOverdue(x)))+
               kpi('📊','Completed',completed,'#00B7C3',completed/total*100,null,'Completed',null,items.filter(x=>x.status==='Completed'));
     }else if(view==='qaqc'){
-        const passed=items.filter(x=>x.qaStatus==='Passed'||x.qaStatus==='Closed'||x.status==='Passed').length;
-        const failed=items.filter(x=>x.qaStatus==='Failed'||x.status==='Failed').length;
-        const open=items.filter(x=>x.status==='Open'||x.qaStatus==='Open').length;
-        kpis=kpi('✅','Total Inspections',total,'#4C5D71',null,null,null,null,items)+
-              kpi('✔️','Passed',passed,'#107C10',total?passed/total*100:0,null,null,null,items.filter(x=>x.qaStatus==='Passed'||x.qaStatus==='Closed'||x.status==='Passed'))+
-              kpi('❌','Failed',failed,'#D92C2C',null,{txt:failed+' open',cls:'down'},null,null,items.filter(x=>x.qaStatus==='Failed'||x.status==='Failed'))+
-              kpi('⏰','Overdue',overdue,'#D92C2C',null,null,'Delayed',null,items.filter(isOverdue))+
-              kpi('📋','Open',open,'#ED7D31',open/total*100,null,null,null,items.filter(x=>x.status==='Open'||x.qaStatus==='Open'))+
-              kpi('📊','Pass Rate',total?Math.round(passed/total*100)+'%':'0%','#00B7C3',passed/total*100,null,null,null,items);
+        // --- Dynamic KPI based on actual SharePoint data ---
+        const statusGroups = {};
+        items.forEach(x => {
+            const s = x.status || 'Not Set';
+            if (!statusGroups[s]) statusGroups[s] = [];
+            statusGroups[s].push(x);
+        });
+        const meta = s => {
+            const l = s.toLowerCase();
+            if (l.includes('approv') || l.includes('pass') || l.includes('accept') || l === 'completed' || l === 'closed') return { icon: '✅', color: '#107C10' };
+            if (l.includes('reject') || l.includes('fail') || l === 'resubmit') return { icon: '❌', color: '#D92C2C' };
+            if (l.includes('review') || l.includes('submitted') || l.includes('forw')) return { icon: '📤', color: '#0078D4' };
+            if (l.includes('progress') || l.includes('start') || l.includes('open')) return { icon: '🔄', color: '#00B7C3' };
+            if (l.includes('draft') || l === 'not set') return { icon: '📝', color: '#8A8886' };
+            if (l === 'delayed' || l === 'overdue') return { icon: '⏰', color: '#D92C2C' };
+            return { icon: '📋', color: '#4C5D71' };
+        };
+        const statusKeys = Object.keys(statusGroups).sort();
+        kpis = kpi('📊', 'Total Items', total, '#4C5D71', null, null, null, null, items);
+        statusKeys.forEach(s => {
+            const grp = statusGroups[s];
+            const m = meta(s);
+            kpis += kpi(m.icon, s, grp.length, m.color, total ? grp.length / total * 100 : 0, null, null, null, grp);
+        });
+        kpis += kpi('⏰', 'Overdue', overdue, '#D92C2C', null, null, null, null, items.filter(isOverdue));
+        // If any date fields exist in data, show upcoming items
+        const first = items[0];
+        if (first && items.some(x => !COMPLETE_STATUSES.has(x.status))) {
+            const dateKeys = Object.keys(first).filter(k => items.some(x => x[k] && /^\d{4}[-\/]\d{2}[-\/]\d{2}/.test(String(x[k]))));
+            if (dateKeys.length > 0) {
+                const soon = items.filter(x => !COMPLETE_STATUSES.has(x.status) && dateKeys.some(f => {
+                    const d = new Date(x[f]);
+                    return !isNaN(d) && d >= new Date() && d <= new Date(Date.now() + 7 * 86400000);
+                }));
+                if (soon.length > 0) kpis += kpi('📅', 'Due This Week', soon.length, '#ED7D31', null, null, null, null, soon);
+            }
+        }
     }else if(view==='hse'){
         const extreme=items.filter(x=>x.risk==='Extreme'||x.risk==='High'||x['Risk Level']==='Extreme'||x['Risk Level']==='High').length;
         const incidents=items.filter(x=>x.incident||x['Incident #']).length;
