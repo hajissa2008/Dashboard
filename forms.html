@@ -691,6 +691,19 @@ function openDetail(idx){
   const item=selectedItem;
   const label=item.Title||item.title||'Item #'+(idx+1);
   document.getElementById('form-title').textContent=label;
+  // Add Edit button in header next to close
+  const header=document.querySelector('.form-header');
+  const closeBtn=header.querySelector('.form-close');
+  let editBtn=header.querySelector('.header-edit-btn');
+  if(!editBtn){
+    editBtn=document.createElement('button');
+    editBtn.className='btn btn-primary header-edit-btn';
+    editBtn.textContent='✏️ Edit';
+    editBtn.style.cssText='padding:4px 12px;font-size:12px;border-radius:4px;border:none;cursor:pointer;margin-right:8px';
+    closeBtn.parentNode.insertBefore(editBtn,closeBtn);
+  }
+  editBtn.onclick=()=>startEdit(idx);
+  editBtn.style.display='';
   const body=document.getElementById('form-body');
   const skipForm=new Set(['_id','_etag','ID','ContentType','AppAuthor','AppEditor','Author','Editor','Created','Modified']);
   let html='';
@@ -709,7 +722,12 @@ function openDetail(idx){
   body.innerHTML=html;
   document.getElementById('save-status').className='save-status';
   document.getElementById('save-status').textContent='';
-  document.getElementById('save-btn').outerHTML=`<button class="btn btn-primary" onclick="startEdit(${idx})" id="edit-btn">✏️ Edit</button>`;
+  // Footer: only Close button
+  if(!document.getElementById('save-btn')){
+    document.querySelector('.form-footer').innerHTML='<span class="save-status" id="save-status"></span><button class="btn btn-outline" onclick="closeForm()">Close</button>';
+  }else{
+    document.getElementById('save-btn').style.display='none';
+  }
   document.getElementById('form-overlay').classList.remove('hidden');
 }
 
@@ -722,8 +740,14 @@ function startEdit(idx){
   if(idx<0||idx>=filteredItems.length)return;
   selectedItem=filteredItems[idx]; renderTable();
   editingId=selectedItem._id;
+  // Hide header edit button
+  const eb=document.querySelector('.header-edit-btn');
+  if(eb)eb.style.display='none';
   // Restore footer buttons if in detail view
-  if(!document.getElementById('save-btn')){
+  const sb=document.getElementById('save-btn');
+  if(sb){
+    sb.style.display='';
+  }else{
     const f=document.querySelector('.form-footer');
     f.innerHTML='<span class="save-status" id="save-status"></span><button class="btn btn-outline" onclick="closeForm()">Cancel</button><button class="btn btn-primary" id="save-btn" onclick="saveItem()">💾 Update</button>';
   }
@@ -732,8 +756,14 @@ function startEdit(idx){
 
 function startCreate(){
   editingId=null; selectedItem=null; renderTable();
+  // Hide header edit button
+  const eb=document.querySelector('.header-edit-btn');
+  if(eb)eb.style.display='none';
   // Restore footer buttons if in detail view
-  if(!document.getElementById('save-btn')){
+  const sb=document.getElementById('save-btn');
+  if(sb){
+    sb.style.display='';
+  }else{
     const f=document.querySelector('.form-footer');
     f.innerHTML='<span class="save-status" id="save-status"></span><button class="btn btn-outline" onclick="closeForm()">Cancel</button><button class="btn btn-primary" id="save-btn" onclick="saveItem()">💾 Create</button>';
   }
@@ -799,6 +829,9 @@ function closeForm(){
   document.getElementById('form-overlay').classList.add('hidden');
   editingId=null; selectedItem=null; renderTable();
   if(currentDept&&allItems.length)fetchAllAttachmentCounts();
+  // Hide header edit button if present
+  const eb=document.querySelector('.header-edit-btn');
+  if(eb)eb.style.display='none';
 }
 
 // ======================== SAVE ========================
