@@ -659,7 +659,7 @@ function renderTable(){
   document.getElementById('results-table').style.display='';
   document.getElementById('result-count').textContent=filteredItems.length+' items';
 
-  const shownCols=columnDefs.filter(c=>!SKIP_COLS.has(c.name)&&c.name!=='Title').slice(0,12);
+  const shownCols=columnDefs.filter(c=>!SKIP_COLS.has(c.name)&&c.name!=='Title');
   const titleCol=columnDefs.find(c=>c.name==='Title');
   if(titleCol&&!shownCols.includes(titleCol))shownCols.unshift(titleCol);
   document.getElementById('table-head').innerHTML='<tr><th style="width:18px"></th><th style="width:30px">#</th><th style="width:32px;text-align:center" title="Attachments">📎</th>'+shownCols.map(c=>`<th>${htmlEscape(c.displayName)}</th>`).join('')+'</tr>';
