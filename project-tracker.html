@@ -1446,6 +1446,7 @@ function renderDashboardCharts(){
     const metric=document.getElementById('chart-metric-filter')?.value||'count';
     const cViews=VIEW_KEYS.filter(v=>viewData[v]?.connected&&viewData[v]?.data?.length>0);
     let all;if(cViews.length>0){all=[];cViews.forEach(v=>{all=all.concat(viewData[v].data);});}else all=[...DATA];
+    all=all.filter(x=>x.dept!=='Construction');
     if(!all.length)return;
     const filtered=deptFilter?all.filter(x=>x.dept===deptFilter):all;
     const statusData={};filtered.forEach(x=>{const s=x.status||'Not Set';statusData[s]=(statusData[s]||0)+1});
@@ -1521,6 +1522,7 @@ function renderDashboard(){
     }else{
         d=[...DATA];
     }
+    d=d.filter(x=>x.dept!=='Construction');
     if(d.length===0){
         document.getElementById('content').innerHTML=`
           <div class="empty-state"><div class="empty-icon">📭</div><p>No data loaded. <br><button class="btn btn-primary" onclick="openSettings()" style="margin-top:12px;padding:8px 20px;border-radius:4px;font-size:13px;font-weight:600;cursor:pointer;border:none;background:#0078D4;color:white">Configure Data Source</button></p></div>`;
