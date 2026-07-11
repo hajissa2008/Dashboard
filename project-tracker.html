@@ -1867,8 +1867,9 @@ function cellValue(item,col){
 function renderDeptView(view){
     const v=VIEWS[view];
     const vd=viewData[view];
-    const useViewData=vd&&vd.connected&&vd.data.length>0;
+    const useViewData=vd&&vd.connected&&vd.data.length>0&&(view!=='hse'||vd.data.some(x=>x.reqDate||x.RequestedDate||x.Requested_x0020_Date));
     const items=useViewData?vd.data:DATA.filter(x=>x.dept===v.dept);
+    if(view==='hse')console.log('[HSE] useViewData:',useViewData,'vd.connected:',vd?.connected,'vd.data.length:',vd?.data?.length,'items.length:',items.length,'items[0]?.reqDate:',items[0]?.reqDate);
     // Compute view columns (same logic as renderTable)
     const _skipKeys=new Set(['dept','priority','proj','status','Title','Modified','Created','EditorLookupId','AuthorLookupId','ID','id','ContentType']);
     const _dataKeys=items.length>0?Object.keys(items[0]).filter(k=>!_skipKeys.has(k)&&!k.startsWith('@')&&!k.startsWith('_')&&!ALIAS_SHORTS.has(k)):[];
@@ -2084,12 +2085,12 @@ function renderDeptView(view){
           <div style="margin-top:6px;display:flex;flex-direction:row;align-items:flex-end;gap:4px;height:120px">${topCats.map(function(c){const max=topCats[0][1];const pct=max?(c[1]/max*100).toFixed(0):0;const h=pct?Math.max(4,pct):0;const ci=window._kpiCache?window._kpiCache.length:0;const cat=c[0];if(!window._kpiCache)window._kpiCache=[];window._kpiCache.push({title:'Category: '+cat,items:items.filter(function(x){return (x.cat||x.Category||'Uncategorized')===cat}),cols:viewCols});return '<div onclick="showKpiModalFromCache('+ci+')" style="flex:1;display:flex;flex-direction:column;align-items:center;cursor:pointer;height:100%"><div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;width:100%"><div style="height:'+h+'%;background:'+catColors[topCats.indexOf(c)%catColors.length]+';border-radius:3px 3px 0 0;min-height:4px;transition:height .3s"></div></div><span style="font-size:10px;font-weight:600;color:var(--text-primary);margin-top:2px;white-space:nowrap">'+c[1]+'</span><span style="font-size:9px;color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%">'+cat+'</span></div>';}).join('')}</div>
         </div>`;
         // Gantt: tasks from requested date to target date with close marker
-        var ganttItems=items.filter(function(x){return x.reqDate;}).sort(function(a,b){return (a.reqDate||'').localeCompare(b.reqDate||'');});
         try{
+        var ganttItems=items.filter(function(x){return x.reqDate||x.RequestedDate||x.Requested_x0020_Date||x['Requested Date'];}).sort(function(a,b){return (a.reqDate||a.RequestedDate||a.Requested_x0020_Date||a['Requested Date']||'').localeCompare(b.reqDate||b.RequestedDate||b.Requested_x0020_Date||b['Requested Date']||'');});
         console.log('[Gantt] items with reqDate:',ganttItems.length);
         if(ganttItems.length>0){
             var gMin=Infinity,gMax=-Infinity;
-            ganttItems.forEach(function(x){['reqDate','targetDate','closeDate'].forEach(function(f){if(x[f]){var t=new Date(x[f]).getTime();if(t<gMin)gMin=t;if(t>gMax)gMax=t;}});});
+            ganttItems.forEach(function(x){['reqDate','RequestedDate','Requested_x0020_Date','targetDate','TargetDate','Target_x0020_Date','closeDate','CloseDate','Close_x0020_Date'].forEach(function(f){if(x[f]){var t=new Date(x[f]).getTime();if(t<gMin)gMin=t;if(t>gMax)gMax=t;}});});
             console.log('[Gantt] gMin:',new Date(gMin),'gMax:',new Date(gMax));
             var gRange=gMax-gMin||86400000;
             var gShow=Math.min(ganttItems.length,15);
