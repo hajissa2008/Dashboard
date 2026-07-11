@@ -549,7 +549,7 @@ const VIEWS = {
   construction:{title:'Construction Tracker',dept:'Construction',cols:['id','proj','actId','actName','workFront','cArea','contractor','foreman','workStatus','dailyProg','weeklyProg','compPct','status','pStart','pFinish','aStart','aFinish','inspReq','siteIssue','ncr','punch','permit','priority','remarks']},
   cost:{title:'Cost Control Tracker',dept:'Cost Control',cols:['id','proj','actId','actName','wbs','budget','committed','actual','forecast','costVar','ev','pv','cpi','spi','prog','status']},
   planning:{title:'Planning Tracker',dept:'Planning',cols:['id','proj','actId','actName','primId','schedStatus','pStart','pFinish','baseFinish','curFinish','delayDays','floatDays','critical','recovery','prog','status','priority']},
-  qaqc:{title:'QA/QC - Method Statements',dept:'QA/QC',cols:['docNo','title','project','area','discipline','contractor','subDate','reviewDate','apprDate','revision','status','remarks']},
+  qaqc:{title:'QA/QC Tracker',dept:'QA/QC',cols:['id','proj','actId','actName','qaInsp','matInsp','testReport','qaNcr','qaAction','qaStatus','qaClose','status','priority','assigned']},
   hse:{title:'HSE Tracker',dept:'HSE',cols:['id','proj','actId','actName','risk','permitStat','incident','toolbox','safetyInsp','hseAction','hseClose','status','priority','assigned']}
 };
 
@@ -575,9 +575,6 @@ const COL_LABELS = {
   apprDate:'Approval Date',ifcDate:'IFC Date',spec:'Spec #',calc:'Calc Ref',phase:'Phase',discLead:'Disc Lead',
   hseAction:'HSE Action',hseClose:'HSE Closeout',
   qaInsp:'QA Insp Req',matInsp:'Material Inspection',testReport:'Test Report',qaNcr:'QA NCR',qaAction:'QA Action',qaStatus:'Quality Status',qaClose:'QA Closeout',
-  docNo:'MS ID',title:'Method Statement',project:'Project',area:'Area/Zone',discipline:'Discipline',
-  contractor:'Contractor',subDate:'Submission Date',reviewDate:'Review Date',apprDate:'Approval Date',
-  revision:'Revision',
   rev00:'REV 00',rev01:'REV 01',rev02:'REV 02',rev03:'REV 03',
   // Procurement Tracker Log column labels
   'Discipline':'Discipline','Description':'Description','RFQ':'RFQ',
@@ -625,7 +622,6 @@ const ALIAS_SHORTS = new Set([
   'phase','assigned','delayDays','risk','permitStat','incident',
   'qaInsp','matInsp','testReport','qaNcr','qaAction','qaStatus','qaClose',
   'hseAction','hseClose','budget','committed','actual','forecast','costVar','ev','pv','cpi','spi',
-  'docNo','title','project','area','discipline','contractor','reviewDate','revision',
   'primId','schedStatus','baseFinish','curFinish','recovery','critical','floatDays',
   'rev00','rev01','rev02','rev03','part','proj','status','priority','dept',
   'leadTime','plannedDelivery','matSubStatus','description',
@@ -657,7 +653,7 @@ function toDate(v){
     }
     return null;
 }
-const DATE_COLS = ['pFinish','due','baseFinish','expDel','curFinish','aFinish','PlannedFinish','Planned_x0020_Finish','ActualFinish','Actual_x0020_Finish','DueDate','Due_x0020_Date','BaselineFinish','ExpectedDeliveryDate','ActualDeliveryDate','subDate','reviewDate','apprDate','Submission_x0020_Date','Review_x0020_Date','Approval_x0020_Date'];
+const DATE_COLS = ['pFinish','due','baseFinish','expDel','curFinish','aFinish','PlannedFinish','Planned_x0020_Finish','ActualFinish','Actual_x0020_Finish','DueDate','Due_x0020_Date','BaselineFinish','ExpectedDeliveryDate','ActualDeliveryDate'];
 function getEndDates(item){
     const dates=[];
     DATE_COLS.forEach(f=>{
@@ -1117,17 +1113,6 @@ async function connectSingleView(view){
                 'QAInspectionReq':['qaInsp'],'MaterialInspection':['matInsp'],'TestReport':['testReport'],
                 'QANCR':['qaNcr'],'QACorrectiveAction':['qaAction'],'QualityStatus':['qaStatus'],'QACloseoutDate':['qaClose'],
                 'HSECorrectiveAction':['hseAction'],'HSECloseoutDate':['hseClose'],
-                // Method Statement aliases
-                'MSID':['docNo'],'MethodStatementID':['docNo'],'Method_x0020_Statement_x0020_ID':['docNo'],
-                'Method_x0020_Statement_x0020_Title':['title'],'MSTitle':['title'],
-                'Project_x0020_Name':['project'],'ProjectName':['project'],'Project':['project'],
-                'Area':['area'],'Location':['area','loc'],'Zone':['area'],
-                'Discipline':['discipline'],
-                'Contractor':['contractor'],'Subcontractor':['contractor','subcontractor'],
-                'Submission_x0020_Date':['subDate'],'SubDate':['subDate'],'Submitted_x0020_Date':['subDate'],
-                'Review_x0020_Date':['reviewDate'],'ReviewDate':['reviewDate'],
-                'Approval_x0020_Date':['apprDate'],'ApprovalDate':['apprDate'],'ApprDate':['apprDate'],
-                'Revision':['revision'],'RevisionNo':['revision'],'Rev':['revision'],
                 'Budget':['budget'],'CommittedCost':['committed'],'ActualCost':['actual'],'ForecastCost':['forecast'],
                 'CostVariance':['costVar'],'EarnedValue':['ev'],'PlannedValue':['pv'],'CPI':['cpi'],'SPI':['spi'],
                 'PrimaveraActivityID':['primId'],'ScheduleStatus':['schedStatus'],'BaselineFinish':['baseFinish'],
@@ -1925,24 +1910,15 @@ function renderDeptView(view){
               kpi('✅','On Track',onTrack,'#107C10',onTrack/total*100,null,null,null,items.filter(x=>!isOverdue(x)))+
               kpi('📊','Completed',completed,'#00B7C3',completed/total*100,null,'Completed',null,items.filter(x=>x.status==='Completed'));
     }else if(view==='qaqc'){
-        const draft=items.filter(x=>/draft/i.test(x.status)||x.status==='Not Started'||x.status==='Not Set').length;
-        const submitted=items.filter(x=>/submitted/i.test(x.status)||x.status==='Submitted'||x.status==='For Review').length;
-        const underReview=items.filter(x=>/review/i.test(x.status)&&!/submitted/i.test(x.status)).length;
-        const approved=items.filter(x=>x.status==='Approved'||x.status==='Accepted').length;
-        const rejected=items.filter(x=>/reject/i.test(x.status)||/resubmit/i.test(x.status)||x.status==='Rejected').length;
-        const appRate=total?Math.round(approved/total*100):0;
-        const disciplines=items.filter((x,i,a)=>x.discipline&&a.findIndex(y=>y.discipline===x.discipline)===i).length;
-        const contractors=items.filter((x,i,a)=>x.contractor&&a.findIndex(y=>y.contractor===x.contractor)===i).length;
-        kpis=kpi('📄','Total MS',total,'#4C5D71',null,null,null,null,items)+
-              kpi('📝','Draft',draft,'#8A8886',total?draft/total*100:0,null,null,null,items.filter(x=>/draft/i.test(x.status)||x.status==='Not Started'||x.status==='Not Set'))+
-              kpi('📤','Submitted',submitted,'#0078D4',total?submitted/total*100:0,null,null,null,items.filter(x=>/submitted/i.test(x.status)||x.status==='Submitted'||x.status==='For Review'))+
-              kpi('🔄','Under Review',underReview,'#ED7D31',total?underReview/total*100:0,null,null,null,items.filter(x=>/review/i.test(x.status)&&!/submitted/i.test(x.status)))+
-              kpi('✅','Approved',approved,'#107C10',total?approved/total*100:0,null,null,null,items.filter(x=>x.status==='Approved'||x.status==='Accepted'))+
-              kpi('❌','Rejected',rejected,'#D92C2C',null,{txt:rejected+' item(s)',cls:'down'},null,null,items.filter(x=>/reject/i.test(x.status)||/resubmit/i.test(x.status)||x.status==='Rejected'))+
-              kpi('⏰','Overdue',overdue,'#D92C2C',null,null,null,null,items.filter(isOverdue))+
-              kpi('📊','Approval Rate',appRate+'%','#00B7C3',appRate,null,null,null,items)+
-              kpi('🏷️','Disciplines',disciplines,'#8764B8',null,null,null,null,items)+
-              kpi('👷','Contractors',contractors,'#4C5D71',null,null,null,null,items);
+        const passed=items.filter(x=>x.qaStatus==='Passed'||x.qaStatus==='Closed'||x.status==='Passed').length;
+        const failed=items.filter(x=>x.qaStatus==='Failed'||x.status==='Failed').length;
+        const open=items.filter(x=>x.status==='Open'||x.qaStatus==='Open').length;
+        kpis=kpi('✅','Total Inspections',total,'#4C5D71',null,null,null,null,items)+
+              kpi('✔️','Passed',passed,'#107C10',total?passed/total*100:0,null,null,null,items.filter(x=>x.qaStatus==='Passed'||x.qaStatus==='Closed'||x.status==='Passed'))+
+              kpi('❌','Failed',failed,'#D92C2C',null,{txt:failed+' open',cls:'down'},null,null,items.filter(x=>x.qaStatus==='Failed'||x.status==='Failed'))+
+              kpi('⏰','Overdue',overdue,'#D92C2C',null,null,'Delayed',null,items.filter(isOverdue))+
+              kpi('📋','Open',open,'#ED7D31',open/total*100,null,null,null,items.filter(x=>x.status==='Open'||x.qaStatus==='Open'))+
+              kpi('📊','Pass Rate',total?Math.round(passed/total*100)+'%':'0%','#00B7C3',passed/total*100,null,null,null,items);
     }else if(view==='hse'){
         const extreme=items.filter(x=>x.risk==='Extreme'||x.risk==='High'||x['Risk Level']==='Extreme'||x['Risk Level']==='High').length;
         const incidents=items.filter(x=>x.incident||x['Incident #']).length;
