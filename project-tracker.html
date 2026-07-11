@@ -2083,33 +2083,51 @@ function renderDeptView(view){
           <div class="kpi-label">📊 Tasks by Category</div>
           <div style="margin-top:6px;display:flex;flex-direction:row;align-items:flex-end;gap:4px;height:120px">${topCats.map(function(c){const max=topCats[0][1];const pct=max?(c[1]/max*100).toFixed(0):0;const h=pct?Math.max(4,pct):0;const ci=window._kpiCache?window._kpiCache.length:0;const cat=c[0];if(!window._kpiCache)window._kpiCache=[];window._kpiCache.push({title:'Category: '+cat,items:items.filter(function(x){return (x.cat||x.Category||'Uncategorized')===cat}),cols:viewCols});return '<div onclick="showKpiModalFromCache('+ci+')" style="flex:1;display:flex;flex-direction:column;align-items:center;cursor:pointer;height:100%"><div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;width:100%"><div style="height:'+h+'%;background:'+catColors[topCats.indexOf(c)%catColors.length]+';border-radius:3px 3px 0 0;min-height:4px;transition:height .3s"></div></div><span style="font-size:10px;font-weight:600;color:var(--text-primary);margin-top:2px;white-space:nowrap">'+c[1]+'</span><span style="font-size:9px;color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%">'+cat+'</span></div>';}).join('')}</div>
         </div>`;
-        // Monthly Gantt chart (tasks by requested → target → close)
+        // Gantt: tasks from requested date to target date with close marker
         var ganttItems=items.filter(function(x){return x.reqDate;}).sort(function(a,b){return (a.reqDate||'').localeCompare(b.reqDate||'');});
+        try{
+        console.log('[Gantt] items with reqDate:',ganttItems.length);
         if(ganttItems.length>0){
+            var gMin=Infinity,gMax=-Infinity;
+            ganttItems.forEach(function(x){['reqDate','targetDate','closeDate'].forEach(function(f){if(x[f]){var t=new Date(x[f]).getTime();if(t<gMin)gMin=t;if(t>gMax)gMax=t;}});});
+            console.log('[Gantt] gMin:',new Date(gMin),'gMax:',new Date(gMax));
+            var gRange=gMax-gMin||86400000;
+            var gShow=Math.min(ganttItems.length,15);
             var gColors={'Not Started':'#8A8886','Not Set':'#8A8886','In Progress':'#0078D4','Under Review':'#FFB900','Waiting Approval':'#ED7D31','Closed':'#107C10','Completed':'#107C10','Overdue':'#D92C2C','Delayed':'#ED7D31','Cancelled':'#D92C2C','Deferred':'#8764B8'};
-            var gShow=Math.min(ganttItems.length,25);
-            var ganttSvgW=340;var ganttSvgH=30+gShow*22;var gPadL=80;var gPadR=12;var gPadT=20;var gPadB=20;var gPlotW=ganttSvgW-gPadL-gPadR;var gPlotH=ganttSvgH-gPadT-gPadB;
-            var allDates=ganttItems.reduce(function(arr,x){if(x.reqDate)arr.push(new Date(x.reqDate).getTime());if(x.targetDate)arr.push(new Date(x.targetDate).getTime());if(x.closeDate)arr.push(new Date(x.closeDate).getTime());return arr;},[]);
-            var gMin=Math.min.apply(null,allDates);var gMax=Math.max.apply(null,allDates);var gRange=gMax-gMin||86400000;
-            function gX(d){return gPadL+((new Date(d).getTime()-gMin)/gRange)*gPlotW;}
-            // Month gridlines
-            var gMonthTicks=[];var gCursor=new Date(gMin);gCursor.setDate(1);while(gCursor.getTime()<gMax){gMonthTicks.push(new Date(gCursor));gCursor.setMonth(gCursor.getMonth()+1);}
-            kpis+=`<div class="kpi-card" style="grid-column:span 2;padding:10px;cursor:default;overflow:visible">
-              <div class="kpi-accent" style="background:#4C5D71"></div>
-              <div class="kpi-label">📅 Task Gantt: Requested → Target → Close</div>
-              <div style="margin-top:4px;overflow-x:auto">
-                <svg width="${ganttSvgW}" height="${ganttSvgH}" viewBox="0 0 ${ganttSvgW} ${ganttSvgH}" style="min-width:340px">
-                  <line x1="${gPadL}" y1="${gPadT}" x2="${gPadL}" y2="${gPadT+gPlotH}" stroke="#ccc" stroke-width="1"/>
-                  <line x1="${gPadL}" y1="${gPadT+gPlotH}" x2="${gPadL+gPlotW}" y2="${gPadT+gPlotH}" stroke="#ccc" stroke-width="1"/>
-                  ${gMonthTicks.map(function(d){var x=gX(d);return '<line x1="'+x.toFixed(0)+'" y1="'+gPadT+'" x2="'+x.toFixed(0)+'" y2="'+(gPadT+gPlotH)+'" stroke="#eee" stroke-width="1" stroke-dasharray="2,2"/><text x="'+x.toFixed(0)+'" y="'+(ganttSvgH-4)+'" text-anchor="middle" font-size="8" fill="var(--text-secondary)">'+d.toLocaleString('default',{month:'short',year:'2-digit'})+'</text>';}).join('')}
-                  ${ganttItems.slice(0,gShow).map(function(x,i){var y=gPadT+i*22+8;var rX=gX(x.reqDate);var tX=x.targetDate?gX(x.targetDate):rX+30;var cX=x.closeDate?gX(x.closeDate):null;var barW=Math.max(4,tX-rX);var sColor=gColors[x.status]||'#8764B8';var ci=window._kpiCache?window._kpiCache.length:0;if(!window._kpiCache)window._kpiCache=[];window._kpiCache.push({title:x.actName||x.id,items:[x],cols:viewCols});var bar='<rect x="'+rX.toFixed(0)+'" y="'+(y-3)+'" width="'+barW.toFixed(0)+'" height="12" rx="2" fill="'+sColor+'" opacity="0.85" onclick="showKpiModalFromCache('+ci+')" style="cursor:pointer"/>';if(cX){bar+='<polygon points="'+(cX-4)+','+(y+3)+' '+cX+','+(y-3)+' '+(cX+4)+','+(y+3)+'" fill="#D92C2C" opacity="0.9" onclick="showKpiModalFromCache('+ci+')" style="cursor:pointer"/>';}return '<text x="'+(gPadL-6)+'" y="'+(y+4)+'" text-anchor="end" font-size="9" fill="var(--text-secondary)" style="cursor:pointer" onclick="showKpiModalFromCache('+ci+')">'+(x.actName||x.id||'').substring(0,14)+'</text>'+bar;}).join('')}
-                  ${ganttItems.length>gShow?'<text x="'+(gPadL+gPlotW/2)+'" y="'+(gPadT+gShow*22+16)+'" text-anchor="middle" font-size="9" fill="var(--text-secondary)">+'+(ganttItems.length-gShow)+' more tasks</text>':''}
-                  <rect x="${gPadL}" y="${gPadT-14}" width="8" height="8" fill="#4C5D71" rx="1" opacity="0.85"/><text x="${gPadL+12}" y="${gPadT-7}" font-size="8" fill="var(--text-secondary)">Req→Target</text>
-                  <polygon points="${gPadL+68},${gPadT-10} ${gPadL+72},${gPadT-14} ${gPadL+76},${gPadT-10}" fill="#D92C2C" opacity="0.9"/><text x="${gPadL+80}" y="${gPadT-7}" font-size="8" fill="var(--text-secondary)">Closed</text>
-                </svg>
-              </div>
-            </div>`;
+            var ganttRows='';
+            ganttItems.slice(0,gShow).forEach(function(x,i){
+                var ci=window._kpiCache.length;window._kpiCache.push({title:x.actName||x.id,items:[x],cols:viewCols});
+                var rX=((new Date(x.reqDate).getTime()-gMin)/gRange*100);
+                var tX=x.targetDate?((new Date(x.targetDate).getTime()-gMin)/gRange*100):(rX+10);
+                var cX=x.closeDate?((new Date(x.closeDate).getTime()-gMin)/gRange*100):null;
+                var w=Math.max(3,tX-rX);
+                var sc=gColors[x.status]||'#8764B8';
+                ganttRows+='<div style="display:flex;align-items:center;height:24px;font-size:10px;cursor:pointer" onclick="showKpiModalFromCache('+ci+')">'+
+                  '<span style="width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right;padding-right:6px;color:var(--text-secondary)">'+(x.actName||x.id||'').substring(0,12)+'</span>'+
+                  '<div style="flex:1;position:relative;height:16px;background:#eee;border-radius:3px">'+
+                    '<div style="position:absolute;left:'+rX.toFixed(1)+'%;width:'+w.toFixed(1)+'%;height:12px;top:2px;background:'+sc+';border-radius:3px;opacity:.85;min-width:4px"></div>'+
+                    (cX!==null?'<div style="position:absolute;left:'+cX.toFixed(1)+'%;top:1px;transform:translateX(-50%);width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:10px solid #D92C2C"></div>':'')+
+                  '</div></div>';
+            });
+            var ganttHtml='<div class="kpi-card" style="grid-column:span 2;padding:12px;cursor:default;overflow:visible">'+
+              '<div class="kpi-accent" style="background:#4C5D71"></div>'+
+              '<div class="kpi-label">📅 Task Gantt: Requested → Target → Close</div>'+
+              '<div style="margin-top:6px">'+
+              '<div style="display:flex;gap:3px;padding-left:86px;margin-bottom:2px">';
+            var gm=new Date(gMin);gm.setDate(1);
+            while(gm.getTime()<gMax){
+                ganttHtml+='<div style="flex:1;text-align:center;font-size:8px;color:var(--text-secondary);border-left:1px solid #ddd">'+gm.toLocaleString('en',{month:'short',year:'2-digit'})+'</div>';
+                gm.setMonth(gm.getMonth()+1);
+            }
+            ganttHtml+='</div>'+ganttRows;
+            if(ganttItems.length>gShow)ganttHtml+='<div style="text-align:center;font-size:10px;color:var(--text-secondary);margin-top:4px">+'+(ganttItems.length-gShow)+' more</div>';
+            ganttHtml+='<div style="display:flex;gap:16px;margin-top:6px;font-size:9px;color:var(--text-secondary)"><span><span style="display:inline-block;width:12px;height:8px;background:#4C5D71;border-radius:2px;vertical-align:middle;margin-right:4px"></span>Req→Target</span><span><span style="display:inline-block;width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:10px solid #D92C2C;vertical-align:middle;margin-right:4px"></span>Closed</span></div>';
+            kpis+=ganttHtml+'</div></div>';
+            console.log('[Gantt] rendered OK');
+        }else{
+            console.log('[Gantt] no items with reqDate');
         }
+        }catch(e){console.error('[Gantt] ERROR:',e.message);}
     }else{
         kpis=kpi('📊','Total Items',total,'#4C5D71',null,null,null,null,items)+
               kpi('📈','Completed',completed,'#107C10',total?completed/total*100:0,null,'Completed',null,items.filter(x=>x.status==='Completed'))+
