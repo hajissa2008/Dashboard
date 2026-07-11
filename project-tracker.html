@@ -664,7 +664,7 @@ function toDate(v){
     }
     return null;
 }
-const DATE_COLS = ['pFinish','due','baseFinish','expDel','curFinish','aFinish','PlannedFinish','Planned_x0020_Finish','ActualFinish','Actual_x0020_Finish','DueDate','Due_x0020_Date','BaselineFinish','ExpectedDeliveryDate','ActualDeliveryDate'];
+const DATE_COLS = ['pFinish','due','baseFinish','expDel','curFinish','aFinish','PlannedFinish','Planned_x0020_Finish','ActualFinish','Actual_x0020_Finish','DueDate','Due_x0020_Date','BaselineFinish','ExpectedDeliveryDate','ActualDeliveryDate','hseClose','CloseoutDate','Closeout_x0020_Date','Closeout Date','SafetyInspection','Safety_x0020_Inspection','ToolboxTalk','Toolbox_x0020_Talk'];
 function getEndDates(item){
     const dates=[];
     DATE_COLS.forEach(f=>{
@@ -1999,10 +1999,25 @@ function renderDeptView(view){
         const stInProgress=items.filter(x=>x.status==='In Progress').length;
         const stCompleted=items.filter(x=>x.status==='Completed').length;
         const stOther=items.filter(x=>x.status&&x.status!=='Not Started'&&x.status!=='Not Set'&&x.status!=='In Progress'&&x.status!=='Completed').length;
-        // Task by Category (top 6)
+        // Task by Category (pie chart)
         const catCount={};
         items.forEach(x=>{const c=x.cat||x.Category||'Uncategorized';catCount[c]=(catCount[c]||0)+1;});
-        const topCats=Object.entries(catCount).sort((a,b)=>b[1]-a[1]).slice(0,6);
+        const topCats=Object.entries(catCount).sort((a,b)=>b[1]-a[1]);
+        const catColors=['#4C5D71','#ED7D31','#00B7C3','#107C10','#8764B8','#D92C2C','#FFB900','#0078D4','#8A8886','#E8ECF0'];
+        const catChartId='hse-cat-chart-'+Date.now();
+        setTimeout(()=>{
+            const canvas=document.getElementById(catChartId);
+            if(!canvas||typeof Chart==='undefined')return;
+            const ctx=canvas.getContext('2d');
+            new Chart(ctx,{
+                type:'doughnut',
+                data:{
+                    labels:topCats.map(([c])=>c),
+                    datasets:[{data:topCats.map(([,v])=>v),backgroundColor:topCats.map((_,i)=>catColors[i%catColors.length]),borderWidth:1,borderColor:'var(--white)'}]
+                },
+                options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{boxWidth:12,font:{size:10},padding:8}}}}
+            });
+        },50);
         // Monthly created vs closed (last 6 months)
         const monthLabels=[]; const createdCounts=[]; const closedCounts=[];
         const now=new Date();
@@ -2038,11 +2053,14 @@ function renderDeptView(view){
               kpi('⏳','Not Started',stNotStarted,'#8A8886',null,null,null,null,items.filter(x=>x.status==='Not Started'||x.status==='Not Set'))+
               kpi('🔄','In Progress',stInProgress,'#0078D4',null,null,null,null,items.filter(x=>x.status==='In Progress'))+
               kpi('✅','Completed',stCompleted,'#107C10',completed/total*100,null,'Completed',null,items.filter(x=>x.status==='Completed'))+
+              kpi('⏰','Overdue',overdue,'#D92C2C',null,null,'Delayed',null,items.filter(isOverdue))+
               kpi('📋','Other Status',stOther,'#8764B8',null,null,null,null,items.filter(x=>x.status&&x.status!=='Not Started'&&x.status!=='Not Set'&&x.status!=='In Progress'&&x.status!=='Completed'));
-        // Add category cards
-        topCats.forEach(([cat,cnt])=>{
-            kpis+=kpi('📁',cat,cnt,'#00B7C3',null,null,null,null,items.filter(x=>(x.cat||x.Category||'Uncategorized')===cat));
-        });
+        // Category pie chart card
+        kpis+=`<div class="kpi-card" style="grid-column:span 2;padding:12px;cursor:default">
+          <div class="kpi-accent" style="background:#00B7C3"></div>
+          <div class="kpi-label">📊 Tasks by Category</div>
+          <div style="height:150px;margin-top:4px"><canvas id="${catChartId}"></canvas></div>
+        </div>`;
         // Monthly chart card
         kpis+=`<div class="kpi-card" style="grid-column:span 2;padding:12px;cursor:default">
           <div class="kpi-accent" style="background:#4C5D71"></div>
