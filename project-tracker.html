@@ -1449,8 +1449,8 @@ function renderDashboardCharts(){
     if(!all.length)return;
     const filtered=deptFilter?all.filter(x=>x.dept===deptFilter):all;
     const statusData={};filtered.forEach(x=>{const s=x.status||'Not Set';statusData[s]=(statusData[s]||0)+1});
-    const deptColors={Engineering:'#4C5D71',Procurement:'#ED7D31',Construction:'#00B7C3','Cost Control':'#107C10',Planning:'#8764B8','QA/QC':'#0078D4',HSE:'#D92C2C'};
-    const allDepts=['Engineering','Procurement','Construction','Cost Control','Planning','QA/QC','HSE'];
+    const deptColors={Engineering:'#4C5D71',Procurement:'#ED7D31',Construction:'#00B7C3','QA/QC':'#0078D4',HSE:'#D92C2C'};
+    const allDepts=['Engineering','Procurement','Construction','QA/QC','HSE'];
     const deptTargets=deptFilter?[deptFilter]:allDepts;
     const deptData={};
     deptTargets.forEach(dp=>{
@@ -1551,10 +1551,8 @@ function renderDashboard(){
         {key:'Procurement',icon:'📦',color:'#ED7D31'},
         // Hidden: uncomment to restore Construction
         // {key:'Construction',icon:'🏗️',color:'#00B7C3'},
-        <!-- Hidden: uncomment to restore Cost Control, Planning
-        {key:'Cost Control',icon:'💰',color:'#107C10'},
-        {key:'Planning',icon:'📅',color:'#8764B8'},
-        -->
+        // {key:'Cost Control',icon:'💰',color:'#107C10'},  // Hidden per request
+        // {key:'Planning',icon:'📅',color:'#8764B8'},  // Hidden per request
         {key:'QA/QC',icon:'✅',color:'#0078D4'},
         {key:'HSE',icon:'🛡️',color:'#D92C2C'}
     ];
@@ -1651,8 +1649,8 @@ function renderDashboard(){
           <h3 style="margin:0;font-size:13px">Status Distribution</h3>
           <select id="chart-dept-filter" onchange="renderDashboardCharts()" style="font-size:11px;padding:2px 6px;border-radius:4px;border:1px solid var(--gray-border);background:var(--white);color:var(--text-primary);cursor:pointer">
             <option value="">All Departments</option>
-            <option>Engineering</option><option>Procurement</option><!-- Hidden: Construction -->
-            <option>QA/QC</option><option>HSE</option><!-- Hidden: ,Planning,Cost Control -->
+            <option>Engineering</option><option>Procurement</option>
+            <option>QA/QC</option><option>HSE</option>
           </select>
         </div>
         <canvas id="chart-status"></canvas>
@@ -1679,8 +1677,8 @@ function renderDashboard(){
         <div class="filter-group">
           <select id="filter-dept" onchange="renderTable()">
             <option value="">All Departments</option>
-            <option>Engineering</option><option>Procurement</option><!-- Hidden: Construction -->
-            <option>QA/QC</option><option>HSE</option><!-- Hidden: ,Planning,Cost Control -->
+            <option>Engineering</option><option>Procurement</option>
+            <option>QA/QC</option><option>HSE</option>
           </select>
           <select id="filter-status" onchange="renderTable()">
             <option value="">All Statuses</option>
