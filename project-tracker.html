@@ -2085,9 +2085,9 @@ function renderDeptView(view){
             if(catCanvas){
                 const ctx=catCanvas.getContext('2d');
                 const catChart=new Chart(ctx,{
-                    type:'doughnut',
-                    data:{labels:topCats.map(([c])=>c),datasets:[{data:topCats.map(([,v])=>v),backgroundColor:topCats.map((_,i)=>catColors[i%catColors.length]),borderWidth:1,borderColor:'var(--white)'}]},
-                    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{boxWidth:12,font:{size:10},padding:8}}},onClick:(e,els)=>{if(!els.length)return;const i=els[0].index;const cat=catChart.data.labels[i];const filtered=items.filter(x=>(x.cat||x.Category||'Uncategorized')===cat);const ci=window._kpiCache.length;window._kpiCache.push({title:'Category: '+cat,items:filtered,cols:viewCols});showKpiModalFromCache(ci);}}
+                    type:'bar',
+                    data:{labels:topCats.map(([c])=>c),datasets:[{data:topCats.map(([,v])=>v),backgroundColor:topCats.map((_,i)=>catColors[i%catColors.length]),borderRadius:3}]},
+                    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{font:{size:10}}},y:{beginAtZero:true,ticks:{stepSize:1,font:{size:10}}}},onClick:(e,els)=>{if(!els.length)return;const i=els[0].index;const cat=catChart.data.labels[i];const filtered=items.filter(x=>(x.cat||x.Category||'Uncategorized')===cat);const ci=window._kpiCache.length;window._kpiCache.push({title:'Category: '+cat,items:filtered,cols:viewCols});showKpiModalFromCache(ci);}}
                 });
             }
             const monthCanvas=document.getElementById(monthChartId);
