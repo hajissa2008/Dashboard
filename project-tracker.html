@@ -2083,12 +2083,30 @@ function renderDeptView(view){
           <div class="kpi-label">📊 Tasks by Category</div>
           <div style="margin-top:6px;display:flex;flex-direction:row;align-items:flex-end;gap:4px;height:120px">${topCats.map(function(c){const max=topCats[0][1];const pct=max?(c[1]/max*100).toFixed(0):0;const h=pct?Math.max(4,pct):0;const ci=window._kpiCache?window._kpiCache.length:0;const cat=c[0];if(!window._kpiCache)window._kpiCache=[];window._kpiCache.push({title:'Category: '+cat,items:items.filter(function(x){return (x.cat||x.Category||'Uncategorized')===cat}),cols:viewCols});return '<div onclick="showKpiModalFromCache('+ci+')" style="flex:1;display:flex;flex-direction:column;align-items:center;cursor:pointer;height:100%"><div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;width:100%"><div style="height:'+h+'%;background:'+catColors[topCats.indexOf(c)%catColors.length]+';border-radius:3px 3px 0 0;min-height:4px;transition:height .3s"></div></div><span style="font-size:10px;font-weight:600;color:var(--text-primary);margin-top:2px;white-space:nowrap">'+c[1]+'</span><span style="font-size:9px;color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%">'+cat+'</span></div>';}).join('')}</div>
         </div>`;
-        // Monthly chart card
-        var mcMax=Math.max.apply(null,reqCounts.concat(closeCounts))||1;
+        // Monthly S-curve (cumulative requested vs closed)
+        var cumReq=[];var cumClose=[];var cumTotal=0;for(var mi=0;mi<reqCounts.length;mi++){cumTotal+=reqCounts[mi];cumReq.push(cumTotal);}cumTotal=0;for(var mi=0;mi<closeCounts.length;mi++){cumTotal+=closeCounts[mi];cumClose.push(cumTotal);}
+        var svgW=280;var svgH=100;var padL=30;var padR=8;var padT=8;var padB=18;var plotW=svgW-padL-padR;var plotH=svgH-padT-padB;
+        var maxVal=Math.max(cumReq[cumReq.length-1]||1,cumClose[cumClose.length-1]||1);
+        function pt(arr,i){var x=padL+(i/(arr.length-1||1))*plotW;var y=padT+plotH-(arr[i]/maxVal)*plotH;return x.toFixed(1)+','+y.toFixed(1);}
+        var reqPts=[];for(var mi=0;mi<cumReq.length;mi++)reqPts.push(pt(cumReq,mi));var closePts=[];for(var mi=0;mi<cumClose.length;mi++)closePts.push(pt(cumClose,mi));
         kpis+=`<div class="kpi-card" style="grid-column:span 2;padding:12px;cursor:default;overflow:visible">
           <div class="kpi-accent" style="background:#4C5D71"></div>
-          <div class="kpi-label">📅 Monthly Tasks (Requested vs Closed)</div>
-          <div style="margin-top:6px;display:flex;flex-direction:row;align-items:flex-end;gap:6px;height:110px">${monthLabels.map(function(l,i){const reqH=reqCounts[i]?Math.max(4,reqCounts[i]/mcMax*100):0;const clH=closeCounts[i]?Math.max(4,closeCounts[i]/mcMax*100):0;return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;height:100%"><div style="flex:1;display:flex;flex-direction:row;align-items:flex-end;justify-content:center;gap:2px;width:100%"><div style="width:40%;height:'+reqH+'%;background:#4C5D71;border-radius:2px 2px 0 0;min-height:0;transition:height .3s"></div><div style="width:40%;height:'+clH+'%;background:#107C10;border-radius:2px 2px 0 0;min-height:0;transition:height .3s"></div></div><div style="display:flex;flex-direction:row;gap:2px;margin-top:2px"><span style="font-size:9px;font-weight:600;color:#4C5D71">'+reqCounts[i]+'</span><span style="font-size:9px;font-weight:600;color:#107C10">'+closeCounts[i]+'</span></div><span style="font-size:9px;color:var(--text-secondary);white-space:nowrap">'+l+'</span></div>';}).join('')}
+          <div class="kpi-label">📅 Monthly S-Curve (Requested vs Closed)</div>
+          <div style="margin-top:4px;text-align:center">
+            <svg width="${svgW}" height="${svgH}" viewBox="0 0 ${svgW} ${svgH}" style="max-width:100%">
+              <line x1="${padL}" y1="${padT}" x2="${padL}" y2="${padT+plotH}" stroke="#ccc" stroke-width="1"/>
+              <line x1="${padL}" y1="${padT+plotH}" x2="${padL+plotW}" y2="${padT+plotH}" stroke="#ccc" stroke-width="1"/>
+              ${monthLabels.map(function(l,i){var x=padL+(i/(monthLabels.length-1||1))*plotW;return '<text x="'+x.toFixed(0)+'" y="'+(svgH-2)+'" text-anchor="middle" font-size="8" fill="var(--text-secondary)">'+l+'</text>';}).join('')}
+              <text x="${padL-4}" y="${padT+plotH/2+3}" text-anchor="middle" font-size="8" fill="var(--text-secondary)" transform="rotate(-90,${padL-4},${padT+plotH/2+3})">Cumulative</text>
+              <polyline fill="none" stroke="#4C5D71" stroke-width="2" points="${reqPts.join(' ')}"/>
+              <polyline fill="none" stroke="#107C10" stroke-width="2" points="${closePts.join(' ')}"/>
+              ${cumReq.map(function(v,i){return '<circle cx="'+pt(cumReq,i).split(',')[0]+'" cy="'+pt(cumReq,i).split(',')[1]+'" r="2.5" fill="#4C5D71"/>';}).join('')}
+              ${cumClose.map(function(v,i){return '<circle cx="'+pt(cumClose,i).split(',')[0]+'" cy="'+pt(cumClose,i).split(',')[1]+'" r="2.5" fill="#107C10"/>';}).join('')}
+              <g transform="translate(${svgW-60},${padT})">
+                <rect x="0" y="0" width="8" height="8" fill="#4C5D71" rx="1"/><text x="12" y="7" font-size="8" fill="var(--text-secondary)">Requested</text>
+                <rect x="0" y="14" width="8" height="8" fill="#107C10" rx="1"/><text x="12" y="21" font-size="8" fill="var(--text-secondary)">Closed</text>
+              </g>
+            </svg>
           </div>
         </div>`;
     }else{
