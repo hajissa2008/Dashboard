@@ -2033,16 +2033,16 @@ function renderDeptView(view){
             kpis+=kpi(icon,s,cnt,color,null,null,null,null,items.filter(x=>x.status===s));
         });
         // Category pie chart card
-        kpis+=`<div class="kpi-card" style="grid-column:span 2;padding:12px;cursor:default">
+        kpis+=`<div class="kpi-card" style="grid-column:span 2;padding:12px;cursor:default;overflow:visible">
           <div class="kpi-accent" style="background:#00B7C3"></div>
           <div class="kpi-label">📊 Tasks by Category</div>
-          <div style="height:150px;margin-top:4px"><canvas id="${catChartId}"></canvas></div>
+          <div style="height:150px;margin-top:4px;position:relative"><canvas id="${catChartId}" style="width:100%;height:100%"></canvas></div>
         </div>`;
         // Monthly chart card
-        kpis+=`<div class="kpi-card" style="grid-column:span 2;padding:12px;cursor:default">
+        kpis+=`<div class="kpi-card" style="grid-column:span 2;padding:12px;cursor:default;overflow:visible">
           <div class="kpi-accent" style="background:#4C5D71"></div>
           <div class="kpi-label">📅 Monthly Tasks (Created vs Closed)</div>
-          <div style="height:140px;margin-top:4px"><canvas id="${monthChartId}"></canvas></div>
+          <div style="height:140px;margin-top:4px;position:relative"><canvas id="${monthChartId}" style="width:100%;height:100%"></canvas></div>
         </div>`;
     }else{
         kpis=kpi('📊','Total Items',total,'#4C5D71',null,null,null,null,items)+
@@ -2080,26 +2080,41 @@ function renderDeptView(view){
     renderTable();
     // Render HSE charts after DOM is ready
     if(view==='hse'&&typeof Chart!=='undefined'){
-        requestAnimationFrame(()=>{
-            const catCanvas=document.getElementById(catChartId);
-            if(catCanvas){
-                const ctx=catCanvas.getContext('2d');
-                const catChart=new Chart(ctx,{
-                    type:'bar',
-                    data:{labels:topCats.map(([c])=>c),datasets:[{data:topCats.map(([,v])=>v),backgroundColor:topCats.map((_,i)=>catColors[i%catColors.length]),borderRadius:3}]},
-                    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{font:{size:10}}},y:{beginAtZero:true,ticks:{stepSize:1,font:{size:10}}}},onClick:(e,els)=>{if(!els.length)return;const i=els[0].index;const cat=catChart.data.labels[i];const filtered=items.filter(x=>(x.cat||x.Category||'Uncategorized')===cat);const ci=window._kpiCache.length;window._kpiCache.push({title:'Category: '+cat,items:filtered,cols:viewCols});showKpiModalFromCache(ci);}}
-                });
-            }
-            const monthCanvas=document.getElementById(monthChartId);
-            if(monthCanvas){
-                const ctx2=monthCanvas.getContext('2d');
-                const barChart=new Chart(ctx2,{
-                    type:'bar',
-                    data:{labels:monthLabels,datasets:[{label:'Created',data:createdCounts,backgroundColor:'#4C5D71',borderRadius:3},{label:'Closed',data:closedCounts,backgroundColor:'#107C10',borderRadius:3}]},
-                    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:12,font:{size:11}}}},scales:{x:{grid:{display:false},ticks:{font:{size:10}}},y:{beginAtZero:true,ticks:{stepSize:1,font:{size:10}}}},onClick:(e,els)=>{if(!els.length)return;const ds=els[0].datasetIndex;const i=els[0].index;const label=barChart.data.labels[i];const dsLabel=barChart.data.datasets[ds].label;const monthEnd=new Date(now.getFullYear(),now.getMonth()-5+i+1,1);const monthStart=new Date(now.getFullYear(),now.getMonth()-5+i,1);const filtered=ds===0?items.filter(x=>{const cd=x.Created||x.created;return cd&&new Date(cd).getTime()>=monthStart.getTime()&&new Date(cd).getTime()<monthEnd.getTime();}):items.filter(x=>{const cl=x.hseClose||x.CloseoutDate||x.Closeout_x0020_Date||x['Closeout Date'];if(!cl)return false;const cd=new Date(cl).getTime();return cd>=monthStart.getTime()&&cd<monthEnd.getTime();});const ci=window._kpiCache.length;window._kpiCache.push({title:dsLabel+' - '+label,items:filtered,cols:viewCols});showKpiModalFromCache(ci);}}
-                });
-            }
-        });
+        (function renderHseCharts(catId, monthId, cats, cColors, mLabels, cCounts, clCounts, dNow, allItems, vCols){
+            setTimeout(function(){
+                const catCanvas=document.getElementById(catId);
+                if(catCanvas){
+                    try{
+                        if(cats.length===0||cats.every(function(c){return c[1]===0})){
+                            catCanvas.parentElement.innerHTML='<div style="padding:40px 0;text-align:center;color:var(--text-secondary);font-size:13px">No category data</div>';
+                        }else{
+                            const ctx=catCanvas.getContext('2d');
+                            const catChart=new Chart(ctx,{
+                                type:'bar',
+                                data:{labels:cats.map(function(c){return c[0]}),datasets:[{data:cats.map(function(c){return c[1]}),backgroundColor:cats.map(function(_,i){return cColors[i%cColors.length]}),borderRadius:3}]},
+                                options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{font:{size:10}}},y:{beginAtZero:true,ticks:{stepSize:1,font:{size:10}}}},onClick:function(e,els){if(!els.length)return;var i=els[0].index;var cat=catChart.data.labels[i];var filtered=allItems.filter(function(x){return (x.cat||x.Category||'Uncategorized')===cat});var ci=window._kpiCache.length;window._kpiCache.push({title:'Category: '+cat,items:filtered,cols:vCols});showKpiModalFromCache(ci);}}
+                            });
+                        }
+                    }catch(e){catCanvas.parentElement.innerHTML='<div style="padding:40px 0;text-align:center;color:var(--text-secondary);font-size:13px">Chart error</div>';}
+                }
+                const monthCanvas=document.getElementById(monthId);
+                if(monthCanvas){
+                    try{
+                        var hasData=mLabels.some(function(_,i){return cCounts[i]>0||clCounts[i]>0});
+                        if(!hasData){
+                            monthCanvas.parentElement.innerHTML='<div style="padding:40px 0;text-align:center;color:var(--text-secondary);font-size:13px">No date data for monthly chart (requires Created and Closeout Date fields)</div>';
+                        }else{
+                            const ctx2=monthCanvas.getContext('2d');
+                            const barChart=new Chart(ctx2,{
+                                type:'bar',
+                                data:{labels:mLabels,datasets:[{label:'Created',data:cCounts,backgroundColor:'#4C5D71',borderRadius:3},{label:'Closed',data:clCounts,backgroundColor:'#107C10',borderRadius:3}]},
+                                options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:12,font:{size:11}}}},scales:{x:{grid:{display:false},ticks:{font:{size:10}}},y:{beginAtZero:true,ticks:{stepSize:1,font:{size:10}}}},onClick:function(e,els){if(!els.length)return;var ds=els[0].datasetIndex;var i=els[0].index;var label=barChart.data.labels[i];var dsLabel=barChart.data.datasets[ds].label;var monthEnd=new Date(dNow.getFullYear(),dNow.getMonth()-5+i+1,1);var monthStart=new Date(dNow.getFullYear(),dNow.getMonth()-5+i,1);var filtered=ds===0?allItems.filter(function(x){var cd=x.Created||x.created;return cd&&new Date(cd).getTime()>=monthStart.getTime()&&new Date(cd).getTime()<monthEnd.getTime();}):allItems.filter(function(x){var cl=x.hseClose||x.CloseoutDate||x.Closeout_x0020_Date||x['Closeout Date'];if(!cl)return false;var ccd=new Date(cl).getTime();return ccd>=monthStart.getTime()&&ccd<monthEnd.getTime();});var ci=window._kpiCache.length;window._kpiCache.push({title:dsLabel+' - '+label,items:filtered,cols:vCols});showKpiModalFromCache(ci);}}
+                            });
+                        }
+                    }catch(e){monthCanvas.parentElement.innerHTML='<div style="padding:40px 0;text-align:center;color:var(--text-secondary);font-size:13px">Chart error</div>';}
+                }
+            },100);
+        })(catChartId, monthChartId, topCats, catColors, monthLabels, createdCounts, closedCounts, now, items, viewCols);
     }
 }
 
