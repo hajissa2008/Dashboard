@@ -2084,12 +2084,11 @@ function renderDeptView(view){
           <div style="margin-top:6px;display:flex;flex-direction:row;align-items:flex-end;gap:4px;height:120px">${topCats.map(function(c){const max=topCats[0][1];const pct=max?(c[1]/max*100).toFixed(0):0;const h=pct?Math.max(4,pct):0;const ci=window._kpiCache?window._kpiCache.length:0;const cat=c[0];if(!window._kpiCache)window._kpiCache=[];window._kpiCache.push({title:'Category: '+cat,items:items.filter(function(x){return (x.cat||x.Category||'Uncategorized')===cat}),cols:viewCols});return '<div onclick="showKpiModalFromCache('+ci+')" style="flex:1;display:flex;flex-direction:column;align-items:center;cursor:pointer;height:100%"><div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;width:100%"><div style="height:'+h+'%;background:'+catColors[topCats.indexOf(c)%catColors.length]+';border-radius:3px 3px 0 0;min-height:4px;transition:height .3s"></div></div><span style="font-size:10px;font-weight:600;color:var(--text-primary);margin-top:2px;white-space:nowrap">'+c[1]+'</span><span style="font-size:9px;color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%">'+cat+'</span></div>';}).join('')}</div>
         </div>`;
         // Priority line chart (last 6 months)
-        const priLevels=['Critical','Urgent','High','Medium','Low','Normal'];
         const priLabels=['Critical','Urgent','High','Medium','Low'];
         const monthlyPri={};
         monthLabels.forEach(ml=>{monthlyPri[ml]=priLabels.map(()=>0);});
         items.forEach(x=>{
-            const rd=x.reqDate||x.RequestedDate||x.Requested_x0020_Date||x['Requested Date'];
+            var rd=x.reqDate||x.RequestedDate||x.Requested_x0020_Date||x['Requested Date']||x.Created||x.created;
             if(!rd)return;
             const d=new Date(rd).getTime();
             for(let m=5;m>=0;m--){
@@ -2101,6 +2100,7 @@ function renderDeptView(view){
                 }
             }
         });
+        console.log('[HSE Pri] monthLabels:',monthLabels,'monthlyPri:',monthlyPri,'total items:',items.length,'items with dates:',items.filter(x=>x.reqDate||x.RequestedDate||x.Requested_x0020_Date||x['Requested Date']||x.Created||x.created).length);
         const priColors=['#D92C2C','#ED7D31','#FFB900','#107C10'];
         kpis+=`<div class="kpi-card" style="grid-column:span 2;padding:12px;cursor:default;overflow:hidden">
           <div class="kpi-accent" style="background:#D92C2C"></div>
@@ -2373,6 +2373,9 @@ function toggleDark(){
         if(site) viewData[v].site=site;
         if(list) viewData[v].list=list;
     });
+    // Clear stale configs for hidden views
+    if(viewData.cost.list&&viewData.cost.list==='Construction Cost'){viewData.cost.site='';viewData.cost.list='';storage.removeItem('pmt-view-cost-site');storage.removeItem('pmt-view-cost-list');}
+    if(viewData.planning.list&&viewData.planning.list==='Planning Tracker'){viewData.planning.site='';viewData.planning.list='';storage.removeItem('pmt-view-planning-site');storage.removeItem('pmt-view-planning-list');}
     // Pre-fill Engineering view with Shop Drawing list as default
     if(!viewData.engineering.site){
         viewData.engineering.site='https://sascontractingsa.sharepoint.com/sites/Alenshaiah';
