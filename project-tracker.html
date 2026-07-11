@@ -664,7 +664,7 @@ function toDate(v){
     }
     return null;
 }
-const DATE_COLS = ['pFinish','due','baseFinish','expDel','curFinish','aFinish','PlannedFinish','Planned_x0020_Finish','ActualFinish','Actual_x0020_Finish','DueDate','Due_x0020_Date','BaselineFinish','ExpectedDeliveryDate','ActualDeliveryDate','hseClose','CloseoutDate','Closeout_x0020_Date','Closeout Date','SafetyInspection','Safety_x0020_Inspection','ToolboxTalk','Toolbox_x0020_Talk'];
+const DATE_COLS = ['pFinish','due','baseFinish','expDel','curFinish','aFinish','PlannedFinish','Planned_x0020_Finish','ActualFinish','Actual_x0020_Finish','DueDate','Due_x0020_Date','BaselineFinish','ExpectedDeliveryDate','ActualDeliveryDate','Target_x0020_Date','TargetDate','Target Date'];
 function getEndDates(item){
     const dates=[];
     DATE_COLS.forEach(f=>{
@@ -1138,6 +1138,7 @@ async function connectSingleView(view){
                 'Closeout_x0020_Date':['hseClose'],'CloseoutDate':['hseClose'],
                 'Work_x0020_Permit':['permit'],'WorkPermit':['permit'],'WorkPermitNumber':['permit'],
                 'Category':['cat'],
+                'Target_x0020_Date':['targetDate'],'TargetDate':['targetDate'],
                 'Status':['status'],'Priority':['priority'],'Progress':['prog'],'Remarks':['remarks'],
                 // Method Statement tracker aliases
                 'Contractor_x0020_Ref_x002e_':['contractorRef'],'ContractorRef':['contractorRef'],
