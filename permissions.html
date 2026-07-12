@@ -281,45 +281,42 @@ function onSiteChange(){
 // ======================== PERMISSIONS ========================
 let permEntries=[]; // Array of {Id,Title,DeptID,Access,App}
 let permDirty=false;
+let graphSiteId=null;
 
-async function ensureSpSiteToken(siteUrl){
-  if(!msalApp||!spUser)throw new Error('Not authenticated');
+function graphSiteBase(siteUrl){
   const u=new URL(siteUrl);
-  const resp=await msalApp.acquireTokenSilent({scopes:[u.origin+'/.default'],account:spUser});
-  spSiteToken=resp.accessToken;
-  return resp.accessToken;
+  return 'https://graph.microsoft.com/v1.0/sites/'+u.hostname+':/'+u.pathname.replace(/\/$/,'');
 }
 
-async function spApiCall(url,method,body){
-  const token=spSiteToken||await ensureSpSiteToken(document.getElementById('site-select').value);
-  const opts={method:method||'GET',headers:{'Authorization':'Bearer '+token,'Accept':'application/json'}};
-  if(body){opts.headers['Content-Type']='application/json;odata=verbose';opts.body=JSON.stringify(body)}
+async function graphApi(url,method,body){
+  if(!spToken)throw new Error('No token');
+  const opts={method:method||'GET',headers:{'Authorization':'Bearer '+spToken,'Content-Type':'application/json'}};
+  if(body)opts.body=JSON.stringify(body);
   const resp=await fetch(url,opts);
   if(!resp.ok){const t=await resp.text();throw new Error(t)}
   return resp.json();
 }
 
 async function ensurePermList(siteUrl){
-  const token=await ensureSpSiteToken(siteUrl);
+  const base=graphSiteBase(siteUrl);
   // Check if list exists
-  const checkUrl=siteUrl+'/_api/web/lists/getbytitle(\''+PERM_LIST_NAME+'\')';
+  let listId=null;
   try{
-    const resp=await fetch(checkUrl,{headers:{'Authorization':'Bearer '+token,'Accept':'application/json'}});
-    if(resp.ok)return;
-    if(resp.status!==404)throw new Error(await resp.text());
-  }catch(e){if(!e.message||!e.message.includes('404'))throw e}
-  // Create list
-  const createUrl=siteUrl+'/_api/web/lists';
-  const createBody={'__metadata':{'type':'SP.List'},'AllowContentTypes':true,'BaseTemplate':100,'ContentTypesEnabled':true,'Description':'Permissions for AlEnshaiah Project Management apps','Title':PERM_LIST_NAME};
-  const createResp=await fetch(createUrl,{method:'POST',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json;odata=verbose','Accept':'application/json'},body:JSON.stringify(createBody)});
-  if(!createResp.ok)throw new Error(await createResp.text());
-  // Add DeptID column (Text)
-  await fetch(siteUrl+'/_api/web/lists/getbytitle(\''+PERM_LIST_NAME+'\')/fields',{method:'POST',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json;odata=verbose','Accept':'application/json'},body:JSON.stringify({'__metadata':{'type':'SP.Field'},'Title':'DeptID','FieldTypeKind':2,'Required':true})});
-  // Add Access column (Choice)
-  await fetch(siteUrl+'/_api/web/lists/getbytitle(\''+PERM_LIST_NAME+'\')/fields',{method:'POST',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json;odata=verbose','Accept':'application/json'},body:JSON.stringify({'__metadata':{'type':'SP.FieldChoice'},'Title':'Access','FieldTypeKind':6,'Required':true,'Choices':{'results':['Read','Edit','None']}})});
-  // Add App column (Choice)
-  await fetch(siteUrl+'/_api/web/lists/getbytitle(\''+PERM_LIST_NAME+'\')/fields',{method:'POST',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json;odata=verbose','Accept':'application/json'},body:JSON.stringify({'__metadata':{'type':'SP.FieldChoice'},'Title':'App','FieldTypeKind':6,'Required':true,'Choices':{'results':['Both','ProjectTracker','Forms']}})});
-  showToast('Permissions list created on SharePoint','success');
+    const lists=await graphApi(base+'/lists?$filter=displayName eq \''+PERM_LIST_NAME+'\'');
+    if(lists.value&&lists.value.length){listId=lists.value[0].id;return listId}
+  }catch(e){throw new Error('Cannot access site: '+e.message)}
+  // Create list with columns
+  const newList=await graphApi(base+'/lists','POST',{
+    displayName:PERM_LIST_NAME,
+    description:'Permissions for AlEnshaiah Project Management apps',
+    list:{template:'genericList'},
+    columns:[
+      {name:'DeptID',text:{}},{name:'Access',choice:{choices:['Read','Edit','None']}},{name:'App',choice:{choices:['Both','ProjectTracker','Forms']}}
+    ]
+  });
+  listId=newList.id;
+  showToast('Permissions list created via Graph API','success');
+  return listId;
 }
 
 async function loadPermissions(){
@@ -327,21 +324,18 @@ async function loadPermissions(){
   if(!siteUrl||!spUser||!spToken)return;
   showLoading(true);
   try{
-    await ensurePermList(siteUrl);
-    const token=await ensureSpSiteToken(siteUrl);
-    const url=siteUrl+'/_api/web/lists/getbytitle(\''+PERM_LIST_NAME+'\')/items?$orderby=Title';
-    const data=await spApiCall(url);
-    permEntries=(data.d?data.d.results:data.value||[]).map(i=>({
-      Id:i.Id,
-      Title:i.Title||'',
-      DeptID:i.DeptID||'',
-      Access:i.Access||'None',
-      App:i.App||'Both'
+    const listId=await ensurePermList(siteUrl);
+    const base=graphSiteBase(siteUrl);
+    const data=await graphApi(base+'/lists/'+listId+'/items?expand=fields&$top=500');
+    permEntries=(data.value||[]).map(i=>({
+      Id:i.id,
+      Title:(i.fields&&i.fields.Title)||'',
+      DeptID:(i.fields&&i.fields.DeptID)||'',
+      Access:(i.fields&&i.fields.Access)||'None',
+      App:(i.fields&&i.fields.App)||'Both'
     }));
     permDirty=false;
-    if(!permEntries.length){
-      showToast('Permissions list is empty. Add users below.','');
-    }
+    if(!permEntries.length)showToast('Permissions list is empty. Add users below.','');
     renderMatrix();
     document.getElementById('empty-state').style.display='none';
     document.getElementById('perm-content').style.display='block';
@@ -453,46 +447,35 @@ async function saveAllPerms(){
   btn.disabled=true;status.className='status-msg saving';status.textContent='Saving...';
   const siteUrl=document.getElementById('site-select').value;
   let ok=0,fail=0;
-  // Get existing items from SP for ID matching
   try{
-    await ensurePermList(siteUrl);
-    const token=await ensureSpSiteToken(siteUrl);
-    const url=siteUrl+'/_api/web/lists/getbytitle(\''+PERM_LIST_NAME+'\')/items';
-    const existingData=await spApiCall(url);
-    const existingItems=(existingData.d?existingData.d.results:existingData.value||[]);
-    // Build map of Title+DeptID -> Id
+    const listId=await ensurePermList(siteUrl);
+    const graphBase=graphSiteBase(siteUrl)+'/lists/'+listId;
+    const itemsUrl=graphBase+'/items';
+    const existingData=await graphApi(itemsUrl+'?expand=fields&$top=500');
+    const existingItems=existingData.value||[];
     const idMap={};
     existingItems.forEach(i=>{
-      const key=(i.Title||'').toLowerCase()+'|'+i.DeptID;
-      idMap[key]=i.Id;
+      const f=i.fields||{};
+      const key=(f.Title||'').toLowerCase()+'|'+(f.DeptID||'');
+      if(key!=='|')idMap[key]=i.id;
     });
-    // Process each entry
     for(let i=0;i<permEntries.length;i++){
       const e=permEntries[i];
       if(!e.Title||!e.DeptID)continue;
       const key=e.Title.toLowerCase()+'|'+e.DeptID;
-      const body={'__metadata':{'type':'SP.Data.'+PERM_LIST_NAME.replace(/ /g,'_x0020_')+'ListItem'},'Title':e.Title,'DeptID':e.DeptID,'Access':e.Access,'App':e.App};
+      const fields={Title:e.Title,DeptID:e.DeptID,Access:e.Access,App:e.App};
       try{
-        if(idMap[key]){
-          await fetch(url+'('+idMap[key]+')',{method:'POST',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json;odata=verbose','Accept':'application/json','X-HTTP-Method':'MERGE','IF-MATCH':'*'},body:JSON.stringify(body)});
-        }else{
-          await fetch(url,{method:'POST',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json;odata=verbose','Accept':'application/json'},body:JSON.stringify(body)});
-        }
+        if(idMap[key]){await graphApi(itemsUrl+'/'+idMap[key]+'/fields','PATCH',fields);}
+        else{await graphApi(itemsUrl,'POST',{fields:fields});}
         ok++;
-      }catch(e2){
-        fail++;
-        console.error('Save perm',e.Title,e.DeptID,e2.message);
-      }
+      }catch(e2){fail++;console.error('Save perm',e.Title,e.DeptID,e2.message);}
       status.textContent='Saving... '+Math.round((i+1)/permEntries.length*100)+'% ('+ok+' ok, '+fail+' failed)';
     }
-    // Remove entries that were deleted from matrix
     const currentKeys=new Set(permEntries.filter(e=>e.Title&&e.DeptID).map(e=>e.Title.toLowerCase()+'|'+e.DeptID));
     for(let i=0;i<existingItems.length;i++){
-      const item=existingItems[i];
-      const key=(item.Title||'').toLowerCase()+'|'+item.DeptID;
-      if(!currentKeys.has(key)){
-        try{await fetch(url+'('+item.Id+')',{method:'POST',headers:{'Authorization':'Bearer '+token,'Accept':'application/json','X-HTTP-Method':'DELETE','IF-MATCH':'*'}})}catch{}
-      }
+      const item=existingItems[i];const f=item.fields||{};
+      const key=(f.Title||'').toLowerCase()+'|'+(f.DeptID||'');
+      if(key!=='|'&&!currentKeys.has(key)){try{await graphApi(itemsUrl+'/'+item.id,'DELETE')}catch{}}
     }
     status.className='status-msg '+(fail===0?'saved':'error');
     status.textContent=fail===0?'✓ Saved all ('+ok+' entries)':'✓ '+ok+' saved, ✗ '+fail+' failed';
