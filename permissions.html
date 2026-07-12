@@ -282,40 +282,28 @@ function onSiteChange(){
 let permEntries=[]; // Array of {Id,Title,DeptID,Access,App}
 let permDirty=false;
 
-function graphSiteBase(siteUrl){
+function siteToGraphPath(siteUrl){
   const u=new URL(siteUrl);
-  return 'https://graph.microsoft.com/v1.0/sites/'+u.hostname+':'+u.pathname.replace(/\/$/,'')+':';
+  return u.hostname+':'+u.pathname.replace(/\/+$/,'');
+}
+
+function graphListUrl(siteUrl,listName){
+  return 'https://graph.microsoft.com/v1.0/sites/'+siteToGraphPath(siteUrl)+':/lists/'+encodeURIComponent(listName);
 }
 
 async function graphApi(url,method,body){
+  await getTokenSP();
   if(!spToken)throw new Error('No token');
   const opts={method:method||'GET',headers:{'Authorization':'Bearer '+spToken,'Content-Type':'application/json'}};
   if(body)opts.body=JSON.stringify(body);
   const resp=await fetch(url,opts);
-  if(!resp.ok){const t=await resp.text();throw new Error(t)}
+  if(!resp.ok){const t=await resp.text();throw new Error('HTTP '+resp.status+': '+t.substring(0,300))}
   return resp.json();
 }
 
-function graphListUrl(siteUrl,listName){
-  return graphSiteBase(siteUrl)+'/lists/'+encodeURIComponent(listName);
-}
-
 async function ensurePermList(siteUrl){
-  try{
-    const data=await graphApi(graphListUrl(siteUrl,PERM_LIST_NAME)+'?$select=id');
-    return data.id;
-  }catch(e){
-    const base=graphSiteBase(siteUrl);
-    const newList=await graphApi(base+'/lists','POST',{
-      displayName:PERM_LIST_NAME,
-      description:'Permissions for AlEnshaiah Project Management apps',
-      list:{template:'genericList'},
-      columns:[
-        {name:'DeptID',text:{}},{name:'Access',choice:{choices:['Read','Edit','None']}},{name:'App',choice:{choices:['Both','ProjectTracker','Forms']}}
-      ]
-    });
-    return newList.id;
-  }
+  const data=await graphApi(graphListUrl(siteUrl,PERM_LIST_NAME)+'?$select=id');
+  return data.id;
 }
 
 async function loadPermissions(){
@@ -323,7 +311,7 @@ async function loadPermissions(){
   if(!siteUrl||!spUser||!spToken)return;
   showLoading(true);
   try{
-    const listId=await ensurePermList(siteUrl);
+    await ensurePermList(siteUrl);
     const data=await graphApi(graphListUrl(siteUrl,PERM_LIST_NAME)+'/items?$top=500&expand=fields');
     permEntries=(data.value||[]).map(i=>({
       Id:i.id,
@@ -339,7 +327,15 @@ async function loadPermissions(){
     document.getElementById('perm-content').style.display='block';
   }catch(e){
     console.error('Load perms:',e);
-    showToast('Failed to load permissions: '+e.message,'error');
+    const is404=e.message&&(e.message.includes('404')||e.message.includes('itemNotFound'));
+    document.getElementById('empty-state').style.display='block';
+    document.getElementById('perm-content').style.display='none';
+    const es=document.getElementById('empty-state');
+    if(is404){
+      es.innerHTML='<div class="icon">📋</div><h3>Permissions List Not Found</h3><p style="max-width:500px;margin:0 auto;line-height:1.6">Create a SharePoint list named <b>"Permissions"</b> on the AlEnshaiah site with these columns:<br><br>• <b>DeptID</b> (Single line of text)<br>• <b>Access</b> (Choice: Read, Edit, None)<br>• <b>App</b> (Choice: Both, ProjectTracker, Forms)<br><br>Then refresh this page.</p>';
+    }else{
+      es.innerHTML='<div class="icon">⚠️</div><h3>Error</h3><p>'+(e.message||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</p>';
+    }
   }finally{showLoading(false)}
 }
 
@@ -447,7 +443,7 @@ async function saveAllPerms(){
   const itemsBase=graphListUrl(siteUrl,PERM_LIST_NAME)+'/items';
   let ok=0,fail=0;
   try{
-    const listId=await ensurePermList(siteUrl);
+    await ensurePermList(siteUrl);
     const existingData=await graphApi(itemsBase+'?$top=500&expand=fields');
     const existingItems=existingData.value||[];
     const idMap={};
