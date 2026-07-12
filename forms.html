@@ -336,8 +336,8 @@ function setStatusMsg(msg,isError){
 
 // ======================== AUTH ========================
 function initMsal(){
-  const tenant=storage.getItem('pmt-tenant')||'f1be5251-1f84-4f1e-810d-7e4aa54b85ab';
-  const client=storage.getItem('pmt-client')||'19e206ad-91a0-4d20-9351-59db5fb08f1d';
+  const tenant=storage.getItem('pmt-tenant')||'684547e2-bb8b-450a-a3e1-3a6bc15e9471';
+  const client=storage.getItem('pmt-client')||'84b1fcd2-8c12-4f1b-8fa4-b0e6d99bf534';
   if(!tenant||!client) return false;
   try{
     msalApp = new msal.PublicClientApplication({
@@ -357,8 +357,25 @@ async function loginSP(){
   if(typeof msal==='undefined'){ showSigninError('⚠️ Microsoft Authentication Library (MSAL) failed to load. Check your internet connection or ad blocker and reload.'); return; }
   if(!initMsal()){ showSigninError('⚠️ Azure AD is not configured. Click the ⚙️ link below to set up your Tenant ID and Client ID.'); return; }
   showSigninProgress(true);
-  try{ msalApp.loginRedirect({ scopes: SP_SCOPES }); }
-  catch(e){ showSigninProgress(false); showSigninError('Login failed: '+e.message); }
+  try{
+    const resp = await msalApp.loginPopup({ scopes: SP_SCOPES });
+    handleAuthResponse(resp);
+  }catch(e){
+    showSigninProgress(false);
+    if(e.message&&e.message.includes('popup_window_error')){ showSigninError('⚠️ Popup was blocked. Allow popups for this site and try again.'); }
+    else{ showSigninError('Login failed: '+e.message); }
+  }
+}
+
+async function ssoSilentAttempt(){
+  if(!msalApp) return false;
+  try{
+    const resp = await msalApp.ssoSilent({ scopes: SP_SCOPES });
+    handleAuthResponse(resp);
+    return true;
+  }catch(e){
+    return false;
+  }
 }
 
 async function getTokenSP(){
@@ -372,9 +389,19 @@ async function getTokenSP(){
   }
 }
 
+function handleAuthResponse(resp){
+  if(resp&&resp.account){
+    spUser=resp.account; spToken=resp.accessToken;
+    showSigninProgress(false); hideSigninOverlay(); updateAuthUI();
+    const d=storage.getItem('forms-last-dept'); if(d)onDeptChange();
+  }else{
+    showSigninProgress(false); updateAuthUI();
+  }
+}
+
 function logoutSP(){
   spToken=null; spUser=null; spSiteToken=null;
-  if(msalApp) msalApp.logoutRedirect();
+  if(msalApp) msalApp.logoutPopup();
   updateAuthUI(); onDeptChange();
 }
 
@@ -1109,13 +1136,29 @@ async function importBulkItems(){
 
 // ======================== CONFIG ========================
 function showConfig(){
+  const redirectUri=location.origin+location.pathname;
+  const savedTenant=storage.getItem('pmt-tenant')||'';
+  const savedClient=storage.getItem('pmt-client')||'';
   const overlay=document.createElement('div');
   overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:1100;display:flex;align-items:center;justify-content:center';
-  overlay.innerHTML=`<div style="background:var(--white);border-radius:8px;box-shadow:0 8px 30px rgba(0,0,0,.25);width:90vw;max-width:480px;padding:20px">
+  overlay.innerHTML=`<div style="background:var(--white);border-radius:8px;box-shadow:0 8px 30px rgba(0,0,0,.25);width:90vw;max-width:520px;padding:20px;max-height:90vh;overflow-y:auto">
     <h3 style="margin-bottom:16px;font-size:16px">⚙️ Azure AD Configuration</h3>
-    <div class="form-group"><label class="required">Tenant ID</label><input type="text" id="cfg-tenant" value="${storage.getItem('pmt-tenant')||'f1be5251-1f84-4f1e-810d-7e4aa54b85ab'}" placeholder="Azure AD Tenant ID"></div>
-    <div class="form-group"><label class="required">Client ID</label><input type="text" id="cfg-client" value="${storage.getItem('pmt-client')||'19e206ad-91a0-4d20-9351-59db5fb08f1d'}" placeholder="Azure AD App Registration Client ID"></div>
-    <div class="form-group"><div class="hint">Redirect URI: <code>${location.origin+location.pathname}</code> (SPA type)${location.protocol==='file:'?'<br><strong>⚠️ file:// not supported</strong> — use GitHub Pages or a local web server.':''}</div></div>
+    <div class="form-group"><label class="required">Tenant ID</label><input type="text" id="cfg-tenant" value="${savedTenant}" placeholder="Your Microsoft Entra ID Tenant ID"></div>
+    <div class="form-group"><label class="required">Client ID</label><input type="text" id="cfg-client" value="${savedClient}" placeholder="App Registration Client ID for THIS app"></div>
+    <div style="background:var(--yellow-light);border-radius:6px;padding:10px 12px;margin-bottom:12px;font-size:12px;line-height:1.5">
+      <strong>📋 Azure AD Setup (popup flow)</strong>
+      <ol style="margin:6px 0 0 16px;padding:0">
+        <li>Go to <strong>Microsoft Entra ID</strong> → <strong>App registrations</strong> → <strong>New registration</strong></li>
+        <li>Name: <code>AlEnshaiah Data Entry Forms</code> (or any name)</li>
+        <li>Supported account types: <strong>Accounts in this organizational directory only</strong></li>
+        <li>Redirect URI: <strong>Single-page application (SPA)</strong> → <code>${redirectUri}</code></li>
+        <li>Click <strong>Register</strong>, then copy the <strong>Application (client) ID</strong></li>
+        <li>Under <strong>API permissions</strong>, add:<br>
+          <code>Sites.ReadWrite.All</code> (Graph, Delegated) ${redirectUri.includes('localhost')?'':'· <code>AllSites.Write</code> (SharePoint, Delegated)'}</li>
+        <li>Grant admin consent for your organization</li>
+      </ol>
+    </div>
+    <div class="hint" style="margin-bottom:12px">This app uses a <strong>popup</strong> for login — no page reload. Ensure popups are allowed for this site.</div>
     <button class="btn btn-primary" onclick="saveConfig()" style="width:100%;padding:8px;margin-top:8px">Save &amp; Re-authenticate</button>
     <button class="btn btn-outline" onclick="this.closest('div').parentElement.remove()" style="width:100%;padding:8px;margin-top:8px">Close</button>
   </div>`;
@@ -1144,28 +1187,16 @@ function saveConfig(){
     showSigninError('⚠️ Microsoft Authentication Library (MSAL) failed to load. Check your internet connection or ad blocker, then reload the page.');
     return;
   }
-  const tenant=storage.getItem('pmt-tenant')||'f1be5251-1f84-4f1e-810d-7e4aa54b85ab';
-  const client=storage.getItem('pmt-client')||'19e206ad-91a0-4d20-9351-59db5fb08f1d';
   if(!initMsal()){ showSigninError('⚠️ Azure AD initialization failed. Click ⚙️ to check Tenant ID and Client ID in Config.'); return; }
   showSigninProgress(true);
-  try{
-    const accounts=msalApp.getAllAccounts();
-    if(accounts.length>0){
-      spUser=accounts[0];
-      msalApp.acquireTokenSilent({scopes:SP_SCOPES,account:spUser})
-        .then(r=>{spToken=r.accessToken;showSigninProgress(false);updateAuthUI();const d=storage.getItem('forms-last-dept');if(d)onDeptChange();})
-        .catch(()=>{spToken=null;showSigninProgress(false);updateAuthUI();});
-    }else{
-      msalApp.handleRedirectPromise().then(resp=>{
-        if(resp&&resp.account){spUser=resp.account;spToken=resp.accessToken;showSigninProgress(false);updateAuthUI();const d=storage.getItem('forms-last-dept');if(d)onDeptChange();}
-        else{showSigninProgress(false);updateAuthUI();}
-      }).catch(e=>{showSigninProgress(false);console.error('[MSAL]',e);showSigninError('Authentication failed: '+e.message+'. Check your Azure AD config (⚙️) and try again.');});
-    }
-  }catch(e){
+  ssoSilentAttempt().then(authed=>{
     showSigninProgress(false);
-    console.error('Init error:',e);
-    showSigninError('Initialization error: '+e.message);
-  }
+    if(!authed) updateAuthUI();
+  }).catch(e=>{
+    showSigninProgress(false);
+    console.error('[SSO]',e);
+    updateAuthUI();
+  });
 })();
 </script>
 </body>
