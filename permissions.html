@@ -285,7 +285,7 @@ let graphSiteId=null;
 
 function graphSiteBase(siteUrl){
   const u=new URL(siteUrl);
-  return 'https://graph.microsoft.com/v1.0/sites/'+u.hostname+':'+u.pathname.replace(/\/$/,'');
+  return 'https://graph.microsoft.com/v1.0/sites/'+u.hostname+':'+u.pathname.replace(/\/$/,'')+':';
 }
 
 async function graphApi(url,method,body){
