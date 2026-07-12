@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AlEnshaiah - Permissions Manager</title>
+<script src="https://alcdn.msauth.net/browser/2.32.2/js/msal-browser.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--primary:#4C5D71;--primary-dark:#3A4A5E;--primary-light:#E8ECF0;--green:#107C10;--green-light:#E6F7E6;--red:#D92C2C;--red-light:#FDE8E8;--orange:#ED7D31;--orange-light:#FFF0E0;--yellow:#FFB900;--blue:#0078D4;--gray:#8A8886;--gray-light:#F3F2F1;--gray-border:#EDEBE9;--text-primary:#201E1F;--text-secondary:#605E5C;--white:#FFFFFF;--bg:#F3F2F1;--shadow:0 1px 3px rgba(0,0,0,.08);--radius:6px;--header-h:52px}
+body.dark{--primary:#7A8FA5;--primary-dark:#8DA3B9;--primary-light:#2A3540;--green:#4CAF50;--green-light:#1B3A1B;--red:#F44336;--red-light:#3D1A1A;--orange:#FF9800;--orange-light:#3D2A0A;--yellow:#FFC107;--gray:#A09E9C;--gray-light:#2D2D2D;--gray-border:#3D3D3D;--text-primary:#E0E0E0;--text-secondary:#B0B0B0;--white:#1E1E1E;--bg:#121212;--shadow:0 1px 3px rgba(0,0,0,.3);--blue:#4FC3F7}
+html,body{height:100%;font-family:'Segoe UI',-apple-system,system-ui,sans-serif;font-size:14px;color:var(--text-primary);background:var(--bg)}
+.app{display:flex;flex-direction:column;height:100vh;overflow:hidden}
+.header{height:var(--header-h);background:var(--white);border-bottom:1px solid var(--gray-border);display:flex;align-items:center;padding:0 20px;gap:12px;flex-shrink:0;z-index:100}
+.header .logo{width:28px;height:28px;background:var(--primary);border-radius:4px;display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:14px;flex-shrink:0}
+.header h1{font-size:15px;font-weight:600;flex-shrink:0}
+.header .spacer{flex:1}
+.auth-area{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.auth-area .user-name{font-size:12px;color:var(--text-secondary);white-space:nowrap}
+.auth-btn{padding:5px 14px;border-radius:4px;font-size:12px;font-weight:600;cursor:pointer;border:none;transition:all .15s}
+.auth-btn.login{background:var(--primary);color:white}
+.auth-btn.login:hover{background:var(--primary-dark)}
+.auth-btn.logout{background:var(--red-light);color:var(--red);border:1px solid var(--red)}
+.auth-btn.logout:hover{background:var(--red);color:white}
+.toolbar{display:flex;align-items:center;gap:10px;padding:12px 20px;background:var(--white);border-bottom:1px solid var(--gray-border);flex-wrap:wrap;flex-shrink:0}
+.toolbar .btn{padding:7px 16px;border-radius:4px;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:all .15s;display:inline-flex;align-items:center;gap:5px}
+.toolbar .btn-primary{background:var(--primary);color:white}
+.toolbar .btn-primary:hover{background:var(--primary-dark)}
+.toolbar .btn-primary:disabled{opacity:.5;cursor:not-allowed}
+.toolbar .btn-danger{background:var(--red);color:white}
+.toolbar .btn-danger:hover{background:#b71c1c}
+.toolbar .btn-outline{background:transparent;border:1px solid var(--gray-border);color:var(--text-primary)}
+.toolbar .btn-outline:hover{background:var(--gray-light)}
+.main{flex:1;overflow:auto;padding:20px}
+.panel{background:var(--white);border-radius:8px;box-shadow:var(--shadow);margin-bottom:20px;overflow:hidden}
+.panel-head{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid var(--gray-border)}
+.panel-head h3{font-size:14px;font-weight:600}
+.panel-body{padding:16px 20px}
+.perm-table{width:100%;border-collapse:collapse;font-size:13px}
+.perm-table th{background:var(--gray-light);padding:8px 10px;text-align:left;font-weight:600;border-bottom:2px solid var(--gray-border);white-space:nowrap;font-size:11px;text-transform:uppercase;letter-spacing:.3px;color:var(--text-secondary)}
+.perm-table th:first-child{border-radius:4px 0 0 0}
+.perm-table th:last-child{border-radius:0 4px 0 0}
+.perm-table td{padding:7px 10px;border-bottom:1px solid var(--gray-border);vertical-align:middle}
+.perm-table tr:last-child td{border-bottom:none}
+.perm-table .user-cell{font-weight:600;color:var(--text-primary)}
+.perm-table .user-email{font-size:11px;color:var(--text-secondary);font-weight:400}
+.perm-table select{padding:4px 8px;border:1px solid var(--gray-border);border-radius:4px;font-size:12px;background:var(--white);color:var(--text-primary);outline:none;cursor:pointer;min-width:80px}
+.perm-table select:focus{border-color:var(--primary)}
+.perm-table select.access-read{background:var(--yellow-light);border-color:var(--yellow)}
+.perm-table select.access-edit{background:var(--green-light);border-color:var(--green)}
+.perm-table select.access-none{background:var(--red-light);border-color:var(--red)}
+.perm-table .btn-remove{background:none;border:none;color:var(--red);cursor:pointer;font-size:16px;padding:2px 6px;border-radius:4px}
+.perm-table .btn-remove:hover{background:var(--red-light)}
+.add-user-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:12px 20px;background:var(--gray-light);border-top:1px solid var(--gray-border)}
+.add-user-row input{flex:1;min-width:200px;padding:8px 12px;border:1px solid var(--gray-border);border-radius:4px;font-size:13px;outline:none;background:var(--white);color:var(--text-primary)}
+.add-user-row input:focus{border-color:var(--primary)}
+.site-select{display:flex;align-items:center;gap:6px}
+.site-select label{font-size:12px;font-weight:600;color:var(--text-secondary);white-space:nowrap}
+.site-select select{padding:5px 10px;border:1px solid var(--gray-border);border-radius:4px;font-size:13px;background:var(--white);color:var(--text-primary);outline:none;cursor:pointer}
+.site-select select:focus{border-color:var(--primary)}
+.empty-state{text-align:center;padding:40px 20px;color:var(--text-secondary)}
+.empty-state .icon{font-size:48px;margin-bottom:12px}
+.empty-state h3{font-size:16px;font-weight:600;margin-bottom:4px;color:var(--text-primary)}
+.empty-state p{font-size:13px}
+.status-msg{font-size:12px;color:var(--text-secondary);padding:4px 12px;border-radius:10px;display:none}
+.status-msg.saving{display:inline;background:var(--yellow-light);color:var(--orange)}
+.status-msg.saved{display:inline;background:var(--green-light);color:var(--green)}
+.status-msg.error{display:inline;background:var(--red-light);color:var(--red)}
+.signin-overlay{position:fixed;inset:0;background:var(--bg);z-index:1000;display:flex;align-items:center;justify-content:center}
+.signin-overlay.hidden{display:none}
+.signin-card{background:var(--white);border-radius:12px;padding:40px;text-align:center;box-shadow:0 8px 40px rgba(0,0,0,.12);max-width:380px;width:90vw;animation:fadeIn .4s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.signin-logo{margin-bottom:8px}
+.signin-logo-img{width:64px;height:64px;border-radius:12px}
+.signin-badge{display:inline-block;background:var(--primary-light);color:var(--primary);padding:3px 12px;border-radius:10px;font-size:11px;font-weight:600;margin-bottom:8px}
+.signin-card h1{font-size:22px;font-weight:700;margin-bottom:2px}
+.signin-card .signin-subtitle{font-size:14px;color:var(--text-secondary);margin-bottom:20px}
+.signin-error{background:var(--red-light);color:var(--red);padding:8px 12px;border-radius:6px;font-size:12px;margin-bottom:12px;display:none}
+.signin-error.show{display:block}
+.signin-progress{display:none;align-items:center;justify-content:center;gap:8px;font-size:13px;color:var(--text-secondary);margin-bottom:12px}
+.signin-progress.show{display:flex}
+.signin-btn{display:inline-flex;align-items:center;gap:8px;padding:10px 28px;border-radius:6px;font-size:14px;font-weight:600;cursor:pointer;border:1px solid var(--gray-border);background:var(--white);color:var(--text-primary);transition:all .15s}
+.signin-btn:hover{background:var(--gray-light);border-color:var(--primary)}
+.signin-btn:disabled{opacity:.5;cursor:not-allowed}
+.signin-footer{font-size:12px;color:var(--text-secondary);margin-top:16px}
+.form-group{margin-bottom:12px}
+.form-group label{display:block;font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:4px}
+.form-group label.required::after{content:' *';color:var(--red)}
+.form-group input[type=text],.form-group input[type=password]{width:100%;padding:8px 12px;border:1px solid var(--gray-border);border-radius:4px;font-size:13px;outline:none;background:var(--white);color:var(--text-primary)}
+.form-group input:focus{border-color:var(--primary)}
+.hint{font-size:11px;color:var(--text-secondary);line-height:1.5}
+.toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%);z-index:2000;background:#323130;color:white;padding:10px 24px;border-radius:6px;font-size:13px;box-shadow:0 4px 12px rgba(0,0,0,.25);opacity:0;transition:opacity .3s;pointer-events:none}
+.toast.show{opacity:1;pointer-events:auto}
+.loading-overlay{position:fixed;inset:0;background:rgba(255,255,255,.6);z-index:999;display:none;align-items:center;justify-content:center}
+body.dark .loading-overlay{background:rgba(0,0,0,.6)}
+.loading-overlay.show{display:flex}
+.spinner{width:32px;height:32px;border:3px solid var(--gray-border);border-top-color:var(--primary);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.dark-toggle{background:none;border:none;font-size:18px;cursor:pointer;padding:4px;border-radius:50%;color:var(--text-primary);transition:background .15s;line-height:1}
+.dark-toggle:hover{background:var(--gray-light)}
+@media(max-width:768px){.perm-table{font-size:12px}.perm-table select{min-width:60px;font-size:11px}.panel-body{padding:12px 14px}.toolbar{padding:10px 12px}}
+</style>
+</head>
+<body>
+<div class="signin-overlay" id="signin-overlay">
+  <div class="signin-card">
+    <div class="signin-logo"><img src="logo.png" alt="AlEnshaiah" class="signin-logo-img" onerror="this.style.display='none'"></div>
+    <div class="signin-badge">Permissions Manager</div>
+    <h1>AlEnshaiah</h1>
+    <p class="signin-subtitle">Project Management System</p>
+    <div class="signin-error" id="signin-error"></div>
+    <div class="signin-progress" id="signin-progress"><div class="spinner"></div><span>Authenticating...</span></div>
+    <button class="signin-btn" id="signin-btn" onclick="loginSP()">
+      <svg width="18" height="18" viewBox="0 0 21 21" fill="none"><rect x="1" y="1" width="9" height="9" fill="#F25022"/><rect x="11" y="1" width="9" height="9" fill="#7FBA00"/><rect x="1" y="11" width="9" height="9" fill="#00A4EF"/><rect x="11" y="11" width="9" height="9" fill="#FFB900"/></svg>
+      Sign in with Microsoft
+    </button>
+    <p class="signin-footer">Manage permissions · Secure SSO · <a href="#" onclick="showConfig();return false" style="color:var(--primary);text-decoration:none;font-weight:600">⚙️ Config</a></p>
+  </div>
+</div>
+<div class="app" id="app-root">
+  <header class="header">
+    <div class="logo">AE</div>
+    <h1>Permissions Manager</h1>
+    <div class="site-select">
+      <label>Permissions List</label>
+      <select id="site-select" onchange="onSiteChange()"></select>
+    </div>
+    <div class="spacer"></div>
+    <button class="dark-toggle" id="dark-toggle" onclick="toggleDark()" title="Toggle dark mode">🌙</button>
+    <div class="auth-area">
+      <span class="user-name" id="user-name"></span>
+      <button class="auth-btn login" id="login-btn" onclick="loginSP()">Sign In</button>
+      <button class="auth-btn logout" id="logout-btn" onclick="logoutSP()" style="display:none">Sign Out</button>
+    </div>
+  </header>
+  <div class="toolbar">
+    <strong style="font-size:13px">👥 User Permissions</strong>
+    <span class="status-msg" id="status-msg"></span>
+    <span class="spacer" style="flex:1"></span>
+    <button class="btn btn-outline" onclick="refreshPerms()">🔄 Refresh</button>
+    <button class="btn btn-primary" onclick="saveAllPerms()" id="save-btn" disabled>💾 Save All</button>
+    <button class="btn btn-outline" onclick="showConfig()">⚙️ Config</button>
+  </div>
+  <div class="main" id="main-area">
+    <div class="empty-state" id="empty-state">
+      <div class="icon">🔐</div>
+      <h3>Ready</h3>
+      <p>Sign in and select the site containing your Permissions list to begin.</p>
+    </div>
+    <div id="perm-content" style="display:none;width:100%">
+      <div class="panel">
+        <div class="panel-head"><h3>Permissions Matrix</h3><span style="font-size:11px;color:var(--text-secondary)">Set Read / Edit / None per department and app</span></div>
+        <div id="matrix-wrap" class="panel-body" style="overflow-x:auto;padding:0">
+          <table class="perm-table" id="perm-table">
+            <thead><tr id="matrix-head"></tr></thead>
+            <tbody id="matrix-body"></tbody>
+          </table>
+        </div>
+        <div class="add-user-row">
+          <input type="email" id="new-user-email" placeholder="user@domain.com" onkeydown="if(event.key==='Enter')addUser()">
+          <select id="new-user-app"><option value="Both">Both Apps</option><option value="ProjectTracker">Project Tracker</option><option value="Forms">Data Entry</option></select>
+          <button class="btn btn-primary" onclick="addUser()">➕ Add User</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="loading-overlay" id="loading"><div class="spinner"></div></div>
+<div class="toast" id="toast"></div>
+<script>
+// ======================== STORAGE ========================
+const storage={getItem(k){try{return localStorage.getItem(k)}catch{return null}},setItem(k,v){try{localStorage.setItem(k,v)}catch{}},removeItem(k){try{localStorage.removeItem(k)}catch{}}};
+
+// ======================== CONFIG ========================
+const SP_SCOPES=['Sites.ReadWrite.All','User.Read'];
+const ADMIN_KEY='pmt-admin-email';
+
+let msalApp=null,spToken=null,spUser=null,spSiteToken=null;
+
+function getDefaultAdmin(){return storage.getItem(ADMIN_KEY)||'hajissa2008@gmail.com'}
+
+function initMsal(){
+  const tenant=storage.getItem('pmt-tenant')||'684547e2-bb8b-450a-a3e1-3a6bc15e9471';
+  const client=storage.getItem('pmt-client')||'84b1fcd2-8c12-4f1b-8fa4-b0e6d99bf534';
+  if(!tenant||!client)return false;
+  msalApp=new msal.PublicClientApplication({
+    auth:{clientId:client,authority:'https://login.microsoftonline.com/'+tenant,redirectUri:location.origin+location.pathname},
+    cache:{cacheLocation:'localStorage'},system:{allowNativeBroker:false}
+  });
+  return true;
+}
+
+async function loginSP(){
+  if(location.protocol==='file:'){showSigninError('⚠️ Cannot sign in from a local file.');return}
+  if(typeof msal==='undefined'){showSigninError('⚠️ MSAL failed to load.');return}
+  if(!initMsal()){showSigninError('⚠️ Azure AD not configured.');return}
+  showSigninProgress(true);
+  try{
+    const resp=await msalApp.loginPopup({scopes:SP_SCOPES});
+    handleAuthResponse(resp);
+  }catch(e){
+    showSigninProgress(false);
+    if(e.message&&e.message.includes('popup_window_error'))showSigninError('⚠️ Popup blocked.');
+    else showSigninError('Login failed: '+e.message);
+  }
+}
+
+async function ssoSilentAttempt(){
+  if(!msalApp)return false;
+  try{const resp=await msalApp.ssoSilent({scopes:SP_SCOPES});handleAuthResponse(resp);return true}catch{return false}
+}
+
+async function getTokenSP(){
+  if(!msalApp||!spUser)return null;
+  try{const resp=await msalApp.acquireTokenSilent({scopes:SP_SCOPES,account:spUser});spToken=resp.accessToken;return spToken}catch{if(spToken)return spToken;return null}
+}
+
+function handleAuthResponse(resp){
+  if(resp&&resp.account){
+    spUser=resp.account;spToken=resp.accessToken;
+    showSigninProgress(false);hideSigninOverlay();updateAuthUI();
+    initApp();
+  }else{showSigninProgress(false);updateAuthUI()}
+}
+
+function logoutSP(){
+  spToken=null;spUser=null;spSiteToken=null;
+  if(msalApp)msalApp.logoutPopup();
+  updateAuthUI();
+}
+
+function showSigninError(msg){const el=document.getElementById('signin-error');if(el){el.textContent=msg;el.classList.add('show')}}
+function showSigninProgress(show){const el=document.getElementById('signin-progress');const btn=document.getElementById('signin-btn');if(el)el.classList.toggle('show',show);if(btn)btn.disabled=show}
+function hideSigninOverlay(){document.getElementById('signin-overlay').classList.add('hidden')}
+function showSigninOverlay(){document.getElementById('signin-overlay').classList.remove('hidden')}
+function showLoading(show){document.getElementById('loading').classList.toggle('show',show)}
+function showToast(msg,type){const t=document.getElementById('toast');t.textContent=msg;t.className='toast show';t.style.background=type==='error'?'var(--red)':'#323130';setTimeout(()=>t.classList.remove('show'),3000)}
+
+function updateAuthUI(){
+  const un=document.getElementById('user-name');const li=document.getElementById('login-btn');const lo=document.getElementById('logout-btn');
+  if(spUser){
+    if(un){un.style.display='';un.textContent='👤 '+(spUser.name||spUser.username)}
+    if(li)li.style.display='none';if(lo)lo.style.display=''
+  }else{
+    if(un){un.style.display='none';un.textContent=''}
+    if(li)li.style.display='';if(lo)lo.style.display='none'
+  }
+}
+
+// ======================== DEPARTMENTS & SITES ========================
+const DEPTS=[
+  {id:'engineering',title:'Engineering',site:'https://sascontractingsa.sharepoint.com/sites/Alenshaiah',list:'Shop Drawing Status'},
+  {id:'procurement',title:'Procurement',site:'https://sascontractingsa.sharepoint.com/sites/Alenshaiah',list:'Procurement_Tracker Log'},
+  {id:'qaqc',title:'QA/QC',site:'https://sascontractingsa.sharepoint.com/sites/Alenshaiah',list:'QAQC Tracker'},
+  {id:'hse',title:'HSE',site:'https://sascontractingsa.sharepoint.com/sites/Alenshaiah',list:'HSE_Task_Management_Platform'}
+];
+
+const PERM_LIST_NAME='Permissions';
+
+// Build unique sites from all depts
+function getUniqueSites(){
+  const map={};
+  DEPTS.forEach(d=>{if(d.site&&!map[d.site])map[d.site]={url:d.site,title:d.site.split('/').pop()||d.site}});
+  return Object.values(map);
+}
+
+function initSiteSelect(){
+  const sel=document.getElementById('site-select');
+  const sites=getUniqueSites();
+  sel.innerHTML=sites.map(s=>`<option value="${s.url}">${s.title}</option>`).join('');
+}
+
+function onSiteChange(){
+  if(spUser&&spToken)loadPermissions();
+}
+
+// ======================== PERMISSIONS ========================
+let permEntries=[]; // Array of {Id,Title,DeptID,Access,App}
+let permDirty=false;
+
+async function ensureSpSiteToken(siteUrl){
+  if(!msalApp||!spUser)throw new Error('Not authenticated');
+  const u=new URL(siteUrl);
+  const resp=await msalApp.acquireTokenSilent({scopes:[u.origin+'/.default'],account:spUser});
+  spSiteToken=resp.accessToken;
+  return resp.accessToken;
+}
+
+async function spApiCall(url,method,body){
+  const token=spSiteToken||await ensureSpSiteToken(document.getElementById('site-select').value);
+  const opts={method:method||'GET',headers:{'Authorization':'Bearer '+token,'Accept':'application/json'}};
+  if(body){opts.headers['Content-Type']='application/json;odata=verbose';opts.body=JSON.stringify(body)}
+  const resp=await fetch(url,opts);
+  if(!resp.ok){const t=await resp.text();throw new Error(t)}
+  return resp.json();
+}
+
+async function ensurePermList(siteUrl){
+  const token=await ensureSpSiteToken(siteUrl);
+  // Check if list exists
+  const checkUrl=siteUrl+'/_api/web/lists/getbytitle(\''+PERM_LIST_NAME+'\')';
+  try{
+    const resp=await fetch(checkUrl,{headers:{'Authorization':'Bearer '+token,'Accept':'application/json'}});
+    if(resp.ok)return;
+    if(resp.status!==404)throw new Error(await resp.text());
+  }catch(e){if(!e.message||!e.message.includes('404'))throw e}
+  // Create list
+  const createUrl=siteUrl+'/_api/web/lists';
+  const createBody={'__metadata':{'type':'SP.List'},'AllowContentTypes':true,'BaseTemplate':100,'ContentTypesEnabled':true,'Description':'Permissions for AlEnshaiah Project Management apps','Title':PERM_LIST_NAME};
+  const createResp=await fetch(createUrl,{method:'POST',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json;odata=verbose','Accept':'application/json'},body:JSON.stringify(createBody)});
+  if(!createResp.ok)throw new Error(await createResp.text());
+  // Add DeptID column (Text)
+  await fetch(siteUrl+'/_api/web/lists/getbytitle(\''+PERM_LIST_NAME+'\')/fields',{method:'POST',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json;odata=verbose','Accept':'application/json'},body:JSON.stringify({'__metadata':{'type':'SP.Field'},'Title':'DeptID','FieldTypeKind':2,'Required':true})});
+  // Add Access column (Choice)
+  await fetch(siteUrl+'/_api/web/lists/getbytitle(\''+PERM_LIST_NAME+'\')/fields',{method:'POST',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json;odata=verbose','Accept':'application/json'},body:JSON.stringify({'__metadata':{'type':'SP.FieldChoice'},'Title':'Access','FieldTypeKind':6,'Required':true,'Choices':{'results':['Read','Edit','None']}})});
+  // Add App column (Choice)
+  await fetch(siteUrl+'/_api/web/lists/getbytitle(\''+PERM_LIST_NAME+'\')/fields',{method:'POST',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json;odata=verbose','Accept':'application/json'},body:JSON.stringify({'__metadata':{'type':'SP.FieldChoice'},'Title':'App','FieldTypeKind':6,'Required':true,'Choices':{'results':['Both','ProjectTracker','Forms']}})});
+  showToast('Permissions list created on SharePoint','success');
+}
+
+async function loadPermissions(){
+  const siteUrl=document.getElementById('site-select').value;
+  if(!siteUrl||!spUser||!spToken)return;
+  showLoading(true);
+  try{
+    await ensurePermList(siteUrl);
+    const token=await ensureSpSiteToken(siteUrl);
+    const url=siteUrl+'/_api/web/lists/getbytitle(\''+PERM_LIST_NAME+'\')/items?$orderby=Title';
+    const data=await spApiCall(url);
+    permEntries=(data.d?data.d.results:data.value||[]).map(i=>({
+      Id:i.Id,
+      Title:i.Title||'',
+      DeptID:i.DeptID||'',
+      Access:i.Access||'None',
+      App:i.App||'Both'
+    }));
+    permDirty=false;
+    if(!permEntries.length){
+      showToast('Permissions list is empty. Add users below.','');
+    }
+    renderMatrix();
+    document.getElementById('empty-state').style.display='none';
+    document.getElementById('perm-content').style.display='block';
+  }catch(e){
+    console.error('Load perms:',e);
+    showToast('Failed to load permissions: '+e.message,'error');
+  }finally{showLoading(false)}
+}
+
+function refreshPerms(){loadPermissions()}
+
+// ======================== MATRIX RENDERING ========================
+function renderMatrix(){
+  const head=document.getElementById('matrix-head');
+  const body=document.getElementById('matrix-body');
+  const depts=DEPTS.filter(d=>d.id!=='cost'&&d.id!=='planning'&&d.id!=='construction');
+  // Collect unique users sorted
+  const userSet=new Set(permEntries.map(e=>e.Title).filter(Boolean));
+  const users=Array.from(userSet).sort((a,b)=>a.toLowerCase().localeCompare(b.toLowerCase()));
+
+  // Header
+  let hHtml='<th style="min-width:180px">User</th>';
+  depts.forEach(d=>{
+    hHtml+=`<th style="text-align:center" colspan="2">${d.title}</th>`;
+  });
+  hHtml+='<th style="width:60px;text-align:center">Actions</th>';
+  head.innerHTML=hHtml;
+
+  // Body
+  if(!users.length){
+    body.innerHTML='<tr><td colspan="'+(depts.length*2+2)+'" style="text-align:center;padding:20px;color:var(--text-secondary)">No users. Add one below.</td></tr>';
+    return;
+  }
+
+  let bHtml='';
+  users.forEach(email=>{
+    bHtml+=`<tr><td><div class="user-cell">${email.split('@')[0]}<div class="user-email">${email}</div></div></td>`;
+    depts.forEach(d=>{
+      const entry=permEntries.find(e=>e.Title.toLowerCase()===email.toLowerCase()&&e.DeptID===d.id);
+      const access=entry?entry.Access:'None';
+      const apps=entry?entry.App:'Both';
+      bHtml+=`<td style="text-align:center;padding:4px">
+        <select class="access-${access.toLowerCase()}" data-email="${email}" data-dept="${d.id}" onchange="onCellChange(this,'access')">
+          <option value="None" ${access==='None'?'selected':''}>None</option>
+          <option value="Read" ${access==='Read'?'selected':''}>Read</option>
+          <option value="Edit" ${access==='Edit'?'selected':''}>Edit</option>
+        </select>
+      </td>`;
+      bHtml+=`<td style="text-align:center;padding:4px;font-size:11px">
+        <select data-email="${email}" data-dept="${d.id}" onchange="onCellChange(this,'app')">
+          <option value="Both" ${apps==='Both'?'selected':''}>All</option>
+          <option value="ProjectTracker" ${apps==='ProjectTracker'?'selected':''}>Tracker</option>
+          <option value="Forms" ${apps==='Forms'?'selected':''}>Forms</option>
+        </select>
+      </td>`;
+    });
+    bHtml+=`<td style="text-align:center"><button class="btn-remove" onclick="removeUser('${email.replace(/'/g,"\\'")}')" title="Remove user">✕</button></td></tr>`;
+  });
+  body.innerHTML=bHtml;
+  document.getElementById('save-btn').disabled=!permDirty;
+}
+
+function onCellChange(el,field){
+  const email=el.dataset.email;
+  const deptId=el.dataset.dept;
+  const value=el.value;
+  const existing=permEntries.find(e=>e.Title.toLowerCase()===email.toLowerCase()&&e.DeptID===deptId);
+  if(existing){
+    existing[field==='access'?'Access':'App']=value;
+  }else{
+    permEntries.push({Title:email,DeptID:deptId,Access:field==='access'?value:'None',App:field==='app'?value:'Both'});
+  }
+  permDirty=true;
+  document.getElementById('save-btn').disabled=false;
+  // Update dropdown color
+  if(field==='access')el.className='access-'+value.toLowerCase();
+}
+
+function addUser(){
+  const input=document.getElementById('new-user-email');
+  const email=input.value.trim().toLowerCase();
+  const app=document.getElementById('new-user-app').value;
+  if(!email||!email.includes('@')){showToast('Enter a valid email address','error');return}
+  const existing=permEntries.some(e=>e.Title.toLowerCase()===email);
+  if(existing){showToast('User already exists','error');return}
+  // Add None entry for each dept
+  DEPTS.filter(d=>d.id!=='cost'&&d.id!=='planning'&&d.id!=='construction').forEach(d=>{
+    permEntries.push({Title:email,DeptID:d.id,Access:'None',App:app});
+  });
+  permDirty=true;
+  input.value='';
+  renderMatrix();
+  showToast('User added. Click Save to persist.','');
+}
+
+function removeUser(email){
+  if(!confirm('Remove all permissions for '+email+'?'))return;
+  permEntries=permEntries.filter(e=>e.Title.toLowerCase()!==email.toLowerCase());
+  permDirty=true;
+  renderMatrix();
+  showToast('User removed. Click Save to persist.','');
+}
+
+// ======================== SAVE ========================
+async function saveAllPerms(){
+  if(!permDirty){showToast('No changes to save','');return}
+  const btn=document.getElementById('save-btn');
+  const status=document.getElementById('status-msg');
+  btn.disabled=true;status.className='status-msg saving';status.textContent='Saving...';
+  const siteUrl=document.getElementById('site-select').value;
+  let ok=0,fail=0;
+  // Get existing items from SP for ID matching
+  try{
+    await ensurePermList(siteUrl);
+    const token=await ensureSpSiteToken(siteUrl);
+    const url=siteUrl+'/_api/web/lists/getbytitle(\''+PERM_LIST_NAME+'\')/items';
+    const existingData=await spApiCall(url);
+    const existingItems=(existingData.d?existingData.d.results:existingData.value||[]);
+    // Build map of Title+DeptID -> Id
+    const idMap={};
+    existingItems.forEach(i=>{
+      const key=(i.Title||'').toLowerCase()+'|'+i.DeptID;
+      idMap[key]=i.Id;
+    });
+    // Process each entry
+    for(let i=0;i<permEntries.length;i++){
+      const e=permEntries[i];
+      if(!e.Title||!e.DeptID)continue;
+      const key=e.Title.toLowerCase()+'|'+e.DeptID;
+      const body={'__metadata':{'type':'SP.Data.'+PERM_LIST_NAME.replace(/ /g,'_x0020_')+'ListItem'},'Title':e.Title,'DeptID':e.DeptID,'Access':e.Access,'App':e.App};
+      try{
+        if(idMap[key]){
+          await fetch(url+'('+idMap[key]+')',{method:'POST',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json;odata=verbose','Accept':'application/json','X-HTTP-Method':'MERGE','IF-MATCH':'*'},body:JSON.stringify(body)});
+        }else{
+          await fetch(url,{method:'POST',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json;odata=verbose','Accept':'application/json'},body:JSON.stringify(body)});
+        }
+        ok++;
+      }catch(e2){
+        fail++;
+        console.error('Save perm',e.Title,e.DeptID,e2.message);
+      }
+      status.textContent='Saving... '+Math.round((i+1)/permEntries.length*100)+'% ('+ok+' ok, '+fail+' failed)';
+    }
+    // Remove entries that were deleted from matrix
+    const currentKeys=new Set(permEntries.filter(e=>e.Title&&e.DeptID).map(e=>e.Title.toLowerCase()+'|'+e.DeptID));
+    for(let i=0;i<existingItems.length;i++){
+      const item=existingItems[i];
+      const key=(item.Title||'').toLowerCase()+'|'+item.DeptID;
+      if(!currentKeys.has(key)){
+        try{await fetch(url+'('+item.Id+')',{method:'POST',headers:{'Authorization':'Bearer '+token,'Accept':'application/json','X-HTTP-Method':'DELETE','IF-MATCH':'*'}})}catch{}
+      }
+    }
+    status.className='status-msg '+(fail===0?'saved':'error');
+    status.textContent=fail===0?'✓ Saved all ('+ok+' entries)':'✓ '+ok+' saved, ✗ '+fail+' failed';
+    permDirty=false;
+    btn.disabled=true;
+    showToast(fail===0?'All permissions saved':'Saved with '+fail+' errors','');
+    await loadPermissions();
+  }catch(e){
+    console.error('Save error:',e);
+    status.className='status-msg error';
+    status.textContent='Error: '+e.message;
+    btn.disabled=false;
+  }
+}
+
+// ======================== CONFIG ========================
+function showConfig(){
+  const redirectUri=location.origin+location.pathname;
+  const savedAdmin=storage.getItem(ADMIN_KEY)||'hajissa2008@gmail.com';
+  const savedTenant=storage.getItem('pmt-tenant')||'684547e2-bb8b-450a-a3e1-3a6bc15e9471';
+  const savedClient=storage.getItem('pmt-client')||'84b1fcd2-8c12-4f1b-8fa4-b0e6d99bf534';
+  const overlay=document.createElement('div');
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:1100;display:flex;align-items:center;justify-content:center';
+  overlay.innerHTML=`<div style="background:var(--white);border-radius:8px;box-shadow:0 8px 30px rgba(0,0,0,.25);width:90vw;max-width:500px;padding:20px;max-height:90vh;overflow-y:auto">
+    <h3 style="margin-bottom:16px;font-size:16px">⚙️ Configuration</h3>
+    <div class="form-group"><label class="required">Tenant ID</label><input type="text" id="cfg-tenant" value="${savedTenant}"></div>
+    <div class="form-group"><label class="required">Client ID</label><input type="text" id="cfg-client" value="${savedClient}"></div>
+    <div class="form-group"><label>Admin Email</label><input type="text" id="cfg-admin" value="${savedAdmin}"></div>
+    <div class="hint">Only this email can manage permissions.</div>
+    <button class="btn btn-primary" onclick="saveConfig()" style="width:100%;padding:8px;margin-top:8px">Save &amp; Re-authenticate</button>
+    <button class="btn btn-outline" onclick="this.closest('div').parentElement.remove()" style="width:100%;padding:8px;margin-top:8px">Close</button>
+  </div>`;
+  overlay.onclick=e=>{if(e.target===overlay)overlay.remove()};
+  document.body.appendChild(overlay);
+}
+
+function saveConfig(){
+  const t=document.getElementById('cfg-tenant').value.trim();
+  const c=document.getElementById('cfg-client').value.trim();
+  const a=document.getElementById('cfg-admin').value.trim();
+  if(t)storage.setItem('pmt-tenant',t);
+  if(c)storage.setItem('pmt-client',c);
+  if(a)storage.setItem(ADMIN_KEY,a);
+  showToast('Config saved. Re-authenticating...','success');
+  setTimeout(()=>location.reload(),500);
+}
+
+// ======================== DARK MODE ========================
+function toggleDark(){
+  document.body.classList.toggle('dark');
+  storage.setItem('perm-dark',document.body.classList.contains('dark')?'1':'');
+  document.getElementById('dark-toggle').textContent=document.body.classList.contains('dark')?'☀️':'🌙';
+}
+
+// ======================== INIT ========================
+function initApp(){
+  if(spUser&&spToken){
+    const adminEmail=getDefaultAdmin();
+    if((spUser.username||'').toLowerCase()!==adminEmail.toLowerCase()&&(spUser.name||'').toLowerCase()!==adminEmail.toLowerCase()){
+      showToast('⚠️ Only the admin can manage permissions.','error');
+      document.getElementById('perm-content').style.display='none';
+      document.getElementById('empty-state').querySelector('h3').textContent='Restricted';
+      document.getElementById('empty-state').querySelector('p').textContent='Only the configured admin ('+adminEmail+') can access this page.';
+      document.getElementById('empty-state').style.display='block';
+      return;
+    }
+    initSiteSelect();
+    const lastSite=storage.getItem('perm-last-site');
+    if(lastSite){document.getElementById('site-select').value=lastSite}
+    loadPermissions();
+  }
+}
+
+(function init(){
+  if(storage.getItem('perm-dark')){document.body.classList.add('dark');document.getElementById('dark-toggle').textContent='☀️'}
+  if(location.protocol==='file:'){showSigninError('⚠️ Cannot run from local file.');return}
+  if(typeof msal==='undefined'){showSigninError('⚠️ MSAL failed to load.');return}
+  if(!initMsal()){showSigninError('⚠️ Azure AD not configured.');return}
+  showSigninProgress(true);
+  ssoSilentAttempt().then(authed=>{showSigninProgress(false);if(!authed)updateAuthUI()}).catch(()=>{showSigninProgress(false);updateAuthUI()});
+})();
+</script>
+</body>
+</html>
