@@ -114,6 +114,35 @@ html,body{height:100%;font-family:'Segoe UI',-apple-system,system-ui,sans-serif;
 .toast.success{background:var(--green);color:white}
 .toast.error{background:var(--red);color:white}
 @keyframes slideUp{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
+.bulk-overlay{position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:400;display:none;align-items:center;justify-content:center}
+.bulk-overlay.show{display:flex}
+.bulk-modal{background:var(--white);border-radius:8px;width:90vw;max-width:800px;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 8px 30px rgba(0,0,0,.25)}
+.bulk-modal-head{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid var(--gray-border);flex-shrink:0}
+.bulk-modal-head h3{font-size:15px;font-weight:600;margin:0}
+.bulk-modal-close{background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-secondary);padding:2px 6px;border-radius:4px}
+.bulk-modal-close:hover{background:var(--gray-light)}
+.bulk-modal-body{flex:1;overflow:auto;padding:16px 20px}
+.bulk-modal-foot{display:flex;gap:8px;padding:12px 20px;border-top:1px solid var(--gray-border);flex-shrink:0;justify-content:flex-end;align-items:center}
+.bulk-modal-foot .btn{padding:7px 20px;border-radius:4px;font-size:13px;font-weight:600;cursor:pointer;border:none}
+.bulk-modal-foot .btn-primary{background:var(--primary);color:white}
+.bulk-modal-foot .btn-primary:hover{background:var(--primary-dark)}
+.bulk-modal-foot .btn-primary:disabled{opacity:.5;cursor:not-allowed}
+.bulk-modal-foot .btn-outline{background:transparent;border:1px solid var(--gray-border);color:var(--text-primary)}
+.bulk-modal-foot .btn-outline:hover{background:var(--gray-light)}
+.bulk-drop-zone{border:2px dashed var(--gray-border);border-radius:8px;padding:40px;text-align:center;cursor:pointer;transition:all .15s;margin-bottom:12px}
+.bulk-drop-zone:hover,.bulk-drop-zone.dragover{border-color:var(--primary);background:var(--primary-light)}
+.bulk-drop-zone .icon{font-size:40px;margin-bottom:8px}
+.bulk-drop-zone p{font-size:13px;color:var(--text-secondary);margin-bottom:4px}
+.bulk-preview{overflow-x:auto;margin-top:8px}
+.bulk-preview table{width:100%;border-collapse:collapse;font-size:11px}
+.bulk-preview th{background:var(--gray-light);padding:6px 8px;text-align:left;font-weight:600;border-bottom:2px solid var(--gray-border);white-space:nowrap;position:sticky;top:0}
+.bulk-preview td{padding:5px 8px;border-bottom:1px solid var(--gray-border);max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bulk-preview .skip-col{opacity:.4}
+.bulk-progress{margin-top:12px;display:none}
+.bulk-progress.show{display:block}
+.bulk-progress-bar{height:8px;background:var(--gray-border);border-radius:4px;overflow:hidden;margin-bottom:4px}
+.bulk-progress-fill{height:100%;background:var(--primary);border-radius:4px;transition:width .3s;width:0}
+.bulk-progress-text{font-size:11px;color:var(--text-secondary);text-align:center}
 .dark-toggle{background:none;border:none;font-size:18px;cursor:pointer;padding:4px;border-radius:50%;color:var(--text-primary);transition:background .15s;line-height:1}
 .dark-toggle:hover{background:var(--gray-light)}
 .signin-overlay{position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#2C3A4B 0%,var(--primary) 50%,#6B7F95 100%);overflow:hidden}
@@ -190,6 +219,8 @@ html,body{height:100%;font-family:'Segoe UI',-apple-system,system-ui,sans-serif;
     <span class="count-badge" id="result-count">0 items</span>
     <button class="btn btn-success" onclick="startCreate()" id="btn-new" style="display:none">+ New Item</button>
     <button class="btn btn-outline" onclick="refreshItems()" id="btn-refresh" style="display:none">🔄 Refresh</button>
+    <button class="btn btn-outline" onclick="downloadTemplate()" id="btn-template" style="display:none">📥 Template</button>
+    <button class="btn btn-outline" onclick="openBulkUpload()" id="btn-bulk" style="display:none">📤 Bulk Upload</button>
     <span class="status-msg" id="status-msg"></span>
     <button class="btn btn-outline" onclick="showConfig()">⚙️ Config</button>
   </div>
@@ -220,6 +251,20 @@ html,body{height:100%;font-family:'Segoe UI',-apple-system,system-ui,sans-serif;
           <button class="btn btn-primary" id="save-btn" onclick="saveItem()">💾 Save</button>
         </div>
       </div>
+    </div>
+  </div>
+</div>
+<div class="bulk-overlay" id="bulk-overlay" onclick="if(event.target===this)closeBulkUpload()">
+  <div class="bulk-modal">
+    <div class="bulk-modal-head">
+      <h3 id="bulk-title">📤 Bulk Upload</h3>
+      <button class="bulk-modal-close" onclick="closeBulkUpload()">✕</button>
+    </div>
+    <div class="bulk-modal-body" id="bulk-body"></div>
+    <div class="bulk-modal-foot" id="bulk-foot">
+      <span class="save-status" id="bulk-status"></span>
+      <button class="btn btn-outline" onclick="closeBulkUpload()">Cancel</button>
+      <button class="btn btn-primary" id="bulk-import-btn" onclick="importBulkItems()" disabled>📤 Import</button>
     </div>
   </div>
 </div>
@@ -636,6 +681,8 @@ async function loadDeptData(){
     setStatusMsg('');
     document.getElementById('btn-new').style.display='';
     document.getElementById('btn-refresh').style.display='';
+    document.getElementById('btn-template').style.display='';
+    document.getElementById('btn-bulk').style.display='';
     onSearch();
   }catch(e){
     console.error('loadDeptData:',e);
@@ -905,6 +952,159 @@ async function saveItem(){
     showToast('Save failed: '+e.message,'error');
   }
   document.getElementById('save-btn').disabled=false;
+}
+
+// ======================== BULK UPLOAD ========================
+function downloadTemplate(){
+  if(!columnDefs.length||!currentDept){showToast('No columns loaded','error');return;}
+  const cols=columnDefs.filter(c=>!c.name.startsWith('_')&&c.name!=='ID'&&c.name!=='ContentType');
+  const headers=cols.map(c=>c.displayName||c.name);
+  const sample=cols.map(c=>{
+    if(c.type==='date')return '2025-01-01';
+    if(c.type==='choice'&&c.choices&&c.choices.length)return c.choices[0];
+    if(c.type==='number'||c.type==='currency')return '0';
+    if(c.type==='boolean')return 'true';
+    return '';
+  });
+  const esc=(v)=>'"'+String(v).replace(/"/g,'""')+'"';
+  const csv=esc('Title')+','+headers.map(esc).join(',')+'\n'+
+            esc('Sample Item')+','+sample.map(esc).join(',')+'\n'+
+            esc('')+','+headers.map(()=>'').join(',')+'\n';
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download=(currentDept.title||'template')+'_template.csv';
+  a.click();URL.revokeObjectURL(a.href);
+  showToast('Template downloaded','success');
+}
+
+let bulkData=null;
+function openBulkUpload(){
+  bulkData=null;
+  document.getElementById('bulk-import-btn').disabled=true;
+  document.getElementById('bulk-status').className='save-status';
+  document.getElementById('bulk-status').textContent='';
+  document.getElementById('bulk-body').innerHTML=
+    '<div class="bulk-drop-zone" id="bulk-drop-zone" onclick="document.getElementById(\'bulk-file-input\').click()">'+
+      '<div class="icon">📄</div><p>Click to select a CSV file or drag & drop here</p>'+
+      '<p style="font-size:11px">First row should be column headers matching the department fields</p>'+
+      '<div class="hint" style="margin-top:8px;font-size:11px">📥 <a href="#" onclick="downloadTemplate();return false" style="color:var(--blue)">Download template</a> first if needed</div>'+
+    '</div>'+
+    '<input type="file" id="bulk-file-input" accept=".csv" style="display:none" onchange="handleBulkFile(this.files)">'+
+    '<div id="bulk-preview-area"></div>';
+  const dz=document.getElementById('bulk-drop-zone');
+  dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('dragover');});
+  dz.addEventListener('dragleave',()=>dz.classList.remove('dragover'));
+  dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('dragover');if(e.dataTransfer.files.length)handleBulkFile(e.dataTransfer.files);});
+  document.getElementById('bulk-overlay').classList.add('show');
+}
+
+function closeBulkUpload(){
+  document.getElementById('bulk-overlay').classList.remove('show');
+  bulkData=null;
+}
+
+function handleBulkFile(files){
+  if(!files||!files.length)return;
+  const file=files[0];
+  const reader=new FileReader();
+  reader.onload=function(e){
+    const text=e.target.result;
+    parseBulkCSV(text);
+  };
+  reader.readAsText(file);
+}
+
+function parseBulkCSV(text){
+  const lines=text.split(/\r?\n/).filter(l=>l.trim());
+  if(lines.length<2){showToast('CSV must have headers and at least one data row','error');return;}
+  const headers=parseCSVLine(lines[0]);
+  const rows=lines.slice(1).map(l=>parseCSVLine(l));
+  const nonEmptyRows=rows.filter(r=>r.some(c=>c.trim()));
+  if(!nonEmptyRows.length){showToast('No data rows found','error');return;}
+  const colDefs=columnDefs.filter(c=>!c.name.startsWith('_')&&c.name!=='ID'&&c.name!=='ContentType');
+  const mapping=headers.map(h=>{
+    const trimmed=h.trim();
+    const match=colDefs.find(c=>(c.displayName||c.name).toLowerCase()===trimmed.toLowerCase());
+    return {header:trimmed,col:match||null,skip:!match};
+  });
+  const previewRows=nonEmptyRows.slice(0,10);
+  let html='<div style="margin-bottom:8px;font-size:12px;color:var(--text-secondary)">'+
+    '<strong>'+nonEmptyRows.length+'</strong> row(s) parsed'+
+    ' · <strong>'+mapping.filter(m=>m.col).length+'/'+headers.length+'</strong> columns matched'+
+    (nonEmptyRows.length>10?' · showing first 10':'')+
+    '</div>';
+  html+=`<div class="bulk-preview"><table><thead><tr>`;
+  mapping.forEach(m=>{
+    html+=`<th class="${m.skip?'skip-col':''}" title="${m.skip?'Unmatched column':m.col.displayName+' ('+m.col.name+')'}">${htmlEscape(m.header)}${m.skip?' <span style="color:var(--red);font-size:10px">✕</span>':''}</th>`;
+  });
+  html+=`</tr></thead><tbody>`;
+  previewRows.forEach(row=>{
+    html+=`<tr>`;
+    row.forEach((cell,i)=>{
+      html+=`<td class="${mapping[i]?.skip?'skip-col':''}">${htmlEscape(cell.substring(0,100))}</td>`;
+    });
+    html+=`</tr>`;
+  });
+  html+=`</tbody></table></div>`;
+  const mappedCount=mapping.filter(m=>m.col).length;
+  document.getElementById('bulk-preview-area').innerHTML=html;
+  document.getElementById('bulk-import-btn').disabled=mappedCount===0||nonEmptyRows.length===0;
+  bulkData={headers,rows:nonEmptyRows,mapping};
+}
+
+function parseCSVLine(line){
+  const result=[];let current='',inQuotes=false;
+  for(let i=0;i<line.length;i++){
+    const c=line[i];
+    if(inQuotes){
+      if(c==='"'){if(line[i+1]==='"'){current+='"';i++;}else inQuotes=false;}
+      else current+=c;
+    }else{
+      if(c==='"')inQuotes=true;
+      else if(c===','){result.push(current);current='';}
+      else current+=c;
+    }
+  }
+  result.push(current);
+  return result;
+}
+
+async function importBulkItems(){
+  if(!bulkData||!bulkData.rows.length||!currentDept||!spToken)return;
+  const btn=document.getElementById('bulk-import-btn');
+  const statusEl=document.getElementById('bulk-status');
+  btn.disabled=true;statusEl.className='save-status saving';statusEl.textContent='Importing...';
+  const validCols=bulkData.mapping.filter(m=>m.col).map(m=>m.col.name);
+  const total=bulkData.rows.length;
+  let success=0,fail=0;
+  for(let i=0;i<total;i++){
+    const row=bulkData.rows[i];
+    const fields={};
+    bulkData.mapping.forEach((m,ci)=>{
+      if(m.col&&row[ci]!==undefined&&row[ci].trim()!==''){
+        let val=row[ci].trim();
+        if(m.col.type==='number'||m.col.type==='currency'){const n=Number(val);if(!isNaN(n))val=n;}
+        else if(m.col.type==='boolean'){val=val.toLowerCase()==='true'||val==='1'||val==='yes';}
+        fields[m.col.name]=val;
+      }
+    });
+    try{
+      await createSPItem(currentDept.site,currentDept.list,fields);
+      success++;
+    }catch(e){
+      fail++;
+      console.error('Bulk import row '+i+':',e.message);
+    }
+    if(i%5===0||i===total-1){
+      statusEl.textContent='Importing... '+Math.round((i+1)/total*100)+'% ('+success+' ok, '+fail+' failed)';
+    }
+  }
+  statusEl.className='save-status '+(fail===0?'saved':'error');
+  statusEl.textContent=fail===0?'✓ '+success+' items created':'✓ '+success+' created, ✗ '+fail+' failed';
+  showToast(fail===0?'All '+success+' items created':success+' created, '+fail+' failed','success');
+  await refreshItems();
+  btn.disabled=false;
+  if(fail===0)setTimeout(()=>closeBulkUpload(),1500);
 }
 
 // ======================== CONFIG ========================
