@@ -291,7 +291,8 @@ async function ensureSpSiteToken(siteUrl){
 
 async function spApiCall(url,method,body){
   const token=await ensureSpSiteToken(document.getElementById('site-select').value);
-  const opts={method:method||'GET',headers:{'Authorization':'Bearer '+token,'Accept':'application/json','Content-Type':'application/json'}};
+  const ct=body?'application/json;odata=verbose':'application/json';
+  const opts={method:method||'GET',headers:{'Authorization':'Bearer '+token,'Accept':'application/json','Content-Type':ct}};
   if(body)opts.body=JSON.stringify(body);
   const resp=await fetch(url,opts);
   if(!resp.ok){const t=await resp.text();throw new Error(t)}
