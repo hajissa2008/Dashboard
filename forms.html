@@ -957,7 +957,7 @@ async function saveItem(){
 // ======================== BULK UPLOAD ========================
 function downloadTemplate(){
   if(!columnDefs.length||!currentDept){showToast('No columns loaded','error');return;}
-  const cols=columnDefs.filter(c=>!c.name.startsWith('_')&&c.name!=='ID'&&c.name!=='ContentType');
+  const cols=columnDefs;
   const headers=cols.map(c=>c.displayName||c.name);
   const sample=cols.map(c=>{
     if(c.type==='date')return '2025-01-01';
@@ -1035,13 +1035,13 @@ function parseBulkCSV(text){
     '</div>';
   html+=`<div class="bulk-preview"><table><thead><tr>`;
   mapping.forEach(m=>{
-    html+=`<th class="${m.skip?'skip-col':''}" title="${m.skip?'Unmatched column':m.col.displayName+' ('+m.col.name+')'}">${htmlEscape(m.header)}${m.skip?' <span style="color:var(--red);font-size:10px">✕</span>':''}</th>`;
+    html+=`<th title="${m.col?m.col.displayName+' ('+m.col.name+')':'Unmatched column'}">${htmlEscape(m.header)}${m.skip?' <span style="color:var(--orange);font-size:10px">⚠️ skip</span>':''}</th>`;
   });
   html+=`</tr></thead><tbody>`;
   previewRows.forEach(row=>{
     html+=`<tr>`;
     row.forEach((cell,i)=>{
-      html+=`<td class="${mapping[i]?.skip?'skip-col':''}">${htmlEscape(cell.substring(0,100))}</td>`;
+      html+=`<td>${htmlEscape(cell.substring(0,100))}</td>`;
     });
     html+=`</tr>`;
   });
