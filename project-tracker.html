@@ -254,7 +254,10 @@ body.dark th .sort-arrow{color:var(--text-secondary)}
     <a class="nav-item" data-view="hse" onclick="switchView('hse')">
       <span class="icon">🛡️</span> HSE <span class="count" id="count-hse">0</span><span class="status-dot" id="dot-hse" style="display:inline-block;vertical-align:middle;margin-left:4px"></span>
     </a>
-
+    <div class="nav-section">Admin</div>
+    <a class="nav-item" id="nav-permissions" href="permissions.html" target="_blank" style="display:none">
+      <span class="icon">👥</span> Permissions
+    </a>
   </nav>
 </aside>
 
@@ -2209,6 +2212,15 @@ function renderDeptView(view){
 }
 
 function switchView(view){
+    if(view!=='dashboard'){
+      const deptId=viewToDeptId(view);
+      if(deptId&&getMyAccess(deptId)==='none'){
+        document.getElementById('content').innerHTML='<div class="empty-state" style="padding:60px 20px"><div class="icon" style="font-size:48px;margin-bottom:12px">🔒</div><h3>Access Denied</h3><p style="color:var(--text-secondary)">You do not have permission to view this department.</p></div>';
+        document.querySelectorAll('.nav-item').forEach(el=>el.classList.toggle('active',el.dataset.view===view));
+        document.getElementById('view-title').textContent=VIEWS[view].title+' (restricted)';
+        return;
+      }
+    }
     currentView=view;
     sortCol=null;sortAsc=true;
     document.querySelectorAll('.nav-item').forEach(el=>el.classList.toggle('active',el.dataset.view===view));
@@ -2302,6 +2314,60 @@ function logoutSP(){
     updateAuthUI();
 }
 
+// ======================== PERMISSIONS ========================
+let myPerms = 'ALL'; // 'ALL' = legacy, or { deptId: 'read'|'edit' }
+const PERM_LIST = 'Permissions';
+const ADMIN_EMAIL = 'm.hajissa@alenshaiah.com';
+
+async function ensureSpSiteToken(siteUrl){
+  if(!msalApp||!spUser)throw new Error('Not authenticated');
+  const u=new URL(siteUrl);
+  const resp=await msalApp.acquireTokenSilent({scopes:[u.origin+'/.default'],account:spUser});
+  return resp.accessToken;
+}
+
+async function loadUserPerms(){
+  myPerms='ALL';
+  if(!spUser||!spToken)return;
+  const email=spUser.username||'';
+  if(!email)return;
+  const siteUrl='https://sascontractingsa.sharepoint.com/sites/Alenshaiah';
+  try{
+    const token=await ensureSpSiteToken(siteUrl);
+    const url=siteUrl+'/_api/web/lists/getbytitle(\''+PERM_LIST+'\')/items';
+    const resp=await fetch(url,{headers:{'Authorization':'Bearer '+token,'Accept':'application/json'}});
+    if(!resp.ok){if(resp.status===404){myPerms='ALL';return}throw new Error(await resp.text())}
+    const data=await resp.json();
+    const items=data.d?data.d.results:data.value||[];
+    if(!items.length){myPerms='ALL';return}
+    myPerms={};
+    const userLower=email.toLowerCase();
+    const currentApp='ProjectTracker';
+    items.forEach(item=>{
+      if((item.Title||'').toLowerCase()===userLower){
+        const app=item.App||'Both';
+        if(app===currentApp||app==='Both'){
+          myPerms[item.DeptID]=item.Access.toLowerCase();
+        }
+      }
+    });
+  }catch(e){
+    if(e.message&&!e.message.includes('404'))console.error('Perm load:',e);
+    myPerms='ALL';
+  }
+}
+
+function getMyAccess(deptId){
+  if(myPerms==='ALL')return 'edit';
+  return myPerms[deptId]||'none';
+}
+
+// Map view key to permission dept ID
+function viewToDeptId(viewKey){
+  const m={procurement:'procurement',engineering:'engineering',construction:'construction',cost:'cost',planning:'planning',qaqc:'qaqc',hse:'hse'};
+  return m[viewKey]||null;
+}
+
 function saveAuthConfig(){
     const tenant = document.getElementById('cfg-tenant').value.trim();
     const client = document.getElementById('cfg-client').value.trim();
@@ -2323,6 +2389,11 @@ function updateAuthUI(){
     if(el('hdr-user-name')){
         el('hdr-user-name').style.display = spUser ? '' : 'none';
         if(spUser) el('hdr-user-name').textContent = '👤 ' + (spUser.name||spUser.username);
+    }
+    // Show Permissions nav item for admin
+    if(el('nav-permissions')){
+        const email=(spUser&&spUser.username||'').toLowerCase();
+        el('nav-permissions').style.display=email===ADMIN_EMAIL.toLowerCase()?'':'none';
     }
     // Settings panel auth
     const statusEl=el('settings-auth-status');
@@ -2422,8 +2493,8 @@ function toggleDark(){
             if(accounts.length>0){
                 spUser = accounts[0];
                 msalApp.acquireTokenSilent({ scopes: SP_SCOPES, account: spUser })
-                    .then(r=>{ spToken=r.accessToken; updateAuthUI(); autoConnectConfiguredViews(); })
-                    .catch(()=>{ spToken=null; updateAuthUI(); autoConnectConfiguredViews(); });
+                    .then(r=>{ spToken=r.accessToken; updateAuthUI(); loadUserPerms().then(()=>autoConnectConfiguredViews()); })
+                    .catch(()=>{ spToken=null; updateAuthUI(); loadUserPerms().then(()=>autoConnectConfiguredViews()); });
             }else{
                 // No cached account — handle redirect response (first-time login return)
                 msalApp.handleRedirectPromise().then(resp=>{
@@ -2434,7 +2505,7 @@ function toggleDark(){
                     }else{
                         updateAuthUI();
                     }
-                    autoConnectConfiguredViews();
+                    loadUserPerms().then(()=>autoConnectConfiguredViews());
                 }).catch(e=>{
                     const errMsg = (e.message||'') + (e.errorCode ? ' ('+e.errorCode+')' : '');
                     console.error('[MSAL] handleRedirectPromise error:', errMsg);

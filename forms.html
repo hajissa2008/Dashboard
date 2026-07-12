@@ -221,6 +221,7 @@ html,body{height:100%;font-family:'Segoe UI',-apple-system,system-ui,sans-serif;
     <button class="btn btn-outline" onclick="refreshItems()" id="btn-refresh" style="display:none">🔄 Refresh</button>
     <button class="btn btn-outline" onclick="downloadTemplate()" id="btn-template" style="display:none">📥 Template</button>
     <button class="btn btn-outline" onclick="openBulkUpload()" id="btn-bulk" style="display:none">📤 Bulk Upload</button>
+    <button class="btn btn-outline" onclick="openPermManager()" id="btn-permissions" style="display:none">👥 Permissions</button>
     <span class="status-msg" id="status-msg"></span>
     <button class="btn btn-outline" onclick="showConfig()">⚙️ Config</button>
   </div>
@@ -295,6 +296,9 @@ let editingId = null;
 let columnDefs = [];
 let renameMap = {};
 let attachmentCounts = {};
+let myPerms = 'ALL'; // 'ALL' = legacy (no list), or { deptId: 'read'|'edit' }
+const PERM_LIST = 'Permissions';
+const ADMIN_EMAIL = 'm.hajissa@alenshaiah.com';
 
 // MSAL
 const SP_SCOPES = ['Sites.ReadWrite.All','User.Read'];
@@ -389,11 +393,49 @@ async function getTokenSP(){
   }
 }
 
+async function loadUserPerms(){
+  myPerms='ALL';
+  if(!spUser||!spToken)return;
+  const email=spUser.username||'';
+  if(!email)return;
+  const siteUrl='https://sascontractingsa.sharepoint.com/sites/Alenshaiah';
+  try{
+    const token=await ensureSpSiteToken(siteUrl);
+    const url=siteUrl+'/_api/web/lists/getbytitle(\''+PERM_LIST+'\')/items';
+    const resp=await fetch(url,{headers:{'Authorization':'Bearer '+token,'Accept':'application/json'}});
+    if(!resp.ok){if(resp.status===404){myPerms='ALL';return}throw new Error(await resp.text())}
+    const data=await resp.json();
+    const items=data.d?data.d.results:data.value||[];
+    if(!items.length){myPerms='ALL';return}
+    myPerms={};
+    const userLower=email.toLowerCase();
+    const currentApp=location.pathname.includes('project-tracker')?'ProjectTracker':'Forms';
+    items.forEach(item=>{
+      if((item.Title||'').toLowerCase()===userLower){
+        const app=item.App||'Both';
+        if(app===currentApp||app==='Both'){
+          myPerms[item.DeptID]=item.Access.toLowerCase();
+        }
+      }
+    });
+  }catch(e){
+    if(e.message&&!e.message.includes('404'))console.error('Perm load:',e);
+    myPerms='ALL';
+  }
+}
+
+function getMyAccess(deptId){
+  if(myPerms==='ALL')return 'edit';
+  return myPerms[deptId]||'none';
+}
+
 function handleAuthResponse(resp){
   if(resp&&resp.account){
     spUser=resp.account; spToken=resp.accessToken;
     showSigninProgress(false); hideSigninOverlay(); updateAuthUI();
-    const d=storage.getItem('forms-last-dept'); if(d)onDeptChange();
+    loadUserPerms().then(()=>{
+      const d=storage.getItem('forms-last-dept'); if(d)onDeptChange();
+    });
   }else{
     showSigninProgress(false); updateAuthUI();
   }
@@ -672,23 +714,35 @@ async function fetchAllAttachmentCounts(){
 // ======================== DEPT MANAGEMENT ========================
 function initDeptSelect(){
   const sel=document.getElementById('dept-select');
-  sel.innerHTML='<option value="">— Select Department —</option>'+DEPTS.map(d=>`<option value="${d.id}">${d.title}</option>`).join('');
+  const available=myPerms==='ALL'?DEPTS:DEPTS.filter(d=>getMyAccess(d.id)!=='none');
+  sel.innerHTML='<option value="">— Select Department —</option>'+available.map(d=>`<option value="${d.id}">${d.title}</option>`).join('');
   const saved=storage.getItem('forms-last-dept');
-  if(saved&&DEPTS.find(d=>d.id===saved)){sel.value=saved; onDeptChange();}
+  if(saved&&available.find(d=>d.id===saved)){sel.value=saved; onDeptChange();}
+  // Show Permissions button for admin
+  const btn=document.getElementById('btn-permissions');
+  if(btn&&spUser){const email=(spUser.username||'').toLowerCase();btn.style.display=email===ADMIN_EMAIL.toLowerCase()?'':'none'}
 }
+
+function openPermManager(){window.open('permissions.html','_blank')}
 
 async function onDeptChange(){
   const id=document.getElementById('dept-select').value;
   document.getElementById('btn-new').style.display='none';
   document.getElementById('btn-refresh').style.display='none';
+  document.getElementById('btn-template').style.display='none';
+  document.getElementById('btn-bulk').style.display='none';
   closeForm();
   selectedItem=null; editingId=null;
   if(!id){currentDept=null; setEmpty('📋','Select a department','Choose a department above to load items from SharePoint.'); return;}
   currentDept=DEPTS.find(d=>d.id===id);
-  storage.setItem('forms-last-dept',id);
-  if(!spToken||!spUser){
-    setEmpty('🔒','Sign in required','Sign in with your Microsoft account above, then select this department again.');
-    return;
+  if(!spToken||!spUser){setEmpty('🔒','Sign in required','Sign in with your Microsoft account...'); return;}
+  const access=getMyAccess(id);
+  if(access==='none'){setEmpty('🔒','Access Denied','You do not have permission to access this department.'); return;}
+  document.getElementById('btn-refresh').style.display='';
+  document.getElementById('btn-template').style.display='';
+  if(access==='edit'){
+    document.getElementById('btn-new').style.display='';
+    document.getElementById('btn-bulk').style.display='';
   }
   await loadDeptData();
 }
@@ -796,7 +850,8 @@ function openDetail(idx){
     closeBtn.parentNode.insertBefore(editBtn,closeBtn);
   }
   editBtn.onclick=()=>startEdit(idx);
-  editBtn.style.display='';
+  const access=currentDept?getMyAccess(currentDept.id):'none';
+  editBtn.style.display=access==='edit'?'':'none';
   const body=document.getElementById('form-body');
   const skipForm=new Set(['_id','_etag','ID','ContentType','AppAuthor','AppEditor','Author','Editor','Created','Modified']);
   let html='';
@@ -846,6 +901,7 @@ function selectItem(idx){
 }
 
 function startEdit(idx){
+  if(getMyAccess(currentDept?.id||'')!=='edit'){showToast('Read-only access','error');return}
   if(idx<0||idx>=filteredItems.length)return;
   selectedItem=filteredItems[idx]; renderTable();
   editingId=selectedItem._id;
@@ -864,6 +920,7 @@ function startEdit(idx){
 }
 
 function startCreate(){
+  if(getMyAccess(currentDept?.id||'')!=='edit'){showToast('Read-only access','error');return}
   editingId=null; selectedItem=null; renderTable();
   // Hide header edit button
   const eb=document.querySelector('.header-edit-btn');

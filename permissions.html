@@ -177,7 +177,7 @@ const ADMIN_KEY='pmt-admin-email';
 
 let msalApp=null,spToken=null,spUser=null,spSiteToken=null;
 
-function getDefaultAdmin(){return storage.getItem(ADMIN_KEY)||'hajissa2008@gmail.com'}
+function getDefaultAdmin(){return storage.getItem(ADMIN_KEY)||'m.hajissa@alenshaiah.com'}
 
 function initMsal(){
   const tenant=storage.getItem('pmt-tenant')||'684547e2-bb8b-450a-a3e1-3a6bc15e9471';
@@ -507,7 +507,7 @@ async function saveAllPerms(){
 // ======================== CONFIG ========================
 function showConfig(){
   const redirectUri=location.origin+location.pathname;
-  const savedAdmin=storage.getItem(ADMIN_KEY)||'hajissa2008@gmail.com';
+  const savedAdmin=storage.getItem(ADMIN_KEY)||'m.hajissa@alenshaiah.com';
   const savedTenant=storage.getItem('pmt-tenant')||'684547e2-bb8b-450a-a3e1-3a6bc15e9471';
   const savedClient=storage.getItem('pmt-client')||'84b1fcd2-8c12-4f1b-8fa4-b0e6d99bf534';
   const overlay=document.createElement('div');
