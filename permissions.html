@@ -172,7 +172,7 @@ body.dark .loading-overlay{background:rgba(0,0,0,.6)}
 const storage={getItem(k){try{return localStorage.getItem(k)}catch{return null}},setItem(k,v){try{localStorage.setItem(k,v)}catch{}},removeItem(k){try{localStorage.removeItem(k)}catch{}}};
 
 // ======================== CONFIG ========================
-const SP_SCOPES=['Sites.Read.All','User.Read'];
+const SP_SCOPES=['Sites.ReadWrite.All','User.Read'];
 const ADMIN_KEY='pmt-admin-email';
 
 let msalApp=null,spToken=null,spUser=null,spSiteToken=null;
@@ -282,39 +282,39 @@ function onSiteChange(){
 let permEntries=[]; // Array of {Id,Title,DeptID,Access,App}
 let permDirty=false;
 
-async function ensureSpSiteToken(siteUrl){
-  if(!msalApp||!spUser)throw new Error('Not authenticated');
+function graphSiteBase(siteUrl){
   const u=new URL(siteUrl);
-  const resp=await msalApp.acquireTokenSilent({scopes:[u.origin+'/.default'],account:spUser});
-  return resp.accessToken;
+  return 'https://graph.microsoft.com/v1.0/sites/'+u.hostname+':'+u.pathname.replace(/\/$/,'')+':';
 }
 
-async function spApiCall(url,method,body){
-  const token=await ensureSpSiteToken(document.getElementById('site-select').value);
-  const ct=body?'application/json;odata=verbose':'application/json';
-  const opts={method:method||'GET',headers:{'Authorization':'Bearer '+token,'Accept':'application/json','Content-Type':ct}};
+async function graphApi(url,method,body){
+  if(!spToken)throw new Error('No token');
+  const opts={method:method||'GET',headers:{'Authorization':'Bearer '+spToken,'Content-Type':'application/json'}};
   if(body)opts.body=JSON.stringify(body);
   const resp=await fetch(url,opts);
   if(!resp.ok){const t=await resp.text();throw new Error(t)}
   return resp.json();
 }
 
+function graphListUrl(siteUrl,listName){
+  return graphSiteBase(siteUrl)+'/lists/'+encodeURIComponent(listName);
+}
+
 async function ensurePermList(siteUrl){
   try{
-    const url=siteUrl+'/_api/web/lists/getbytitle(\''+PERM_LIST_NAME+'\')?$select=Id,Title';
-    const data=await spApiCall(url);
-    return data.d?data.d.Id:data.Id;
+    const data=await graphApi(graphListUrl(siteUrl,PERM_LIST_NAME)+'?$select=id');
+    return data.id;
   }catch(e){
-    // List doesn't exist — create it
-    const url=siteUrl+'/_api/web/lists';
-    const body={
-      '__metadata':{'type':'SP.List'},
-      'Title':PERM_LIST_NAME,
-      'Description':'Permissions for AlEnshaiah Project Management apps',
-      'BaseTemplate':100
-    };
-    const data=await spApiCall(url,'POST',body);
-    return data.d?data.d.Id:data.Id;
+    const base=graphSiteBase(siteUrl);
+    const newList=await graphApi(base+'/lists','POST',{
+      displayName:PERM_LIST_NAME,
+      description:'Permissions for AlEnshaiah Project Management apps',
+      list:{template:'genericList'},
+      columns:[
+        {name:'DeptID',text:{}},{name:'Access',choice:{choices:['Read','Edit','None']}},{name:'App',choice:{choices:['Both','ProjectTracker','Forms']}}
+      ]
+    });
+    return newList.id;
   }
 }
 
@@ -324,15 +324,13 @@ async function loadPermissions(){
   showLoading(true);
   try{
     const listId=await ensurePermList(siteUrl);
-    const url=siteUrl+'/_api/web/lists/getbytitle(\''+PERM_LIST_NAME+'\')/items';
-    const data=await spApiCall(url);
-    const items=data.d?data.d.results:data.value||[];
-    permEntries=items.map(i=>({
-      Id:i.Id,
-      Title:i.Title||'',
-      DeptID:i.DeptID||'',
-      Access:i.Access||'None',
-      App:i.App||'Both'
+    const data=await graphApi(graphListUrl(siteUrl,PERM_LIST_NAME)+'/items?$top=500&expand=fields');
+    permEntries=(data.value||[]).map(i=>({
+      Id:i.id,
+      Title:(i.fields&&i.fields.Title)||'',
+      DeptID:(i.fields&&i.fields.DeptID)||'',
+      Access:(i.fields&&i.fields.Access)||'None',
+      App:(i.fields&&i.fields.App)||'Both'
     }));
     permDirty=false;
     if(!permEntries.length)showToast('Permissions list is empty. Add users below.','');
@@ -446,56 +444,44 @@ async function saveAllPerms(){
   const status=document.getElementById('status-msg');
   btn.disabled=true;status.className='status-msg saving';status.textContent='Saving...';
   const siteUrl=document.getElementById('site-select').value;
+  const itemsBase=graphListUrl(siteUrl,PERM_LIST_NAME)+'/items';
   let ok=0,fail=0;
   try{
-    await ensurePermList(siteUrl);
-    const listUrl=siteUrl+'/_api/web/lists/getbytitle(\''+PERM_LIST_NAME+'\')';
-    const itemsUrl=listUrl+'/items';
-    const existingData=await spApiCall(itemsUrl);
-    const existingItems=(existingData.d?existingData.d.results:existingData.value||[]);
+    const listId=await ensurePermList(siteUrl);
+    const existingData=await graphApi(itemsBase+'?$top=500&expand=fields');
+    const existingItems=existingData.value||[];
     const idMap={};
     existingItems.forEach(i=>{
-      const key=(i.Title||'').toLowerCase()+'|'+(i.DeptID||'');
-      if(key!=='|')idMap[key]=i.Id;
+      const f=i.fields||{};
+      const key=(f.Title||'').toLowerCase()+'|'+(f.DeptID||'');
+      if(key!=='|')idMap[key]=i.id;
     });
     for(let i=0;i<permEntries.length;i++){
       const e=permEntries[i];
       if(!e.Title||!e.DeptID)continue;
       const key=e.Title.toLowerCase()+'|'+e.DeptID;
-      const body={
-        '__metadata':{'type':'SP.Data.'+PERM_LIST_NAME.replace(/ /g,'_x0020_')+'ListItem'},
-        'Title':e.Title,'DeptID':e.DeptID,'Access':e.Access,'App':e.App
-      };
+      const fields={Title:e.Title,DeptID:e.DeptID,Access:e.Access,App:e.App};
       try{
-        if(idMap[key]){
-          const token=await ensureSpSiteToken(siteUrl);
-          await fetch(itemsUrl+'('+idMap[key]+')',{method:'POST',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json;odata=verbose','Accept':'application/json','X-HTTP-Method':'MERGE','IF-MATCH':'*'},body:JSON.stringify(body)});
-        }else{
-          await spApiCall(itemsUrl,'POST',body);
-        }
+        if(idMap[key]){await graphApi(itemsBase+'/'+idMap[key]+'/fields','PATCH',fields);}
+        else{await graphApi(itemsBase,'POST',{fields:fields});}
         ok++;
       }catch(e2){fail++;console.error('Save perm',e.Title,e.DeptID,e2.message);}
       status.textContent='Saving... '+Math.round((i+1)/permEntries.length*100)+'% ('+ok+' ok, '+fail+' failed)';
     }
     const currentKeys=new Set(permEntries.filter(e=>e.Title&&e.DeptID).map(e=>e.Title.toLowerCase()+'|'+e.DeptID));
     for(let i=0;i<existingItems.length;i++){
-      const item=existingItems[i];
-      const key=(item.Title||'').toLowerCase()+'|'+(item.DeptID||'');
-      if(key!=='|'&&!currentKeys.has(key)){
-        try{const t=await ensureSpSiteToken(siteUrl);await fetch(itemsUrl+'('+item.Id+')',{method:'POST',headers:{'Authorization':'Bearer '+t,'Accept':'application/json','X-HTTP-Method':'DELETE','IF-MATCH':'*'}})}catch{}
-      }
+      const item=existingItems[i];const f=item.fields||{};
+      const key=(f.Title||'').toLowerCase()+'|'+(f.DeptID||'');
+      if(key!=='|'&&!currentKeys.has(key)){try{await graphApi(itemsBase+'/'+item.id,'DELETE')}catch{}}
     }
     status.className='status-msg '+(fail===0?'saved':'error');
-    status.textContent=fail===0?'✓ Saved all ('+ok+' entries)':'✓ '+ok+' saved, ✗ '+fail+' failed';
-    permDirty=false;
-    btn.disabled=true;
+    status.textContent=fail===0?'\u2713 Saved all ('+ok+' entries)':'\u2713 '+ok+' saved, \u2717 '+fail+' failed';
+    permDirty=false;btn.disabled=true;
     showToast(fail===0?'All permissions saved':'Saved with '+fail+' errors','');
     await loadPermissions();
   }catch(e){
-    console.error('Save error:',e);
-    status.className='status-msg error';
-    status.textContent='Error: '+e.message;
-    btn.disabled=false;
+    console.error('Save error:',e);status.className='status-msg error';
+    status.textContent='Error: '+e.message;btn.disabled=false;
   }
 }
 
