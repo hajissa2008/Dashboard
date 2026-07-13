@@ -296,10 +296,6 @@ body.dark th .sort-arrow{color:var(--text-secondary)}
     <a class="nav-item" data-view="hse" onclick="switchView('hse')">
       <span class="icon">🛡️</span> HSE <span class="count" id="count-hse">0</span><span class="status-dot" id="dot-hse" style="display:inline-block;vertical-align:middle;margin-left:4px"></span>
     </a>
-    <div class="nav-section">Admin</div>
-    <a class="nav-item" id="nav-permissions" href="permissions.html" target="_blank" style="display:none">
-      <span class="icon">👥</span> Permissions
-    </a>
   </nav>
 </aside>
 
@@ -2491,11 +2487,6 @@ function updateAuthUI(){
     if(el('hdr-user-name')){
         el('hdr-user-name').style.display = spUser ? '' : 'none';
         if(spUser) el('hdr-user-name').textContent = '👤 ' + (spUser.name||spUser.username);
-    }
-    // Show Permissions nav item for admin
-    if(el('nav-permissions')){
-        const email=(spUser&&spUser.username||'').toLowerCase();
-        el('nav-permissions').style.display=email===ADMIN_EMAIL.toLowerCase()?'':'none';
     }
     // Settings panel auth
     const statusEl=el('settings-auth-status');
