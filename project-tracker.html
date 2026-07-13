@@ -1993,11 +1993,12 @@ function renderDeptView(view){
                 s.actualPoDate,s.deliveryStatus,s.pqStatus,s.matSubStatus,s.leadTime,s.poRef);
         }
         function poIsIssued(x){
-            const ad=x.actualPoDate||x['Actual PO']||x['Actual PO DATE']||x['ACTUAL PO DATE']||x['ACTUAL_x0020_PO_x0020_DATE']||'';
-            if(ad&&ad!=='N/A')return true;
+            const ad=(x.actualPoDate||x['Actual PO']||x['Actual PO DATE']||x['ACTUAL PO DATE']||x['ACTUAL_x0020_PO_x0020_DATE']||'').toLowerCase();
+            if(ad&&ad!=='n/a')return true;
             const pq=x.pqStatus||x['PQ  Status']||x['PQ_x0020__x0020_Status']||x['PQ_x0020_Status']||'';
             if(typeof pq==='string'&&pq.toLowerCase()==='done')return true;
-            return x.poRef&&x.poRef!==''&&x.poRef!=='N/A';
+            const pr=(x.poRef||'').toLowerCase();
+            return pr&&pr!==''&&pr!=='n/a';
         }
         const poIssued=items.filter(poIsIssued).length;
         const poPending=items.filter(x=>!poIsIssued(x)).length;
@@ -2007,11 +2008,13 @@ function renderDeptView(view){
         }
         const delDelivered=items.filter(delIsDone).length;
         const delPending=items.filter(x=>!delIsDone(x)).length;
-        const longLead=items.filter(x=>Number(x.leadTime||x['Lead Time']||x['PROCUREMENT LEAD TIME']||x['PROCUREMENT_x0020_LEAD_x0020_TIME']||0)>60).length;
+        function isLongLead(x){const v=x.leadTime||x['Lead Time']||x['PROCUREMENT LEAD TIME']||x['PROCUREMENT_x0020_LEAD_x0020_TIME']||'';return Number(v)>60||(typeof v==='string'&&v.toLowerCase()==='lli');}
+        const longLead=items.filter(isLongLead).length;
         const pqApproved=items.filter(x=>/approv|accept|pass/i.test(x.pqStatus||x['PQ  Status']||x['PQ_x0020__x0020_Status']||x['PQ_x0020_Status']||'')).length;
-        const matSubmitted=items.filter(x=>{const m=x.matSubStatus||x['Material Submitta STATUS']||x['Material_x0020_Submitta_x0020_STATUS']||'';return m&&m!==''&&m!=='N/A';}).length;
-        const matApproved=items.filter(x=>{const m=x.matSubStatus||x['Material Submitta STATUS']||x['Material_x0020_Submitta_x0020_STATUS']||'';return /approv|accept|pass/i.test(m);}).length;
-        const matOpen=items.filter(x=>{const m=x.matSubStatus||x['Material Submitta STATUS']||x['Material_x0020_Submitta_x0020_STATUS']||'';return m&&m!==''&&m!=='N/A'&&!/approv|accept|pass|reject|closed/i.test(m);}).length;
+        function getMatStatus(x){return (x.matSubStatus||x['Material Submitta STATUS']||x['Material Submittal Status']||x['Material Submitta Status']||x['Material_x0020_Submitta_x0020_STATUS']||'').toLowerCase();}
+        const matOpen=items.filter(x=>{const m=getMatStatus(x);return m==='mar open'||m==='mar_open';}).length;
+        const matSubmitted=items.filter(x=>{const m=getMatStatus(x);return m&&m!=='n/a';}).length;
+        const matApproved=items.filter(x=>{const m=getMatStatus(x);return m&&m!=='n/a'&&m!=='mar open'&&m!=='mar_open';}).length;
         function pc(v){return total?Math.round(v/total*100):0;}
         function sc(pct,invert){if(invert){if(pct<=20)return'#107C10';if(pct<=50)return'#ED7D31';return'#D92C2C';}if(pct>=70)return'#107C10';if(pct>=40)return'#ED7D31';return'#D92C2C';}
         function tr(g,t){if(!t)return null;const r=g/t;if(r>=0.7)return{txt:'On Track',cls:'up'};if(r>=0.4)return{txt:'Fair',cls:'neutral'};return{txt:'Behind',cls:'down'};}
@@ -2021,11 +2024,11 @@ function renderDeptView(view){
             kpi('📋','PO Pending',poPending,sc(pc(poPending),true),pc(poPending),tr(total-poPending,total),null,poPending+'/'+total,items.filter(x=>!poIsIssued(x)))+
             kpi('✅','Delivery Completed',delDelivered,sc(pc(delDelivered)),pc(delDelivered),tr(delDelivered,total),null,delDelivered+'/'+total,items.filter(delIsDone))+
             kpi('⏳','Deliveries Pending',delPending,sc(pc(delPending),true),pc(delPending),tr(total-delPending,total),null,delPending+'/'+total,items.filter(x=>!delIsDone(x)))+
-            kpi('⏱️','Long Lead Items',longLead,sc(pc(longLead),true),pc(longLead),tr(total-longLead,total),null,longLead+'/'+total,items.filter(x=>Number(x.leadTime||x['Lead Time']||x['PROCUREMENT LEAD TIME']||x['PROCUREMENT_x0020_LEAD_x0020_TIME']||0)>60))+
+            kpi('⏱️','Long Lead Items',longLead,sc(pc(longLead),true),pc(longLead),tr(total-longLead,total),null,longLead+'/'+total,items.filter(isLongLead))+
             kpi('📋','PQ Approved',pqApproved,sc(pc(pqApproved)),pc(pqApproved),tr(pqApproved,total),null,pqApproved+'/'+total,items.filter(x=>/approv|accept|pass/i.test(x.pqStatus||x['PQ  Status']||x['PQ_x0020__x0020_Status']||x['PQ_x0020_Status']||'')))+
-            kpi('📎','MAT Submitted',matSubmitted,sc(pc(matSubmitted)),pc(matSubmitted),tr(matSubmitted,total),null,matSubmitted+'/'+total,items.filter(x=>{const m=x.matSubStatus||x['Material Submitta STATUS']||x['Material_x0020_Submitta_x0020_STATUS']||'';return m&&m!==''&&m!=='N/A';}))+
-            kpi('✔️','MAT Approved',matApproved,sc(pc(matApproved)),pc(matApproved),tr(matApproved,total),null,matApproved+'/'+total,items.filter(x=>{const m=x.matSubStatus||x['Material Submitta STATUS']||x['Material_x0020_Submitta_x0020_STATUS']||'';return /approv|accept|pass/i.test(m);}))+
-            kpi('🔄','Open MAR',matOpen,sc(pc(matOpen),true),pc(matOpen),tr(total-matOpen,total),null,matOpen+'/'+total,items.filter(x=>{const m=x.matSubStatus||x['Material Submitta STATUS']||x['Material_x0020_Submitta_x0020_STATUS']||'';return m&&m!==''&&m!=='N/A'&&!/approv|accept|pass|reject|closed/i.test(m);}));
+            kpi('📎','MAT Submitted',matSubmitted,sc(pc(matSubmitted)),pc(matSubmitted),tr(matSubmitted,total),null,matSubmitted+'/'+total,items.filter(x=>{const m=getMatStatus(x);return m&&m!=='n/a';}))+
+            kpi('✔️','MAT Approved',matApproved,sc(pc(matApproved)),pc(matApproved),tr(matApproved,total),null,matApproved+'/'+total,items.filter(x=>{const m=getMatStatus(x);return m&&m!=='n/a'&&m!=='mar open'&&m!=='mar_open';}))+
+            kpi('🔄','Open MAR',matOpen,sc(pc(matOpen),true),pc(matOpen),tr(total-matOpen,total),null,matOpen+'/'+total,items.filter(x=>{const m=getMatStatus(x);return m==='mar open'||m==='mar_open';}));
     }else if(view==='construction'){
         const notStarted=items.filter(x=>x.status==='Not Started').length;
         const inProgress=items.filter(x=>x.status==='In Progress').length;
