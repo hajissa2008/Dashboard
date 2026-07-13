@@ -1993,12 +1993,13 @@ function renderDeptView(view){
                 s.actualPoDate,s.deliveryStatus,s.pqStatus,s.matSubStatus,s.leadTime,s.poRef);
         }
         function poIsIssued(x){
-            const ad=(x.actualPoDate||x['Actual PO']||x['Actual PO DATE']||x['ACTUAL PO DATE']||x['ACTUAL_x0020_PO_x0020_DATE']||'').toLowerCase();
-            if(ad&&ad!=='n/a')return true;
+            const ad=x.actualPoDate||x['Actual PO']||x['Actual PO DATE']||x['ACTUAL PO DATE']||x['ACTUAL_x0020_PO_x0020_DATE']||'';
+            if(ad&&ad!=='N/A')return true;
+            const ps=x['Actual PO Status']||x['ACTUAL PO Status']||x['ACTUAL PO STATUS']||x['ACTUAL_x0020_PO_x0020_Status']||x['ACTUAL_x0020_PO_x0020_STATUS']||'';
+            if(typeof ps==='string'&&ps.toLowerCase()==='done')return true;
             const pq=x.pqStatus||x['PQ  Status']||x['PQ_x0020__x0020_Status']||x['PQ_x0020_Status']||'';
             if(typeof pq==='string'&&pq.toLowerCase()==='done')return true;
-            const pr=(x.poRef||'').toLowerCase();
-            return pr&&pr!==''&&pr!=='n/a';
+            return x.poRef&&x.poRef!==''&&x.poRef!=='N/A';
         }
         const poIssued=items.filter(poIsIssued).length;
         const poPending=items.filter(x=>!poIsIssued(x)).length;
