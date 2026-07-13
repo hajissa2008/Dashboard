@@ -1365,7 +1365,7 @@ async function exportAllExcel(depts,dateFrom,dateTo,excludeChoices,fn,status){
     status.textContent='Fetching '+d.title+'...';
     const {cols,items}=await fetchDeptData(d);
     const filtered=applyExportFilters(items,cols,dateFrom,dateTo,excludeChoices);
-    const visible=cols.filter(c=>!c.name.startsWith('_')&&c.name!=='ID'&&c.name!=='ContentType'&&c.displayName!=='Attachments');
+    const visible=exportVisibleCols(cols);
     const rows=filtered.map(item=>{
       const row={};visible.forEach(c=>{row[c.displayName||c.name]=item[c.name]??item[c.displayName||c.name]??'';});return row;
     });
@@ -1381,7 +1381,7 @@ async function exportAllExcel(depts,dateFrom,dateTo,excludeChoices,fn,status){
 async function exportExcel(items,cols,dept,dateFrom,dateTo,excludeChoices,fn,status){
   if(typeof XLSX==='undefined'){showToast('Excel library not loaded','error');return;}
   const wb=XLSX.utils.book_new();
-  const visible=cols.filter(c=>!c.name.startsWith('_')&&c.name!=='ID'&&c.name!=='ContentType'&&c.displayName!=='Attachments');
+  const visible=exportVisibleCols(cols);
   const rows=items.map(item=>{
     const row={};visible.forEach(c=>{row[c.displayName||c.name]=item[c.name]??item[c.displayName||c.name]??'';});return row;
   });
@@ -1398,16 +1398,20 @@ async function exportExcel(items,cols,dept,dateFrom,dateTo,excludeChoices,fn,sta
   XLSX.utils.book_append_sheet(wb,ws,'Data');
   XLSX.writeFile(wb,fn+'.xlsx');
 }
+const EXPORT_SKIP_COLS=new Set(['ID','ContentType','Attachments','Title','LinkTitle','LinkTitleNoMenu','Edit','_UIVersionString','Modified','Created','AuthorLookupId','EditorLookupId','ItemChildCount','FolderChildCount']);
+function exportVisibleCols(cols){
+  return cols.filter(c=>!EXPORT_SKIP_COLS.has(c.name)&&!EXPORT_SKIP_COLS.has(c.displayName)&&!c.name.startsWith('_')&&!c.readOnly&&!c.hidden);
+}
 function calcColWidths(headers,data,fontSize,usableWidth){
-  const cw=(t,s)=>Math.max(t.length*s*0.37+3,12);
+  const cw=(t,s)=>Math.max(t.length*s*0.37+2.5,10);
   let widths=headers.map((h,i)=>{
     const maxLen=data.reduce((mx,r)=>Math.max(mx,String(r[i]||'').length),0);
-    return cw(h,fontSize)*0.8+cw('',fontSize)*Math.min(maxLen,35)*0.7;
+    return Math.min(cw(h,fontSize)+cw('',fontSize)*Math.min(maxLen,25)*0.6,65);
   });
   const total=widths.reduce((a,b)=>a+b,0);
   if(total>usableWidth){
     const s=usableWidth/total;
-    widths=widths.map(w=>Math.max(w*s,8));
+    widths=widths.map(w=>Math.max(w*s,7));
   }else if(total<usableWidth){
     const extra=(usableWidth-total)/widths.length;
     widths=widths.map(w=>w+extra);
@@ -1446,7 +1450,7 @@ async function exportPDF(items,cols,dept,dateFrom,dateTo,excludeChoices,fn,statu
   const pw=doc.internal.pageSize.getWidth();
   const ml=6,mr=6,usableW=pw-ml-mr;
   const logoData=await loadLogoDataURL();
-  const visible=cols.filter(c=>!c.name.startsWith('_')&&c.name!=='ID'&&c.name!=='ContentType'&&c.displayName!=='Attachments');
+  const visible=exportVisibleCols(cols);
   const headers=visible.map(c=>(c.displayName||c.name));
   const data=items.map(item=>visible.map(c=>String(item[c.name]??item[c.displayName||c.name]??'')));
   const colCount=visible.length;
@@ -1485,7 +1489,7 @@ async function exportAllPDF(depts,dateFrom,dateTo,excludeChoices,fn,status){
     const {cols,items}=await fetchDeptData(d);
     const filtered=applyExportFilters(items,cols,dateFrom,dateTo,excludeChoices);
     if(!filtered.length)continue;
-    const visible=cols.filter(c=>!c.name.startsWith('_')&&c.name!=='ID'&&c.name!=='ContentType'&&c.displayName!=='Attachments');
+    const visible=exportVisibleCols(cols);
     const headers=visible.map(c=>(c.displayName||c.name));
     const data=filtered.map(item=>visible.map(c=>String(item[c.name]??item[c.displayName||c.name]??'')));
     const colCount=visible.length;
