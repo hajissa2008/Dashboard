@@ -2011,7 +2011,8 @@ function renderDeptView(view){
         const delPending=items.filter(x=>!delIsDone(x)).length;
         function isLongLead(x){const v=x.leadTime||x['Lead Time']||x['PROCUREMENT LEAD TIME']||x['PROCUREMENT_x0020_LEAD_x0020_TIME']||'';return Number(v)>60||(typeof v==='string'&&v.toLowerCase()==='lli');}
         const longLead=items.filter(isLongLead).length;
-        const pqApproved=items.filter(x=>/approv|accept|pass/i.test(x.pqStatus||x['PQ  Status']||x['PQ_x0020__x0020_Status']||x['PQ_x0020_Status']||'')).length;
+        function isPqApproved(x){const s=x.pqStatus||x['PQ  Status']||x['PQ_x0020__x0020_Status']||x['PQ_x0020_Status']||'';return /approv|accept|pass/i.test(s)||/^[be]$/i.test(s);}
+        const pqApproved=items.filter(isPqApproved).length;
         function getMatStatus(x){return (x.matSubStatus||x['Material Submitta STATUS']||x['Material Submittal Status']||x['Material Submitta Status']||x['Material_x0020_Submitta_x0020_STATUS']||'').toLowerCase();}
         const matOpen=items.filter(x=>{const m=getMatStatus(x);return m==='mar open'||m==='mar_open';}).length;
         const matSubmitted=items.filter(x=>{const m=getMatStatus(x);return m&&m!=='n/a';}).length;
@@ -2026,7 +2027,7 @@ function renderDeptView(view){
             kpi('✅','Delivery Completed',delDelivered,sc(pc(delDelivered)),pc(delDelivered),tr(delDelivered,total),null,delDelivered+'/'+total,items.filter(delIsDone))+
             kpi('⏳','Deliveries Pending',delPending,sc(pc(delPending),true),pc(delPending),tr(total-delPending,total),null,delPending+'/'+total,items.filter(x=>!delIsDone(x)))+
             kpi('⏱️','Long Lead Items',longLead,sc(pc(longLead),true),pc(longLead),tr(total-longLead,total),null,longLead+'/'+total,items.filter(isLongLead))+
-            kpi('📋','PQ Approved',pqApproved,sc(pc(pqApproved)),pc(pqApproved),tr(pqApproved,total),null,pqApproved+'/'+total,items.filter(x=>/approv|accept|pass/i.test(x.pqStatus||x['PQ  Status']||x['PQ_x0020__x0020_Status']||x['PQ_x0020_Status']||'')))+
+            kpi('📋','PQ Approved',pqApproved,sc(pc(pqApproved)),pc(pqApproved),tr(pqApproved,total),null,pqApproved+'/'+total,items.filter(isPqApproved))+
             kpi('📎','MAT Submitted',matSubmitted,sc(pc(matSubmitted)),pc(matSubmitted),tr(matSubmitted,total),null,matSubmitted+'/'+total,items.filter(x=>{const m=getMatStatus(x);return m&&m!=='n/a';}))+
             kpi('✔️','MAT Approved',matApproved,sc(pc(matApproved)),pc(matApproved),tr(matApproved,total),null,matApproved+'/'+total,items.filter(x=>{const m=getMatStatus(x);return m&&m!=='n/a'&&m!=='mar open'&&m!=='mar_open';}))+
             kpi('🔄','Open MAR',matOpen,sc(pc(matOpen),true),pc(matOpen),tr(total-matOpen,total),null,matOpen+'/'+total,items.filter(x=>{const m=getMatStatus(x);return m==='mar open'||m==='mar_open';}));
