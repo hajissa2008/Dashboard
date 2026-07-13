@@ -89,6 +89,19 @@ html,body{height:100%;font-family:'Segoe UI',-apple-system,system-ui,sans-serif;
 .form-group input[type=text],.form-group input[type=password]{width:100%;padding:8px 12px;border:1px solid var(--gray-border);border-radius:4px;font-size:13px;outline:none;background:var(--white);color:var(--text-primary)}
 .form-group input:focus{border-color:var(--primary)}
 .hint{font-size:11px;color:var(--text-secondary);line-height:1.5}
+.user-search-wrap{position:relative;flex:1;min-width:200px}
+.user-search-wrap input{width:100%;padding:8px 12px;border:1px solid var(--gray-border);border-radius:4px;font-size:13px;outline:none;background:var(--white);color:var(--text-primary)}
+.user-search-wrap input:focus{border-color:var(--primary)}
+.user-search-wrap input:disabled{opacity:.5;cursor:not-allowed}
+.user-search-dropdown{position:absolute;top:100%;left:0;right:0;background:var(--white);border:1px solid var(--gray-border);border-radius:0 0 4px 4px;box-shadow:0 4px 12px rgba(0,0,0,.1);z-index:100;max-height:200px;overflow-y:auto;display:none}
+.user-search-dropdown.show{display:block}
+.user-search-dropdown .user-item{padding:8px 12px;cursor:pointer;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--gray-light);transition:background .1s}
+.user-search-dropdown .user-item:last-child{border-bottom:none}
+.user-search-dropdown .user-item:hover,.user-search-dropdown .user-item.highlighted{background:var(--primary-light)}
+.user-search-dropdown .user-item .user-item-name{font-size:13px;font-weight:600;color:var(--text-primary)}
+.user-search-dropdown .user-item .user-item-email{font-size:11px;color:var(--text-secondary)}
+.user-search-dropdown .user-item .user-item-avatar{width:28px;height:28px;border-radius:50%;background:var(--primary);color:white;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;flex-shrink:0}
+.user-search-dropdown .search-status{padding:10px 12px;text-align:center;font-size:12px;color:var(--text-secondary)}
 .toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%);z-index:2000;background:#323130;color:white;padding:10px 24px;border-radius:6px;font-size:13px;box-shadow:0 4px 12px rgba(0,0,0,.25);opacity:0;transition:opacity .3s;pointer-events:none}
 .toast.show{opacity:1;pointer-events:auto}
 .loading-overlay{position:fixed;inset:0;background:rgba(255,255,255,.6);z-index:999;display:none;align-items:center;justify-content:center}
@@ -157,7 +170,10 @@ body.dark .loading-overlay{background:rgba(0,0,0,.6)}
           </table>
         </div>
         <div class="add-user-row">
-          <input type="email" id="new-user-email" placeholder="user@domain.com" onkeydown="if(event.key==='Enter')addUser()">
+          <div class="user-search-wrap">
+            <input type="text" id="new-user-email" placeholder="Search by name or email..." autocomplete="off" oninput="onUserSearchInput()" onkeydown="onUserSearchKeydown(event)">
+            <div class="user-search-dropdown" id="user-search-dropdown"></div>
+          </div>
           <select id="new-user-app"><option value="Both">Both Apps</option><option value="ProjectTracker">Project Tracker</option><option value="Forms">Data Entry</option></select>
           <button class="btn btn-primary" onclick="addUser()">➕ Add User</button>
         </div>
@@ -172,7 +188,9 @@ body.dark .loading-overlay{background:rgba(0,0,0,.6)}
 const storage={getItem(k){try{return localStorage.getItem(k)}catch{return null}},setItem(k,v){try{localStorage.setItem(k,v)}catch{}},removeItem(k){try{localStorage.removeItem(k)}catch{}}};
 
 // ======================== CONFIG ========================
-const SP_SCOPES=['Sites.ReadWrite.All','User.Read'];
+const SP_SCOPES=['Sites.ReadWrite.All','User.Read','User.Read.All'];
+let userSearchAbort=null;
+let userSearchSelected=null;
 const ADMIN_KEY='pmt-admin-email';
 
 let msalApp=null,spToken=null,spUser=null,spSiteToken=null;
@@ -181,6 +199,64 @@ function getDefaultAdmin(){
   const stored=storage.getItem(ADMIN_KEY);
   if(stored&&stored!=='hajissa2008@gmail.com')return stored;
   return 'm.hajissa@alenshaiah.com';
+}
+
+async function searchAzureADUsers(query){
+  if(!query||query.length<2){document.getElementById('user-search-dropdown').classList.remove('show');return;}
+  if(userSearchAbort){userSearchAbort.abort();}
+  userSearchAbort=new AbortController();
+  try{
+    await getTokenSP();
+    if(!spToken)return;
+    const url='https://graph.microsoft.com/v1.0/users?$filter=startswith(displayName,\''+encodeURIComponent(query.replace(/'/g,"''"))+'\') or startswith(mail,\''+encodeURIComponent(query.replace(/'/g,"''"))+'\') or startswith(userPrincipalName,\''+encodeURIComponent(query.replace(/'/g,"''"))+'\')&$top=10&$select=displayName,mail,userPrincipalName&$orderby=displayName';
+    const resp=await fetch(url,{headers:{'Authorization':'Bearer '+spToken},signal:userSearchAbort.signal});
+    if(!resp.ok)throw new Error('Graph users search failed');
+    const data=await resp.json();
+    const users=data.value||[];
+    const dd=document.getElementById('user-search-dropdown');
+    if(!users.length){
+      dd.innerHTML='<div class="search-status">No users found. Type a full email to add manually.</div>';
+      dd.classList.add('show');
+      return;
+    }
+    dd.innerHTML=users.map((u,i)=>'<div class="user-item" data-index="'+i+'" onclick="selectUser(\''+u.mail.replace(/'/g,"\\'")+'\',\''+u.displayName.replace(/'/g,"\\'")+'\')" onmouseenter="highlightUserItem('+i+')">'+
+      '<div class="user-item-avatar">'+(u.displayName?u.displayName.charAt(0).toUpperCase():'?')+'</div>'+
+      '<div><div class="user-item-name">'+escapeHtml(u.displayName||'')+'</div><div class="user-item-email">'+escapeHtml(u.mail||u.userPrincipalName||'')+'</div></div>'+
+      '</div>').join('');
+    dd.classList.add('show');
+    userSearchSelected=null;
+  }catch(e){
+    if(e.name==='AbortError')return;
+    console.warn('Azure AD search failed (User.Read.All may not be granted):',e.message);
+  }
+}
+function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+let userSearchDebounce=null;
+function onUserSearchInput(){
+  const input=document.getElementById('new-user-email');
+  userSearchSelected=null;
+  if(userSearchDebounce)clearTimeout(userSearchDebounce);
+  userSearchDebounce=setTimeout(()=>searchAzureADUsers(input.value.trim()),300);
+}
+function highlightUserItem(idx){
+  document.querySelectorAll('.user-search-dropdown .user-item').forEach((el,i)=>el.classList.toggle('highlighted',i===idx));
+}
+let userSearchHighlightIdx=-1;
+function onUserSearchKeydown(e){
+  const dd=document.getElementById('user-search-dropdown');
+  const items=dd.querySelectorAll('.user-item');
+  if(e.key==='ArrowDown'){e.preventDefault();userSearchHighlightIdx=Math.min(userSearchHighlightIdx+1,items.length-1);highlightUserItem(userSearchHighlightIdx);items[userSearchHighlightIdx]&&items[userSearchHighlightIdx].scrollIntoView({block:'nearest'});}
+  else if(e.key==='ArrowUp'){e.preventDefault();userSearchHighlightIdx=Math.max(userSearchHighlightIdx-1,0);highlightUserItem(userSearchHighlightIdx);items[userSearchHighlightIdx]&&items[userSearchHighlightIdx].scrollIntoView({block:'nearest'});}
+  else if(e.key==='Enter'&&userSearchHighlightIdx>=0&&items[userSearchHighlightIdx]){e.preventDefault();items[userSearchHighlightIdx].click();}
+  else if(e.key==='Escape'){dd.classList.remove('show');userSearchHighlightIdx=-1;}
+  else{userSearchHighlightIdx=-1;}
+}
+function selectUser(email,displayName){
+  document.getElementById('new-user-email').value=email;
+  userSearchSelected=email;
+  document.getElementById('user-search-dropdown').classList.remove('show');
+  userSearchHighlightIdx=-1;
+  addUser();
 }
 
 function initMsal(){
@@ -557,6 +633,10 @@ function initApp(){
   showSigninProgress(true);
   ssoSilentAttempt().then(authed=>{showSigninProgress(false);if(!authed)updateAuthUI()}).catch(()=>{showSigninProgress(false);updateAuthUI()});
 })();
+document.addEventListener('click',function(e){
+  const wrap=document.querySelector('.user-search-wrap');
+  if(wrap&&!wrap.contains(e.target))document.getElementById('user-search-dropdown').classList.remove('show');
+});
 </script>
 </body>
 </html>
