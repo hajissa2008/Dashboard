@@ -281,6 +281,7 @@ function onSiteChange(){
 // ======================== PERMISSIONS ========================
 let permEntries=[]; // Array of {Id,Title,DeptID,Access,App}
 let permDirty=false;
+let cachedSiteId=null,cachedListId=null;
 
 function siteToGraphPath(siteUrl){
   const u=new URL(siteUrl);
@@ -302,17 +303,25 @@ async function graphApi(url,method,body){
 }
 
 async function ensurePermList(siteUrl){
-  const data=await graphApi(graphListUrl(siteUrl,PERM_LIST_NAME)+'?$select=id');
-  return data.id;
+  if(cachedListId)return cachedListId;
+  const siteData=await graphApi('https://graph.microsoft.com/v1.0/sites/'+siteToGraphPath(siteUrl)+'?$select=id');
+  cachedSiteId=siteData.id;
+  const listData=await graphApi('https://graph.microsoft.com/v1.0/sites/'+cachedSiteId+'/lists/'+encodeURIComponent(PERM_LIST_NAME)+'?$select=id');
+  cachedListId=listData.id;
+  return cachedListId;
+}
+function permListItemsUrl(){
+  return 'https://graph.microsoft.com/v1.0/sites/'+cachedSiteId+'/lists/'+cachedListId+'/items';
 }
 
 async function loadPermissions(){
   const siteUrl=document.getElementById('site-select').value;
   if(!siteUrl||!spUser||!spToken)return;
   showLoading(true);
+  cachedSiteId=null;cachedListId=null;
   try{
     await ensurePermList(siteUrl);
-    const data=await graphApi(graphListUrl(siteUrl,PERM_LIST_NAME)+'/items?$top=500&expand=fields');
+    const data=await graphApi(permListItemsUrl()+'?$top=500&expand=fields');
     permEntries=(data.value||[]).map(i=>({
       Id:i.id,
       Title:(i.fields&&i.fields.Title)||'',
@@ -440,10 +449,10 @@ async function saveAllPerms(){
   const status=document.getElementById('status-msg');
   btn.disabled=true;status.className='status-msg saving';status.textContent='Saving...';
   const siteUrl=document.getElementById('site-select').value;
-  const itemsBase=graphListUrl(siteUrl,PERM_LIST_NAME)+'/items';
   let ok=0,fail=0;
   try{
     await ensurePermList(siteUrl);
+    const itemsBase=permListItemsUrl();
     const existingData=await graphApi(itemsBase+'?$top=500&expand=fields');
     const existingItems=existingData.value||[];
     const idMap={};
