@@ -191,6 +191,11 @@ const storage={getItem(k){try{return localStorage.getItem(k)}catch{return null}}
 const SP_SCOPES=['Sites.ReadWrite.All','User.Read','User.Read.All'];
 let userSearchAbort=null;
 let userSearchSelected=null;
+function getDisplayNameCache(){try{return JSON.parse(storage.getItem('pmt-display-names')||'{}')}catch(e){return{}}}
+function setDisplayNameCache(email,name){
+  const cache=getDisplayNameCache();cache[email.toLowerCase()]=name;
+  storage.setItem('pmt-display-names',JSON.stringify(cache));
+}
 const ADMIN_KEY='pmt-admin-email';
 
 let msalApp=null,spToken=null,spUser=null,spSiteToken=null;
@@ -386,13 +391,6 @@ async function ensurePermList(siteUrl){
   cachedListId=listData.id;
   return cachedListId;
 }
-async function ensureDisplayNameColumn(){
-  try{
-    await graphApi('https://graph.microsoft.com/v1.0/sites/'+cachedSiteId+'/lists/'+cachedListId+'/columns','POST',{name:'DisplayName',text:{allowMultipleLines:false},displayName:'Display Name'});
-  }catch(e){
-    if(!e.message.includes('409')&&!e.message.includes('duplicate'))console.warn('Could not add DisplayName column:',e.message);
-  }
-}
 function permListItemsUrl(){
   return 'https://graph.microsoft.com/v1.0/sites/'+cachedSiteId+'/lists/'+cachedListId+'/items';
 }
@@ -404,12 +402,10 @@ async function loadPermissions(){
   cachedSiteId=null;cachedListId=null;
   try{
     await ensurePermList(siteUrl);
-    await ensureDisplayNameColumn();
     const data=await graphApi(permListItemsUrl()+'?$top=500&expand=fields');
     permEntries=(data.value||[]).map(i=>({
       Id:i.id,
       Title:(i.fields&&i.fields.Title)||'',
-      DisplayName:(i.fields&&i.fields.DisplayName)||'',
       DeptID:(i.fields&&i.fields.DeptID)||'',
       Access:(i.fields&&i.fields.Access)||'None',
       App:(i.fields&&i.fields.App)||'Both'
@@ -426,7 +422,7 @@ async function loadPermissions(){
     document.getElementById('perm-content').style.display='none';
     const es=document.getElementById('empty-state');
     if(is404){
-      es.innerHTML='<div class="icon">📋</div><h3>Permissions List Not Found</h3><p style="max-width:500px;margin:0 auto;line-height:1.6">Create a SharePoint list named <b>"Permissions"</b> on the AlEnshaiah site with these columns:<br><br>• <b>DeptID</b> (Single line of text)<br>• <b>Access</b> (Choice: Read, Edit, None)<br>• <b>App</b> (Choice: Both, ProjectTracker, Forms)<br><br>The <b>DisplayName</b> column will be auto-added when you save.<br><br>Then refresh this page.</p>';
+      es.innerHTML='<div class="icon">📋</div><h3>Permissions List Not Found</h3><p style="max-width:500px;margin:0 auto;line-height:1.6">Create a SharePoint list named <b>"Permissions"</b> on the AlEnshaiah site with these columns:<br><br>• <b>DeptID</b> (Single line of text)<br>• <b>Access</b> (Choice: Read, Edit, None)<br>• <b>App</b> (Choice: Both, ProjectTracker, Forms)<br><br>Then refresh this page.</p>';
     }else{
       es.innerHTML='<div class="icon">⚠️</div><h3>Error</h3><p>'+(e.message||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</p>';
     }
@@ -458,12 +454,11 @@ function renderMatrix(){
     return;
   }
 
-  const userInfo={};
-  permEntries.forEach(e=>{if(e.Title&&!userInfo[e.Title.toLowerCase()])userInfo[e.Title.toLowerCase()]={displayName:e.DisplayName||e.Title.split('@')[0],email:e.Title};});
+  const nameCache=getDisplayNameCache();
   let bHtml='';
   users.forEach(email=>{
-    const info=userInfo[email.toLowerCase()]||{displayName:email.split('@')[0]};
-    bHtml+=`<tr><td><div class="user-cell">${info.displayName}<div class="user-email">${email}</div></div></td>`;
+    const dn=nameCache[email.toLowerCase()]||email.split('@')[0];
+    bHtml+=`<tr><td><div class="user-cell">${dn}<div class="user-email">${email}</div></div></td>`;
     depts.forEach(d=>{
       const entry=permEntries.find(e=>e.Title.toLowerCase()===email.toLowerCase()&&e.DeptID===d.id);
       const access=entry?entry.Access:'None';
@@ -497,8 +492,7 @@ function onCellChange(el,field){
   if(existing){
     existing[field==='access'?'Access':'App']=value;
   }else{
-    const dn=permEntries.find(e=>e.Title.toLowerCase()===email.toLowerCase())?.DisplayName||email.split('@')[0];
-    permEntries.push({Title:email,DisplayName:dn,DeptID:deptId,Access:field==='access'?value:'None',App:field==='app'?value:'Both'});
+    permEntries.push({Title:email,DeptID:deptId,Access:field==='access'?value:'None',App:field==='app'?value:'Both'});
   }
   permDirty=true;
   document.getElementById('save-btn').disabled=false;
@@ -513,9 +507,9 @@ function addUser(displayName){
   if(!email||!email.includes('@')){showToast('Enter a valid email address','error');return}
   const existing=permEntries.some(e=>e.Title.toLowerCase()===email);
   if(existing){showToast('User already exists','error');return}
-  const dn=displayName||email.split('@')[0];
+  if(displayName)setDisplayNameCache(email,displayName);
   DEPTS.filter(d=>d.id!=='cost'&&d.id!=='planning'&&d.id!=='construction').forEach(d=>{
-    permEntries.push({Title:email,DisplayName:dn,DeptID:d.id,Access:'None',App:app});
+    permEntries.push({Title:email,DeptID:d.id,Access:'None',App:app});
   });
   permDirty=true;
   input.value='';
@@ -554,7 +548,7 @@ async function saveAllPerms(){
       const e=permEntries[i];
       if(!e.Title||!e.DeptID)continue;
       const key=e.Title.toLowerCase()+'|'+e.DeptID;
-      const fields={Title:e.Title,DisplayName:e.DisplayName||'',DeptID:e.DeptID,Access:e.Access,App:e.App};
+      const fields={Title:e.Title,DeptID:e.DeptID,Access:e.Access,App:e.App};
       try{
         if(idMap[key]){await graphApi(itemsBase+'/'+idMap[key]+'/fields','PATCH',fields);}
         else{await graphApi(itemsBase,'POST',{fields:fields});}
