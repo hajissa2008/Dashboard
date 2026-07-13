@@ -1483,16 +1483,18 @@ function renderCurrent(){
 }
 
 function renderDashboardCharts(){
+    const DEPT_KEY_TO_NAME={engineering:'Engineering',procurement:'Procurement',qaqc:'QA/QC',hse:'HSE'};
+    const allowedDeptNames=myPerms==='ALL'?Object.values(DEPT_KEY_TO_NAME):Object.keys(DEPT_KEY_TO_NAME).filter(k=>getMyAccess(k)!=='none').map(k=>DEPT_KEY_TO_NAME[k]);
     const deptFilter=document.getElementById('chart-dept-filter')?.value||'';
     const metric=document.getElementById('chart-metric-filter')?.value||'count';
-    const cViews=VIEW_KEYS.filter(v=>viewData[v]?.connected&&viewData[v]?.data?.length>0);
-    let all;if(cViews.length>0){all=[];cViews.forEach(v=>{all=all.concat(viewData[v].data);});}else all=[...DATA];
+    const cViews=VIEW_KEYS.filter(v=>viewData[v]?.connected&&viewData[v]?.data?.length>0&&(myPerms==='ALL'||getMyAccess(viewToDeptId(v))!=='none'));
+    let all;if(cViews.length>0){all=[];cViews.forEach(v=>{all=all.concat(viewData[v].data);});}else all=[...DATA].filter(x=>allowedDeptNames.includes(x.dept));
     all=all.filter(x=>x.dept!=='Construction');
     if(!all.length)return;
     const filtered=deptFilter?all.filter(x=>x.dept===deptFilter):all;
     const statusData={};filtered.forEach(x=>{const s=x.status||'Not Set';statusData[s]=(statusData[s]||0)+1});
     const deptColors={Engineering:'#4C5D71',Procurement:'#ED7D31',Construction:'#00B7C3','QA/QC':'#0078D4',HSE:'#D92C2C'};
-    const allDepts=['Engineering','Procurement','Construction','QA/QC','HSE'];
+    const allDepts=allowedDeptNames;
     const deptTargets=deptFilter?[deptFilter]:allDepts;
     const deptData={};
     deptTargets.forEach(dp=>{
@@ -1555,13 +1557,15 @@ function renderDashboardCharts(){
 }
 
 function renderDashboard(){
-    const connectedViews=VIEW_KEYS.filter(v=>viewData[v]?.connected&&viewData[v]?.data?.length>0);
+    const DEPT_KEY_TO_NAME={engineering:'Engineering',procurement:'Procurement',qaqc:'QA/QC',hse:'HSE'};
+    const allowedDeptNames=myPerms==='ALL'?Object.values(DEPT_KEY_TO_NAME):Object.keys(DEPT_KEY_TO_NAME).filter(k=>getMyAccess(k)!=='none').map(k=>DEPT_KEY_TO_NAME[k]);
+    const connectedViews=VIEW_KEYS.filter(v=>viewData[v]?.connected&&viewData[v]?.data?.length>0&&(myPerms==='ALL'||getMyAccess(viewToDeptId(v))!=='none'));
     let d;
     if(connectedViews.length>0){
         d=[];
         connectedViews.forEach(v=>{d=d.concat(viewData[v].data);});
     }else{
-        d=[...DATA];
+        d=[...DATA].filter(x=>allowedDeptNames.includes(x.dept));
     }
     d=d.filter(x=>x.dept!=='Construction');
     if(d.length===0){
@@ -1592,13 +1596,10 @@ function renderDashboard(){
     const depts=[
         {key:'Engineering',icon:'📐',color:'#4C5D71'},
         {key:'Procurement',icon:'📦',color:'#ED7D31'},
-        // Hidden: uncomment to restore Construction
-        // {key:'Construction',icon:'🏗️',color:'#00B7C3'},
-        // {key:'Cost Control',icon:'💰',color:'#107C10'},  // Hidden per request
-        // {key:'Planning',icon:'📅',color:'#8764B8'},  // Hidden per request
         {key:'QA/QC',icon:'✅',color:'#0078D4'},
         {key:'HSE',icon:'🛡️',color:'#D92C2C'}
-    ];
+    ].filter(dp=>allowedDeptNames.includes(dp.key));
+    const deptOptions=depts.map(dp=>'<option>'+dp.key+'</option>').join('');
     let deptKpis='';
     depts.forEach(dp=>{
         const vk=VIEW_KEYS.find(k=>VIEWS[k].title===dp.key||VIEWS[k].dept===dp.key);
@@ -1676,7 +1677,8 @@ function renderDashboard(){
     <div class="kpi-grid">${deptKpis}</div>
     ${(()=>{
         let teamHtml='';
-        connectedViews.forEach(v=>{
+        const allowedViews=connectedViews.filter(v=>myPerms==='ALL'||getMyAccess(viewToDeptId(v))!=='none');
+        allowedViews.forEach(v=>{
             const items=viewData[v]?.data||[];
             const cols=VIEW_PERSON_COLS[v]||['assigned'];
             const team=getTeam(items,cols);
@@ -1692,8 +1694,7 @@ function renderDashboard(){
           <h3 style="margin:0;font-size:13px">Status Distribution</h3>
           <select id="chart-dept-filter" onchange="renderDashboardCharts()" style="font-size:11px;padding:2px 6px;border-radius:4px;border:1px solid var(--gray-border);background:var(--white);color:var(--text-primary);cursor:pointer">
             <option value="">All Departments</option>
-            <option>Engineering</option><option>Procurement</option>
-            <option>QA/QC</option><option>HSE</option>
+            ${deptOptions}
           </select>
         </div>
         <canvas id="chart-status"></canvas>
@@ -1720,8 +1721,7 @@ function renderDashboard(){
         <div class="filter-group">
           <select id="filter-dept" onchange="renderTable()">
             <option value="">All Departments</option>
-            <option>Engineering</option><option>Procurement</option>
-            <option>QA/QC</option><option>HSE</option>
+            ${deptOptions}
           </select>
           <select id="filter-status" onchange="renderTable()">
             <option value="">All Statuses</option>
@@ -2250,6 +2250,12 @@ function renderDeptView(view){
 }
 
 function switchView(view){
+    if(view==='dashboard'&&!hasAnyAccess()){
+        document.getElementById('content').innerHTML='<div class="empty-state" style="padding:60px 20px"><div class="icon" style="font-size:48px;margin-bottom:12px">🔒</div><h3>Access Denied</h3><p style="color:var(--text-secondary)">You do not have permission to view the Executive Dashboard.</p></div>';
+        document.querySelectorAll('.nav-item').forEach(el=>el.classList.toggle('active',el.dataset.view===view));
+        document.getElementById('view-title').textContent='Executive Dashboard (restricted)';
+        return;
+    }
     if(view!=='dashboard'){
       const deptId=viewToDeptId(view);
       if(deptId&&getMyAccess(deptId)==='none'){
@@ -2456,6 +2462,11 @@ async function loadUserPerms(){
 function getMyAccess(deptId){
   if(myPerms==='ALL')return 'edit';
   return myPerms[deptId]||'none';
+}
+
+function hasAnyAccess(){
+  if(myPerms==='ALL') return true;
+  return ['engineering','procurement','qaqc','hse'].some(k=>getMyAccess(k)!=='none');
 }
 
 // Map view key to permission dept ID
