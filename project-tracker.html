@@ -1986,8 +1986,18 @@ function renderDeptView(view){
               kpi('📅','Phases',phases,'#D92C2C',null,null,null,null,items)+
               kpi('📁','Parts',parts,'#4C5D71',null,null,null,null,items);
     }else if(view==='procurement'){
-        const poIssued=items.filter(x=>x.poRef&&x.poRef!==''&&x.poRef!=='N/A').length;
-        const poPending=items.filter(x=>!x.poRef||x.poRef===''||x.poRef==='N/A').length;
+        function poIsIssued(x){
+            const ps=x['PO Status']||x.poStatus||x['PO/LOA Status']||'';
+            if(ps){
+                if(/issu|placed|awarded|complete|approv|yes/i.test(ps))return true;
+                if(/pend|open|draft|review|progress|cancel|no/i.test(ps))return false;
+                if(ps!=='N/A')return true;
+                return false;
+            }
+            return x.poRef&&x.poRef!==''&&x.poRef!=='N/A';
+        }
+        const poIssued=items.filter(poIsIssued).length;
+        const poPending=items.filter(x=>!poIsIssued(x)).length;
         const delDelivered=items.filter(x=>/deliver|receiv|complet/i.test(x.deliveryStatus)&&!/pend|overdue|part/i.test(x.deliveryStatus)).length;
         const delPending=items.filter(x=>!x.deliveryStatus||x.deliveryStatus===''||x.deliveryStatus==='N/A'||/pend|open/i.test(x.deliveryStatus)).length;
         const longLead=items.filter(x=>Number(x.leadTime||x['Lead Time']||0)>60).length;
@@ -2000,8 +2010,8 @@ function renderDeptView(view){
         function tr(g,t){if(!t)return null;const r=g/t;if(r>=0.7)return{txt:'On Track',cls:'up'};if(r>=0.4)return{txt:'Fair',cls:'neutral'};return{txt:'Behind',cls:'down'};}
         kpis=
             kpi('📦','Total Procurement Items',total,'#4C5D71',null,null,null,null,items)+
-            kpi('📄','PO Issued',poIssued,sc(pc(poIssued)),pc(poIssued),tr(poIssued,total),null,poIssued+'/'+total,items.filter(x=>x.poRef&&x.poRef!==''&&x.poRef!=='N/A'))+
-            kpi('📋','PO Pending',poPending,sc(pc(poPending),true),pc(poPending),tr(total-poPending,total),null,poPending+'/'+total,items.filter(x=>!x.poRef||x.poRef===''||x.poRef==='N/A'))+
+            kpi('📄','PO Issued',poIssued,sc(pc(poIssued)),pc(poIssued),tr(poIssued,total),null,poIssued+'/'+total,items.filter(poIsIssued))+
+            kpi('📋','PO Pending',poPending,sc(pc(poPending),true),pc(poPending),tr(total-poPending,total),null,poPending+'/'+total,items.filter(x=>!poIsIssued(x)))+
             kpi('✅','Delivery Completed',delDelivered,sc(pc(delDelivered)),pc(delDelivered),tr(delDelivered,total),null,delDelivered+'/'+total,items.filter(x=>/deliver|receiv|complet/i.test(x.deliveryStatus)&&!/pend|overdue|part/i.test(x.deliveryStatus)))+
             kpi('⏳','Deliveries Pending',delPending,sc(pc(delPending),true),pc(delPending),tr(total-delPending,total),null,delPending+'/'+total,items.filter(x=>!x.deliveryStatus||x.deliveryStatus===''||x.deliveryStatus==='N/A'||/pend|open/i.test(x.deliveryStatus)))+
             kpi('⏱️','Long Lead Items',longLead,sc(pc(longLead),true),pc(longLead),tr(total-longLead,total),null,longLead+'/'+total,items.filter(x=>Number(x.leadTime||x['Lead Time']||0)>60))+
