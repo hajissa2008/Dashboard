@@ -429,11 +429,22 @@ function getMyAccess(deptId){
   return myPerms[deptId]||'none';
 }
 
+function hasAnyFormAccess(){
+  if(myPerms==='ALL') return true;
+  return DEPTS.some(d=>getMyAccess(d.id)!=='none');
+}
+
 function handleAuthResponse(resp){
   if(resp&&resp.account){
     spUser=resp.account; spToken=resp.accessToken;
     showSigninProgress(false); hideSigninOverlay(); updateAuthUI();
     loadUserPerms().then(()=>{
+      initDeptSelect();
+      if(!hasAnyFormAccess()){
+        setEmpty('🔒','Access Denied','You do not have permission to access any department. Contact your administrator.');
+        document.getElementById('dept-select').disabled=true;
+        return;
+      }
       const d=storage.getItem('forms-last-dept'); if(d)onDeptChange();
     });
   }else{
@@ -1250,7 +1261,7 @@ function saveConfig(){
   if(accounts.length>0){
     spUser = accounts[0];
     msalApp.acquireTokenSilent({ scopes: SP_SCOPES, account: spUser })
-      .then(r=>{ spToken=r.accessToken; hideSigninOverlay(); updateAuthUI(); loadUserPerms(); })
+      .then(r=>{ spToken=r.accessToken; hideSigninOverlay(); updateAuthUI(); loadUserPerms().then(()=>{ initDeptSelect(); if(!hasAnyFormAccess()){ setEmpty('🔒','Access Denied','You do not have permission to access any department. Contact your administrator.'); document.getElementById('dept-select').disabled=true; }else{ const d=storage.getItem('forms-last-dept'); if(d)onDeptChange(); } }); })
       .catch(()=>{ spToken=null; showSigninProgress(true); ssoSilentAttempt().then(authed=>{ showSigninProgress(false); if(!authed) updateAuthUI(); }).catch(e=>{ showSigninProgress(false); console.error('[SSO]',e); updateAuthUI(); }); });
   }else{
     showSigninProgress(true);
