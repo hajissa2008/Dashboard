@@ -1179,18 +1179,18 @@ async function connectSingleView(view){
                 'Technical Evaluation':['techEval'],'Commercial Comparision':['commEval'],
                 'S.No':['id'],'S_x002e_No_x002e_':['id'],
                 'PQ Planned Submitta Date':['pqPlanned'],'PQ Actual Submitta DATE':['pqActual'],
-                'PQ Submittal Ref No':['pqRef'],'PQ  Status':['pqStatus'],'PQ_x0020__x0020_Status':['pqStatus'],
-                'PLANNED Material Submitta':['matPlanned'],
-                'ACTUAL Material Submitta DATE':['matActual'],'FORECAST DATE OF SUBMISSION':['forecastDate'],
-                'Material Submittal Ref No':['matRef'],'Material Submitta STATUS':['matSubStatus'],
+                'PQ Submittal Ref No':['pqRef'],                'PQ  Status':['pqStatus'],'PQ_x0020__x0020_Status':['pqStatus'],'PQ_x0020_Status':['pqStatus'],
+                'PLANNED Material Submitta':['matPlanned'],'PLANNED_x0020_Material_x0020_Submitta':['matPlanned'],
+                'ACTUAL Material Submitta DATE':['matActual'],'ACTUAL_x0020_Material_x0020_Submitta_x0020_DATE':['matActual'],'FORECAST DATE OF SUBMISSION':['forecastDate'],
+                'Material Submittal Ref No':['matRef'],                'Material Submitta STATUS':['matSubStatus'],'Material_x0020_Submitta_x0020_STATUS':['matSubStatus'],
                 'MANUFACTURER/SUPPLIER/SUB CONTRACTOR':['manufacturer'],
                 'SUPPLIER / SUBCONTRACTOR':['subcontractor'],
-                'PLANNED PO DATE':['poDate','plannedPoDate'],'PO / LOA REFERENCE':['poRef'],
-                'ACTUAL PO DATE':['actualPoDate'],
-                'PROCUREMENT LEAD TIME':['leadTime'],'METHOD OF SHIPPING':['shipMethod'],
-                'PLANNED DELIVERY DATE':['expDel','plannedDelivery'],
+                'PLANNED PO DATE':['poDate','plannedPoDate'],'PLANNED_x0020_PO_x0020_DATE':['poDate','plannedPoDate'],'PO / LOA REFERENCE':['poRef'],'PO_x0020_/_x0020_LOA_x0020_REFERENCE':['poRef'],
+                'ACTUAL PO DATE':['actualPoDate'],'ACTUAL_x0020_PO_x0020_DATE':['actualPoDate'],
+                'PROCUREMENT LEAD TIME':['leadTime'],'PROCUREMENT_x0020_LEAD_x0020_TIME':['leadTime'],'METHOD OF SHIPPING':['shipMethod'],
+                'PLANNED DELIVERY DATE':['expDel','plannedDelivery'],'PLANNED_x0020_DELIVERY_x0020_DATE':['expDel','plannedDelivery'],
                 'ESTIMATED TIME OF ARRIVAL (ETA)':['eta'],
-                'ACTUAL DELIVERY STATUS':['deliveryStatus'],'REMARKS':['remarks'],
+                'ACTUAL DELIVERY STATUS':['deliveryStatus'],'ACTUAL_x0020_DELIVERY_x0020_STATUS':['deliveryStatus'],'REMARKS':['remarks'],
                 'ActivityID':['actId','Activity_x0020_ID'],'ActivityName':['actName'],
                 'ProjectID':['id'],'ProjectName':['proj'],'Project_x0020_Name':['proj'],
                 'DueDate':['due','Due_x0020_Date'],'ResponsibleEngineer':['eng'],'DisciplineLead':['discLead'],
@@ -1986,24 +1986,30 @@ function renderDeptView(view){
               kpi('📅','Phases',phases,'#D92C2C',null,null,null,null,items)+
               kpi('📁','Parts',parts,'#4C5D71',null,null,null,null,items);
     }else if(view==='procurement'){
+        if(items.length){
+            const s=items[0];
+            console.log('[Procurement KPI] First item keys:',Object.keys(s).join(', '));
+            console.log('[Procurement KPI] actualPoDate=%s, deliveryStatus=%s, pqStatus=%s, matSubStatus=%s, leadTime=%s, poRef=%s',
+                s.actualPoDate,s.deliveryStatus,s.pqStatus,s.matSubStatus,s.leadTime,s.poRef);
+        }
         function poIsIssued(x){
-            const ad=x.actualPoDate||x['Actual PO']||x['Actual PO DATE']||x['ACTUAL PO DATE']||'';
+            const ad=x.actualPoDate||x['Actual PO']||x['Actual PO DATE']||x['ACTUAL PO DATE']||x['ACTUAL_x0020_PO_x0020_DATE']||'';
             if(ad&&ad!=='N/A')return true;
             return x.poRef&&x.poRef!==''&&x.poRef!=='N/A';
         }
         const poIssued=items.filter(poIsIssued).length;
         const poPending=items.filter(x=>!poIsIssued(x)).length;
         function delIsDone(x){
-            const ds=(x.deliveryStatus||x['Actual Delivery Status']||x['ACTUAL DELIVERY STATUS']||'').toLowerCase();
+            const ds=(x.deliveryStatus||x['Actual Delivery Status']||x['ACTUAL DELIVERY STATUS']||x['ACTUAL_x0020_DELIVERY_x0020_STATUS']||'').toLowerCase();
             return ds==='done'||ds==='as site required'||/deliver|receiv|complet/i.test(ds)&&!/pend|overdue|part/i.test(ds);
         }
         const delDelivered=items.filter(delIsDone).length;
         const delPending=items.filter(x=>!delIsDone(x)).length;
-        const longLead=items.filter(x=>Number(x.leadTime||x['Lead Time']||0)>60).length;
-        const pqApproved=items.filter(x=>/approv|accept|pass/i.test(x.pqStatus)).length;
-        const matSubmitted=items.filter(x=>x.matSubStatus&&x.matSubStatus!==''&&x.matSubStatus!=='N/A').length;
-        const matApproved=items.filter(x=>/approv|accept|pass/i.test(x.matSubStatus)).length;
-        const matOpen=items.filter(x=>x.matSubStatus&&x.matSubStatus!==''&&x.matSubStatus!=='N/A'&&!/approv|accept|pass|reject|closed/i.test(x.matSubStatus)).length;
+        const longLead=items.filter(x=>Number(x.leadTime||x['Lead Time']||x['PROCUREMENT LEAD TIME']||x['PROCUREMENT_x0020_LEAD_x0020_TIME']||0)>60).length;
+        const pqApproved=items.filter(x=>/approv|accept|pass/i.test(x.pqStatus||x['PQ  Status']||x['PQ_x0020__x0020_Status']||x['PQ_x0020_Status']||'')).length;
+        const matSubmitted=items.filter(x=>{const m=x.matSubStatus||x['Material Submitta STATUS']||x['Material_x0020_Submitta_x0020_STATUS']||'';return m&&m!==''&&m!=='N/A';}).length;
+        const matApproved=items.filter(x=>{const m=x.matSubStatus||x['Material Submitta STATUS']||x['Material_x0020_Submitta_x0020_STATUS']||'';return /approv|accept|pass/i.test(m);}).length;
+        const matOpen=items.filter(x=>{const m=x.matSubStatus||x['Material Submitta STATUS']||x['Material_x0020_Submitta_x0020_STATUS']||'';return m&&m!==''&&m!=='N/A'&&!/approv|accept|pass|reject|closed/i.test(m);}).length;
         function pc(v){return total?Math.round(v/total*100):0;}
         function sc(pct,invert){if(invert){if(pct<=20)return'#107C10';if(pct<=50)return'#ED7D31';return'#D92C2C';}if(pct>=70)return'#107C10';if(pct>=40)return'#ED7D31';return'#D92C2C';}
         function tr(g,t){if(!t)return null;const r=g/t;if(r>=0.7)return{txt:'On Track',cls:'up'};if(r>=0.4)return{txt:'Fair',cls:'neutral'};return{txt:'Behind',cls:'down'};}
@@ -2013,11 +2019,11 @@ function renderDeptView(view){
             kpi('📋','PO Pending',poPending,sc(pc(poPending),true),pc(poPending),tr(total-poPending,total),null,poPending+'/'+total,items.filter(x=>!poIsIssued(x)))+
             kpi('✅','Delivery Completed',delDelivered,sc(pc(delDelivered)),pc(delDelivered),tr(delDelivered,total),null,delDelivered+'/'+total,items.filter(delIsDone))+
             kpi('⏳','Deliveries Pending',delPending,sc(pc(delPending),true),pc(delPending),tr(total-delPending,total),null,delPending+'/'+total,items.filter(x=>!delIsDone(x)))+
-            kpi('⏱️','Long Lead Items',longLead,sc(pc(longLead),true),pc(longLead),tr(total-longLead,total),null,longLead+'/'+total,items.filter(x=>Number(x.leadTime||x['Lead Time']||0)>60))+
-            kpi('📋','PQ Approved',pqApproved,sc(pc(pqApproved)),pc(pqApproved),tr(pqApproved,total),null,pqApproved+'/'+total,items.filter(x=>/approv|accept|pass/i.test(x.pqStatus)))+
-            kpi('📎','MAT Submitted',matSubmitted,sc(pc(matSubmitted)),pc(matSubmitted),tr(matSubmitted,total),null,matSubmitted+'/'+total,items.filter(x=>x.matSubStatus&&x.matSubStatus!==''&&x.matSubStatus!=='N/A'))+
-            kpi('✔️','MAT Approved',matApproved,sc(pc(matApproved)),pc(matApproved),tr(matApproved,total),null,matApproved+'/'+total,items.filter(x=>/approv|accept|pass/i.test(x.matSubStatus)))+
-            kpi('🔄','Open MAR',matOpen,sc(pc(matOpen),true),pc(matOpen),tr(total-matOpen,total),null,matOpen+'/'+total,items.filter(x=>x.matSubStatus&&x.matSubStatus!==''&&x.matSubStatus!=='N/A'&&!/approv|accept|pass|reject|closed/i.test(x.matSubStatus)));
+            kpi('⏱️','Long Lead Items',longLead,sc(pc(longLead),true),pc(longLead),tr(total-longLead,total),null,longLead+'/'+total,items.filter(x=>Number(x.leadTime||x['Lead Time']||x['PROCUREMENT LEAD TIME']||x['PROCUREMENT_x0020_LEAD_x0020_TIME']||0)>60))+
+            kpi('📋','PQ Approved',pqApproved,sc(pc(pqApproved)),pc(pqApproved),tr(pqApproved,total),null,pqApproved+'/'+total,items.filter(x=>/approv|accept|pass/i.test(x.pqStatus||x['PQ  Status']||x['PQ_x0020__x0020_Status']||x['PQ_x0020_Status']||'')))+
+            kpi('📎','MAT Submitted',matSubmitted,sc(pc(matSubmitted)),pc(matSubmitted),tr(matSubmitted,total),null,matSubmitted+'/'+total,items.filter(x=>{const m=x.matSubStatus||x['Material Submitta STATUS']||x['Material_x0020_Submitta_x0020_STATUS']||'';return m&&m!==''&&m!=='N/A';}))+
+            kpi('✔️','MAT Approved',matApproved,sc(pc(matApproved)),pc(matApproved),tr(matApproved,total),null,matApproved+'/'+total,items.filter(x=>{const m=x.matSubStatus||x['Material Submitta STATUS']||x['Material_x0020_Submitta_x0020_STATUS']||'';return /approv|accept|pass/i.test(m);}))+
+            kpi('🔄','Open MAR',matOpen,sc(pc(matOpen),true),pc(matOpen),tr(total-matOpen,total),null,matOpen+'/'+total,items.filter(x=>{const m=x.matSubStatus||x['Material Submitta STATUS']||x['Material_x0020_Submitta_x0020_STATUS']||'';return m&&m!==''&&m!=='N/A'&&!/approv|accept|pass|reject|closed/i.test(m);}));
     }else if(view==='construction'){
         const notStarted=items.filter(x=>x.status==='Not Started').length;
         const inProgress=items.filter(x=>x.status==='In Progress').length;
