@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AlEnshaiah - Data Entry Forms</title>
 <script src="https://alcdn.msauth.net/browser/2.32.2/js/msal-browser.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{--primary:#4C5D71;--primary-dark:#3A4A5E;--primary-light:#E8ECF0;--green:#107C10;--green-light:#E6F7E6;--red:#D92C2C;--red-light:#FDE8E8;--orange:#ED7D31;--orange-light:#FFF0E0;--yellow:#FFB900;--blue:#0078D4;--gray:#8A8886;--gray-light:#F3F2F1;--gray-border:#EDEBE9;--text-primary:#201E1F;--text-secondary:#605E5C;--white:#FFFFFF;--bg:#F3F2F1;--shadow:0 1px 3px rgba(0,0,0,.08);--radius:6px;--header-h:52px}
@@ -142,6 +145,34 @@ html,body{height:100%;font-family:'Segoe UI',-apple-system,system-ui,sans-serif;
 .bulk-progress.show{display:block}
 .bulk-progress-bar{height:8px;background:var(--gray-border);border-radius:4px;overflow:hidden;margin-bottom:4px}
 .bulk-progress-fill{height:100%;background:var(--primary);border-radius:4px;transition:width .3s;width:0}
+.export-overlay{position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:400;display:none;align-items:center;justify-content:center}
+.export-overlay.show{display:flex}
+.export-modal{background:var(--white);border-radius:8px;width:90vw;max-width:560px;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 8px 30px rgba(0,0,0,.25)}
+.export-modal-head{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid var(--gray-border);flex-shrink:0}
+.export-modal-head h3{font-size:15px;font-weight:600;margin:0}
+.export-modal-close{background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-secondary);padding:2px 6px;border-radius:4px}
+.export-modal-close:hover{background:var(--gray-light)}
+.export-modal-body{flex:1;overflow:auto;padding:16px 20px}
+.export-modal-foot{display:flex;gap:8px;padding:12px 20px;border-top:1px solid var(--gray-border);flex-shrink:0;justify-content:flex-end;align-items:center}
+.export-modal-foot .btn{padding:7px 20px;border-radius:4px;font-size:13px;font-weight:600;cursor:pointer;border:none}
+.export-modal-foot .btn-primary{background:var(--primary);color:white}
+.export-modal-foot .btn-primary:hover{background:var(--primary-dark)}
+.export-modal-foot .btn-primary:disabled{opacity:.5;cursor:not-allowed}
+.export-modal-foot .btn-outline{background:transparent;border:1px solid var(--gray-border);color:var(--text-primary)}
+.export-modal-foot .btn-outline:hover{background:var(--gray-light)}
+.export-section{margin-bottom:14px}
+.export-section-title{font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.export-row{display:flex;gap:10px;margin-bottom:6px}
+.export-row label{font-size:12px;color:var(--text-primary);display:flex;align-items:center;gap:4px;white-space:nowrap}
+.export-row input[type=date],.export-row select{padding:5px 8px;border:1px solid var(--gray-border);border-radius:4px;font-size:12px;outline:none;background:var(--white);color:var(--text-primary);flex:1}
+.export-row input[type=date]:focus,.export-row select:focus{border-color:var(--primary)}
+.export-status-group{display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:4px}
+.export-status-group label{font-size:12px;color:var(--text-primary);display:flex;align-items:center;gap:3px;cursor:pointer}
+.export-format-group{display:flex;gap:16px;margin-top:4px}
+.export-format-group label{font-size:13px;color:var(--text-primary);display:flex;align-items:center;gap:4px;cursor:pointer;padding:6px 12px;border:1px solid var(--gray-border);border-radius:4px;transition:all .1s}
+.export-format-group label:hover{border-color:var(--primary);background:var(--primary-light)}
+.export-format-group input:checked+span{font-weight:600}
+.export-format-group input{accent-color:var(--primary)}
 .bulk-progress-text{font-size:11px;color:var(--text-secondary);text-align:center}
 .dark-toggle{background:none;border:none;font-size:18px;cursor:pointer;padding:4px;border-radius:50%;color:var(--text-primary);transition:background .15s;line-height:1}
 .dark-toggle:hover{background:var(--gray-light)}
@@ -221,6 +252,7 @@ html,body{height:100%;font-family:'Segoe UI',-apple-system,system-ui,sans-serif;
     <button class="btn btn-outline" onclick="refreshItems()" id="btn-refresh" style="display:none">🔄 Refresh</button>
     <button class="btn btn-outline" onclick="downloadTemplate()" id="btn-template" style="display:none">📥 Template</button>
     <button class="btn btn-outline" onclick="openBulkUpload()" id="btn-bulk" style="display:none">📤 Bulk Upload</button>
+    <button class="btn btn-outline" onclick="openExport()" id="btn-export" style="display:none">📊 Export</button>
     <button class="btn btn-outline" onclick="openPermManager()" id="btn-permissions" style="display:none">👥 Permissions</button>
     <span class="status-msg" id="status-msg"></span>
     <button class="btn btn-outline" onclick="showConfig()">⚙️ Config</button>
@@ -266,6 +298,20 @@ html,body{height:100%;font-family:'Segoe UI',-apple-system,system-ui,sans-serif;
       <span class="save-status" id="bulk-status"></span>
       <button class="btn btn-outline" onclick="closeBulkUpload()">Cancel</button>
       <button class="btn btn-primary" id="bulk-import-btn" onclick="importBulkItems()" disabled>📤 Import</button>
+    </div>
+  </div>
+</div>
+<div class="export-overlay" id="export-overlay" onclick="if(event.target===this)closeExport()">
+  <div class="export-modal">
+    <div class="export-modal-head">
+      <h3>📊 Export Data</h3>
+      <button class="export-modal-close" onclick="closeExport()">✕</button>
+    </div>
+    <div class="export-modal-body" id="export-body"></div>
+    <div class="export-modal-foot">
+      <span class="save-status" id="export-status"></span>
+      <button class="btn btn-outline" onclick="closeExport()">Cancel</button>
+      <button class="btn btn-primary" id="export-btn" onclick="runExport()">📥 Export</button>
     </div>
   </div>
 </div>
@@ -751,6 +797,7 @@ async function onDeptChange(){
   if(access==='none'){setEmpty('🔒','Access Denied','You do not have permission to access this department.'); return;}
   document.getElementById('btn-refresh').style.display='';
   document.getElementById('btn-template').style.display='';
+  document.getElementById('btn-export').style.display='';
   if(access==='edit'){
     document.getElementById('btn-new').style.display='';
     document.getElementById('btn-bulk').style.display='';
@@ -775,6 +822,7 @@ async function loadDeptData(){
     document.getElementById('btn-refresh').style.display='';
     document.getElementById('btn-template').style.display='';
     document.getElementById('btn-bulk').style.display='';
+    document.getElementById('btn-export').style.display='';
     onSearch();
   }catch(e){
     console.error('loadDeptData:',e);
@@ -1200,6 +1248,208 @@ async function importBulkItems(){
   await refreshItems();
   btn.disabled=false;
   if(fail===0)setTimeout(()=>closeBulkUpload(),1500);
+}
+
+// ======================== EXPORT ========================
+function openExport(){
+  if(!currentDept||!allItems.length){showToast('No data to export','error');return;}
+  document.getElementById('export-status').className='save-status';
+  document.getElementById('export-status').textContent='';
+  document.getElementById('export-btn').disabled=false;
+  const depts=DEPTS.filter(d=>d.id!=='cost'&&d.id!=='planning'&&d.id!=='construction');
+  const choiceCols=columnDefs.filter(c=>c.type==='choice'&&c.choices&&c.choices.length);
+  const dateCols=columnDefs.filter(c=>c.type==='date');
+  let html='';
+  html+='<div class="export-section"><div class="export-section-title">Department</div><div class="export-row">';
+  html+='<select id="export-dept"><option value="current">'+htmlEscape(currentDept.title)+' (Current)</option>';
+  depts.forEach(d=>{if(d.id!==currentDept.id)html+='<option value="'+d.id+'">'+htmlEscape(d.title)+'</option>';});
+  html+='<option value="all">All Departments</option></select></div></div>';
+  if(dateCols.length){
+    html+='<div class="export-section"><div class="export-section-title">Date Range</div><div class="export-row">';
+    html+='<label>From: <input type="date" id="export-date-from"></label>';
+    html+='<label>To: <input type="date" id="export-date-to"></label></div></div>';
+  }
+  choiceCols.forEach(c=>{
+    html+='<div class="export-section"><div class="export-section-title">'+htmlEscape(c.displayName||c.name)+'</div>';
+    html+='<div class="export-status-group">';
+    html+='<label><input type="checkbox" class="export-choice-all" data-col="'+c.name+'" checked onchange="toggleChoiceGroup(this)"> All</label>';
+    c.choices.forEach(ch=>{
+      html+='<label><input type="checkbox" class="export-choice" data-col="'+c.name+'" value="'+htmlEscape(ch)+'" checked> '+htmlEscape(ch)+'</label>';
+    });
+    html+='</div></div>';
+  });
+  html+='<div class="export-section"><div class="export-section-title">Format</div><div class="export-format-group">';
+  html+='<label><input type="radio" name="export-format" value="excel" checked><span>📗 Excel</span></label>';
+  html+='<label><input type="radio" name="export-format" value="pdf"><span>📄 PDF</span></label></div></div>';
+  document.getElementById('export-body').innerHTML=html;
+  document.getElementById('export-overlay').classList.add('show');
+}
+function closeExport(){
+  document.getElementById('export-overlay').classList.remove('show');
+}
+function toggleChoiceGroup(el){
+  const checked=el.checked;
+  el.closest('.export-section').querySelectorAll('.export-choice').forEach(cb=>cb.checked=checked);
+}
+async function runExport(){
+  const btn=document.getElementById('export-btn');
+  const status=document.getElementById('export-status');
+  btn.disabled=true;status.className='save-status saving';status.textContent='Preparing...';
+  try{
+    const format=document.querySelector('input[name="export-format"]:checked').value;
+    const deptVal=document.getElementById('export-dept').value;
+    const dateFrom=document.getElementById('export-date-from')?document.getElementById('export-date-from').value:'';
+    const dateTo=document.getElementById('export-date-to')?document.getElementById('export-date-to').value:'';
+    const choiceFilters={};
+    document.querySelectorAll('.export-choice').forEach(cb=>{
+      if(!cb.checked){
+        if(!choiceFilters[cb.dataset.col])choiceFilters[cb.dataset.col]=[];
+        choiceFilters[cb.dataset.col].push(cb.value);
+      }
+    });
+    const excludeChoices=Object.keys(choiceFilters).length?choiceFilters:null;
+    const fn=htmlEscape(currentDept.title).replace(/[^a-z0-9]/gi,'_')+'_Export_'+new Date().toISOString().slice(0,10);
+    if(deptVal==='all'){
+      const allDepts=DEPTS.filter(d=>d.id!=='cost'&&d.id!=='planning'&&d.id!=='construction');
+      if(format==='excel'){await exportAllExcel(allDepts,dateFrom,dateTo,excludeChoices,fn,status);}
+      else{await exportAllPDF(allDepts,dateFrom,dateTo,excludeChoices,fn,status);}
+    }else{
+      let dept=deptVal==='current'?currentDept:DEPTS.find(d=>d.id===deptVal);
+      if(!dept)dept=currentDept;
+      let items=dept.id===currentDept.id?filteredItems:await fetchSPItems(dept.site,dept.list);
+      let cols=dept.id===currentDept.id?columnDefs:await fetchColumnDefinitions(dept.site,dept.list);
+      items=applyExportFilters(items,cols,dateFrom,dateTo,excludeChoices);
+      if(format==='excel'){await exportExcel(items,cols,dept,dateFrom,dateTo,excludeChoices,fn,status);}
+      else{await exportPDF(items,cols,dept,dateFrom,dateTo,excludeChoices,fn,status);}
+    }
+    status.className='save-status saved';status.textContent='✓ Exported';
+    showToast('Export complete','success');
+  }catch(e){console.error('Export:',e);status.className='save-status error';status.textContent='Error: '+e.message;showToast('Export failed: '+e.message,'error');}
+  btn.disabled=false;
+}
+function applyExportFilters(items,cols,dateFrom,dateTo,excludeChoices){
+  let result=items;
+  if(dateFrom||dateTo){
+    const dateCols=cols.filter(c=>c.type==='date');
+    if(dateCols.length){
+      const dc=dateCols[0].name;
+      result=result.filter(item=>{
+        const val=item[dc];
+        if(!val)return false;
+        const d=new Date(val);
+        if(isNaN(d.getTime()))return true;
+        if(dateFrom&&d<new Date(dateFrom))return false;
+        if(dateTo){const end=new Date(dateTo);end.setHours(23,59,59,999);if(d>end)return false;}
+        return true;
+      });
+    }
+  }
+  if(excludeChoices){
+    Object.keys(excludeChoices).forEach(col=>{
+      const excluded=excludeChoices[col];
+      result=result.filter(item=>!excluded.includes(item[col]));
+    });
+  }
+  return result;
+}
+async function fetchDeptData(dept){
+  const cols=await fetchColumnDefinitions(dept.site,dept.list);
+  const items=await fetchSPItems(dept.site,dept.list);
+  return {cols,items};
+}
+async function exportAllExcel(depts,dateFrom,dateTo,excludeChoices,fn,status){
+  if(typeof XLSX==='undefined'){showToast('Excel library not loaded','error');return;}
+  const wb=XLSX.utils.book_new();
+  for(let i=0;i<depts.length;i++){
+    const d=depts[i];
+    status.textContent='Fetching '+d.title+'...';
+    const {cols,items}=await fetchDeptData(d);
+    const filtered=applyExportFilters(items,cols,dateFrom,dateTo,excludeChoices);
+    const visible=cols.filter(c=>!c.name.startsWith('_')&&c.name!=='ID'&&c.name!=='ContentType'&&c.displayName!=='Attachments');
+    const rows=filtered.map(item=>{
+      const row={};visible.forEach(c=>{row[c.displayName||c.name]=item[c.name]??item[c.displayName||c.name]??'';});return row;
+    });
+    const ws=XLSX.utils.json_to_sheet(rows);
+    XLSX.utils.sheet_add_aoa(ws,[[d.title+' - AlEnshaiah','','','','Generated: '+new Date().toLocaleDateString()]],{origin:'A1'});
+    ws['!merges']=[{s:{r:0,c:0},e:{r:0,c:Math.max(visible.length-1,4)}}];
+    const wscols=visible.map(()=>({wch:20}));
+    ws['!cols']=wscols;
+    XLSX.utils.book_append_sheet(wb,ws,d.title.slice(0,31));
+  }
+  XLSX.writeFile(wb,fn+'.xlsx');
+}
+async function exportExcel(items,cols,dept,dateFrom,dateTo,excludeChoices,fn,status){
+  if(typeof XLSX==='undefined'){showToast('Excel library not loaded','error');return;}
+  const wb=XLSX.utils.book_new();
+  const visible=cols.filter(c=>!c.name.startsWith('_')&&c.name!=='ID'&&c.name!=='ContentType'&&c.displayName!=='Attachments');
+  const rows=items.map(item=>{
+    const row={};visible.forEach(c=>{row[c.displayName||c.name]=item[c.name]??item[c.displayName||c.name]??'';});return row;
+  });
+  const ws=XLSX.utils.json_to_sheet(rows);
+  XLSX.utils.sheet_add_aoa(ws,[['AlEnshaiah - Project Management System']],{origin:'A1'});
+  XLSX.utils.sheet_add_aoa(ws,[[dept.title+' - Data Export','','','','Generated: '+new Date().toLocaleDateString()]],{origin:'A2'});
+  if(dateFrom||dateTo){XLSX.utils.sheet_add_aoa(ws,[['Date Range: '+(dateFrom||'...')+' to '+(dateTo||'...')]],{origin:'A3'});}
+  const headers=visible.map(c=>c.displayName||c.name);
+  XLSX.utils.sheet_add_aoa(ws,[headers],{origin:{r:dateFrom||dateTo?3:2,c:0}});
+  const startRow=dateFrom||dateTo?4:3;
+  XLSX.utils.sheet_add_json(ws,rows,{origin:{r:startRow,c:0},skipHeader:true});
+  ws['!merges']=[{s:{r:0,c:0},e:{r:0,c:Math.max(visible.length-1,4)}}];
+  ws['!cols']=visible.map(()=>({wch:22}));
+  XLSX.utils.book_append_sheet(wb,ws,'Data');
+  XLSX.writeFile(wb,fn+'.xlsx');
+}
+async function exportPDF(items,cols,dept,dateFrom,dateTo,excludeChoices,fn,status){
+  if(typeof jspdf==='undefined'){showToast('PDF library not loaded','error');return;}
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF('l','mm','a4');
+  const pageW=doc.internal.pageSize.getWidth();
+  try{
+    const resp=await fetch('logo.png');
+    if(resp.ok){const blob=await resp.blob();const reader=new FileReader();await new Promise(res=>{reader.onload=()=>{try{doc.addImage(reader.result,'PNG',10,6,22,22)}catch{};res()};reader.readAsDataURL(blob);});}
+  }catch{}
+  doc.setFontSize(18);doc.setFont(undefined,'bold');
+  doc.text('AlEnshaiah - Project Management System',pageW/2,18,{align:'center'});
+  doc.setFontSize(11);doc.setFont(undefined,'normal');
+  doc.text(dept.title+' - Data Export',pageW/2,26,{align:'center'});
+  doc.setFontSize(8);doc.text('Generated: '+new Date().toLocaleString(),pageW-10,8,{align:'right'});
+  if(dateFrom||dateTo){doc.setFontSize(9);doc.text('Date Range: '+(dateFrom||'...')+' to '+(dateTo||'...'),pageW/2,32,{align:'center'});}
+  const visible=cols.filter(c=>!c.name.startsWith('_')&&c.name!=='ID'&&c.name!=='ContentType'&&c.displayName!=='Attachments');
+  const headers=visible.map(c=>(c.displayName||c.name));
+  const data=items.map(item=>visible.map(c=>{const v=item[c.name]??item[c.displayName||c.name]??'';return String(v);}));
+  const startY=dateFrom||dateTo?37:31;
+  doc.autoTable({head:[headers],body:data,startY,styles:{fontSize:7,cellPadding:1.5},headStyles:{fillColor:[76,93,113],fontSize:7,halign:'center'},alternateRowStyles:{fillColor:[243,242,241]},margin:{left:5,right:5},tableWidth:'auto'});
+  doc.save(fn+'.pdf');
+}
+async function exportAllPDF(depts,dateFrom,dateTo,excludeChoices,fn,status){
+  if(typeof jspdf==='undefined'){showToast('PDF library not loaded','error');return;}
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF('l','mm','a4');
+  const pageW=doc.internal.pageSize.getWidth();
+  try{
+    const resp=await fetch('logo.png');
+    if(resp.ok){const blob=await resp.blob();const reader=new FileReader();await new Promise(res=>{reader.onload=()=>{try{doc.addImage(reader.result,'PNG',10,6,22,22)}catch{};res()};reader.readAsDataURL(blob);});}
+  }catch{}
+  doc.setFontSize(18);doc.setFont(undefined,'bold');
+  doc.text('AlEnshaiah - Project Management System',pageW/2,18,{align:'center'});
+  doc.setFontSize(11);doc.setFont(undefined,'normal');
+  doc.text('All Departments - Data Export',pageW/2,26,{align:'center'});
+  doc.setFontSize(8);doc.text('Generated: '+new Date().toLocaleString(),pageW-10,8,{align:'right'});
+  let yPos=dateFrom||dateTo?37:31;
+  for(let i=0;i<depts.length;i++){
+    const d=depts[i];
+    status.textContent='Fetching '+d.title+'...';
+    const {cols,items}=await fetchDeptData(d);
+    const filtered=applyExportFilters(items,cols,dateFrom,dateTo,excludeChoices);
+    if(!filtered.length)continue;
+    const visible=cols.filter(c=>!c.name.startsWith('_')&&c.name!=='ID'&&c.name!=='ContentType'&&c.displayName!=='Attachments');
+    const headers=visible.map(c=>(c.displayName||c.name));
+    const data=filtered.map(item=>visible.map(c=>{const v=item[c.name]??item[c.displayName||c.name]??'';return String(v);}));
+    if(yPos>250){doc.addPage();yPos=20;}
+    doc.setFontSize(12);doc.setFont(undefined,'bold');doc.text(d.title,pageW/2,yPos,{align:'center'});yPos+=6;
+    doc.autoTable({head:[headers],body:data,startY:yPos,styles:{fontSize:7,cellPadding:1.5},headStyles:{fillColor:[76,93,113],fontSize:7,halign:'center'},alternateRowStyles:{fillColor:[243,242,241]},margin:{left:5,right:5},tableWidth:'auto'});
+    yPos=doc.lastAutoTable.finalY+10;
+  }
+  doc.save(fn+'.pdf');
 }
 
 // ======================== CONFIG ========================
