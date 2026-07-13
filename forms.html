@@ -1245,15 +1245,24 @@ function saveConfig(){
     return;
   }
   if(!initMsal()){ showSigninError('⚠️ Azure AD initialization failed. Click ⚙️ to check Tenant ID and Client ID in Config.'); return; }
-  showSigninProgress(true);
-  ssoSilentAttempt().then(authed=>{
-    showSigninProgress(false);
-    if(!authed) updateAuthUI();
-  }).catch(e=>{
-    showSigninProgress(false);
-    console.error('[SSO]',e);
-    updateAuthUI();
-  });
+  // Check for cached account first (survives page refresh)
+  const accounts = msalApp.getAllAccounts();
+  if(accounts.length>0){
+    spUser = accounts[0];
+    msalApp.acquireTokenSilent({ scopes: SP_SCOPES, account: spUser })
+      .then(r=>{ spToken=r.accessToken; hideSigninOverlay(); updateAuthUI(); loadUserPerms(); })
+      .catch(()=>{ spToken=null; showSigninProgress(true); ssoSilentAttempt().then(authed=>{ showSigninProgress(false); if(!authed) updateAuthUI(); }).catch(e=>{ showSigninProgress(false); console.error('[SSO]',e); updateAuthUI(); }); });
+  }else{
+    showSigninProgress(true);
+    ssoSilentAttempt().then(authed=>{
+      showSigninProgress(false);
+      if(!authed) updateAuthUI();
+    }).catch(e=>{
+      showSigninProgress(false);
+      console.error('[SSO]',e);
+      updateAuthUI();
+    });
+  }
 })();
 </script>
 </body>
