@@ -1986,37 +1986,29 @@ function renderDeptView(view){
               kpi('📅','Phases',phases,'#D92C2C',null,null,null,null,items)+
               kpi('📁','Parts',parts,'#4C5D71',null,null,null,null,items);
     }else if(view==='procurement'){
-        // --- PQ Status (Prequalification) ---
-        const pqApproved=items.filter(x=>/approv|accept|pass/i.test(x.pqStatus)).length;
-        const pqPending=items.filter(x=>/pend|review|progress|submitted|under/i.test(x.pqStatus)).length;
-        const pqNotStarted=items.filter(x=>!x.pqStatus||x.pqStatus===''||x.pqStatus==='N/A'||/not.?start|draft|open/i.test(x.pqStatus)).length;
-        // --- MAT Status (Material Submittal) ---
-        const matApproved=items.filter(x=>/approv|accept|pass/i.test(x.matSubStatus)).length;
-        const matReview=items.filter(x=>/review|submitted|pend|progress/i.test(x.matSubStatus)).length;
-        const matNotStarted=items.filter(x=>!x.matSubStatus||x.matSubStatus===''||x.matSubStatus==='N/A'||/not.?start|draft|open/i.test(x.matSubStatus)).length;
-        // --- PO Status ---
         const poIssued=items.filter(x=>x.poRef&&x.poRef!==''&&x.poRef!=='N/A').length;
-        const poActual=items.filter(x=>x.actualPoDate&&x.actualPoDate!=='').length;
         const poPending=items.filter(x=>!x.poRef||x.poRef===''||x.poRef==='N/A').length;
-        // --- Delivery Status ---
         const delDelivered=items.filter(x=>/deliver|receiv|complet/i.test(x.deliveryStatus)&&!/pend|overdue|part/i.test(x.deliveryStatus)).length;
-        const delPartial=items.filter(x=>/in.?transit|part|shipped|partial/i.test(x.deliveryStatus)).length;
         const delPending=items.filter(x=>!x.deliveryStatus||x.deliveryStatus===''||x.deliveryStatus==='N/A'||/pend|open/i.test(x.deliveryStatus)).length;
-        const delOverdue=items.filter(x=>/overdue|delay/i.test(x.deliveryStatus)).length;
-        kpis=kpi('📦','Total Items',total,'#4C5D71',null,null,null,null,items)+
-              kpi('⏰','Overdue',overdue,'#D92C2C',null,null,null,null,items.filter(isOverdue))+
-              kpi('📋','PQ Approved',pqApproved,'#107C10',total?pqApproved/total*100:0,null,null,null,items.filter(x=>/approv|accept|pass/i.test(x.pqStatus)))+
-              kpi('🔄','PQ Pending',pqPending,'#ED7D31',total?pqPending/total*100:0,null,null,null,items.filter(x=>/pend|review|progress|submitted|under/i.test(x.pqStatus)))+
-              kpi('⏸️','PQ Not Started',pqNotStarted,'#8A8886',total?pqNotStarted/total*100:0,null,null,null,items.filter(x=>!x.pqStatus||x.pqStatus===''||x.pqStatus==='N/A'||/not.?start|draft|open/i.test(x.pqStatus)))+
-              kpi('✔️','MAT Approved',matApproved,'#107C10',total?matApproved/total*100:0,null,null,null,items.filter(x=>/approv|accept|pass/i.test(x.matSubStatus)))+
-              kpi('🔍','MAT Under Review',matReview,'#0078D4',total?matReview/total*100:0,null,null,null,items.filter(x=>/review|submitted|pend|progress/i.test(x.matSubStatus)))+
-              kpi('⏸️','MAT Not Started',matNotStarted,'#8A8886',total?matNotStarted/total*100:0,null,null,null,items.filter(x=>!x.matSubStatus||x.matSubStatus===''||x.matSubStatus==='N/A'||/not.?start|draft|open/i.test(x.matSubStatus)))+
-              kpi('📄','PO Issued',poIssued,'#00B7C3',total?poIssued/total*100:0,null,null,null,items.filter(x=>x.poRef&&x.poRef!==''&&x.poRef!=='N/A'))+
-              kpi('📅','PO Actual Date',poActual,'#4C5D71',null,null,null,null,items.filter(x=>x.actualPoDate&&x.actualPoDate!==''))+
-              kpi('📬','Delivered',delDelivered,'#107C10',total?delDelivered/total*100:0,null,null,null,items.filter(x=>/deliver|receiv|complet/i.test(x.deliveryStatus)&&!/pend|overdue|part/i.test(x.deliveryStatus)))+
-              kpi('🚚','In Transit',delPartial,'#0078D4',null,null,null,null,items.filter(x=>/in.?transit|part|shipped|partial/i.test(x.deliveryStatus)))+
-              kpi('⏰','Delivery Overdue',delOverdue,'#D92C2C',null,null,null,null,items.filter(x=>/overdue|delay/i.test(x.deliveryStatus)))+
-              kpi('📋','Delivery Pending',delPending,'#8A8886',total?delPending/total*100:0,null,null,null,items.filter(x=>!x.deliveryStatus||x.deliveryStatus===''||x.deliveryStatus==='N/A'||/pend|open/i.test(x.deliveryStatus)));
+        const longLead=items.filter(x=>Number(x.leadTime||x['Lead Time']||0)>60).length;
+        const pqApproved=items.filter(x=>/approv|accept|pass/i.test(x.pqStatus)).length;
+        const matSubmitted=items.filter(x=>x.matSubStatus&&x.matSubStatus!==''&&x.matSubStatus!=='N/A').length;
+        const matApproved=items.filter(x=>/approv|accept|pass/i.test(x.matSubStatus)).length;
+        const matOpen=items.filter(x=>x.matSubStatus&&x.matSubStatus!==''&&x.matSubStatus!=='N/A'&&!/approv|accept|pass|reject|closed/i.test(x.matSubStatus)).length;
+        function pc(v){return total?Math.round(v/total*100):0;}
+        function sc(pct,invert){if(invert){if(pct<=20)return'#107C10';if(pct<=50)return'#ED7D31';return'#D92C2C';}if(pct>=70)return'#107C10';if(pct>=40)return'#ED7D31';return'#D92C2C';}
+        function tr(g,t){if(!t)return null;const r=g/t;if(r>=0.7)return{txt:'On Track',cls:'up'};if(r>=0.4)return{txt:'Fair',cls:'neutral'};return{txt:'Behind',cls:'down'};}
+        kpis=
+            kpi('📦','Total Procurement Items',total,'#4C5D71',null,null,null,null,items)+
+            kpi('📄','PO Issued',poIssued,sc(pc(poIssued)),pc(poIssued),tr(poIssued,total),null,poIssued+'/'+total,items.filter(x=>x.poRef&&x.poRef!==''&&x.poRef!=='N/A'))+
+            kpi('📋','PO Pending',poPending,sc(pc(poPending),true),pc(poPending),tr(total-poPending,total),null,poPending+'/'+total,items.filter(x=>!x.poRef||x.poRef===''||x.poRef==='N/A'))+
+            kpi('✅','Delivery Completed',delDelivered,sc(pc(delDelivered)),pc(delDelivered),tr(delDelivered,total),null,delDelivered+'/'+total,items.filter(x=>/deliver|receiv|complet/i.test(x.deliveryStatus)&&!/pend|overdue|part/i.test(x.deliveryStatus)))+
+            kpi('⏳','Deliveries Pending',delPending,sc(pc(delPending),true),pc(delPending),tr(total-delPending,total),null,delPending+'/'+total,items.filter(x=>!x.deliveryStatus||x.deliveryStatus===''||x.deliveryStatus==='N/A'||/pend|open/i.test(x.deliveryStatus)))+
+            kpi('⏱️','Long Lead Items',longLead,sc(pc(longLead),true),pc(longLead),tr(total-longLead,total),null,longLead+'/'+total,items.filter(x=>Number(x.leadTime||x['Lead Time']||0)>60))+
+            kpi('📋','PQ Approved',pqApproved,sc(pc(pqApproved)),pc(pqApproved),tr(pqApproved,total),null,pqApproved+'/'+total,items.filter(x=>/approv|accept|pass/i.test(x.pqStatus)))+
+            kpi('📎','MAT Submitted',matSubmitted,sc(pc(matSubmitted)),pc(matSubmitted),tr(matSubmitted,total),null,matSubmitted+'/'+total,items.filter(x=>x.matSubStatus&&x.matSubStatus!==''&&x.matSubStatus!=='N/A'))+
+            kpi('✔️','MAT Approved',matApproved,sc(pc(matApproved)),pc(matApproved),tr(matApproved,total),null,matApproved+'/'+total,items.filter(x=>/approv|accept|pass/i.test(x.matSubStatus)))+
+            kpi('🔄','Open MAR',matOpen,sc(pc(matOpen),true),pc(matOpen),tr(total-matOpen,total),null,matOpen+'/'+total,items.filter(x=>x.matSubStatus&&x.matSubStatus!==''&&x.matSubStatus!=='N/A'&&!/approv|accept|pass|reject|closed/i.test(x.matSubStatus)));
     }else if(view==='construction'){
         const notStarted=items.filter(x=>x.status==='Not Started').length;
         const inProgress=items.filter(x=>x.status==='In Progress').length;
