@@ -620,7 +620,7 @@ async function fetchColumnDefinitions(siteUrl,listName){
     else if(col.lookup)type='lookup';
     else if(col.personOrGroup)type='person';
     else if(col.taxonomy)type='taxonomy';
-    else return;
+    else type='text';
     cols.push({name:n,displayName:col.displayName||n,type,choices,required:col.required||false,description:col.description||''});
   });
   return cols;
@@ -864,6 +864,15 @@ function reorderColumns(cols){
     const [rfq]=result.splice(rfqIdx,1);
     const adjDescIdx=rfqIdx<descIdx?descIdx-1:descIdx;
     result.splice(adjDescIdx+1,0,rfq);
+  }
+  return result;
+}
+function reorderForExport(cols){
+  const result=reorderColumns(cols);
+  const remarkIdx=result.findIndex(c=>/(remarks?|comments?|notes)/i.test(c.name)||/(remarks?|comments?|notes)/i.test(c.displayName));
+  if(remarkIdx>=0&&remarkIdx!==result.length-1){
+    const [remark]=result.splice(remarkIdx,1);
+    result.push(remark);
   }
   return result;
 }
@@ -1378,7 +1387,7 @@ async function exportAllExcel(depts,dateFrom,dateTo,excludeChoices,fn,status){
     status.textContent='Fetching '+d.title+'...';
     const {cols,items}=await fetchDeptData(d);
     const filtered=applyExportFilters(items,cols,dateFrom,dateTo,excludeChoices);
-    const visible=exportVisibleCols(cols);
+    const visible=reorderForExport(exportVisibleCols(cols));
     const rows=filtered.map(item=>{
       const row={};visible.forEach(c=>{row[c.displayName||c.name]=item[c.name]??item[c.displayName||c.name]??'';});return row;
     });
@@ -1394,7 +1403,7 @@ async function exportAllExcel(depts,dateFrom,dateTo,excludeChoices,fn,status){
 async function exportExcel(items,cols,dept,dateFrom,dateTo,excludeChoices,fn,status){
   if(typeof XLSX==='undefined'){showToast('Excel library not loaded','error');return;}
   const wb=XLSX.utils.book_new();
-  const visible=exportVisibleCols(cols);
+  const visible=reorderForExport(exportVisibleCols(cols));
   const rows=items.map(item=>{
     const row={};visible.forEach(c=>{row[c.displayName||c.name]=item[c.name]??item[c.displayName||c.name]??'';});return row;
   });
@@ -1668,7 +1677,7 @@ async function exportPDF(items,cols,dept,dateFrom,dateTo,excludeChoices,fn,statu
   const pw=doc.internal.pageSize.getWidth();
   const ml=6,mr=6,usableW=pw-ml-mr;
   const logoData=await loadLogoDataURL();
-  const visible=exportVisibleCols(cols);
+  const visible=reorderForExport(exportVisibleCols(cols));
   const headers=visible.map(c=>(c.displayName||c.name));
   const data=items.map(item=>visible.map(c=>String(item[c.name]??item[c.displayName||c.name]??'')));
   const colCount=visible.length;
@@ -1708,7 +1717,7 @@ async function exportAllPDF(depts,dateFrom,dateTo,excludeChoices,fn,status){
     const {cols,items}=await fetchDeptData(d);
     const filtered=applyExportFilters(items,cols,dateFrom,dateTo,excludeChoices);
     if(!filtered.length)continue;
-    const visible=exportVisibleCols(cols);
+    const visible=reorderForExport(exportVisibleCols(cols));
     const headers=visible.map(c=>(c.displayName||c.name));
     const data=filtered.map(item=>visible.map(c=>String(item[c.name]??item[c.displayName||c.name]??'')));
     const colCount=visible.length;
