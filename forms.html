@@ -856,6 +856,17 @@ function onSearch(){
 }
 
 // ======================== TABLE ========================
+function reorderColumns(cols){
+  const result=[...cols];
+  const descIdx=result.findIndex(c=>/(description|matDesc)/i.test(c.name)||/(description)/i.test(c.displayName));
+  const rfqIdx=result.findIndex(c=>/(rfq)/i.test(c.name)||/(rfq)/i.test(c.displayName));
+  if(descIdx>=0&&rfqIdx>=0&&rfqIdx!==descIdx+1){
+    const [rfq]=result.splice(rfqIdx,1);
+    const adjDescIdx=rfqIdx<descIdx?descIdx-1:descIdx;
+    result.splice(adjDescIdx+1,0,rfq);
+  }
+  return result;
+}
 function renderTable(){
   if(!currentDept||filteredItems.length===0){
     if(currentDept)setEmpty('🔍','No results','Try a different search or click + New Item.');
@@ -867,7 +878,7 @@ function renderTable(){
   document.getElementById('results-table').style.display='';
   document.getElementById('result-count').textContent=filteredItems.length+' items';
 
-  const shownCols=columnDefs.filter(c=>!SKIP_COLS.has(c.name)&&c.name!=='Title');
+  const shownCols=reorderColumns(columnDefs.filter(c=>!SKIP_COLS.has(c.name)&&c.name!=='Title'));
   const titleCol=columnDefs.find(c=>c.name==='Title');
   if(titleCol&&!shownCols.includes(titleCol))shownCols.unshift(titleCol);
   document.getElementById('table-head').innerHTML='<tr><th style="width:18px"></th><th style="width:30px">#</th><th style="width:32px;text-align:center" title="Attachments">📎</th>'+shownCols.map(c=>`<th>${htmlEscape(c.displayName)}</th>`).join('')+'</tr>';
@@ -915,7 +926,7 @@ function openDetail(idx){
   const body=document.getElementById('form-body');
   const skipForm=new Set(['_id','_etag','ContentType','AppAuthor','AppEditor','Author','Editor']);
   let html='';
-  columnDefs.forEach(c=>{
+  reorderColumns(columnDefs).forEach(c=>{
     if(skipForm.has(c.name)||c.hidden)return;
     const lookup=c.displayName||c.name;
     let raw=item[lookup]!==undefined&&item[lookup]!==null?item[lookup]:item[c.name]!==undefined?item[c.name]:'';
@@ -1002,7 +1013,7 @@ function openForm(title,data){
   const body=document.getElementById('form-body');
   const skipForm=new Set(['_id','_etag','ContentType','AppAuthor','AppEditor','Author','Editor']);
   let html='';
-  columnDefs.forEach(c=>{
+  reorderColumns(columnDefs).forEach(c=>{
     if(skipForm.has(c.name)||c.hidden)return;
     const lookup=c.displayName||c.name;
     let raw=data[lookup]!==undefined&&data[lookup]!==null?data[lookup]:data[c.name]!==undefined?data[c.name]:'';
@@ -1653,7 +1664,7 @@ function addKpiSection(doc,items,startY,dept){
 async function exportPDF(items,cols,dept,dateFrom,dateTo,excludeChoices,fn,status){
   if(typeof jspdf==='undefined'){showToast('PDF library not loaded','error');return;}
   const {jsPDF}=window.jspdf;
-  const doc=new jsPDF('l','mm','a4');
+  const doc=new jsPDF('l','mm','a3');
   const pw=doc.internal.pageSize.getWidth();
   const ml=6,mr=6,usableW=pw-ml-mr;
   const logoData=await loadLogoDataURL();
@@ -1685,7 +1696,7 @@ async function exportPDF(items,cols,dept,dateFrom,dateTo,excludeChoices,fn,statu
 async function exportAllPDF(depts,dateFrom,dateTo,excludeChoices,fn,status){
   if(typeof jspdf==='undefined'){showToast('PDF library not loaded','error');return;}
   const {jsPDF}=window.jspdf;
-  const doc=new jsPDF('l','mm','a4');
+  const doc=new jsPDF('l','mm','a3');
   const pw=doc.internal.pageSize.getWidth();
   const ml=6,mr=6,usableW=pw-ml-mr;
   const logoData=await loadLogoDataURL();
