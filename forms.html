@@ -1640,7 +1640,7 @@ function addKpiSection(doc,items,startY,dept){
       {l:'Open MAR',v:k.openMar,c:sc(pc(k.openMar),true),p:pc(k.openMar),t:tr(total-k.openMar,total)}
     ];
     const cols=5,rows=2;
-    const boxW=Math.min((pw-2*ml-(cols-1)*gap)/cols-2,44);
+    const boxW=(pw-2*ml-(cols-1)*gap)/cols;
     const boxH=16;
     const sx=centerX(cols,boxW);
     const cardY=startY+5;
@@ -1671,7 +1671,7 @@ function addKpiSection(doc,items,startY,dept){
   if(kpis.notStarted!==undefined)cards.push({l:'Not Started',v:kpis.notStarted,c:[140,140,140]});
   if(kpis.overdue!==undefined)cards.push({l:'Overdue',v:kpis.overdue,c:R});
   if(kpis.avgProg!==undefined)cards.push({l:'Avg Progress',v:kpis.avgProg+'%',c:[80,80,90]});
-  const boxW=Math.min((pw-2*ml-cards.length*gap)/cards.length,50);
+  const boxW=(pw-2*ml-(cards.length-1)*gap)/cards.length;
   const boxH=14;
   const sx=centerX(cards.length,boxW);
   const cardY=startY+5;
