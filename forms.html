@@ -1502,79 +1502,82 @@ function addKpiSection(doc,items,startY,dept){
   if(!items||!items.length)return startY;
   const isProc=dept&&dept.id==='procurement';
   const pw=doc.internal.pageSize.getWidth();
-  const ml=6,gap=2;
-  // Lighten a color to a pastel/gentle shade
-  function lighten(c){return c.map(v=>Math.round(v+(255-v)*0.55));}
-  // Choose text color based on background luminance
-  function txtCol(c){const l=c[0]*0.299+c[1]*0.587+c[2]*0.114;return l>140?[51,51,51]:[255,255,255];}
-  function sc(pct,invert){if(invert){if(pct<=20)return[16,124,16];if(pct<=50)return[237,125,49];return[217,44,44];}if(pct>=70)return[16,124,16];if(pct>=40)return[237,125,49];return[217,44,44];}
-  function tr(g,t){if(!t)return'';const r=g/t;return r>=0.7?'ON TRACK':r>=0.4?'FAIR':'BEHIND';}
-  // Progress bar fill uses original color; background uses very light gray
-  function drawProgressBar(x,y,w,pct,color){
-    const barW=w-8,barH=2.2,barX=x+4,barY=y;
-    doc.setFillColor(230,230,230);
-    doc.roundedRect(barX,barY,barW,barH,1.1,1.1,'F');
-    doc.setFillColor(...color);
-    doc.roundedRect(barX,barY,Math.min(pct,100)/100*barW,barH,1.1,1.1,'F');
+  const ml=6,gap=2,total=items.length;
+  const CARD_BG=[240,240,242];  // gentle gray background
+  const CARD_SHADOW=[210,210,215];
+  // Status colors: green=on track, orange=fair, red=behind
+  const G=[16,130,16],O=[230,115,0],R=[210,50,50];
+  // Status color based on percentage (same logic as project-tracker)
+  function sc(pct,invert){
+    if(invert){if(pct<=20)return G;if(pct<=50)return O;return R;}
+    if(pct>=70)return G;if(pct>=40)return O;return R;
   }
-  // Draw a single KPI card
+  function tr(g,t){if(!t)return'';const r=g/t;return r>=0.7?'ON TRACK':r>=0.4?'FAIR':'BEHIND';}
+  // Progress bar: gray track, fill in status color
+  function drawProgressBar(x,y,w,pct,color){
+    const bw=w-10,bh=2.2,bx=x+5,by=y;
+    doc.setFillColor(220,220,225);
+    doc.roundedRect(bx,by,bw,bh,1.1,1.1,'F');
+    const fillW=Math.min(Math.max(pct,0),100)/100*bw;
+    if(fillW>0.5){doc.setFillColor(...color);doc.roundedRect(bx,by,fillW,bh,1.1,1.1,'F');}
+  }
+  // Draw one KPI card with management-friendly design
   function drawCard(card,x,y,boxW,boxH){
-    const bg=lighten(card.c);
-    const tc=txtCol(bg);
+    const col=card.c||[80,80,90];
     // Shadow
-    doc.setFillColor(200,200,200);
-    doc.roundedRect(x+0.4,y+0.4,boxW,boxH,2.5,2.5,'F');
-    // Main card background (rounded)
-    doc.setFillColor(...bg);
-    doc.roundedRect(x,y,boxW,boxH,2.5,2.5,'F');
-    // Thin border in original color
-    doc.setDrawColor(...card.c);doc.setLineWidth(0.3);
-    doc.roundedRect(x,y,boxW,boxH,2.5,2.5,'S');
-    // Trend badge (top-right)
+    doc.setFillColor(...CARD_SHADOW);
+    doc.roundedRect(x+0.3,y+0.3,boxW,boxH,3,3,'F');
+    // Gray card body
+    doc.setFillColor(...CARD_BG);
+    doc.roundedRect(x,y,boxW,boxH,3,3,'F');
+    // Subtle top accent line in status color
+    doc.setDrawColor(...col);doc.setLineWidth(0.6);
+    doc.line(x+6,y+1,x+boxW-6,y+1);
+    // Trend label (top-right, subtle)
     if(card.t){
-      const tw=doc.getTextWidth(card.t);
-      doc.setFillColor(...card.c);
-      doc.roundedRect(x+boxW-tw-5,y+1,tw+3.5,3.2,1,1,'F');
-      doc.setTextColor(255,255,255);doc.setFontSize(4.5);doc.setFont(undefined,'bold');
-      doc.text(card.t,x+boxW-tw/2-3.2,y+3.4,{align:'center'});
+      doc.setFontSize(4.5);doc.setFont(undefined,'bold');doc.setTextColor(...col);
+      doc.text(card.t,x+boxW-3,y+3.2,{align:'right'});
     }
-    // Label
-    doc.setTextColor(...tc);doc.setFontSize(5.5);doc.setFont(undefined,'bold');
-    doc.text(card.l,x+boxW/2,y+4.2,{align:'center'});
-    // Count value (large)
-    doc.setFontSize(14);doc.setFont(undefined,'bold');doc.setTextColor(...card.c);
-    doc.text(String(card.v),x+boxW/2-3,y+9.5,{align:'right'});
-    // Percentage (medium, next to count)
-    if(card.p!==undefined){
-      doc.setFontSize(8);doc.setFont(undefined,'normal');doc.setTextColor(...tc);
-      doc.text(card.p+'%',x+boxW/2+3,y+9.5,{align:'left'});
+    // Label (uppercase, muted)
+    doc.setFontSize(5);doc.setFont(undefined,'normal');doc.setTextColor(120,120,130);
+    doc.text(card.l.toUpperCase(),x+boxW/2,y+4.8,{align:'center'});
+    // Count: "X / Y" (large, status-colored)
+    doc.setFontSize(13);doc.setFont(undefined,'bold');doc.setTextColor(...col);
+    if(card.v!==undefined&&card.noTotal){
+      doc.text(String(card.v),x+boxW/2,y+10.5,{align:'center'});
+    }else if(card.v!==undefined&&card.p!==undefined){
+      doc.text(card.v+' / '+total,x+boxW/2-2,y+10.5,{align:'right'});
+      doc.setFontSize(7);doc.setFont(undefined,'normal');doc.setTextColor(140,140,150);
+      doc.text(card.p+'%',x+boxW/2+3,y+10.5,{align:'left'});
+    }else{
+      doc.setFontSize(13);doc.setFont(undefined,'bold');doc.setTextColor(60,60,70);
+      doc.text(String(card.v),x+boxW/2,y+10.5,{align:'center'});
     }
-    // Progress bar
-    if(card.p!==undefined)drawProgressBar(x,y+12,boxW,card.p,card.c);
+    // Progress bar at bottom
+    if(card.p!==undefined)drawProgressBar(x,y+13,boxW,card.p,col);
     doc.setTextColor(0,0,0);doc.setFont(undefined,'normal');
   }
   if(isProc){
     const k=computeProcurementKpis(items);
-    // KPI section header
-    doc.setFontSize(7);doc.setFont(undefined,'bold');doc.setTextColor(76,93,113);
-    doc.text('KEY PERFORMANCE INDICATORS',pw/2,startY-1,{align:'center'});
+    doc.setFontSize(7);doc.setFont(undefined,'bold');doc.setTextColor(80,80,95);
+    doc.text('PERFORMANCE OVERVIEW',pw/2,startY-1,{align:'center'});
     doc.setTextColor(0,0,0);doc.setFont(undefined,'normal');
-    const pc=v=>k.total?Math.round(v/k.total*100):0;
+    const pc=v=>total?Math.round(v/total*100):0;
     const cards=[
-      {l:'Total Items',v:k.total,c:[76,93,115]},
-      {l:'PO Issued',v:k.poIssued,c:sc(pc(k.poIssued)),p:pc(k.poIssued),t:tr(k.poIssued,k.total)},
-      {l:'PO Pending',v:k.poPending,c:sc(pc(k.poPending),true),p:pc(k.poPending),t:tr(k.total-k.poPending,k.total)},
-      {l:'Del. Completed',v:k.delCompleted,c:sc(pc(k.delCompleted)),p:pc(k.delCompleted),t:tr(k.delCompleted,k.total)},
-      {l:'Del. Pending',v:k.delPending,c:sc(pc(k.delPending),true),p:pc(k.delPending),t:tr(k.total-k.delPending,k.total)},
-      {l:'Long Lead',v:k.longLead,c:sc(pc(k.longLead),true),p:pc(k.longLead),t:tr(k.total-k.longLead,k.total)},
-      {l:'PQ Approved',v:k.pqApproved,c:sc(pc(k.pqApproved)),p:pc(k.pqApproved),t:tr(k.pqApproved,k.total)},
-      {l:'MAT Submitted',v:k.matSubmitted,c:sc(pc(k.matSubmitted)),p:pc(k.matSubmitted),t:tr(k.matSubmitted,k.total)},
-      {l:'MAT Approved',v:k.matApproved,c:sc(pc(k.matApproved)),p:pc(k.matApproved),t:tr(k.matApproved,k.total)},
-      {l:'Open MAR',v:k.openMar,c:sc(pc(k.openMar),true),p:pc(k.openMar),t:tr(k.total-k.openMar,k.total)}
+      {l:'Total Items',v:total,c:[80,80,90],noTotal:true},
+      {l:'PO Issued',v:k.poIssued,c:sc(pc(k.poIssued)),p:pc(k.poIssued),t:tr(k.poIssued,total)},
+      {l:'PO Pending',v:k.poPending,c:sc(pc(k.poPending),true),p:pc(k.poPending),t:tr(total-k.poPending,total)},
+      {l:'Del. Completed',v:k.delCompleted,c:sc(pc(k.delCompleted)),p:pc(k.delCompleted),t:tr(k.delCompleted,total)},
+      {l:'Del. Pending',v:k.delPending,c:sc(pc(k.delPending),true),p:pc(k.delPending),t:tr(total-k.delPending,total)},
+      {l:'Long Lead',v:k.longLead,c:sc(pc(k.longLead),true),p:pc(k.longLead),t:tr(total-k.longLead,total)},
+      {l:'PQ Approved',v:k.pqApproved,c:sc(pc(k.pqApproved)),p:pc(k.pqApproved),t:tr(k.pqApproved,total)},
+      {l:'MAT Submitted',v:k.matSubmitted,c:sc(pc(k.matSubmitted)),p:pc(k.matSubmitted),t:tr(k.matSubmitted,total)},
+      {l:'MAT Approved',v:k.matApproved,c:sc(pc(k.matApproved)),p:pc(k.matApproved),t:tr(k.matApproved,total)},
+      {l:'Open MAR',v:k.openMar,c:sc(pc(k.openMar),true),p:pc(k.openMar),t:tr(total-k.openMar,total)}
     ];
     const cols=5,rows=2;
-    const boxW=Math.min((pw-2*ml-(cols-1)*gap)/cols-2,42);
-    const boxH=18;
+    const boxW=Math.min((pw-2*ml-(cols-1)*gap)/cols-2,44);
+    const boxH=19;
     for(let r=0;r<rows;r++){
       let x=ml;
       for(let c=0;c<cols;c++){
@@ -1584,43 +1587,29 @@ function addKpiSection(doc,items,startY,dept){
         x+=boxW+gap;
       }
     }
-    // Separator line
     const sepY=startY+rows*(boxH+gap)+3;
-    doc.setDrawColor(200,200,200);doc.setLineWidth(0.3);
+    doc.setDrawColor(210,210,215);doc.setLineWidth(0.3);
     doc.line(ml+2,sepY,pw-ml-2,sepY);
     doc.setTextColor(0,0,0);doc.setFont(undefined,'normal');
     return sepY+4;
   }
   const kpis=computeKpis(items);
-  doc.setFontSize(7);doc.setFont(undefined,'bold');doc.setTextColor(76,93,113);
-  doc.text('KEY PERFORMANCE INDICATORS',pw/2,startY-1,{align:'center'});
+  doc.setFontSize(7);doc.setFont(undefined,'bold');doc.setTextColor(80,80,95);
+  doc.text('PERFORMANCE OVERVIEW',pw/2,startY-1,{align:'center'});
   doc.setTextColor(0,0,0);doc.setFont(undefined,'normal');
   const cards=[];
-  cards.push({label:'Total Items',value:kpis.total,color:[76,93,113]});
-  if(kpis.completed!==undefined)cards.push({label:'Completed',value:kpis.completed,color:[16,124,16]});
-  if(kpis.inProgress!==undefined)cards.push({label:'In Progress',value:kpis.inProgress,color:[0,183,195]});
-  if(kpis.notStarted!==undefined)cards.push({label:'Not Started',value:kpis.notStarted,color:[138,136,134]});
-  if(kpis.overdue!==undefined)cards.push({label:'Overdue',value:kpis.overdue,color:[217,44,44]});
-  if(kpis.avgProg!==undefined)cards.push({label:'Avg Progress',value:kpis.avgProg+'%',color:[141,100,184]});
+  cards.push({l:'Total Items',v:total,c:[80,80,90],noTotal:true});
+  if(kpis.completed!==undefined)cards.push({l:'Completed',v:kpis.completed,c:G});
+  if(kpis.inProgress!==undefined)cards.push({l:'In Progress',v:kpis.inProgress,c:O});
+  if(kpis.notStarted!==undefined)cards.push({l:'Not Started',v:kpis.notStarted,c:[140,140,140]});
+  if(kpis.overdue!==undefined)cards.push({l:'Overdue',v:kpis.overdue,c:R});
+  if(kpis.avgProg!==undefined)cards.push({l:'Avg Progress',v:kpis.avgProg+'%',c:[80,80,90]});
   const boxW=Math.min((pw-2*ml-cards.length*gap)/cards.length,50);
-  const boxH=15;
+  const boxH=17;
   let x=ml;
-  cards.forEach(c=>{
-    const tc=txtCol(lighten(c.color));
-    doc.setFillColor(200,200,200);
-    doc.roundedRect(x+0.3,startY+0.3,boxW,boxH,2,2,'F');
-    doc.setFillColor(...lighten(c.color));
-    doc.roundedRect(x,startY,boxW,boxH,2,2,'F');
-    doc.setDrawColor(...c.color);doc.setLineWidth(0.3);
-    doc.roundedRect(x,startY,boxW,boxH,2,2,'S');
-    doc.setTextColor(...tc);doc.setFontSize(6);doc.setFont(undefined,'bold');
-    doc.text(c.label,x+boxW/2,startY+4.5,{align:'center'});
-    doc.setFontSize(13);doc.setFont(undefined,'bold');doc.setTextColor(...c.color);
-    doc.text(String(c.value),x+boxW/2,startY+12,{align:'center'});
-    x+=boxW+gap;
-  });
+  cards.forEach(c=>{drawCard(c,x,startY,boxW,boxH);x+=boxW+gap;});
   const sepY=startY+boxH+3;
-  doc.setDrawColor(200,200,200);doc.setLineWidth(0.3);
+  doc.setDrawColor(210,210,215);doc.setLineWidth(0.3);
   doc.line(ml+2,sepY,pw-ml-2,sepY);
   doc.setTextColor(0,0,0);doc.setFont(undefined,'normal');
   return sepY+4;
