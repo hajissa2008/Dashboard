@@ -868,19 +868,8 @@ function reorderColumns(cols){
   return result;
 }
 function reorderForExport(cols){
-  // Match table view: filter, reorder RFQ after Description, Title first
-  const result=cols.filter(c=>!SKIP_COLS.has(c.name)&&c.name!=='Title'&&!c.name.startsWith('_'));
-  const titleCol=cols.find(c=>c.name==='Title');
-  if(titleCol&&!result.includes(titleCol))result.unshift(titleCol);
-  // RFQ after Description (same as reorderColumns)
-  const descIdx=result.findIndex(c=>/(description|matDesc)/i.test(c.name)||/(description)/i.test(c.displayName));
-  const rfqIdx=result.findIndex(c=>/(rfq)/i.test(c.name)||/(rfq)/i.test(c.displayName));
-  if(descIdx>=0&&rfqIdx>=0&&rfqIdx!==descIdx+1){
-    const[rfq]=result.splice(rfqIdx,1);
-    const adjDescIdx=rfqIdx<descIdx?descIdx-1:descIdx;
-    result.splice(adjDescIdx+1,0,rfq);
-  }
-  // Remarks/Notes/Comments to last position
+  // Reorder: RFQ after Description, then Remarks last (no filtering — cols are pre-filtered at fetch time)
+  const result=reorderColumns(cols);
   const rk=result.findIndex(c=>/(remarks?|comments?|notes)/i.test(c.name)||/(remarks?|comments?|notes)/i.test(c.displayName));
   if(rk>=0&&rk!==result.length-1){const[r]=result.splice(rk,1);result.push(r);}
   return result;
