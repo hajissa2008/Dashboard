@@ -868,12 +868,21 @@ function reorderColumns(cols){
   return result;
 }
 function reorderForExport(cols){
-  const result=reorderColumns(cols);
-  const remarkIdx=result.findIndex(c=>/(remarks?|comments?|notes)/i.test(c.name)||/(remarks?|comments?|notes)/i.test(c.displayName));
-  if(remarkIdx>=0&&remarkIdx!==result.length-1){
-    const [remark]=result.splice(remarkIdx,1);
-    result.push(remark);
+  // Match table view: filter, reorder RFQ after Description, Title first
+  const result=cols.filter(c=>!SKIP_COLS.has(c.name)&&c.name!=='Title'&&!c.name.startsWith('_'));
+  const titleCol=cols.find(c=>c.name==='Title');
+  if(titleCol&&!result.includes(titleCol))result.unshift(titleCol);
+  // RFQ after Description (same as reorderColumns)
+  const descIdx=result.findIndex(c=>/(description|matDesc)/i.test(c.name)||/(description)/i.test(c.displayName));
+  const rfqIdx=result.findIndex(c=>/(rfq)/i.test(c.name)||/(rfq)/i.test(c.displayName));
+  if(descIdx>=0&&rfqIdx>=0&&rfqIdx!==descIdx+1){
+    const[rfq]=result.splice(rfqIdx,1);
+    const adjDescIdx=rfqIdx<descIdx?descIdx-1:descIdx;
+    result.splice(adjDescIdx+1,0,rfq);
   }
+  // Remarks/Notes/Comments to last position
+  const rk=result.findIndex(c=>/(remarks?|comments?|notes)/i.test(c.name)||/(remarks?|comments?|notes)/i.test(c.displayName));
+  if(rk>=0&&rk!==result.length-1){const[r]=result.splice(rk,1);result.push(r);}
   return result;
 }
 function renderTable(){
@@ -1387,7 +1396,7 @@ async function exportAllExcel(depts,dateFrom,dateTo,excludeChoices,fn,status){
     status.textContent='Fetching '+d.title+'...';
     const {cols,items}=await fetchDeptData(d);
     const filtered=applyExportFilters(items,cols,dateFrom,dateTo,excludeChoices);
-    const visible=reorderForExport(exportVisibleCols(cols));
+    const visible=reorderForExport(cols);
     const rows=filtered.map(item=>{
       const row={};visible.forEach(c=>{row[c.displayName||c.name]=item[c.name]??item[c.displayName||c.name]??'';});return row;
     });
@@ -1403,7 +1412,7 @@ async function exportAllExcel(depts,dateFrom,dateTo,excludeChoices,fn,status){
 async function exportExcel(items,cols,dept,dateFrom,dateTo,excludeChoices,fn,status){
   if(typeof XLSX==='undefined'){showToast('Excel library not loaded','error');return;}
   const wb=XLSX.utils.book_new();
-  const visible=reorderForExport(exportVisibleCols(cols));
+  const visible=reorderForExport(cols);
   const rows=items.map(item=>{
     const row={};visible.forEach(c=>{row[c.displayName||c.name]=item[c.name]??item[c.displayName||c.name]??'';});return row;
   });
@@ -1441,7 +1450,7 @@ function calcColWidths(headers,data,fontSize,usableWidth){
   // Per-column min width ensures header is readable (capped at 28mm)
   const minWidths=headers.map((h,i)=>Math.min(Math.max(h.length*charW+4,12),28));
   // Hard cap — no column gets more than 45mm (keeps table balanced)
-  const MAX=45;
+  const MAX=60;
   // Iterative constraint enforcement
   for(let iter=0;iter<10;iter++){
     let changed=false;
@@ -1677,7 +1686,7 @@ async function exportPDF(items,cols,dept,dateFrom,dateTo,excludeChoices,fn,statu
   const pw=doc.internal.pageSize.getWidth();
   const ml=6,mr=6,usableW=pw-ml-mr;
   const logoData=await loadLogoDataURL();
-  const visible=reorderForExport(exportVisibleCols(cols));
+  const visible=reorderForExport(cols);
   const headers=visible.map(c=>(c.displayName||c.name));
   const data=items.map(item=>visible.map(c=>String(item[c.name]??item[c.displayName||c.name]??'')));
   const colCount=visible.length;
@@ -1717,7 +1726,7 @@ async function exportAllPDF(depts,dateFrom,dateTo,excludeChoices,fn,status){
     const {cols,items}=await fetchDeptData(d);
     const filtered=applyExportFilters(items,cols,dateFrom,dateTo,excludeChoices);
     if(!filtered.length)continue;
-    const visible=reorderForExport(exportVisibleCols(cols));
+    const visible=reorderForExport(cols);
     const headers=visible.map(c=>(c.displayName||c.name));
     const data=filtered.map(item=>visible.map(c=>String(item[c.name]??item[c.displayName||c.name]??'')));
     const colCount=visible.length;
