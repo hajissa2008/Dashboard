@@ -1443,6 +1443,55 @@ function addPDFFooter(doc,pageNum,totalPages){
   if(totalPages>1)doc.text('Page '+pageNum+' of '+totalPages,pw-8,doc.internal.pageSize.getHeight()-5,{align:'right'});
   doc.setTextColor(0,0,0);
 }
+function computeKpis(items){
+  const kpis={total:items.length};
+  if(!items.length)return kpis;
+  const first=items[0];
+  const statusKey=['status','WorkStatus','workStatus','STATUS','Status'].find(k=>first[k]!==undefined);
+  if(statusKey){
+    items.forEach(x=>{
+      const v=(x[statusKey]||'').toLowerCase();
+      if(/complete|done|acc\b.*comp|sdc\b.*comp/i.test(v))kpis.completed=(kpis.completed||0)+1;
+      else if(/in.?progress|inprogress|for.?insp|under.?review|submitted|open/i.test(v))kpis.inProgress=(kpis.inProgress||0)+1;
+      else if(/not.?start|yet.?to.?start/i.test(v))kpis.notStarted=(kpis.notStarted||0)+1;
+      if(/overdue|delay/i.test(v))kpis.overdue=(kpis.overdue||0)+1;
+    });
+  }
+  const progKey=['prog','Progress','progress','CompletionPct','DailyProgress','WeeklyProgress'].find(k=>first[k]!==undefined);
+  if(progKey){
+    const vals=items.map(x=>Number(x[progKey])).filter(v=>!isNaN(v));
+    if(vals.length)kpis.avgProg=Math.round(vals.reduce((a,b)=>a+b,0)/vals.length);
+  }
+  return kpis;
+}
+function addKpiSection(doc,items,startY){
+  if(!items||!items.length)return startY;
+  const kpis=computeKpis(items);
+  const pw=doc.internal.pageSize.getWidth();
+  const ml=6,gap=2;
+  const cards=[];
+  cards.push({label:'Total Items',value:kpis.total,color:[76,93,113]});
+  if(kpis.completed!==undefined)cards.push({label:'Completed',value:kpis.completed,color:[16,124,16]});
+  if(kpis.inProgress!==undefined)cards.push({label:'In Progress / Open',value:kpis.inProgress,color:[0,183,195]});
+  if(kpis.notStarted!==undefined)cards.push({label:'Not Started',value:kpis.notStarted,color:[138,136,134]});
+  if(kpis.overdue!==undefined)cards.push({label:'Overdue / Delayed',value:kpis.overdue,color:[217,44,44]});
+  if(kpis.avgProg!==undefined)cards.push({label:'Avg Progress',value:kpis.avgProg+'%',color:[141,100,184]});
+  const boxW=Math.min((pw-2*ml-cards.length*gap)/cards.length,50);
+  const boxH=15;
+  let x=ml;
+  cards.forEach(c=>{
+    doc.setFillColor(...c.color);
+    doc.roundedRect(x,startY,boxW,boxH,1.5,1.5,'F');
+    doc.setTextColor(255,255,255);
+    doc.setFontSize(6);doc.setFont(undefined,'normal');
+    doc.text(c.label,x+boxW/2,startY+5,{align:'center'});
+    doc.setFontSize(11);doc.setFont(undefined,'bold');
+    doc.text(String(c.value),x+boxW/2,startY+13,{align:'center'});
+    x+=boxW+gap;
+  });
+  doc.setTextColor(0,0,0);doc.setFont(undefined,'normal');
+  return startY+boxH+4;
+}
 async function exportPDF(items,cols,dept,dateFrom,dateTo,excludeChoices,fn,status){
   if(typeof jspdf==='undefined'){showToast('PDF library not loaded','error');return;}
   const {jsPDF}=window.jspdf;
@@ -1457,8 +1506,9 @@ async function exportPDF(items,cols,dept,dateFrom,dateTo,excludeChoices,fn,statu
   let fontSize=colCount>18?5:colCount>14?5.5:colCount>10?6.5:7.5;
   const widths=calcColWidths(headers,data,fontSize,usableW);
   const colStyles={};widths.forEach((w,i)=>{colStyles[i]={cellWidth:w};});
-  addPDFHeader(doc,dept.title+' - Data Export',dateFrom,dateTo,logoData);
-  const startY=dateFrom||dateTo?25:24;
+  addPDFHeader(doc,dept.title+' - Tracker Log',dateFrom,dateTo,logoData);
+  let startY=dateFrom||dateTo?25:24;
+  startY=addKpiSection(doc,items,startY);
   doc.autoTable({
     head:[headers],body:data,startY,
     styles:{fontSize,cellPadding:1.2,overflow:'linebreak',lineColor:[210,210,210],lineWidth:0.1},
@@ -1481,7 +1531,7 @@ async function exportAllPDF(depts,dateFrom,dateTo,excludeChoices,fn,status){
   const pw=doc.internal.pageSize.getWidth();
   const ml=6,mr=6,usableW=pw-ml-mr;
   const logoData=await loadLogoDataURL();
-  addPDFHeader(doc,'All Departments - Data Export',dateFrom,dateTo,logoData);
+  addPDFHeader(doc,'All Departments - Tracker Log',dateFrom,dateTo,logoData);
   let startY=dateFrom||dateTo?25:24;
   for(let i=0;i<depts.length;i++){
     const d=depts[i];
@@ -1498,7 +1548,9 @@ async function exportAllPDF(depts,dateFrom,dateTo,excludeChoices,fn,status){
     const colStyles={};widths.forEach((w,i)=>{colStyles[i]={cellWidth:w};});
     if(startY>doc.internal.pageSize.getHeight()-30){doc.addPage();startY=10;}
     doc.setFontSize(10);doc.setFont(undefined,'bold');
-    doc.text(d.title,pw/2,startY+2,{align:'center'});startY+=5;
+    doc.text(d.title,pw/2,startY+2,{align:'center'});startY+=6;
+    startY=addKpiSection(doc,filtered,startY);
+    if(startY>doc.internal.pageSize.getHeight()-30){doc.addPage();startY=10;}
     doc.autoTable({
       head:[headers],body:data,startY,
       styles:{fontSize,cellPadding:1.2,overflow:'linebreak',lineColor:[210,210,210],lineWidth:0.1},

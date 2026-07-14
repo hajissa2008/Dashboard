@@ -135,6 +135,7 @@ html,body{height:100%;font-family:'Segoe UI',-apple-system,system-ui,sans-serif;
 .kpi-card .kpi-label{font-size:11px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.4px;font-weight:600;margin-bottom:4px}
 .kpi-card .kpi-value{font-size:24px;font-weight:700;color:var(--text-primary);line-height:1.2}
 .kpi-card .kpi-sub{font-size:11px;color:var(--text-secondary);margin-top:4px;display:flex;align-items:center;gap:4px}
+.kpi-card .kpi-pct{font-size:13px;font-weight:600;color:var(--text-primary);margin-top:2px}
 .kpi-card .kpi-bar{height:4px;border-radius:2px;margin-top:10px;background:var(--gray-border);overflow:hidden}
 .kpi-card .kpi-bar-fill{height:100%;border-radius:2px;transition:width .6s ease}
 .kpi-card .kpi-trend{font-size:10px;font-weight:600;padding:1px 6px;border-radius:8px}
@@ -1933,6 +1934,7 @@ function renderDeptView(view){
         const bar=pct!=null?`<div class="kpi-bar"><div class="kpi-bar-fill" style="width:${Math.min(100,pct)}%;background:${color}"></div></div>`:'';
         const trendHtml=trend?`<span class="kpi-trend ${trend.cls}">${trend.txt}</span>`:'';
         const subHtml=sub!==undefined?`<div class="kpi-sub">${sub}</div>`:'';
+        const pctHtml=pct!=null?`<div class="kpi-pct">${Math.round(pct)}%</div>`:'';
         let ci=-1;
         if(detailItems){ci=window._kpiCache.length;window._kpiCache.push({title:label,items:detailItems||[],cols:viewCols});}
         const clickAttr=ci>=0?`onclick="showKpiModalFromCache(${ci})"`:tip?`onclick="filterByStatus('${tip}')"`:'';
@@ -1941,6 +1943,7 @@ function renderDeptView(view){
           <div class="kpi-icon">${icon}</div>
           <div class="kpi-label">${label} ${trendHtml}</div>
           <div class="kpi-value">${value}</div>
+          ${pctHtml}
           ${subHtml}
           ${bar}
         </div>`;
