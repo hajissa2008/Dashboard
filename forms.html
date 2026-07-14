@@ -608,7 +608,6 @@ async function fetchColumnDefinitions(siteUrl,listName){
   (json.value||[]).forEach(col=>{
     const n=col.name;
     if(!n||SKIP_COLS.has(n)||n.startsWith('_'))return;
-    if(n!=='ID'&&n!=='Modified'&&n!=='Created'&&(col.readOnly||col.hidden))return;
     let type='text',choices=null;
     if(col.text)type='text';
     else if(col.note)type='note';
@@ -868,11 +867,8 @@ function reorderColumns(cols){
   return result;
 }
 function reorderForExport(cols){
-  // Reorder: RFQ after Description, then Remarks last (no filtering — cols are pre-filtered at fetch time)
-  const result=reorderColumns(cols);
-  const rk=result.findIndex(c=>/(remarks?|comments?|notes)/i.test(c.name)||/(remarks?|comments?|notes)/i.test(c.displayName));
-  if(rk>=0&&rk!==result.length-1){const[r]=result.splice(rk,1);result.push(r);}
-  return result;
+  // No reordering — use SharePoint list column order as-is
+  return cols;
 }
 function renderTable(){
   if(!currentDept||filteredItems.length===0){
