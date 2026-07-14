@@ -589,7 +589,7 @@ async function spApiCall(url,method,body,binary){
   return resp;
 }
 
-const SKIP_COLS = new Set(['ID','ContentType','Modified','Created','AuthorLookupId','EditorLookupId','_UIVersionString','Attachments','Edit','LinkTitleNoMenu','LinkTitle','ItemChildCount','FolderChildCount','_ComplianceFlags','_ComplianceTag','_ComplianceTagWrittenTime','_ComplianceTagUserId','AppAuthorLookupId','AppEditorLookupId','@odata.etag']);
+const SKIP_COLS = new Set(['ContentType','AuthorLookupId','EditorLookupId','_UIVersionString','Attachments','Edit','LinkTitleNoMenu','LinkTitle','ItemChildCount','FolderChildCount','_ComplianceFlags','_ComplianceTag','_ComplianceTagWrittenTime','_ComplianceTagUserId','AppAuthorLookupId','AppEditorLookupId','@odata.etag']);
 
 async function apiCall(url,method,body){
   const opts={method:method||'GET',headers:{'Authorization':'Bearer '+spToken,'Accept':'application/json'}};
@@ -607,7 +607,8 @@ async function fetchColumnDefinitions(siteUrl,listName){
   const cols=[];
   (json.value||[]).forEach(col=>{
     const n=col.name;
-    if(!n||SKIP_COLS.has(n)||n.startsWith('_')||col.readOnly||col.hidden)return;
+    if(!n||SKIP_COLS.has(n)||n.startsWith('_'))return;
+    if(n!=='ID'&&n!=='Modified'&&n!=='Created'&&(col.readOnly||col.hidden))return;
     let type='text',choices=null;
     if(col.text)type='text';
     else if(col.note)type='note';
@@ -912,17 +913,18 @@ function openDetail(idx){
   const access=currentDept?getMyAccess(currentDept.id):'none';
   editBtn.style.display=access==='edit'?'':'none';
   const body=document.getElementById('form-body');
-  const skipForm=new Set(['_id','_etag','ID','ContentType','AppAuthor','AppEditor','Author','Editor','Created','Modified']);
+  const skipForm=new Set(['_id','_etag','ContentType','AppAuthor','AppEditor','Author','Editor']);
   let html='';
   columnDefs.forEach(c=>{
-    if(skipForm.has(c.name))return;
+    if(skipForm.has(c.name)||c.hidden)return;
     const lookup=c.displayName||c.name;
     let raw=item[lookup]!==undefined&&item[lookup]!==null?item[lookup]:item[c.name]!==undefined?item[c.name]:'';
+    if(c.name==='ID'&&!raw&&item._id!==undefined)raw=item._id;
     let vDisplay=raw;
     if(raw&&typeof raw==='object'){vDisplay=raw.LookupValue||raw.Title||raw.Email||JSON.stringify(raw);}
     vDisplay=stripHtml(vDisplay);
     const desc=c.description?`<div class="hint">${htmlEscape(stripHtml(c.description))}</div>`:'';
-    html+=`<div class="form-group"><label>${htmlEscape(c.displayName)}</label>${desc}<div style="padding:6px 0;font-size:13px;color:var(--text-primary);word-break:break-word;border-bottom:1px solid var(--gray-border)">${vDisplay?htmlEscape(vDisplay):'<span style="color:var(--text-secondary);font-style:italic">Not set</span>'}</div></div>`;
+    html+=`<div class="form-group"><label>${htmlEscape(c.displayName||c.name)}</label>${desc}<div style="padding:6px 0;font-size:13px;color:var(--text-primary);word-break:break-word;border-bottom:1px solid var(--gray-border)">${vDisplay?htmlEscape(vDisplay):'<span style="color:var(--text-secondary);font-style:italic">Not set</span>'}</div></div>`;
   });
   const aN=attachmentCounts[item._id];
   html+=`<div class="form-group"><label>Attachments</label><div id="attachment-list-view" style="padding:6px 0;font-size:13px">${aN>0?'<div class="attachment-loading">Loading...</div>':'<span style="color:var(--text-secondary);font-style:italic">None</span>'}</div></div>`;
@@ -998,10 +1000,10 @@ function startCreate(){
 function openForm(title,data){
   document.getElementById('form-title').textContent=title;
   const body=document.getElementById('form-body');
-  const skipForm=new Set(['_id','_etag','ID','ContentType','AppAuthor','AppEditor','Author','Editor','Created','Modified']);
+  const skipForm=new Set(['_id','_etag','ContentType','AppAuthor','AppEditor','Author','Editor']);
   let html='';
   columnDefs.forEach(c=>{
-    if(skipForm.has(c.name))return;
+    if(skipForm.has(c.name)||c.hidden)return;
     const lookup=c.displayName||c.name;
     let raw=data[lookup]!==undefined&&data[lookup]!==null?data[lookup]:data[c.name]!==undefined?data[c.name]:'';
     let vDisplay=raw;
@@ -1398,7 +1400,7 @@ async function exportExcel(items,cols,dept,dateFrom,dateTo,excludeChoices,fn,sta
   XLSX.utils.book_append_sheet(wb,ws,'Data');
   XLSX.writeFile(wb,fn+'.xlsx');
 }
-const EXPORT_SKIP_COLS=new Set(['ID','ContentType','Attachments','Title','LinkTitle','LinkTitleNoMenu','Edit','_UIVersionString','Modified','Created','AuthorLookupId','EditorLookupId','ItemChildCount','FolderChildCount']);
+const EXPORT_SKIP_COLS=new Set(['ContentType','Attachments','LinkTitle','LinkTitleNoMenu','Edit','_UIVersionString','AuthorLookupId','EditorLookupId','ItemChildCount','FolderChildCount']);
 function exportVisibleCols(cols){
   return cols.filter(c=>!EXPORT_SKIP_COLS.has(c.name)&&!EXPORT_SKIP_COLS.has(c.displayName)&&!c.name.startsWith('_'));
 }
