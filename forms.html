@@ -1509,17 +1509,20 @@ function addKpiSection(doc,items,startY,dept){
     doc.setFontSize(7);doc.setFont(undefined,'bold');doc.setTextColor(76,93,113);
     doc.text('KEY PERFORMANCE INDICATORS',pw/2,startY-1,{align:'center'});
     doc.setTextColor(0,0,0);doc.setFont(undefined,'normal');
+    function sc(pct,invert){if(invert){if(pct<=20)return[16,124,16];if(pct<=50)return[237,125,49];return[217,44,44];}if(pct>=70)return[16,124,16];if(pct>=40)return[237,125,49];return[217,44,44];}
+    function tr(g,t){if(!t)return'';const r=g/t;return r>=0.7?'ON TRACK':r>=0.4?'FAIR':'BEHIND';}
+    const pc=v=>k.total?Math.round(v/k.total*100):0;
     const cards=[
       {l:'Total Items',v:k.total,c:[76,93,115]},
-      {l:'PO Issued',v:k.poIssued,c:[16,124,16],p:Math.round(k.poIssued/k.total*100)},
-      {l:'PO Pending',v:k.poPending,c:[217,44,44],p:Math.round(k.poPending/k.total*100)},
-      {l:'Del. Completed',v:k.delCompleted,c:[16,124,16],p:Math.round(k.delCompleted/k.total*100)},
-      {l:'Del. Pending',v:k.delPending,c:[217,44,44],p:Math.round(k.delPending/k.total*100)},
-      {l:'Long Lead',v:k.longLead,c:[217,44,44],p:Math.round(k.longLead/k.total*100)},
-      {l:'PQ Approved',v:k.pqApproved,c:[16,124,16],p:Math.round(k.pqApproved/k.total*100)},
-      {l:'MAT Submitted',v:k.matSubmitted,c:[46,139,87],p:Math.round(k.matSubmitted/k.total*100)},
-      {l:'MAT Approved',v:k.matApproved,c:[16,124,16],p:Math.round(k.matApproved/k.total*100)},
-      {l:'Open MAR',v:k.openMar,c:[217,44,44],p:Math.round(k.openMar/k.total*100)}
+      {l:'PO Issued',v:k.poIssued,c:sc(pc(k.poIssued)),p:pc(k.poIssued),t:tr(k.poIssued,k.total)},
+      {l:'PO Pending',v:k.poPending,c:sc(pc(k.poPending),true),p:pc(k.poPending),t:tr(k.total-k.poPending,k.total)},
+      {l:'Del. Completed',v:k.delCompleted,c:sc(pc(k.delCompleted)),p:pc(k.delCompleted),t:tr(k.delCompleted,k.total)},
+      {l:'Del. Pending',v:k.delPending,c:sc(pc(k.delPending),true),p:pc(k.delPending),t:tr(k.total-k.delPending,k.total)},
+      {l:'Long Lead',v:k.longLead,c:sc(pc(k.longLead),true),p:pc(k.longLead),t:tr(k.total-k.longLead,k.total)},
+      {l:'PQ Approved',v:k.pqApproved,c:sc(pc(k.pqApproved)),p:pc(k.pqApproved),t:tr(k.pqApproved,k.total)},
+      {l:'MAT Submitted',v:k.matSubmitted,c:sc(pc(k.matSubmitted)),p:pc(k.matSubmitted),t:tr(k.matSubmitted,k.total)},
+      {l:'MAT Approved',v:k.matApproved,c:sc(pc(k.matApproved)),p:pc(k.matApproved),t:tr(k.matApproved,k.total)},
+      {l:'Open MAR',v:k.openMar,c:sc(pc(k.openMar),true),p:pc(k.openMar),t:tr(k.total-k.openMar,k.total)}
     ];
     const cols=5,rows=2;
     const boxW=Math.min((pw-2*ml-(cols-1)*gap)/cols-2,42);
@@ -1545,6 +1548,15 @@ function addKpiSection(doc,items,startY,dept){
         doc.text(card.l,x+boxW/2,y+4.5,{align:'center'});
         doc.setFontSize(13);doc.setFont(undefined,'bold');
         doc.text(String(card.v),x+boxW/2,y+11.5,{align:'center'});
+        if(card.t){
+          doc.setFontSize(4.5);doc.setFont(undefined,'bold');
+          const tw=doc.getTextWidth(card.t);
+          doc.setFillColor(255,255,255,120);
+          doc.roundedRect(x+boxW/2-tw/2-1.5,y+0.5,tw+3,3,0.8,0.8,'F');
+          doc.setTextColor(...card.c);
+          doc.text(card.t,x+boxW/2,y+2.8,{align:'center'});
+          doc.setTextColor(255,255,255);
+        }
         if(card.p!==undefined){
           // Progress bar background
           doc.setFillColor(255,255,255,60);
