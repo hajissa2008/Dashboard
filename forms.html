@@ -1592,34 +1592,34 @@ function addKpiSection(doc,items,startY,dept){
     doc.line(x+4,y+0.5,x+boxW-4,y+0.5);
     // Trend label (top-right)
     if(card.t){
-      doc.setFontSize(5);doc.setFont(undefined,'bold');doc.setTextColor(...col);
-      doc.text(card.t,x+boxW-3,y+3.5,{align:'right'});
+      doc.setFontSize(4);doc.setFont(undefined,'bold');doc.setTextColor(...col);
+      doc.text(card.t,x+boxW-3,y+3,{align:'right'});
     }
     // Label (uppercase, muted)
-    doc.setFontSize(5.5);doc.setFont(undefined,'normal');doc.setTextColor(120,120,130);
-    doc.text(card.l.toUpperCase(),x+boxW/2,y+5,{align:'center'});
+    doc.setFontSize(4.5);doc.setFont(undefined,'normal');doc.setTextColor(120,120,130);
+    doc.text(card.l.toUpperCase(),x+boxW/2,y+4.2,{align:'center'});
     // Count: "X / Y" (large, bold, status-colored)
-    doc.setFontSize(14);doc.setFont(undefined,'bold');doc.setTextColor(...col);
+    doc.setFontSize(11);doc.setFont(undefined,'bold');doc.setTextColor(...col);
     if(card.v!==undefined&&card.noTotal){
-      doc.text(String(card.v),x+boxW/2,y+11,{align:'center'});
+      doc.text(String(card.v),x+boxW/2,y+9,{align:'center'});
     }else if(card.v!==undefined&&card.p!==undefined){
-      doc.text(card.v+' / '+total,x+boxW/2-2,y+11,{align:'right'});
-      doc.setFontSize(7.5);doc.setFont(undefined,'normal');doc.setTextColor(140,140,150);
-      doc.text(card.p+'%',x+boxW/2+3,y+11,{align:'left'});
+      doc.text(card.v+' / '+total,x+boxW/2-2,y+9,{align:'right'});
+      doc.setFontSize(6);doc.setFont(undefined,'normal');doc.setTextColor(140,140,150);
+      doc.text(card.p+'%',x+boxW/2+3,y+9,{align:'left'});
     }else{
-      doc.setFontSize(14);doc.setFont(undefined,'bold');doc.setTextColor(60,60,70);
-      doc.text(String(card.v),x+boxW/2,y+11,{align:'center'});
+      doc.setFontSize(11);doc.setFont(undefined,'bold');doc.setTextColor(60,60,70);
+      doc.text(String(card.v),x+boxW/2,y+9,{align:'center'});
     }
     // Progress bar at bottom
-    if(card.p!==undefined)drawProgressBar(x,y+14,boxW,card.p,col);
+    if(card.p!==undefined)drawProgressBar(x,y+11.5,boxW,card.p,col);
     doc.setTextColor(0,0,0);doc.setFont(undefined,'normal');
   }
   // Centered start X for card rows (truly centered on page)
   function centerX(n,boxW){const tw=n*boxW+(n-1)*gap;return(pw-tw)/2;}
   if(isProc){
     const k=computeProcurementKpis(items);
-    startY+=6;
-    doc.setFontSize(8);doc.setFont(undefined,'bold');doc.setTextColor(80,80,95);
+    startY+=4;
+    doc.setFontSize(7);doc.setFont(undefined,'bold');doc.setTextColor(80,80,95);
     doc.text('PERFORMANCE OVERVIEW',pw/2,startY,{align:'center'});
     doc.setTextColor(0,0,0);doc.setFont(undefined,'normal');
     const pc=v=>total?Math.round(v/total*100):0;
@@ -1637,9 +1637,9 @@ function addKpiSection(doc,items,startY,dept){
     ];
     const cols=5,rows=2;
     const boxW=Math.min((pw-2*ml-(cols-1)*gap)/cols-2,44);
-    const boxH=20;
+    const boxH=16;
     const sx=centerX(cols,boxW);
-    const cardY=startY+7;
+    const cardY=startY+5;
     for(let r=0;r<rows;r++){
       let x=sx;
       for(let c=0;c<cols;c++){
@@ -1649,15 +1649,15 @@ function addKpiSection(doc,items,startY,dept){
         x+=boxW+gap;
       }
     }
-    const sepY=cardY+rows*(boxH+gap)+5;
+    const sepY=cardY+rows*(boxH+gap)+3;
     doc.setDrawColor(200,200,205);doc.setLineWidth(0.6);
     doc.line(sx,sepY,sx+cols*boxW+(cols-1)*gap,sepY);
     doc.setTextColor(0,0,0);doc.setFont(undefined,'normal');
-    return sepY+5;
+    return sepY+3;
   }
   const kpis=computeKpis(items);
-  startY+=6;
-  doc.setFontSize(8);doc.setFont(undefined,'bold');doc.setTextColor(80,80,95);
+  startY+=4;
+  doc.setFontSize(7);doc.setFont(undefined,'bold');doc.setTextColor(80,80,95);
   doc.text('PERFORMANCE OVERVIEW',pw/2,startY,{align:'center'});
   doc.setTextColor(0,0,0);doc.setFont(undefined,'normal');
   const cards=[];
@@ -1668,16 +1668,16 @@ function addKpiSection(doc,items,startY,dept){
   if(kpis.overdue!==undefined)cards.push({l:'Overdue',v:kpis.overdue,c:R});
   if(kpis.avgProg!==undefined)cards.push({l:'Avg Progress',v:kpis.avgProg+'%',c:[80,80,90]});
   const boxW=Math.min((pw-2*ml-cards.length*gap)/cards.length,50);
-  const boxH=18;
+  const boxH=14;
   const sx=centerX(cards.length,boxW);
-  const cardY=startY+7;
+  const cardY=startY+5;
   let x=sx;
   cards.forEach(c=>{drawCard(c,x,cardY,boxW,boxH);x+=boxW+gap;});
-  const sepY=cardY+boxH+5;
+  const sepY=cardY+boxH+3;
   doc.setDrawColor(200,200,205);doc.setLineWidth(0.6);
   doc.line(sx,sepY,sx+cards.length*boxW+(cards.length-1)*gap,sepY);
   doc.setTextColor(0,0,0);doc.setFont(undefined,'normal');
-  return sepY+5;
+  return sepY+3;
 }
 async function exportPDF(items,cols,dept,dateFrom,dateTo,excludeChoices,fn,status){
   if(typeof jspdf==='undefined'){showToast('PDF library not loaded','error');return;}
@@ -1690,19 +1690,21 @@ async function exportPDF(items,cols,dept,dateFrom,dateTo,excludeChoices,fn,statu
   const headers=visible.map(c=>(c.displayName||c.name));
   const data=items.map(item=>visible.map(c=>String(item[c.name]??item[c.displayName||c.name]??'')));
   const colCount=visible.length;
-  let fontSize=colCount>18?5:colCount>14?5.5:colCount>10?6.5:7.5;
+  let fontSize=colCount>18?4:colCount>14?4.5:colCount>10?5.5:6.5;
   const widths=calcColWidths(headers,data,fontSize,usableW);
   const colStyles={};widths.forEach((w,i)=>{colStyles[i]={cellWidth:w};});
   addPDFHeader(doc,dept.title+' - Tracker Log',dateFrom,dateTo,logoData);
-  let startY=dateFrom||dateTo?30:29;
+  let startY=dateFrom||dateTo?26:25;
   startY=addKpiSection(doc,items,startY,dept);
+  if(startY>doc.internal.pageSize.getHeight()-15){startY=10;doc.addPage();}
   doc.autoTable({
     head:[headers],body:data,startY,
-    styles:{fontSize,cellPadding:1.2,overflow:'linebreak',lineColor:[210,210,210],lineWidth:0.1},
-    headStyles:{fillColor:[76,93,113],fontSize,halign:'center',valign:'middle',lineColor:[76,93,113],lineWidth:0.2},
+    styles:{fontSize,cellPadding:0.6,overflow:'linebreak',lineColor:[210,210,210],lineWidth:0.05},
+    headStyles:{fillColor:[76,93,113],fontSize:Math.max(fontSize,4.5),halign:'center',valign:'middle',lineColor:[76,93,113],lineWidth:0.15},
     alternateRowStyles:{fillColor:[246,246,246]},
     columnStyles:colStyles,
-    margin:{left:ml,right:mr},
+    margin:{left:ml,right:mr,bottom:8},
+    pageBreak:'auto',
     didDrawPage:function(d){
       const pn=doc.internal.getCurrentPageInfo().pageNumber;
       const tp=doc.internal.getNumberOfPages();
@@ -1730,28 +1732,29 @@ async function exportAllPDF(depts,dateFrom,dateTo,excludeChoices,fn,status){
     const headers=visible.map(c=>(c.displayName||c.name));
     const data=filtered.map(item=>visible.map(c=>String(item[c.name]??item[c.displayName||c.name]??'')));
     const colCount=visible.length;
-    let fontSize=colCount>18?5:colCount>14?5.5:colCount>10?6.5:7.5;
+    let fontSize=colCount>18?4:colCount>14?4.5:colCount>10?5.5:6.5;
     const widths=calcColWidths(headers,data,fontSize,usableW);
     const colStyles={};widths.forEach((w,i)=>{colStyles[i]={cellWidth:w};});
-    if(startY>doc.internal.pageSize.getHeight()-30){doc.addPage();startY=10;}
-    doc.setFontSize(10);doc.setFont(undefined,'bold');
-    doc.text(d.title,pw/2,startY+2,{align:'center'});startY+=6;
+    if(startY>doc.internal.pageSize.getHeight()-20){doc.addPage();startY=8;}
+    doc.setFontSize(8);doc.setFont(undefined,'bold');
+    doc.text(d.title,pw/2,startY+2,{align:'center'});startY+=4;
     startY=addKpiSection(doc,filtered,startY,d);
-    if(startY>doc.internal.pageSize.getHeight()-30){doc.addPage();startY=10;}
+    if(startY>doc.internal.pageSize.getHeight()-15){doc.addPage();startY=10;}
     doc.autoTable({
       head:[headers],body:data,startY,
-      styles:{fontSize,cellPadding:1.2,overflow:'linebreak',lineColor:[210,210,210],lineWidth:0.1},
-      headStyles:{fillColor:[76,93,113],fontSize,halign:'center',valign:'middle',lineColor:[76,93,113],lineWidth:0.2},
+      styles:{fontSize,cellPadding:0.6,overflow:'linebreak',lineColor:[210,210,210],lineWidth:0.05},
+      headStyles:{fillColor:[76,93,113],fontSize:Math.max(fontSize,4.5),halign:'center',valign:'middle',lineColor:[76,93,113],lineWidth:0.15},
       alternateRowStyles:{fillColor:[246,246,246]},
       columnStyles:colStyles,
-      margin:{left:ml,right:mr},
+      margin:{left:ml,right:mr,bottom:8},
+      pageBreak:'auto',
       didDrawPage:function(d){
         const pn=doc.internal.getCurrentPageInfo().pageNumber;
         const tp=doc.internal.getNumberOfPages();
         addPDFFooter(doc,pn,tp);
       }
     });
-    startY=doc.lastAutoTable.finalY+10;
+    startY=doc.lastAutoTable.finalY+6;
   }
   doc.save(fn+'.pdf');
 }
