@@ -1503,14 +1503,62 @@ function addKpiSection(doc,items,startY,dept){
   const isProc=dept&&dept.id==='procurement';
   const pw=doc.internal.pageSize.getWidth();
   const ml=6,gap=2;
+  // Lighten a color to a pastel/gentle shade
+  function lighten(c){return c.map(v=>Math.round(v+(255-v)*0.55));}
+  // Choose text color based on background luminance
+  function txtCol(c){const l=c[0]*0.299+c[1]*0.587+c[2]*0.114;return l>140?[51,51,51]:[255,255,255];}
+  function sc(pct,invert){if(invert){if(pct<=20)return[16,124,16];if(pct<=50)return[237,125,49];return[217,44,44];}if(pct>=70)return[16,124,16];if(pct>=40)return[237,125,49];return[217,44,44];}
+  function tr(g,t){if(!t)return'';const r=g/t;return r>=0.7?'ON TRACK':r>=0.4?'FAIR':'BEHIND';}
+  // Progress bar fill uses original color; background uses very light gray
+  function drawProgressBar(x,y,w,pct,color){
+    const barW=w-8,barH=2.2,barX=x+4,barY=y;
+    doc.setFillColor(230,230,230);
+    doc.roundedRect(barX,barY,barW,barH,1.1,1.1,'F');
+    doc.setFillColor(...color);
+    doc.roundedRect(barX,barY,Math.min(pct,100)/100*barW,barH,1.1,1.1,'F');
+  }
+  // Draw a single KPI card
+  function drawCard(card,x,y,boxW,boxH){
+    const bg=lighten(card.c);
+    const tc=txtCol(bg);
+    // Shadow
+    doc.setFillColor(200,200,200);
+    doc.roundedRect(x+0.4,y+0.4,boxW,boxH,2.5,2.5,'F');
+    // Main card background (rounded)
+    doc.setFillColor(...bg);
+    doc.roundedRect(x,y,boxW,boxH,2.5,2.5,'F');
+    // Thin border in original color
+    doc.setDrawColor(...card.c);doc.setLineWidth(0.3);
+    doc.roundedRect(x,y,boxW,boxH,2.5,2.5,'S');
+    // Trend badge (top-right)
+    if(card.t){
+      const tw=doc.getTextWidth(card.t);
+      doc.setFillColor(...card.c);
+      doc.roundedRect(x+boxW-tw-5,y+1,tw+3.5,3.2,1,1,'F');
+      doc.setTextColor(255,255,255);doc.setFontSize(4.5);doc.setFont(undefined,'bold');
+      doc.text(card.t,x+boxW-tw/2-3.2,y+3.4,{align:'center'});
+    }
+    // Label
+    doc.setTextColor(...tc);doc.setFontSize(5.5);doc.setFont(undefined,'bold');
+    doc.text(card.l,x+boxW/2,y+4.2,{align:'center'});
+    // Count value (large)
+    doc.setFontSize(14);doc.setFont(undefined,'bold');doc.setTextColor(...card.c);
+    doc.text(String(card.v),x+boxW/2-3,y+9.5,{align:'right'});
+    // Percentage (medium, next to count)
+    if(card.p!==undefined){
+      doc.setFontSize(8);doc.setFont(undefined,'normal');doc.setTextColor(...tc);
+      doc.text(card.p+'%',x+boxW/2+3,y+9.5,{align:'left'});
+    }
+    // Progress bar
+    if(card.p!==undefined)drawProgressBar(x,y+12,boxW,card.p,card.c);
+    doc.setTextColor(0,0,0);doc.setFont(undefined,'normal');
+  }
   if(isProc){
     const k=computeProcurementKpis(items);
     // KPI section header
     doc.setFontSize(7);doc.setFont(undefined,'bold');doc.setTextColor(76,93,113);
     doc.text('KEY PERFORMANCE INDICATORS',pw/2,startY-1,{align:'center'});
     doc.setTextColor(0,0,0);doc.setFont(undefined,'normal');
-    function sc(pct,invert){if(invert){if(pct<=20)return[16,124,16];if(pct<=50)return[237,125,49];return[217,44,44];}if(pct>=70)return[16,124,16];if(pct>=40)return[237,125,49];return[217,44,44];}
-    function tr(g,t){if(!t)return'';const r=g/t;return r>=0.7?'ON TRACK':r>=0.4?'FAIR':'BEHIND';}
     const pc=v=>k.total?Math.round(v/k.total*100):0;
     const cards=[
       {l:'Total Items',v:k.total,c:[76,93,115]},
@@ -1526,55 +1574,22 @@ function addKpiSection(doc,items,startY,dept){
     ];
     const cols=5,rows=2;
     const boxW=Math.min((pw-2*ml-(cols-1)*gap)/cols-2,42);
-    const boxH=17;
+    const boxH=18;
     for(let r=0;r<rows;r++){
       let x=ml;
       for(let c=0;c<cols;c++){
         const idx=r*cols+c;
         if(idx>=cards.length)break;
-        const card=cards[idx];
-        const y=startY+r*(boxH+gap);
-        // Shadow/edge for 3D effect
-        doc.setFillColor(...card.c.map((v,i)=>Math.max(v-30,0)));
-        doc.roundedRect(x+0.3,y+0.3,boxW,boxH,2,2,'F');
-        // Main card fill
-        doc.setFillColor(...card.c);
-        doc.roundedRect(x,y,boxW,boxH,2,2,'F');
-        // White inner accent line at top
-        doc.setDrawColor(255,255,255);doc.setLineWidth(0.3);
-        doc.line(x+4,y+0.5,x+boxW-4,y+0.5);
-        doc.setTextColor(255,255,255);
-        doc.setFontSize(5.5);doc.setFont(undefined,'bold');
-        doc.text(card.l,x+boxW/2,y+4.5,{align:'center'});
-        doc.setFontSize(13);doc.setFont(undefined,'bold');
-        doc.text(String(card.v),x+boxW/2,y+11.5,{align:'center'});
-        if(card.t){
-          doc.setFontSize(4.5);doc.setFont(undefined,'bold');
-          const tw=doc.getTextWidth(card.t);
-          doc.setFillColor(255,255,255,120);
-          doc.roundedRect(x+boxW/2-tw/2-1.5,y+0.5,tw+3,3,0.8,0.8,'F');
-          doc.setTextColor(...card.c);
-          doc.text(card.t,x+boxW/2,y+2.8,{align:'center'});
-          doc.setTextColor(255,255,255);
-        }
-        if(card.p!==undefined){
-          // Progress bar background
-          doc.setFillColor(255,255,255,60);
-          const barW=boxW-8,barH=2,barX=x+4,barY=y+14;
-          doc.roundedRect(barX,barY,barW,barH,1,1,'F');
-          // Progress bar fill
-          doc.setFillColor(255,255,255,180);
-          doc.roundedRect(barX,barY,Math.min(card.p,100)/100*barW,barH,1,1,'F');
-        }
+        drawCard(cards[idx],x,startY+r*(boxH+gap),boxW,boxH);
         x+=boxW+gap;
       }
     }
     // Separator line
     const sepY=startY+rows*(boxH+gap)+3;
-    doc.setDrawColor(76,93,113);doc.setLineWidth(0.4);
+    doc.setDrawColor(200,200,200);doc.setLineWidth(0.3);
     doc.line(ml+2,sepY,pw-ml-2,sepY);
     doc.setTextColor(0,0,0);doc.setFont(undefined,'normal');
-    return sepY+3;
+    return sepY+4;
   }
   const kpis=computeKpis(items);
   doc.setFontSize(7);doc.setFont(undefined,'bold');doc.setTextColor(76,93,113);
@@ -1583,30 +1598,32 @@ function addKpiSection(doc,items,startY,dept){
   const cards=[];
   cards.push({label:'Total Items',value:kpis.total,color:[76,93,113]});
   if(kpis.completed!==undefined)cards.push({label:'Completed',value:kpis.completed,color:[16,124,16]});
-  if(kpis.inProgress!==undefined)cards.push({label:'In Progress / Open',value:kpis.inProgress,color:[0,183,195]});
+  if(kpis.inProgress!==undefined)cards.push({label:'In Progress',value:kpis.inProgress,color:[0,183,195]});
   if(kpis.notStarted!==undefined)cards.push({label:'Not Started',value:kpis.notStarted,color:[138,136,134]});
-  if(kpis.overdue!==undefined)cards.push({label:'Overdue / Delayed',value:kpis.overdue,color:[217,44,44]});
+  if(kpis.overdue!==undefined)cards.push({label:'Overdue',value:kpis.overdue,color:[217,44,44]});
   if(kpis.avgProg!==undefined)cards.push({label:'Avg Progress',value:kpis.avgProg+'%',color:[141,100,184]});
   const boxW=Math.min((pw-2*ml-cards.length*gap)/cards.length,50);
   const boxH=15;
   let x=ml;
   cards.forEach(c=>{
-    doc.setFillColor(...c.color.map((v,i)=>Math.max(v-25,0)));
-    doc.roundedRect(x+0.3,startY+0.3,boxW,boxH,1.5,1.5,'F');
-    doc.setFillColor(...c.color);
-    doc.roundedRect(x,startY,boxW,boxH,1.5,1.5,'F');
-    doc.setTextColor(255,255,255);
-    doc.setFontSize(6);doc.setFont(undefined,'bold');
+    const tc=txtCol(lighten(c.color));
+    doc.setFillColor(200,200,200);
+    doc.roundedRect(x+0.3,startY+0.3,boxW,boxH,2,2,'F');
+    doc.setFillColor(...lighten(c.color));
+    doc.roundedRect(x,startY,boxW,boxH,2,2,'F');
+    doc.setDrawColor(...c.color);doc.setLineWidth(0.3);
+    doc.roundedRect(x,startY,boxW,boxH,2,2,'S');
+    doc.setTextColor(...tc);doc.setFontSize(6);doc.setFont(undefined,'bold');
     doc.text(c.label,x+boxW/2,startY+4.5,{align:'center'});
-    doc.setFontSize(12);doc.setFont(undefined,'bold');
+    doc.setFontSize(13);doc.setFont(undefined,'bold');doc.setTextColor(...c.color);
     doc.text(String(c.value),x+boxW/2,startY+12,{align:'center'});
     x+=boxW+gap;
   });
   const sepY=startY+boxH+3;
-  doc.setDrawColor(76,93,113);doc.setLineWidth(0.4);
+  doc.setDrawColor(200,200,200);doc.setLineWidth(0.3);
   doc.line(ml+2,sepY,pw-ml-2,sepY);
   doc.setTextColor(0,0,0);doc.setFont(undefined,'normal');
-  return sepY+3;
+  return sepY+4;
 }
 async function exportPDF(items,cols,dept,dateFrom,dateTo,excludeChoices,fn,status){
   if(typeof jspdf==='undefined'){showToast('PDF library not loaded','error');return;}
