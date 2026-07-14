@@ -1429,7 +1429,15 @@ async function exportExcel(items,cols,dept,dateFrom,dateTo,excludeChoices,fn,sta
   XLSX.utils.book_append_sheet(wb,ws,'Data');
   XLSX.writeFile(wb,fn+'.xlsx');
 }
-const EXPORT_SKIP_COLS=new Set(['ContentType','Attachments','LinkTitle','LinkTitleNoMenu','Edit','_UIVersionString','AuthorLookupId','EditorLookupId','ItemChildCount','FolderChildCount']);
+function downloadBlob(blob,name){
+  const safeName=name.replace(/[<>:"/\\|?*]/g,'_');
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download=safeName;a.style.display='none';
+  document.body.appendChild(a);a.click();
+  // Don't revoke — let browser GC handle it; user can also right-click-save
+  setTimeout(()=>document.body.removeChild(a),1000);
+}
 function exportVisibleCols(cols){
   return cols.filter(c=>!EXPORT_SKIP_COLS.has(c.name)&&!EXPORT_SKIP_COLS.has(c.displayName)&&!c.name.startsWith('_'));
 }
@@ -1711,7 +1719,7 @@ async function exportPDF(items,cols,dept,dateFrom,dateTo,excludeChoices,fn,statu
       addPDFFooter(doc,pn,tp);
     }
   });
-  doc.save(fn+'.pdf');
+  downloadBlob(doc.output('blob'),fn+'.pdf');
 }
 async function exportAllPDF(depts,dateFrom,dateTo,excludeChoices,fn,status){
   if(typeof jspdf==='undefined'){showToast('PDF library not loaded','error');return;}
@@ -1756,7 +1764,7 @@ async function exportAllPDF(depts,dateFrom,dateTo,excludeChoices,fn,status){
     });
     startY=doc.lastAutoTable.finalY+6;
   }
-  doc.save(fn+'.pdf');
+  downloadBlob(doc.output('blob'),fn+'.pdf');
 }
 
 // ======================== CONFIG ========================
