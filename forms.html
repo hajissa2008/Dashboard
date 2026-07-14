@@ -1431,12 +1431,21 @@ async function exportExcel(items,cols,dept,dateFrom,dateTo,excludeChoices,fn,sta
 }
 function downloadBlob(blob,name){
   const safeName=name.replace(/[<>:"/\\|?*]/g,'_');
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement('a');
-  a.href=url;a.download=safeName;a.style.display='none';
-  document.body.appendChild(a);a.click();
-  // Don't revoke — let browser GC handle it; user can also right-click-save
-  setTimeout(()=>document.body.removeChild(a),1000);
+  // Method 1: anchor click with blob URL
+  try{
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;a.download=safeName;a.style.display='none';
+    document.body.appendChild(a);a.click();
+    setTimeout(()=>document.body.removeChild(a),1000);
+    return;
+  }catch(e){console.warn('downloadBlob method 1 failed:',e);}
+  // Method 2: window.open fallback
+  try{
+    const url=URL.createObjectURL(blob);
+    window.open(url,'_blank');
+    setTimeout(()=>URL.revokeObjectURL(url),30000);
+  }catch(e){console.warn('downloadBlob method 2 failed:',e);}
 }
 function exportVisibleCols(cols){
   return cols.filter(c=>!EXPORT_SKIP_COLS.has(c.name)&&!EXPORT_SKIP_COLS.has(c.displayName)&&!c.name.startsWith('_'));
@@ -1719,7 +1728,7 @@ async function exportPDF(items,cols,dept,dateFrom,dateTo,excludeChoices,fn,statu
       addPDFFooter(doc,pn,tp);
     }
   });
-  downloadBlob(doc.output('blob'),fn+'.pdf');
+  try{downloadBlob(doc.output('blob'),fn+'.pdf');}catch(e){console.warn('Blob output failed, using doc.save:',e);doc.save(fn+'.pdf');}
 }
 async function exportAllPDF(depts,dateFrom,dateTo,excludeChoices,fn,status){
   if(typeof jspdf==='undefined'){showToast('PDF library not loaded','error');return;}
@@ -1764,7 +1773,7 @@ async function exportAllPDF(depts,dateFrom,dateTo,excludeChoices,fn,status){
     });
     startY=doc.lastAutoTable.finalY+6;
   }
-  downloadBlob(doc.output('blob'),fn+'.pdf');
+  try{downloadBlob(doc.output('blob'),fn+'.pdf');}catch(e){console.warn('Blob output failed, using doc.save:',e);doc.save(fn+'.pdf');}
 }
 
 // ======================== CONFIG ========================
