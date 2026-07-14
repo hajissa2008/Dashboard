@@ -1530,37 +1530,40 @@ function addKpiSection(doc,items,startY,dept){
     // Gray card body
     doc.setFillColor(...CARD_BG);
     doc.roundedRect(x,y,boxW,boxH,3,3,'F');
-    // Subtle top accent line in status color
-    doc.setDrawColor(...col);doc.setLineWidth(0.6);
-    doc.line(x+6,y+1,x+boxW-6,y+1);
-    // Trend label (top-right, subtle)
+    // Bold top accent line in status color
+    doc.setDrawColor(...col);doc.setLineWidth(1.2);
+    doc.line(x+4,y+0.5,x+boxW-4,y+0.5);
+    // Trend label (top-right)
     if(card.t){
-      doc.setFontSize(4.5);doc.setFont(undefined,'bold');doc.setTextColor(...col);
-      doc.text(card.t,x+boxW-3,y+3.2,{align:'right'});
+      doc.setFontSize(5);doc.setFont(undefined,'bold');doc.setTextColor(...col);
+      doc.text(card.t,x+boxW-3,y+3.5,{align:'right'});
     }
     // Label (uppercase, muted)
-    doc.setFontSize(5);doc.setFont(undefined,'normal');doc.setTextColor(120,120,130);
-    doc.text(card.l.toUpperCase(),x+boxW/2,y+4.8,{align:'center'});
-    // Count: "X / Y" (large, status-colored)
-    doc.setFontSize(13);doc.setFont(undefined,'bold');doc.setTextColor(...col);
+    doc.setFontSize(5.5);doc.setFont(undefined,'normal');doc.setTextColor(120,120,130);
+    doc.text(card.l.toUpperCase(),x+boxW/2,y+5,{align:'center'});
+    // Count: "X / Y" (large, bold, status-colored)
+    doc.setFontSize(14);doc.setFont(undefined,'bold');doc.setTextColor(...col);
     if(card.v!==undefined&&card.noTotal){
-      doc.text(String(card.v),x+boxW/2,y+10.5,{align:'center'});
+      doc.text(String(card.v),x+boxW/2,y+11,{align:'center'});
     }else if(card.v!==undefined&&card.p!==undefined){
-      doc.text(card.v+' / '+total,x+boxW/2-2,y+10.5,{align:'right'});
-      doc.setFontSize(7);doc.setFont(undefined,'normal');doc.setTextColor(140,140,150);
-      doc.text(card.p+'%',x+boxW/2+3,y+10.5,{align:'left'});
+      doc.text(card.v+' / '+total,x+boxW/2-2,y+11,{align:'right'});
+      doc.setFontSize(7.5);doc.setFont(undefined,'normal');doc.setTextColor(140,140,150);
+      doc.text(card.p+'%',x+boxW/2+3,y+11,{align:'left'});
     }else{
-      doc.setFontSize(13);doc.setFont(undefined,'bold');doc.setTextColor(60,60,70);
-      doc.text(String(card.v),x+boxW/2,y+10.5,{align:'center'});
+      doc.setFontSize(14);doc.setFont(undefined,'bold');doc.setTextColor(60,60,70);
+      doc.text(String(card.v),x+boxW/2,y+11,{align:'center'});
     }
     // Progress bar at bottom
-    if(card.p!==undefined)drawProgressBar(x,y+13,boxW,card.p,col);
+    if(card.p!==undefined)drawProgressBar(x,y+14,boxW,card.p,col);
     doc.setTextColor(0,0,0);doc.setFont(undefined,'normal');
   }
+  // Centered start X for card rows (truly centered on page)
+  function centerX(n,boxW){const tw=n*boxW+(n-1)*gap;return(pw-tw)/2;}
   if(isProc){
     const k=computeProcurementKpis(items);
-    doc.setFontSize(7);doc.setFont(undefined,'bold');doc.setTextColor(80,80,95);
-    doc.text('PERFORMANCE OVERVIEW',pw/2,startY-1,{align:'center'});
+    startY+=6;
+    doc.setFontSize(8);doc.setFont(undefined,'bold');doc.setTextColor(80,80,95);
+    doc.text('PERFORMANCE OVERVIEW',pw/2,startY,{align:'center'});
     doc.setTextColor(0,0,0);doc.setFont(undefined,'normal');
     const pc=v=>total?Math.round(v/total*100):0;
     const cards=[
@@ -1577,25 +1580,28 @@ function addKpiSection(doc,items,startY,dept){
     ];
     const cols=5,rows=2;
     const boxW=Math.min((pw-2*ml-(cols-1)*gap)/cols-2,44);
-    const boxH=19;
+    const boxH=20;
+    const sx=centerX(cols,boxW);
+    const cardY=startY+7;
     for(let r=0;r<rows;r++){
-      let x=ml;
+      let x=sx;
       for(let c=0;c<cols;c++){
         const idx=r*cols+c;
         if(idx>=cards.length)break;
-        drawCard(cards[idx],x,startY+r*(boxH+gap),boxW,boxH);
+        drawCard(cards[idx],x,cardY+r*(boxH+gap),boxW,boxH);
         x+=boxW+gap;
       }
     }
-    const sepY=startY+rows*(boxH+gap)+3;
-    doc.setDrawColor(210,210,215);doc.setLineWidth(0.3);
-    doc.line(ml+2,sepY,pw-ml-2,sepY);
+    const sepY=cardY+rows*(boxH+gap)+5;
+    doc.setDrawColor(200,200,205);doc.setLineWidth(0.6);
+    doc.line(sx,sepY,sx+cols*boxW+(cols-1)*gap,sepY);
     doc.setTextColor(0,0,0);doc.setFont(undefined,'normal');
-    return sepY+4;
+    return sepY+5;
   }
   const kpis=computeKpis(items);
-  doc.setFontSize(7);doc.setFont(undefined,'bold');doc.setTextColor(80,80,95);
-  doc.text('PERFORMANCE OVERVIEW',pw/2,startY-1,{align:'center'});
+  startY+=6;
+  doc.setFontSize(8);doc.setFont(undefined,'bold');doc.setTextColor(80,80,95);
+  doc.text('PERFORMANCE OVERVIEW',pw/2,startY,{align:'center'});
   doc.setTextColor(0,0,0);doc.setFont(undefined,'normal');
   const cards=[];
   cards.push({l:'Total Items',v:total,c:[80,80,90],noTotal:true});
@@ -1605,14 +1611,16 @@ function addKpiSection(doc,items,startY,dept){
   if(kpis.overdue!==undefined)cards.push({l:'Overdue',v:kpis.overdue,c:R});
   if(kpis.avgProg!==undefined)cards.push({l:'Avg Progress',v:kpis.avgProg+'%',c:[80,80,90]});
   const boxW=Math.min((pw-2*ml-cards.length*gap)/cards.length,50);
-  const boxH=17;
-  let x=ml;
-  cards.forEach(c=>{drawCard(c,x,startY,boxW,boxH);x+=boxW+gap;});
-  const sepY=startY+boxH+3;
-  doc.setDrawColor(210,210,215);doc.setLineWidth(0.3);
-  doc.line(ml+2,sepY,pw-ml-2,sepY);
+  const boxH=18;
+  const sx=centerX(cards.length,boxW);
+  const cardY=startY+7;
+  let x=sx;
+  cards.forEach(c=>{drawCard(c,x,cardY,boxW,boxH);x+=boxW+gap;});
+  const sepY=cardY+boxH+5;
+  doc.setDrawColor(200,200,205);doc.setLineWidth(0.6);
+  doc.line(sx,sepY,sx+cards.length*boxW+(cards.length-1)*gap,sepY);
   doc.setTextColor(0,0,0);doc.setFont(undefined,'normal');
-  return sepY+4;
+  return sepY+5;
 }
 async function exportPDF(items,cols,dept,dateFrom,dateTo,excludeChoices,fn,status){
   if(typeof jspdf==='undefined'){showToast('PDF library not loaded','error');return;}
