@@ -1444,47 +1444,36 @@ function downloadBlob(blob,name){
 function exportVisibleCols(cols){
   return cols.filter(c=>!EXPORT_SKIP_COLS.has(c.name)&&!EXPORT_SKIP_COLS.has(c.displayName)&&!c.name.startsWith('_'));
 }
-function calcColWidths(headers,data,fontSize,usableWidth){
+function calcColWidths(headers,data,usableWidth){
   const n=headers.length;
   if(n===0)return[];
-  const charW=fontSize*0.37;
-  // Content-importance weight per column
+  const minW=10,maxW=70;
+  // Content weight per column (header + data length)
   const weights=headers.map((h,i)=>{
-    const hLen=h.length;
-    const maxData=data.reduce((mx,r)=>Math.max(mx,String(r[i]||'').length),0);
-    const avgData=data.reduce((s,r)=>s+String(r[i]||'').length,0)/Math.max(data.length,1);
-    return Math.max(hLen,avgData*0.6+maxData*0.4,5);
+    let maxLen=h.length;
+    for(let r=0;r<Math.min(data.length,200);r++){
+      if(data[r]&&data[r][i])maxLen=Math.max(maxLen,String(data[r][i]).length);
+    }
+    return Math.max(maxLen,1);
   });
-  const totalWeight=weights.reduce((a,b)=>a+b,0);
-  // Initial proportional split
-  let widths=weights.map(w=>Math.max((w/totalWeight)*usableWidth,12));
-  // Per-column min width ensures header is readable (capped at 28mm)
-  const minWidths=headers.map((h,i)=>Math.min(Math.max(h.length*charW+4,12),28));
-  // Hard cap — no column gets more than 45mm (keeps table balanced)
-  const MAX=60;
-  // Iterative constraint enforcement
-  for(let iter=0;iter<10;iter++){
-    let changed=false;
-    // Enforce min
-    widths=widths.map((w,i)=>{if(w<minWidths[i]){changed=true;return minWidths[i];}return w;});
-    // Enforce max
-    widths=widths.map(w=>{if(w>MAX){changed=true;return MAX;}return w;});
-    if(!changed)break;
-    // Redistribute remaining space proportionally among free columns
-    const clamped=widths.reduce((a,b)=>a+b,0);
-    let rem=usableWidth-clamped;
-    const free=widths.map((w,i)=>w>minWidths[i]&&w<MAX);
-    const freeW=free.reduce((s,f,i)=>f?s+weights[i]:s,0);
-    if(freeW>0&&Math.abs(rem)>0.1){
-      widths=widths.map((w,i)=>free[i]?w+(weights[i]/freeW)*rem:w);
-    }else break;
+  const totalW=weights.reduce((a,b)=>a+b,0);
+  if(totalW<=0)return Array(n).fill(usableWidth/n);
+  // Distribute proportionally
+  let widths=weights.map(w=>(w/totalW)*usableWidth);
+  // Iteratively enforce min/max and redistribute surplus/deficit
+  for(let iter=0;iter<20;iter++){
+    const clamped=widths.map(w=>Math.max(minW,Math.min(maxW,w)));
+    const sum=clamped.reduce((a,b)=>a+b,0);
+    if(Math.abs(sum-usableWidth)<0.5)return clamped;
+    const freeIdx=[];
+    for(let i=0;i<n;i++)if(clamped[i]>minW&&clamped[i]<maxW)freeIdx.push(i);
+    if(freeIdx.length===0)return clamped;
+    const diff=usableWidth-sum;
+    const freeWeight=freeIdx.reduce((s,i)=>s+weights[i],0);
+    if(freeWeight<=0)return clamped;
+    widths=clamped.map((w,i)=>freeIdx.includes(i)?w+diff*(weights[i]/freeWeight):w);
   }
-  // Final exact fit with proportional tweak
-  const final=widths.reduce((a,b)=>a+b,0);
-  if(Math.abs(final-usableWidth)>0.2){
-    widths=widths.map((w,i)=>Math.max(w*(usableWidth/final),minWidths[i]));
-  }
-  return widths;
+  return widths.map(w=>Math.max(minW,Math.min(maxW,w)));
 }
 async function loadLogoDataURL(){
   try{
@@ -1695,11 +1684,13 @@ async function exportPDF(items,cols,dept,dateFrom,dateTo,excludeChoices,fn,statu
   const {jsPDF}=window.jspdf;
   const doc=new jsPDF('l','mm','a3');
   const pw=doc.internal.pageSize.getWidth();
-  const ml=6,mr=6;
+  const ml=6,mr=6,usableW=pw-ml-mr;
   const logoData=await loadLogoDataURL();
   const visible=reorderForExport(cols);
   const headers=visible.map(c=>(c.displayName||c.name));
   const data=items.map(item=>visible.map(c=>String(item[c.name]??item[c.displayName||c.name]??'')));
+  const widths=calcColWidths(headers,data,usableW);
+  const colStyles={};widths.forEach((w,i)=>{colStyles[i]={cellWidth:w};});
   addPDFHeader(doc,dept.title+' - Tracker Log',dateFrom,dateTo,logoData);
   let startY=dateFrom||dateTo?26:25;
   startY=addKpiSection(doc,items,startY,dept);
@@ -1709,8 +1700,8 @@ async function exportPDF(items,cols,dept,dateFrom,dateTo,excludeChoices,fn,statu
     styles:{fontSize:7,fontStyle:'bold',cellPadding:0.6,overflow:'linebreak',lineColor:[200,200,200],lineWidth:0.05},
     headStyles:{fillColor:[76,93,113],fontSize:7,fontStyle:'bold',halign:'center',valign:'middle',lineColor:[76,93,113],lineWidth:0.15,textColor:255},
     alternateRowStyles:{fillColor:[246,246,246]},
+    columnStyles:colStyles,
     margin:{left:ml,right:mr,bottom:8},
-    tableWidth:'auto',
     didDrawPage:function(d){
       const pn=doc.internal.getCurrentPageInfo().pageNumber;
       const tp=doc.internal.getNumberOfPages();
@@ -1724,7 +1715,7 @@ async function exportAllPDF(depts,dateFrom,dateTo,excludeChoices,fn,status){
   const {jsPDF}=window.jspdf;
   const doc=new jsPDF('l','mm','a3');
   const pw=doc.internal.pageSize.getWidth();
-  const ml=6,mr=6;
+  const ml=6,mr=6,usableW=pw-ml-mr;
   const logoData=await loadLogoDataURL();
   addPDFHeader(doc,'All Departments - Tracker Log',dateFrom,dateTo,logoData);
   let startY=dateFrom||dateTo?30:29;
@@ -1737,6 +1728,8 @@ async function exportAllPDF(depts,dateFrom,dateTo,excludeChoices,fn,status){
     const visible=reorderForExport(cols);
     const headers=visible.map(c=>(c.displayName||c.name));
     const data=filtered.map(item=>visible.map(c=>String(item[c.name]??item[c.displayName||c.name]??'')));
+    const widths=calcColWidths(headers,data,usableW);
+    const colStyles={};widths.forEach((w,i)=>{colStyles[i]={cellWidth:w};});
     if(startY>doc.internal.pageSize.getHeight()-20){doc.addPage();startY=8;}
     doc.setFontSize(8);doc.setFont(undefined,'bold');
     doc.text(d.title,pw/2,startY+2,{align:'center'});startY+=4;
@@ -1747,8 +1740,8 @@ async function exportAllPDF(depts,dateFrom,dateTo,excludeChoices,fn,status){
       styles:{fontSize:7,fontStyle:'bold',cellPadding:0.6,overflow:'linebreak',lineColor:[200,200,200],lineWidth:0.05},
       headStyles:{fillColor:[76,93,113],fontSize:7,fontStyle:'bold',halign:'center',valign:'middle',lineColor:[76,93,113],lineWidth:0.15,textColor:255},
       alternateRowStyles:{fillColor:[246,246,246]},
+      columnStyles:colStyles,
       margin:{left:ml,right:mr,bottom:8},
-      tableWidth:'auto',
       didDrawPage:function(d){
         const pn=doc.internal.getCurrentPageInfo().pageNumber;
         const tp=doc.internal.getNumberOfPages();
