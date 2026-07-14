@@ -867,8 +867,17 @@ function reorderColumns(cols){
   return result;
 }
 function reorderForExport(cols){
-  // No reordering — use SharePoint list column order as-is
-  return cols;
+  const result=[...cols];
+  const descIdx=result.findIndex(c=>/(description|matDesc)/i.test(c.name)||/(description)/i.test(c.displayName));
+  const rfqIdx=result.findIndex(c=>/(rfq)/i.test(c.name)||/(rfq)/i.test(c.displayName));
+  if(descIdx>=0&&rfqIdx>=0&&rfqIdx!==descIdx+1){
+    const [rfq]=result.splice(rfqIdx,1);
+    const adjDescIdx=rfqIdx<descIdx?descIdx-1:descIdx;
+    result.splice(adjDescIdx+1,0,rfq);
+  }
+  const remarkIdx=result.findIndex(c=>/(remarks)/i.test(c.name)||/(remarks)/i.test(c.displayName));
+  if(remarkIdx>=0)result.splice(remarkIdx+1);
+  return result;
 }
 function renderTable(){
   if(!currentDept||filteredItems.length===0){
