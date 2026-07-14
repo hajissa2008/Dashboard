@@ -866,6 +866,10 @@ function reorderColumns(cols){
   }
   return result;
 }
+function fmtVal(v){
+  if(typeof v==='string'&&/^\d{4}-\d{2}-\d{2}[T ]/.test(v))return v.substring(0,10);
+  return String(v??'');
+}
 function reorderForExport(cols){
   const result=[...cols];
   const descIdx=result.findIndex(c=>/(description|matDesc)/i.test(c.name)||/(description)/i.test(c.displayName));
@@ -1688,7 +1692,7 @@ async function exportPDF(items,cols,dept,dateFrom,dateTo,excludeChoices,fn,statu
   const logoData=await loadLogoDataURL();
   const visible=reorderForExport(cols);
   const headers=visible.map(c=>(c.displayName||c.name));
-  const data=items.map(item=>visible.map(c=>String(item[c.name]??item[c.displayName||c.name]??'')));
+  const data=items.map(item=>visible.map(c=>fmtVal(item[c.name]??item[c.displayName||c.name])));
   const widths=calcColWidths(headers,data,usableW);
   const colStyles={};widths.forEach((w,i)=>{colStyles[i]={cellWidth:w};});
   addPDFHeader(doc,dept.title+' - Tracker Log',dateFrom,dateTo,logoData);
@@ -1727,7 +1731,7 @@ async function exportAllPDF(depts,dateFrom,dateTo,excludeChoices,fn,status){
     if(!filtered.length)continue;
     const visible=reorderForExport(cols);
     const headers=visible.map(c=>(c.displayName||c.name));
-    const data=filtered.map(item=>visible.map(c=>String(item[c.name]??item[c.displayName||c.name]??'')));
+    const data=filtered.map(item=>visible.map(c=>fmtVal(item[c.name]??item[c.displayName||c.name])));
     const widths=calcColWidths(headers,data,usableW);
     const colStyles={};widths.forEach((w,i)=>{colStyles[i]={cellWidth:w};});
     if(startY>doc.internal.pageSize.getHeight()-20){doc.addPage();startY=8;}
