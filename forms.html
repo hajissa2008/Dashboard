@@ -1686,27 +1686,22 @@ async function exportPDF(items,cols,dept,dateFrom,dateTo,excludeChoices,fn,statu
   const {jsPDF}=window.jspdf;
   const doc=new jsPDF('l','mm','a3');
   const pw=doc.internal.pageSize.getWidth();
-  const ml=6,mr=6,usableW=pw-ml-mr;
+  const ml=6,mr=6;
   const logoData=await loadLogoDataURL();
   const visible=reorderForExport(cols);
   const headers=visible.map(c=>(c.displayName||c.name));
   const data=items.map(item=>visible.map(c=>String(item[c.name]??item[c.displayName||c.name]??'')));
-  const colCount=visible.length;
-  let fontSize=colCount>18?4:colCount>14?4.5:colCount>10?5.5:6.5;
-  const widths=calcColWidths(headers,data,fontSize,usableW);
-  const colStyles={};widths.forEach((w,i)=>{colStyles[i]={cellWidth:w};});
   addPDFHeader(doc,dept.title+' - Tracker Log',dateFrom,dateTo,logoData);
   let startY=dateFrom||dateTo?26:25;
   startY=addKpiSection(doc,items,startY,dept);
   if(startY>doc.internal.pageSize.getHeight()-15){startY=10;doc.addPage();}
   doc.autoTable({
     head:[headers],body:data,startY,
-    styles:{fontSize,cellPadding:0.6,overflow:'linebreak',lineColor:[210,210,210],lineWidth:0.05},
-    headStyles:{fillColor:[76,93,113],fontSize:Math.max(fontSize,4.5),halign:'center',valign:'middle',lineColor:[76,93,113],lineWidth:0.15},
+    styles:{fontSize:7,fontStyle:'bold',cellPadding:0.6,overflow:'linebreak',lineColor:[200,200,200],lineWidth:0.05},
+    headStyles:{fillColor:[76,93,113],fontSize:7,fontStyle:'bold',halign:'center',valign:'middle',lineColor:[76,93,113],lineWidth:0.15,textColor:255},
     alternateRowStyles:{fillColor:[246,246,246]},
-    columnStyles:colStyles,
     margin:{left:ml,right:mr,bottom:8},
-    pageBreak:'auto',
+    tableWidth:'auto',
     didDrawPage:function(d){
       const pn=doc.internal.getCurrentPageInfo().pageNumber;
       const tp=doc.internal.getNumberOfPages();
@@ -1720,7 +1715,7 @@ async function exportAllPDF(depts,dateFrom,dateTo,excludeChoices,fn,status){
   const {jsPDF}=window.jspdf;
   const doc=new jsPDF('l','mm','a3');
   const pw=doc.internal.pageSize.getWidth();
-  const ml=6,mr=6,usableW=pw-ml-mr;
+  const ml=6,mr=6;
   const logoData=await loadLogoDataURL();
   addPDFHeader(doc,'All Departments - Tracker Log',dateFrom,dateTo,logoData);
   let startY=dateFrom||dateTo?30:29;
@@ -1733,10 +1728,6 @@ async function exportAllPDF(depts,dateFrom,dateTo,excludeChoices,fn,status){
     const visible=reorderForExport(cols);
     const headers=visible.map(c=>(c.displayName||c.name));
     const data=filtered.map(item=>visible.map(c=>String(item[c.name]??item[c.displayName||c.name]??'')));
-    const colCount=visible.length;
-    let fontSize=colCount>18?4:colCount>14?4.5:colCount>10?5.5:6.5;
-    const widths=calcColWidths(headers,data,fontSize,usableW);
-    const colStyles={};widths.forEach((w,i)=>{colStyles[i]={cellWidth:w};});
     if(startY>doc.internal.pageSize.getHeight()-20){doc.addPage();startY=8;}
     doc.setFontSize(8);doc.setFont(undefined,'bold');
     doc.text(d.title,pw/2,startY+2,{align:'center'});startY+=4;
@@ -1744,12 +1735,11 @@ async function exportAllPDF(depts,dateFrom,dateTo,excludeChoices,fn,status){
     if(startY>doc.internal.pageSize.getHeight()-15){doc.addPage();startY=10;}
     doc.autoTable({
       head:[headers],body:data,startY,
-      styles:{fontSize,cellPadding:0.6,overflow:'linebreak',lineColor:[210,210,210],lineWidth:0.05},
-      headStyles:{fillColor:[76,93,113],fontSize:Math.max(fontSize,4.5),halign:'center',valign:'middle',lineColor:[76,93,113],lineWidth:0.15},
+      styles:{fontSize:7,fontStyle:'bold',cellPadding:0.6,overflow:'linebreak',lineColor:[200,200,200],lineWidth:0.05},
+      headStyles:{fillColor:[76,93,113],fontSize:7,fontStyle:'bold',halign:'center',valign:'middle',lineColor:[76,93,113],lineWidth:0.15,textColor:255},
       alternateRowStyles:{fillColor:[246,246,246]},
-      columnStyles:colStyles,
       margin:{left:ml,right:mr,bottom:8},
-      pageBreak:'auto',
+      tableWidth:'auto',
       didDrawPage:function(d){
         const pn=doc.internal.getCurrentPageInfo().pageNumber;
         const tp=doc.internal.getNumberOfPages();
