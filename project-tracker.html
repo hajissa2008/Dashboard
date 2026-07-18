@@ -604,7 +604,7 @@ const VIEWS = {
   procurement:{title:'Procurement Tracker',dept:'Procurement',cols:['id','proj','actId','actName','cat','matDesc','matCode','manufacturer','subcontractor','vendor','vendorContact','rfq','rfqDate','techEval','commEval','pr','poRef','poDate','plannedPoDate','actualPoDate','expDel','eta','actDel','leadTime','shipMethod','pqStatus','pqPlanned','pqActual','pqRef','matSubStatus','matPlanned','matActual','matRef','forecastDate','deliveryStatus','whStatus','inspStatus','cost','curr','engDisc','spec','calc','status','priority','assigned','remarks','pStart','pFinish','aStart','aFinish','due','prog','budget','committed','actual','forecast','costVar','ev','pv','cpi','spi','delayDays']},
   substructure:{title:'Substructure - Shop Drawings',dept:'Substructure',cols:['id','proj','dwgNo','dwgTitle','dwgType','rev00','rev01','rev02','rev03','eng','checker','appr','subDate','clientReview','apprDate','ifcDate','engDisc','spec','calc','rfi','tq','status','priority','phase','part','assigned','remarks','desStatus','actId','actName','cat','due','pStart','pFinish','aStart','aFinish','delayDays']},
   superstructure:{title:'Superstructure',dept:'Superstructure',cols:['id','proj','dwgNo','dwgTitle','dwgType','rev00','rev01','rev02','rev03','eng','checker','appr','subDate','clientReview','apprDate','ifcDate','engDisc','spec','calc','rfi','tq','status','priority','phase','part','assigned','remarks','desStatus','actId','actName','cat','due','pStart','pFinish','aStart','aFinish','delayDays']},
-  calculations:{title:'Calculations',dept:'Calculations',cols:['id','type','phase','buildingPart','discipline','expSubDate','status','sheetName','assigned','priority','due','delayDays']},
+  calculations:{title:'Calculations',dept:'Calculations',cols:['id','type','sheetName','phase','buildingPart','discipline','expSubDate','status','assigned','priority','due','delayDays']},
   methodstatement:{title:'Method Statement',dept:'Method Statement',cols:['id','proj','contractorRef','finalRev','finalCode','docType','discipline','description','remarks','subject','status','assigned','priority','due','delayDays']}
 };
 
@@ -629,6 +629,11 @@ const COL_LABELS = {
   eng:'Engineer',checker:'Checker',appr:'Approver',subDate:'Submission Date',clientReview:'Client Review',
   apprDate:'Approval Date',ifcDate:'IFC Date',spec:'Spec #',calc:'Calc Ref',phase:'Phase',discLead:'Disc Lead',
   type:'Type',buildingPart:'Building/Part',expSubDate:'Expected Submission Date',sheetName:'Sheet Name',
+  'S_x002e_No_x002e_':'S.No','S.No':'S.No','SNo':'S.No',
+  'Type':'Type','Building/Part':'Building/Part','Building_x002f_Part':'Building/Part','BUILDING_x002f_PART':'Building/Part',
+  'Expected Submission Date':'Expected Submission Date','Expected_x0020_Submission_x0020_Date':'Expected Submission Date','EXPECTED_x0020_SUBMISSION_x0020_DATE':'Expected Submission Date',
+  'Sheet Name':'Sheet Name','Sheet_x0020_Name':'Sheet Name','SHEET_x0020_NAME':'Sheet Name','SHEET NAME':'Sheet Name',
+  'Drawing Status':'Drawing Status','Drawing_x0020_Status':'Drawing Status','DRAWING_x0020_STATUS':'Drawing Status','DRAWING STATUS':'Drawing Status',
   hseAction:'HSE Action',hseClose:'HSE Closeout',
   hazard:'Hazard',hazardType:'Hazard Type',location:'Location',cat:'Category',
   qaInsp:'QA Insp Req',matInsp:'Material Inspection',testReport:'Test Report',qaNcr:'QA NCR',qaAction:'QA Action',qaStatus:'Quality Status',qaClose:'QA Closeout',
@@ -689,7 +694,8 @@ const ALIAS_SHORTS = new Set([
   'leadTime','plannedDelivery','matSubStatus','description',
   'techEval','commEval','pqPlanned','pqActual','pqRef','pqStatus',
   'matPlanned','matActual','forecastDate','matRef','manufacturer','subcontractor',
-  'poRef','actualPoDate','shipMethod','eta','deliveryStatus','plannedPoDate'
+  'poRef','actualPoDate','shipMethod','eta','deliveryStatus','plannedPoDate',
+  'type','sheetName','buildingPart','expSubDate'
 ]);
 function fmtCurrency(n){return typeof n==='number'?'$'+n.toLocaleString():n}
 function getVal(item,col){return item[col]??''}
@@ -1118,11 +1124,11 @@ async function connectSingleView(view){
                 'PrimaveraActivityID':['primId'],'ScheduleStatus':['schedStatus'],'BaselineFinish':['baseFinish'],
                 'CurrentFinish':['curFinish'],'RecoveryPlan':['recovery'],'CriticalActivity':['critical'],'FloatDays':['floatDays'],
                 // Calculations list aliases
-                'TYPE':['type'],
-                'BUILDING/PART':['buildingPart'],'Building_x002f_Part':['buildingPart'],'BUILDING_x002f_PART':['buildingPart'],
-                'EXPECTED SUBMISSION DATE':['expSubDate'],'Expected_x0020_Submission_x0020_Date':['expSubDate'],
-                'SHEET NAME':['sheetName'],'Sheet_x0020_Name':['sheetName'],'SHEET_x0020_NAME':['sheetName'],
-                'DRAWING STATUS':['status'],'Drawing_x0020_Status':['status'],'DRAWING_x0020_STATUS':['status'],
+                'TYPE':['type'],'Type':['type'],
+                'BUILDING/PART':['buildingPart'],'Building/Part':['buildingPart'],'Building_x002f_Part':['buildingPart'],'BUILDING_x002f_PART':['buildingPart'],
+                'EXPECTED SUBMISSION DATE':['expSubDate'],'Expected Submission Date':['expSubDate'],'Expected_x0020_Submission_x0020_Date':['expSubDate'],
+                'SHEET NAME':['sheetName'],'Sheet Name':['sheetName'],'Sheet_x0020_Name':['sheetName'],'SHEET_x0020_NAME':['sheetName'],
+                'DRAWING STATUS':['status'],'Drawing Status':['status'],'Drawing_x0020_Status':['status'],'DRAWING_x0020_STATUS':['status'],
                 // All-caps column names from Maseel Activity export
                 'STATUS':['status'],'PROGRESS':['prog'],'START':['pStart'],'FINISH':['pFinish'],
                 'start':['pStart'],'finish':['pFinish']
@@ -1704,6 +1710,20 @@ function renderTable(){
         // Use actual SharePoint keys when connected, but exclude all alias short names
         const dataKeys=Object.keys(d[0]).filter(k=>!skipKeys.has(k)&&!k.startsWith('@')&&!k.startsWith('_')&&!ALIAS_SHORTS.has(k));
         cols=dataKeys.length>0?dataKeys:(VIEWS[currentView]?.cols||[]);
+        // Sort calculations columns to match desired order
+        if(currentView==='calculations'){
+            const calcOrder=['S.No','Type','Sheet Name','Phase','Building/Part','Discipline','Expected Submission Date','Drawing Status'];
+            const orderUpper=calcOrder.map(o=>o.toUpperCase());
+            const known=[],unknown=[];
+            cols.forEach(c=>{
+                const dn=COL_LABELS[c]||c;
+                const idx=orderUpper.indexOf(dn.toUpperCase());
+                if(idx>=0)known.push({c,idx});
+                else unknown.push(c);
+            });
+            known.sort((a,b)=>a.idx-b.idx);
+            cols=[...known.map(k=>k.c),...unknown];
+        }
     }else{
         cols=(currentView==='dashboard'?VIEWS.dashboard:VIEWS[currentView]).cols;
     }

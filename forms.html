@@ -865,6 +865,15 @@ function onSearch(){
 
 // ======================== TABLE ========================
 function reorderColumns(cols){
+  if(currentDept&&currentDept.id==='calculations'){
+    const order=['S.No','TYPE','SHEET NAME','PHASE','BUILDING/PART','DISCIPLINE','EXPECTED SUBMISSION DATE','DRAWING STATUS'];
+    const idxMap={};
+    cols.forEach((c,i)=>{const idx=order.findIndex(o=>o.toUpperCase()===c.displayName.toUpperCase());if(idx>=0)idxMap[c.name]=idx;});
+    const known=[],unknown=[];
+    cols.forEach(c=>{(idxMap[c.name]!==undefined?known:unknown).push(c);});
+    known.sort((a,b)=>idxMap[a.name]-idxMap[b.name]);
+    return [...known,...unknown];
+  }
   const result=[...cols];
   const descIdx=result.findIndex(c=>/(description|matDesc)/i.test(c.name)||/(description)/i.test(c.displayName));
   const rfqIdx=result.findIndex(c=>/(rfq)/i.test(c.name)||/(rfq)/i.test(c.displayName));
@@ -880,6 +889,22 @@ function fmtVal(v){
   return String(v??'');
 }
 function reorderForExport(cols){
+  if(currentDept&&currentDept.id==='calculations'){
+    const order=['S.No','TYPE','SHEET NAME','PHASE','BUILDING/PART','DISCIPLINE','EXPECTED SUBMISSION DATE','DRAWING STATUS'];
+    const orderUpper=order.map(o=>o.toUpperCase());
+    const known=[],unknown=[];
+    cols.forEach(c=>{
+      const dnUpper=c.displayName?c.displayName.toUpperCase():c.name.toUpperCase();
+      const idx=orderUpper.indexOf(dnUpper);
+      if(idx>=0)known.push({col:c,idx});
+      else unknown.push(c);
+    });
+    known.sort((a,b)=>a.idx-b.idx);
+    const result=[...known.map(k=>k.col),...unknown];
+    const remarkIdx=result.findIndex(c=>/(remarks)/i.test(c.name)||/(remarks)/i.test(c.displayName));
+    if(remarkIdx>=0)result.splice(remarkIdx+1);
+    return result;
+  }
   const result=[...cols];
   const descIdx=result.findIndex(c=>/(description|matDesc)/i.test(c.name)||/(description)/i.test(c.displayName));
   const rfqIdx=result.findIndex(c=>/(rfq)/i.test(c.name)||/(rfq)/i.test(c.displayName));
