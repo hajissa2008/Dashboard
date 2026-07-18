@@ -2395,9 +2395,6 @@ function finishSetup(){
         if(site) viewData[v].site=site;
         if(list) viewData[v].list=list;
     });
-    // Clear stale configs for hidden views
-    if(viewData.cost.list&&viewData.cost.list==='Construction Cost'){viewData.cost.site='';viewData.cost.list='';storage.removeItem('pmt-view-cost-site');storage.removeItem('pmt-view-cost-list');}
-    if(viewData.planning.list&&viewData.planning.list==='Planning Tracker'){viewData.planning.site='';viewData.planning.list='';storage.removeItem('pmt-view-planning-site');storage.removeItem('pmt-view-planning-list');}
     // Pre-fill per-view list defaults
     const SITE = 'https://sascontractingsa.sharepoint.com/sites/Alenshaiah';
     const LIST_DEFAULTS = {
