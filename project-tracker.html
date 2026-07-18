@@ -1712,12 +1712,13 @@ function renderTable(){
         cols=dataKeys.length>0?dataKeys:(VIEWS[currentView]?.cols||[]);
         // Sort calculations columns to match desired order
         if(currentView==='calculations'){
-            const calcOrder=['S.No','Type','Sheet Name','Phase','Building/Part','Discipline','Expected Submission Date','Drawing Status'];
+            const calcOrder=['S.No','TYPE','SHEET NAME','PHASE','BUILDING/PART','DISCIPLINE','EXPECTED SUBMISSION DATE','DRAWING STATUS'];
             const orderUpper=calcOrder.map(o=>o.toUpperCase());
             const known=[],unknown=[];
             cols.forEach(c=>{
                 const dn=COL_LABELS[c]||c;
-                const idx=orderUpper.indexOf(dn.toUpperCase());
+                const dnUpper=dn.replace(/[_\s]+/g,' ').trim().toUpperCase();
+                const idx=orderUpper.indexOf(dnUpper);
                 if(idx>=0)known.push({c,idx});
                 else unknown.push(c);
             });
