@@ -345,29 +345,9 @@ body.dark th .sort-arrow{color:var(--text-secondary)}
         <div id="settings-auth-status" style="font-size:12px;margin-top:4px;color:var(--gray-text)"></div>
       </div>
 
-      <!-- ===== SECTION 2: CONNECT TO LIST ===== -->
+      <!-- ===== SECTION 2: PER-VIEW LISTS ===== -->
       <div class="cfg-section">
-        <div class="cfg-section-title">2. Connect to SharePoint List</div>
-        <div class="cfg-section-desc">Enter your site and list name, or paste a sharing link.</div>
-        <label>SharePoint Site URL</label>
-        <input type="text" id="cfg-site" placeholder="https://sascontractingsa.sharepoint.com/sites/Alenshaiah" value="https://sascontractingsa.sharepoint.com/sites/Alenshaiah">
-        <div class="hint">Full URL of your SharePoint team site.</div>
-        <label>List Name</label>
-        <input type="text" id="cfg-list" value="Procurement_Tracker Log" placeholder="Project Management Tracker">
-        <div class="hint">Display name of the SharePoint list (created from Excel import).</div>
-        <label>Or paste a sharing link (auto-fills above)</label>
-        <input type="text" id="cfg-link" placeholder="https://...sharepoint.com/:l:/g/personal/...">
-        <div class="hint">Paste a list sharing link to auto-extract site URL and list name.</div>
-        <div style="display:flex;gap:8px;margin-top:4px">
-          <button class="btn btn-primary" onclick="connectToSharePoint()">🔌 Connect</button>
-          <button class="btn btn-outline" onclick="useDemoData()">📁 Use Demo Data</button>
-        </div>
-        <div id="conn-status" class="connection-status disconnected" style="display:none">Not connected.</div>
-      </div>
-
-      <!-- ===== SECTION 3: PER-VIEW LISTS (ADVANCED) ===== -->
-      <div class="cfg-section">
-        <div class="cfg-section-title" style="cursor:pointer" onclick="toggleViewConfigs()">3. Per-View Lists <span id="view-cfg-toggle" style="font-size:11px">(show)</span></div>
+        <div class="cfg-section-title" style="cursor:pointer" onclick="toggleViewConfigs()">2. Per-View Lists <span id="view-cfg-toggle" style="font-size:11px">(show)</span></div>
         <div id="view-list-configs-wrap" style="display:none">
           <div class="cfg-section-desc">Configure a separate SharePoint list for each department view.</div>
           <div id="view-list-configs"></div>
@@ -378,7 +358,6 @@ body.dark th .sort-arrow{color:var(--text-secondary)}
         </div>
       </div>
 
-      <div id="conn-status-hidden" style="display:none"></div>
     </div>
   </div>
 
@@ -614,9 +593,6 @@ let currentView = 'dashboard';
 let sortCol = null;
 let sortAsc = true;
 let DATA = [...DEMO_DATA];
-let dataSource = 'demo'; // 'demo' | 'sp-live' | 'sp-error'
-let spSiteUrl = '';
-let spListName = '';
 
 // Per-view data sources: each view can have {site, list, data, connected}
 const viewData = {};
@@ -947,93 +923,8 @@ async function apiFetch(url){
     return fetch(url, opts);
 }
 
-async function connectToSharePoint(){
-    const site=document.getElementById('cfg-site').value.trim();
-    const list=document.getElementById('cfg-list').value.trim();
-    const link=document.getElementById('cfg-link').value.trim();
-
-    let finalSite=site, finalList=list;
-
-    // Try to extract from link
-    if(link&&!finalSite){
-        const extracted=extractSiteFromLink(link);
-        if(extracted){
-            finalSite=extracted;
-            document.getElementById('cfg-site').value=finalSite; // show user what was extracted
-        }
-    }
-
-    // Try common list name
-    if(!finalList)finalList='Project Management Tracker';
-
-    if(!finalSite){
-        showConnStatus('Enter a SharePoint site URL or paste a list sharing link.','disconnected');
-        return;
-    }
-
-    // Detect if running as local file (REST API won't work due to CORS)
-    if(location.protocol==='file:'){
-        showConnStatus('⚠ Cannot connect from a local file. Upload to GitHub Pages or SharePoint.','disconnected');
-        return;
-    }
-
-    showConnStatus('Connecting to SharePoint...','loading');
-
-    try{
-        const siteUrl=finalSite.replace(/\/+$/,'');
-        const spItems = await fetchSPListItems(siteUrl, finalList);
-
-        if(!spItems||spItems.length===0){
-            showConnStatus('Connected but list is empty.','disconnected');
-            return;
-        }
-
-        // Use raw SharePoint columns as-is (no predefined mapping)
-        const skipKeys = ['ID','id','ContentType','Modified','Created','AuthorLookupId','EditorLookupId','_UIVersionString','Attachments','Edit','LinkTitleNoMenu','LinkTitle','ItemChildCount','FolderChildCount','_ComplianceFlags','_ComplianceTag','_ComplianceTagWrittenTime','_ComplianceTagUserId','AppAuthorLookupId','AppEditorLookupId','@odata.etag'];
-        const rawKeys = Object.keys(spItems[0]).filter(k=>!skipKeys.includes(k));
-        DATA = spItems.map(spItem => {
-            const item = {};
-            rawKeys.forEach(k => { item[k] = spItem[k] ?? ''; });
-            // Critical fields for app to work
-            item.dept = 'Engineering';
-            item.proj = spItem['Project Code'] || spItem['Porject Name'] || spItem.Title || 'N/A';
-            item.status = spItem['DRAWING STATUS'] || spItem['REV 00 STATUS'] || 'Not Set';
-            item.priority = 'Medium';
-            return item;
-        });
-
-        spSiteUrl=siteUrl;
-        spListName=finalList;
-        dataSource='sp-live';
-        storage.setItem('pmt-site',siteUrl);
-        storage.setItem('pmt-list',finalList);
-
-        showConnStatus(`Connected! Loaded ${DATA.length} items from "${finalList}".`,'connected');
-        // Show raw keys on page for debugging
-        const first = DATA[0]||{};
-        const allKeys = Object.keys(first).filter(k=>k!=='dept'&&k!=='priority');
-        const el=document.getElementById('conn-status');
-        el.innerHTML += '<div style="margin-top:6px;font-size:12px;background:#fff;padding:8px;border:1px solid #ccc;border-radius:3px;max-height:200px;overflow:auto">' +
-            '<strong>📋 Keys in DATA[0] (' + allKeys.length + '):</strong><br>' +
-            '<code>' + allKeys.join(', ') + '</code></div>';
-        // Render raw data directly (bypass view system)
-        renderRawData();
-        updateBadge();
-        updateCounts();
-        VIEW_KEYS.forEach(v=>updateViewNavDot(v));
-        closeSettings();
-    }catch(err){
-        dataSource='sp-error';
-        showConnStatus(`Connection failed: ${err.message}. Using demo data.`,'disconnected');
-        updateBadge();
-    }
-}
-
 function useDemoData(){
     DATA=[...DEMO_DATA];
-    dataSource='demo';
-    showConnStatus('Using embedded demo data with 8 sample activities.','connected');
-    updateBadge();
     updateCounts();
     VIEW_KEYS.forEach(v=>updateViewNavDot(v));
     renderCurrent();
@@ -1351,25 +1242,10 @@ function updateViewNavDot(view,state){
     else dot.className='status-dot offline';
 }
 
-function showConnStatus(msg,type){
-    const el=document.getElementById('conn-status');
-    el.style.display='block';
-    el.textContent=msg;
-    el.className='connection-status '+type;
-}
-
 function updateBadge(){
     const gear=document.getElementById('gear-btn');
-    if(dataSource==='sp-live'){
-        gear.className='gear-btn live';
-        gear.title=`Live: ${DATA.length} items`;
-    }else if(dataSource==='sp-error'){
-        gear.className='gear-btn error';
-        gear.title='Connection Error';
-    }else{
-        gear.className='gear-btn demo';
-        gear.title='Demo Data';
-    }
+    gear.className='gear-btn demo';
+    gear.title='Demo Data';
 }
 
 function updateCounts(){
@@ -1394,8 +1270,6 @@ function toggleViewConfigs(){
 }
 
 function openSettings(){
-    if(spSiteUrl)document.getElementById('cfg-site').value=spSiteUrl;
-    if(spListName)document.getElementById('cfg-list').value=spListName;
     const tenant=storage.getItem('pmt-tenant');
     const client=storage.getItem('pmt-client');
     if(tenant)document.getElementById('cfg-tenant').value=tenant;
@@ -2363,7 +2237,7 @@ function toggleDark(){
 
 // ======================== SETUP HELPERS ========================
 function finishSetup(){
-    if(DATA.length===0&&DEMO_DATA.length>0){ DATA=[...DEMO_DATA]; dataSource='demo'; }
+    if(DATA.length===0&&DEMO_DATA.length>0){ DATA=[...DEMO_DATA]; }
     updateCounts();
     updateBadge();
     VIEW_KEYS.forEach(v=>updateViewNavDot(v));
@@ -2382,12 +2256,6 @@ function finishSetup(){
         document.body.classList.add('dark');
         document.getElementById('dark-toggle').textContent='☀️';
     }
-    // Restore saved config
-    const savedSite=storage.getItem('pmt-site');
-    const savedList=storage.getItem('pmt-list');
-    if(savedSite)document.getElementById('cfg-site').value=savedSite;
-    if(savedList)document.getElementById('cfg-list').value=savedList;
-    if(document.getElementById('cfg-link'))document.getElementById('cfg-link').value='https://sascontractingsa-my.sharepoint.com/:l:/g/personal/m_hajissa_alenshaiah_com/JAB0SL2Dg68dR4O0jC1UxIc1AdT1ZhpFsFXSzoRpZuLNvbI?e=c6RN2T';
     // Restore per-view configs
     VIEW_KEYS.forEach(v=>{
         const site=storage.getItem('pmt-view-'+v+'-site');
