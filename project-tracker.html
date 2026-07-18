@@ -353,7 +353,7 @@ body.dark th .sort-arrow{color:var(--text-secondary)}
         <input type="text" id="cfg-site" placeholder="https://sascontractingsa.sharepoint.com/sites/Alenshaiah" value="https://sascontractingsa.sharepoint.com/sites/Alenshaiah">
         <div class="hint">Full URL of your SharePoint team site.</div>
         <label>List Name</label>
-        <input type="text" id="cfg-list" value="Shop Drawing Status" placeholder="Project Management Tracker">
+        <input type="text" id="cfg-list" value="Procurement_Tracker Log" placeholder="Project Management Tracker">
         <div class="hint">Display name of the SharePoint list (created from Excel import).</div>
         <label>Or paste a sharing link (auto-fills above)</label>
         <input type="text" id="cfg-link" placeholder="https://...sharepoint.com/:l:/g/personal/...">
@@ -2398,31 +2398,19 @@ function finishSetup(){
     // Clear stale configs for hidden views
     if(viewData.cost.list&&viewData.cost.list==='Construction Cost'){viewData.cost.site='';viewData.cost.list='';storage.removeItem('pmt-view-cost-site');storage.removeItem('pmt-view-cost-list');}
     if(viewData.planning.list&&viewData.planning.list==='Planning Tracker'){viewData.planning.site='';viewData.planning.list='';storage.removeItem('pmt-view-planning-site');storage.removeItem('pmt-view-planning-list');}
-    // Pre-fill Engineering view with Shop Drawing list as default
-    if(!viewData.engineering.site){
-        viewData.engineering.site='https://sascontractingsa.sharepoint.com/sites/Alenshaiah';
-        viewData.engineering.list='Shop Drawing Status';
-    }
-    // Pre-fill Construction view with Maseel Activity list as default
-    if(!viewData.construction.site){
-        viewData.construction.site='https://sascontractingsa.sharepoint.com/sites/Alenshaiah';
-        viewData.construction.list='Maseel Activity';
-    }
-    // Pre-fill Procurement view
-    if(!viewData.procurement.site){
-        viewData.procurement.site='https://sascontractingsa.sharepoint.com/sites/Alenshaiah';
-        viewData.procurement.list='Procurement_Tracker Log';
-    }
-    // Pre-fill QA/QC view
-    if(!viewData.qaqc.site){
-        viewData.qaqc.site='https://sascontractingsa.sharepoint.com/sites/Alenshaiah';
-        viewData.qaqc.list='QAQC Tracker';
-    }
-    // Pre-fill HSE view
-    if(!viewData.hse.site){
-        viewData.hse.site='https://sascontractingsa.sharepoint.com/sites/Alenshaiah';
-        viewData.hse.list='HSE Tracker';
-    }
+    // Pre-fill per-view list defaults
+    const SITE = 'https://sascontractingsa.sharepoint.com/sites/Alenshaiah';
+    const LIST_DEFAULTS = {
+        procurement:'Procurement_Tracker Log',
+        substructure:'SUBSTRUCTURE',
+        superstructure:'superstructure',
+        calculations:'calculations',
+        methodstatement:'method statement'
+    };
+    VIEW_KEYS.forEach(v=>{
+        if(!viewData[v].site) viewData[v].site = SITE;
+        if(!viewData[v].list) viewData[v].list = LIST_DEFAULTS[v];
+    });
 
     // Restore or save default Azure AD config
     let savedTenant=storage.getItem('pmt-tenant');
