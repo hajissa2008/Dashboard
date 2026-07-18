@@ -285,9 +285,7 @@ body.dark th .sort-arrow{color:var(--text-secondary)}
     <a class="nav-item" data-view="methodstatement" onclick="switchView('methodstatement')">
       <span class="icon">📋</span> Method Statement <span class="count" id="count-methodstatement">0</span><span class="status-dot" id="dot-methodstatement" style="display:inline-block;vertical-align:middle;margin-left:4px"></span>
     </a>
-    <a class="nav-item" data-view="hse" onclick="switchView('hse')">
-      <span class="icon">🛡️</span> HSE <span class="count" id="count-hse">0</span><span class="status-dot" id="dot-hse" style="display:inline-block;vertical-align:middle;margin-left:4px"></span>
-    </a>
+  </nav>
   </nav>
 </aside>
 
@@ -622,17 +620,16 @@ let spListName = '';
 
 // Per-view data sources: each view can have {site, list, data, connected}
 const viewData = {};
-const VIEW_KEYS = ['procurement','substructure','superstructure','calculations','methodstatement','hse'];
+const VIEW_KEYS = ['procurement','substructure','superstructure','calculations','methodstatement'];
 VIEW_KEYS.forEach(k => { viewData[k] = { site:'', list:'', data:[], connected:false }; });
 
 const VIEWS = {
   dashboard:{title:'Executive Dashboard',dept:null,cols:['proj','prog','status','budget','actual','forecast','delayDays','priority','dept','pm'],group:'proj'},
-  procurement:{title:'Procurement Tracker',dept:'Procurement',cols:['id','engDisc','matDesc','manufacturer','subcontractor','rfq','poRef','poDate','expDel','leadTime','pqStatus','matSubStatus','deliveryStatus','remarks']},
-  substructure:{title:'Substructure - Shop Drawings',dept:'Substructure',cols:['id','dwgNo','dwgTitle','dwgType','rev00','rev01','rev02','rev03','eng','checker','appr','subDate','clientReview','apprDate','ifcDate','engDisc','spec','calc','rfi','tq','status','priority','phase','part','remarks']},
-  superstructure:{title:'Superstructure',dept:'Superstructure',cols:['id','dwgNo','dwgTitle','dwgType','rev00','rev01','rev02','rev03','eng','checker','appr','subDate','clientReview','apprDate','ifcDate','engDisc','spec','calc','rfi','tq','status','priority','phase','part','remarks']},
-  calculations:{title:'Calculations',dept:'Calculations',cols:['id','title','description','discipline','status','reviewer','revision','subDate','apprDate','remarks']},
-  methodstatement:{title:'Method Statement',dept:'Method Statement',cols:['contractorRef','finalRev','finalCode','discipline','description','remarks']},
-  hse:{title:'HSE Tracker',dept:'HSE',cols:['id','proj','actId','actName','risk','permitStat','incident','toolbox','safetyInsp','hseAction','hseClose','status','priority','assigned']}
+  procurement:{title:'Procurement Tracker',dept:'Procurement',cols:['id','proj','actId','actName','cat','matDesc','matCode','manufacturer','subcontractor','vendor','vendorContact','rfq','rfqDate','techEval','commEval','pr','poRef','poDate','plannedPoDate','actualPoDate','expDel','eta','actDel','leadTime','shipMethod','pqStatus','pqPlanned','pqActual','pqRef','matSubStatus','matPlanned','matActual','matRef','forecastDate','deliveryStatus','whStatus','inspStatus','cost','curr','engDisc','spec','calc','status','priority','assigned','remarks','pStart','pFinish','aStart','aFinish','due','prog','budget','committed','actual','forecast','costVar','ev','pv','cpi','spi','delayDays']},
+  substructure:{title:'Substructure - Shop Drawings',dept:'Substructure',cols:['id','proj','dwgNo','dwgTitle','dwgType','rev00','rev01','rev02','rev03','eng','checker','appr','subDate','clientReview','apprDate','ifcDate','engDisc','spec','calc','rfi','tq','status','priority','phase','part','assigned','remarks','desStatus','actId','actName','cat','due','pStart','pFinish','aStart','aFinish','delayDays']},
+  superstructure:{title:'Superstructure',dept:'Superstructure',cols:['id','proj','dwgNo','dwgTitle','dwgType','rev00','rev01','rev02','rev03','eng','checker','appr','subDate','clientReview','apprDate','ifcDate','engDisc','spec','calc','rfi','tq','status','priority','phase','part','assigned','remarks','desStatus','actId','actName','cat','due','pStart','pFinish','aStart','aFinish','delayDays']},
+  calculations:{title:'Calculations',dept:'Calculations',cols:['id','proj','title','description','discipline','status','reviewer','revision','subDate','apprDate','remarks','actId','actName','assigned','priority','due','delayDays']},
+  methodstatement:{title:'Method Statement',dept:'Method Statement',cols:['id','proj','contractorRef','finalRev','finalCode','docType','discipline','description','remarks','subject','status','assigned','priority','due','delayDays']}
 };
 
 const COL_LABELS = {
@@ -779,8 +776,7 @@ const VIEW_PERSON_COLS = {
     substructure:['eng','checker','appr','assigned'],
     superstructure:['eng','checker','appr','assigned'],
     calculations:['reviewer','assigned'],
-    methodstatement:['assigned'],
-    hse:['assigned']
+    methodstatement:['assigned']
 };
 const PERSON_LABELS = {
     foreman:'Foreman',contractor:'Contractor',assigned:'Assigned To',
@@ -1473,7 +1469,7 @@ function renderCurrent(){
 }
 
 function renderDashboardCharts(){
-    const DEPT_KEY_TO_NAME={substructure:'Substructure',superstructure:'Superstructure',calculations:'Calculations',methodstatement:'Method Statement',procurement:'Procurement',hse:'HSE'};
+    const DEPT_KEY_TO_NAME={substructure:'Substructure',superstructure:'Superstructure',calculations:'Calculations',methodstatement:'Method Statement',procurement:'Procurement'};
     const allowedDeptNames=myPerms==='ALL'?Object.values(DEPT_KEY_TO_NAME):Object.keys(DEPT_KEY_TO_NAME).filter(k=>getMyAccess(k)!=='none').map(k=>DEPT_KEY_TO_NAME[k]);
     const deptFilter=document.getElementById('chart-dept-filter')?.value||'';
     const metric=document.getElementById('chart-metric-filter')?.value||'count';
@@ -1482,7 +1478,7 @@ function renderDashboardCharts(){
     if(!all.length)return;
     const filtered=deptFilter?all.filter(x=>x.dept===deptFilter):all;
     const statusData={};filtered.forEach(x=>{const s=x.status||'Not Set';statusData[s]=(statusData[s]||0)+1});
-    const deptColors={Substructure:'#4C5D71',Superstructure:'#00B7C3',Calculations:'#8764B8','Method Statement':'#0078D4',Procurement:'#ED7D31',HSE:'#D92C2C'};
+    const deptColors={Substructure:'#4C5D71',Superstructure:'#00B7C3',Calculations:'#8764B8','Method Statement':'#0078D4',Procurement:'#ED7D31'};
     const allDepts=allowedDeptNames;
     const deptTargets=deptFilter?[deptFilter]:allDepts;
     const deptData={};
@@ -1546,7 +1542,7 @@ function renderDashboardCharts(){
 }
 
 function renderDashboard(){
-    const DEPT_KEY_TO_NAME={substructure:'Substructure',superstructure:'Superstructure',calculations:'Calculations',methodstatement:'Method Statement',procurement:'Procurement',hse:'HSE'};
+    const DEPT_KEY_TO_NAME={substructure:'Substructure',superstructure:'Superstructure',calculations:'Calculations',methodstatement:'Method Statement',procurement:'Procurement'};
     const allowedDeptNames=myPerms==='ALL'?Object.values(DEPT_KEY_TO_NAME):Object.keys(DEPT_KEY_TO_NAME).filter(k=>getMyAccess(k)!=='none').map(k=>DEPT_KEY_TO_NAME[k]);
     const connectedViews=VIEW_KEYS.filter(v=>viewData[v]?.connected&&viewData[v]?.data?.length>0&&(myPerms==='ALL'||getMyAccess(viewToDeptId(v))!=='none'));
     let d;
@@ -1586,8 +1582,7 @@ function renderDashboard(){
         {key:'Superstructure',icon:'🏢',color:'#00B7C3'},
         {key:'Calculations',icon:'🧮',color:'#8764B8'},
         {key:'Method Statement',icon:'📋',color:'#0078D4'},
-        {key:'Procurement',icon:'📦',color:'#ED7D31'},
-        {key:'HSE',icon:'🛡️',color:'#D92C2C'}
+        {key:'Procurement',icon:'📦',color:'#ED7D31'}
     ].filter(dp=>allowedDeptNames.includes(dp.key));
     const deptOptions=depts.map(dp=>'<option>'+dp.key+'</option>').join('');
     let deptKpis='';
@@ -2054,142 +2049,6 @@ function renderDeptView(view){
               kpi('🔍','In Review',inReview,'#0078D4',total?inReview/total*100:0,null,null,null,items.filter(x=>x.status==='Under Review'||x.status==='In Review'))+
               kpi('⏳','Pending',pending,'#ED7D31',total?pending/total*100:0,null,null,null,items.filter(x=>x.status==='Pending'||x.status==='Not Started'))+
               kpi('⏰','Overdue',overdue,'#D92C2C',null,null,null,null,items.filter(isOverdue));
-    }else if(view==='hse'){
-        // Task by Priority
-        const priCritical=items.filter(x=>x.priority==='Critical'||x.priority==='Urgent').length;
-        const priHigh=items.filter(x=>x.priority==='High').length;
-        const priMedium=items.filter(x=>x.priority==='Medium'||x.priority==='Normal').length;
-        const priLow=items.filter(x=>x.priority==='Low').length;
-        // Task by Category (pie chart)
-        const catCount={};
-        items.forEach(x=>{const c=x.cat||x.Category||'Uncategorized';catCount[c]=(catCount[c]||0)+1;});
-        const topCats=Object.entries(catCount).sort((a,b)=>b[1]-a[1]);
-        const catColors=['#4C5D71','#ED7D31','#00B7C3','#107C10','#8764B8','#D92C2C','#FFB900','#0078D4','#8A8886','#E8ECF0'];
-        // Monthly created vs closed (last 6 months)
-        const monthLabels=[]; const reqCounts=[]; const closeCounts=[];
-        const now=new Date();
-        for(let m=5;m>=0;m--){
-            const d=new Date(now.getFullYear(),now.getMonth()-m,1);
-            monthLabels.push(d.toLocaleString('default',{month:'short',year:'2-digit'}));
-            const monthStart=d.getTime();
-            const monthEnd=new Date(now.getFullYear(),now.getMonth()-m+1,1).getTime();
-            reqCounts.push(items.filter(x=>{const cd=x.reqDate||x.RequestedDate||x.Requested_x0020_Date||x['Requested Date'];return cd&&new Date(cd).getTime()>=monthStart&&new Date(cd).getTime()<monthEnd;}).length);
-            closeCounts.push(items.filter(x=>{const cl=x.closeDate||x.CloseDate||x.Close_x0020_Date||x['Close Date']||x.hseClose||x.CloseoutDate||x.Closeout_x0020_Date||x['Closeout Date'];if(!cl)return false;const cd=new Date(cl).getTime();return cd>=monthStart&&cd<monthEnd;}).length);
-        }
-        kpis=kpi('🛡️','Total Tasks',total,'#4C5D71',null,null,null,null,items)+
-              kpi('🔴','Critical/Urgent',priCritical,'#D92C2C',null,null,null,null,items.filter(x=>x.priority==='Critical'||x.priority==='Urgent'))+
-              kpi('🟠','High',priHigh,'#ED7D31',null,null,null,null,items.filter(x=>x.priority==='High'))+
-              kpi('🟡','Medium',priMedium,'#FFB900',null,null,null,null,items.filter(x=>x.priority==='Medium'||x.priority==='Normal'))+
-              kpi('🟢','Low',priLow,'#107C10',null,null,null,null,items.filter(x=>x.priority==='Low'));
-        // Task by Status — one KPI per unique status value
-        const statusCount={};
-        items.forEach(x=>{const s=x.status||'Not Set';statusCount[s]=(statusCount[s]||0)+1;});
-        const statusColors={'Not Started':'#8A8886','Not Set':'#8A8886','In Progress':'#0078D4','Closed':'#107C10','Completed':'#107C10','Overdue':'#D92C2C','Delayed':'#ED7D31','Cancelled':'#D92C2C','Deferred':'#8764B8','Waiting Approval':'#FFB900','Under Review':'#FFB900'};
-        const statusOrder=['Not Started','Not Set','In Progress','Under Review','Waiting Approval','Closed','Completed','Overdue','Delayed','Cancelled','Deferred'];
-        const sortedStatuses=Object.entries(statusCount).sort((a,b)=>{
-            const ia=statusOrder.indexOf(a[0]);const ib=statusOrder.indexOf(b[0]);
-            return (ia===-1?99:ia)-(ib===-1?99:ib);
-        });
-        sortedStatuses.forEach(([s,cnt])=>{
-            const color=statusColors[s]||'#8764B8';
-            const icon=s==='Closed'||s==='Completed'?'✅':s==='In Progress'?'🔄':s==='Not Started'||s==='Not Set'?'⏳':s==='Overdue'||s==='Delayed'?'⏰':s==='Cancelled'?'🚫':'📋';
-            kpis+=kpi(icon,s,cnt,color,null,null,null,null,items.filter(x=>x.status===s));
-        });
-        // Category bar chart card
-        kpis+=`<div class="kpi-card" style="grid-column:span 2;padding:12px;cursor:default;overflow:visible">
-          <div class="kpi-accent" style="background:#00B7C3"></div>
-          <div class="kpi-label">📊 Tasks by Category</div>
-          <div style="margin-top:6px;display:flex;flex-direction:row;align-items:flex-end;gap:4px;height:120px">${topCats.map(function(c){const max=topCats[0][1];const pct=max?(c[1]/max*100).toFixed(0):0;const h=pct?Math.max(4,pct):0;const ci=window._kpiCache?window._kpiCache.length:0;const cat=c[0];if(!window._kpiCache)window._kpiCache=[];window._kpiCache.push({title:'Category: '+cat,items:items.filter(function(x){return (x.cat||x.Category||'Uncategorized')===cat}),cols:viewCols});return '<div onclick="showKpiModalFromCache('+ci+')" style="flex:1;display:flex;flex-direction:column;align-items:center;cursor:pointer;height:100%"><div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;width:100%"><div style="height:'+h+'%;background:'+catColors[topCats.indexOf(c)%catColors.length]+';border-radius:3px 3px 0 0;min-height:4px;transition:height .3s"></div></div><span style="font-size:10px;font-weight:600;color:var(--text-primary);margin-top:2px;white-space:nowrap">'+c[1]+'</span><span style="font-size:9px;color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%">'+cat+'</span></div>';}).join('')}</div>
-        </div>`;
-        // Priority line chart (last 6 months)
-        const priLabels=['Critical','Urgent','High','Medium','Low'];
-        const monthlyPri={};
-        monthLabels.forEach(ml=>{monthlyPri[ml]=priLabels.map(()=>0);});
-        items.forEach(x=>{
-            var rd=x.reqDate||x.RequestedDate||x.Requested_x0020_Date||x['Requested Date']||x.Created||x.created;
-            if(!rd)return;
-            const d=new Date(rd).getTime();
-            for(let m=5;m>=0;m--){
-                const ms=new Date(now.getFullYear(),now.getMonth()-m,1).getTime();
-                const me=new Date(now.getFullYear(),now.getMonth()-m+1,1).getTime();
-                if(d>=ms&&d<me){
-                    const idx=priLabels.indexOf(x.priority);
-                    if(idx>=0)monthlyPri[monthLabels[5-m]][idx]++;
-                }
-            }
-        });
-        console.log('[HSE Pri] monthLabels:',monthLabels,'monthlyPri:',monthlyPri,'total items:',items.length,'items with dates:',items.filter(x=>x.reqDate||x.RequestedDate||x.Requested_x0020_Date||x['Requested Date']||x.Created||x.created).length);
-        const priColors=['#D92C2C','#ED7D31','#FFB900','#107C10'];
-        kpis+=`<div class="kpi-card" style="grid-column:span 2;padding:12px;cursor:default;overflow:hidden">
-          <div class="kpi-accent" style="background:#D92C2C"></div>
-          <div class="kpi-label">📈 Priority Trend</div>
-          <div style="position:relative;height:160px;margin-top:4px"><canvas id="hse-pri-chart" style="width:100%;height:100%"></canvas></div>
-        </div>`;
-        setTimeout(function(){
-            const canvas=document.getElementById('hse-pri-chart');
-            if(!canvas||window._hsePriChart){window._hsePriChart&&window._hsePriChart.destroy();}
-            window._hsePriChart=new Chart(canvas,{type:'line',data:{
-                labels:monthLabels,
-                datasets:priLabels.map((pl,i)=>({
-                    label:pl,
-                    data:monthLabels.map(ml=>monthlyPri[ml][i]),
-                    borderColor:priColors[i],
-                    backgroundColor:priColors[i]+'20',
-                    fill:true,
-                    tension:.3,
-                    pointRadius:3
-                }))
-            },options:{
-                responsive:true,maintainAspectRatio:false,
-                plugins:{legend:{position:'top',labels:{boxWidth:12,font:{size:10}}}},
-                scales:{y:{beginAtZero:true}}
-            }});
-        },100);
-        // Gantt: tasks from requested date to target date with close marker
-        try{
-        var ganttItems=items.filter(function(x){return x.reqDate||x.RequestedDate||x.Requested_x0020_Date||x['Requested Date'];}).sort(function(a,b){return (a.reqDate||a.RequestedDate||a.Requested_x0020_Date||a['Requested Date']||'').localeCompare(b.reqDate||b.RequestedDate||b.Requested_x0020_Date||b['Requested Date']||'');});
-        console.log('[Gantt] items with reqDate:',ganttItems.length);
-        if(ganttItems.length>0){
-            var gMin=Infinity,gMax=-Infinity;
-            ganttItems.forEach(function(x){['reqDate','RequestedDate','Requested_x0020_Date','targetDate','TargetDate','Target_x0020_Date','closeDate','CloseDate','Close_x0020_Date'].forEach(function(f){if(x[f]){var t=new Date(x[f]).getTime();if(t<gMin)gMin=t;if(t>gMax)gMax=t;}});});
-            console.log('[Gantt] gMin:',new Date(gMin),'gMax:',new Date(gMax));
-            var gRange=gMax-gMin||86400000;
-            var gShow=Math.min(ganttItems.length,15);
-            var gColors={'Not Started':'#8A8886','Not Set':'#8A8886','In Progress':'#0078D4','Under Review':'#FFB900','Waiting Approval':'#ED7D31','Closed':'#107C10','Completed':'#107C10','Overdue':'#D92C2C','Delayed':'#ED7D31','Cancelled':'#D92C2C','Deferred':'#8764B8'};
-            var ganttRows='';
-            ganttItems.slice(0,gShow).forEach(function(x,i){
-                var ci=window._kpiCache.length;window._kpiCache.push({title:x.actName||x.id,items:[x],cols:viewCols});
-                var rX=((new Date(x.reqDate).getTime()-gMin)/gRange*100);
-                var tX=x.targetDate?((new Date(x.targetDate).getTime()-gMin)/gRange*100):(rX+10);
-                var cX=x.closeDate?((new Date(x.closeDate).getTime()-gMin)/gRange*100):null;
-                var w=Math.max(3,tX-rX);
-                var sc=gColors[x.status]||'#8764B8';
-                ganttRows+='<div style="display:flex;align-items:center;height:24px;font-size:10px;cursor:pointer" onclick="showKpiModalFromCache('+ci+')">'+
-                  '<span style="width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right;padding-right:6px;color:var(--text-secondary)">'+(x.actName||x.id||'').substring(0,12)+'</span>'+
-                  '<div style="flex:1;position:relative;height:16px;background:#eee;border-radius:3px">'+
-                    '<div style="position:absolute;left:'+rX.toFixed(1)+'%;width:'+w.toFixed(1)+'%;height:12px;top:2px;background:'+sc+';border-radius:3px;opacity:.85;min-width:4px"></div>'+
-                    (cX!==null?'<div style="position:absolute;left:'+cX.toFixed(1)+'%;top:1px;transform:translateX(-50%);width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:10px solid #D92C2C"></div>':'')+
-                  '</div></div>';
-            });
-            var ganttHtml='<div class="kpi-card" style="grid-column:span 2;padding:12px;cursor:default;overflow:visible">'+
-              '<div class="kpi-accent" style="background:#4C5D71"></div>'+
-              '<div class="kpi-label">📅 Task Gantt: Requested → Target → Close</div>'+
-              '<div style="margin-top:6px">'+
-              '<div style="display:flex;gap:3px;padding-left:86px;margin-bottom:2px">';
-            var gm=new Date(gMin);gm.setDate(1);
-            while(gm.getTime()<gMax){
-                ganttHtml+='<div style="flex:1;text-align:center;font-size:8px;color:var(--text-secondary);border-left:1px solid #ddd">'+gm.toLocaleString('en',{month:'short',year:'2-digit'})+'</div>';
-                gm.setMonth(gm.getMonth()+1);
-            }
-            ganttHtml+='</div>'+ganttRows;
-            if(ganttItems.length>gShow)ganttHtml+='<div style="text-align:center;font-size:10px;color:var(--text-secondary);margin-top:4px">+'+(ganttItems.length-gShow)+' more</div>';
-            ganttHtml+='<div style="display:flex;gap:16px;margin-top:6px;font-size:9px;color:var(--text-secondary)"><span><span style="display:inline-block;width:12px;height:8px;background:#4C5D71;border-radius:2px;vertical-align:middle;margin-right:4px"></span>Req→Target</span><span><span style="display:inline-block;width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:10px solid #D92C2C;vertical-align:middle;margin-right:4px"></span>Closed</span></div>';
-            kpis+=ganttHtml+'</div></div>';
-            console.log('[Gantt] rendered OK');
-        }else{
-            console.log('[Gantt] no items with reqDate');
-        }
-        }catch(e){console.error('[Gantt] ERROR:',e.message);}
     }else{
         kpis=kpi('📊','Total Items',total,'#4C5D71',null,null,null,null,items)+
               kpi('📈','Completed',completed,'#107C10',total?completed/total*100:0,null,'Completed',null,items.filter(x=>x.status==='Completed'))+
@@ -2443,12 +2302,12 @@ function getMyAccess(deptId){
 
 function hasAnyAccess(){
   if(myPerms==='ALL') return true;
-  return ['substructure','superstructure','calculations','methodstatement','procurement','hse'].some(k=>getMyAccess(k)!=='none');
+  return ['substructure','superstructure','calculations','methodstatement','procurement'].some(k=>getMyAccess(k)!=='none');
 }
 
 // Map view key to permission dept ID
 function viewToDeptId(viewKey){
-  const m={procurement:'procurement',substructure:'substructure',superstructure:'superstructure',calculations:'calculations',methodstatement:'methodstatement',hse:'hse'};
+  const m={procurement:'procurement',substructure:'substructure',superstructure:'superstructure',calculations:'calculations',methodstatement:'methodstatement'};
   return m[viewKey]||null;
 }
 
