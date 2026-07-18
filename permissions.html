@@ -334,10 +334,12 @@ function updateAuthUI(){
 
 // ======================== DEPARTMENTS & SITES ========================
 const DEPTS=[
-  {id:'engineering',title:'Engineering',site:'https://sascontractingsa.sharepoint.com/sites/Alenshaiah',list:'Shop Drawing Status'},
-  {id:'procurement',title:'Procurement',site:'https://sascontractingsa.sharepoint.com/sites/Alenshaiah',list:'Procurement_Tracker Log'},
-  {id:'qaqc',title:'QA/QC',site:'https://sascontractingsa.sharepoint.com/sites/Alenshaiah',list:'QAQC Tracker'},
-  {id:'hse',title:'HSE',site:'https://sascontractingsa.sharepoint.com/sites/Alenshaiah',list:'HSE_Task_Management_Platform'}
+  {id:'substructure',    title:'Substructure',    site:'https://sascontractingsa.sharepoint.com/sites/Alenshaiah', list:'Shop Drawing Status'},
+  {id:'superstructure',  title:'Superstructure',  site:'https://sascontractingsa.sharepoint.com/sites/Alenshaiah', list:'SUPERSTRUCTURE'},
+  {id:'calculations',    title:'Calculations',    site:'https://sascontractingsa.sharepoint.com/sites/Alenshaiah', list:'Calculations'},
+  {id:'methodstatement', title:'Method Statement',site:'https://sascontractingsa.sharepoint.com/sites/Alenshaiah', list:'QAQC Tracker'},
+  {id:'procurement',     title:'Procurement',     site:'https://sascontractingsa.sharepoint.com/sites/Alenshaiah', list:'Procurement_Tracker Log'},
+  {id:'hse',             title:'HSE',             site:'https://sascontractingsa.sharepoint.com/sites/Alenshaiah', list:'HSE Tracker'}
 ];
 
 const PERM_LIST_NAME='Permissions';
@@ -435,7 +437,7 @@ function refreshPerms(){loadPermissions()}
 function renderMatrix(){
   const head=document.getElementById('matrix-head');
   const body=document.getElementById('matrix-body');
-  const depts=DEPTS.filter(d=>d.id!=='cost'&&d.id!=='planning'&&d.id!=='construction');
+  const depts=DEPTS;
   // Collect unique users sorted
   const userSet=new Set(permEntries.map(e=>e.Title).filter(Boolean));
   const users=Array.from(userSet).sort((a,b)=>a.toLowerCase().localeCompare(b.toLowerCase()));
@@ -508,7 +510,7 @@ function addUser(displayName){
   const existing=permEntries.some(e=>e.Title.toLowerCase()===email);
   if(existing){showToast('User already exists','error');return}
   if(displayName)setDisplayNameCache(email,displayName);
-  DEPTS.filter(d=>d.id!=='cost'&&d.id!=='planning'&&d.id!=='construction').forEach(d=>{
+  DEPTS.forEach(d=>{
     permEntries.push({Title:email,DeptID:d.id,Access:'None',App:app});
   });
   permDirty=true;

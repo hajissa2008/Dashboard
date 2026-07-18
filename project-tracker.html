@@ -273,26 +273,17 @@ body.dark th .sort-arrow{color:var(--text-secondary)}
     <a class="nav-item" data-view="procurement" onclick="switchView('procurement')">
       <span class="icon">📦</span> Procurement <span class="count" id="count-procurement">0</span><span class="status-dot" id="dot-procurement" style="display:inline-block;vertical-align:middle;margin-left:4px"></span>
     </a>
-    <a class="nav-item" data-view="engineering" onclick="switchView('engineering')">
-      <span class="icon">📐</span> Engineering <span class="count" id="count-engineering">0</span><span class="status-dot" id="dot-engineering" style="display:inline-block;vertical-align:middle;margin-left:4px"></span>
+    <a class="nav-item" data-view="substructure" onclick="switchView('substructure')">
+      <span class="icon">🏗️</span> Substructure <span class="count" id="count-substructure">0</span><span class="status-dot" id="dot-substructure" style="display:inline-block;vertical-align:middle;margin-left:4px"></span>
     </a>
-    <!-- Hidden: uncomment to restore Construction
-    <a class="nav-item" data-view="construction" onclick="switchView('construction')">
-      <span class="icon">🏗️</span> Construction <span class="count" id="count-construction">0</span><span class="status-dot" id="dot-construction" style="display:inline-block;vertical-align:middle;margin-left:4px"></span>
+    <a class="nav-item" data-view="superstructure" onclick="switchView('superstructure')">
+      <span class="icon">🏢</span> Superstructure <span class="count" id="count-superstructure">0</span><span class="status-dot" id="dot-superstructure" style="display:inline-block;vertical-align:middle;margin-left:4px"></span>
     </a>
-    -->
-    <!-- Hidden: uncomment to restore Cost Control
-    <a class="nav-item" data-view="cost" onclick="switchView('cost')">
-      <span class="icon">💰</span> Cost Control <span class="count" id="count-cost">0</span><span class="status-dot" id="dot-cost" style="display:inline-block;vertical-align:middle;margin-left:4px"></span>
+    <a class="nav-item" data-view="calculations" onclick="switchView('calculations')">
+      <span class="icon">🧮</span> Calculations <span class="count" id="count-calculations">0</span><span class="status-dot" id="dot-calculations" style="display:inline-block;vertical-align:middle;margin-left:4px"></span>
     </a>
-    -->
-    <!-- Hidden: uncomment to restore Planning
-    <a class="nav-item" data-view="planning" onclick="switchView('planning')">
-      <span class="icon">📅</span> Planning <span class="count" id="count-planning">0</span><span class="status-dot" id="dot-planning" style="display:inline-block;vertical-align:middle;margin-left:4px"></span>
-    </a>
-    -->
-    <a class="nav-item" data-view="qaqc" onclick="switchView('qaqc')">
-      <span class="icon">✅</span> QA/QC <span class="count" id="count-qaqc">0</span><span class="status-dot" id="dot-qaqc" style="display:inline-block;vertical-align:middle;margin-left:4px"></span>
+    <a class="nav-item" data-view="methodstatement" onclick="switchView('methodstatement')">
+      <span class="icon">📋</span> Method Statement <span class="count" id="count-methodstatement">0</span><span class="status-dot" id="dot-methodstatement" style="display:inline-block;vertical-align:middle;margin-left:4px"></span>
     </a>
     <a class="nav-item" data-view="hse" onclick="switchView('hse')">
       <span class="icon">🛡️</span> HSE <span class="count" id="count-hse">0</span><span class="status-dot" id="dot-hse" style="display:inline-block;vertical-align:middle;margin-left:4px"></span>
@@ -631,17 +622,16 @@ let spListName = '';
 
 // Per-view data sources: each view can have {site, list, data, connected}
 const viewData = {};
-const VIEW_KEYS = ['procurement','engineering','construction','cost','planning','qaqc','hse'];
+const VIEW_KEYS = ['procurement','substructure','superstructure','calculations','methodstatement','hse'];
 VIEW_KEYS.forEach(k => { viewData[k] = { site:'', list:'', data:[], connected:false }; });
 
 const VIEWS = {
   dashboard:{title:'Executive Dashboard',dept:null,cols:['proj','prog','status','budget','actual','forecast','delayDays','priority','dept','pm'],group:'proj'},
   procurement:{title:'Procurement Tracker',dept:'Procurement',cols:['id','engDisc','matDesc','manufacturer','subcontractor','rfq','poRef','poDate','expDel','leadTime','pqStatus','matSubStatus','deliveryStatus','remarks']},
-  engineering:{title:'Engineering - Shop Drawings',dept:'Engineering',cols:['id','dwgNo','dwgTitle','dwgType','rev00','rev01','rev02','rev03','eng','checker','appr','subDate','clientReview','apprDate','ifcDate','engDisc','spec','calc','rfi','tq','status','priority','phase','part','remarks']},
-  construction:{title:'Construction Tracker',dept:'Construction',cols:['id','proj','actId','actName','workFront','cArea','contractor','foreman','workStatus','dailyProg','weeklyProg','compPct','status','pStart','pFinish','aStart','aFinish','inspReq','siteIssue','ncr','punch','permit','priority','remarks']},
-  cost:{title:'Cost Control Tracker',dept:'Cost Control',cols:['id','proj','actId','actName','wbs','budget','committed','actual','forecast','costVar','ev','pv','cpi','spi','prog','status']},
-  planning:{title:'Planning Tracker',dept:'Planning',cols:['id','proj','actId','actName','primId','schedStatus','pStart','pFinish','baseFinish','curFinish','delayDays','floatDays','critical','recovery','prog','status','priority']},
-  qaqc:{title:'QA/QC - Method Statements',dept:'QA/QC',cols:['contractorRef','finalRev','finalCode','discipline','description','remarks']},
+  substructure:{title:'Substructure - Shop Drawings',dept:'Substructure',cols:['id','dwgNo','dwgTitle','dwgType','rev00','rev01','rev02','rev03','eng','checker','appr','subDate','clientReview','apprDate','ifcDate','engDisc','spec','calc','rfi','tq','status','priority','phase','part','remarks']},
+  superstructure:{title:'Superstructure',dept:'Superstructure',cols:['id','dwgNo','dwgTitle','dwgType','rev00','rev01','rev02','rev03','eng','checker','appr','subDate','clientReview','apprDate','ifcDate','engDisc','spec','calc','rfi','tq','status','priority','phase','part','remarks']},
+  calculations:{title:'Calculations',dept:'Calculations',cols:['id','title','description','discipline','status','reviewer','revision','subDate','apprDate','remarks']},
+  methodstatement:{title:'Method Statement',dept:'Method Statement',cols:['contractorRef','finalRev','finalCode','discipline','description','remarks']},
   hse:{title:'HSE Tracker',dept:'HSE',cols:['id','proj','actId','actName','risk','permitStat','incident','toolbox','safetyInsp','hseAction','hseClose','status','priority','assigned']}
 };
 
@@ -786,16 +776,15 @@ function calcDelay(item){
 // Per-view person columns (mapped short names)
 const VIEW_PERSON_COLS = {
     procurement:['assigned'],
-    engineering:['eng','checker','appr','assigned'],
-    construction:['foreman','contractor','assigned'],
-    cost:['assigned','eng'],
-    planning:['assigned','eng'],
-    qaqc:['assigned'],
+    substructure:['eng','checker','appr','assigned'],
+    superstructure:['eng','checker','appr','assigned'],
+    calculations:['reviewer','assigned'],
+    methodstatement:['assigned'],
     hse:['assigned']
 };
 const PERSON_LABELS = {
     foreman:'Foreman',contractor:'Contractor',assigned:'Assigned To',
-    eng:'Engineer',checker:'Checker',appr:'Approver'
+    eng:'Engineer',checker:'Checker',appr:'Approver',reviewer:'Reviewer'
 };
 const ALL_PERSON_COLS = [...new Set(Object.values(VIEW_PERSON_COLS).flat())];
 function getTeam(items,personCols){
@@ -1391,7 +1380,7 @@ function updateCounts(){
     document.getElementById('count-all').textContent=countAll();
     VIEW_KEYS.forEach(v=>{
         const deptName=v.charAt(0).toUpperCase()+v.slice(1);
-        const label=v==='cost'?'Cost Control':v==='qaqc'?'QA/QC':deptName;
+        const label=v==='methodstatement'?'Method Statement':deptName;
         const vd=viewData[v];
         const cnt=(vd.connected&&vd.data.length>0)?vd.data.length:countByDept(label);
         const countEl=document.getElementById('count-'+v);
@@ -1484,17 +1473,16 @@ function renderCurrent(){
 }
 
 function renderDashboardCharts(){
-    const DEPT_KEY_TO_NAME={engineering:'Engineering',procurement:'Procurement',qaqc:'QA/QC',hse:'HSE'};
+    const DEPT_KEY_TO_NAME={substructure:'Substructure',superstructure:'Superstructure',calculations:'Calculations',methodstatement:'Method Statement',procurement:'Procurement',hse:'HSE'};
     const allowedDeptNames=myPerms==='ALL'?Object.values(DEPT_KEY_TO_NAME):Object.keys(DEPT_KEY_TO_NAME).filter(k=>getMyAccess(k)!=='none').map(k=>DEPT_KEY_TO_NAME[k]);
     const deptFilter=document.getElementById('chart-dept-filter')?.value||'';
     const metric=document.getElementById('chart-metric-filter')?.value||'count';
     const cViews=VIEW_KEYS.filter(v=>viewData[v]?.connected&&viewData[v]?.data?.length>0&&(myPerms==='ALL'||getMyAccess(viewToDeptId(v))!=='none'));
-    let all;if(cViews.length>0){all=[];cViews.forEach(v=>{all=all.concat(viewData[v].data);});}else all=[...DATA].filter(x=>allowedDeptNames.includes(x.dept));
-    all=all.filter(x=>x.dept!=='Construction');
+    let all;if(cViews.length>0){all=[];cViews.forEach(v=>{all=all.concat(viewData[v].data);});    }else all=[...DATA].filter(x=>allowedDeptNames.includes(x.dept));
     if(!all.length)return;
     const filtered=deptFilter?all.filter(x=>x.dept===deptFilter):all;
     const statusData={};filtered.forEach(x=>{const s=x.status||'Not Set';statusData[s]=(statusData[s]||0)+1});
-    const deptColors={Engineering:'#4C5D71',Procurement:'#ED7D31',Construction:'#00B7C3','QA/QC':'#0078D4',HSE:'#D92C2C'};
+    const deptColors={Substructure:'#4C5D71',Superstructure:'#00B7C3',Calculations:'#8764B8','Method Statement':'#0078D4',Procurement:'#ED7D31',HSE:'#D92C2C'};
     const allDepts=allowedDeptNames;
     const deptTargets=deptFilter?[deptFilter]:allDepts;
     const deptData={};
@@ -1558,7 +1546,7 @@ function renderDashboardCharts(){
 }
 
 function renderDashboard(){
-    const DEPT_KEY_TO_NAME={engineering:'Engineering',procurement:'Procurement',qaqc:'QA/QC',hse:'HSE'};
+    const DEPT_KEY_TO_NAME={substructure:'Substructure',superstructure:'Superstructure',calculations:'Calculations',methodstatement:'Method Statement',procurement:'Procurement',hse:'HSE'};
     const allowedDeptNames=myPerms==='ALL'?Object.values(DEPT_KEY_TO_NAME):Object.keys(DEPT_KEY_TO_NAME).filter(k=>getMyAccess(k)!=='none').map(k=>DEPT_KEY_TO_NAME[k]);
     const connectedViews=VIEW_KEYS.filter(v=>viewData[v]?.connected&&viewData[v]?.data?.length>0&&(myPerms==='ALL'||getMyAccess(viewToDeptId(v))!=='none'));
     let d;
@@ -1568,7 +1556,6 @@ function renderDashboard(){
     }else{
         d=[...DATA].filter(x=>allowedDeptNames.includes(x.dept));
     }
-    d=d.filter(x=>x.dept!=='Construction');
     if(d.length===0){
         document.getElementById('content').innerHTML=`
           <div class="empty-state"><div class="empty-icon">📭</div><p>No data loaded. <br><button class="btn btn-primary" onclick="openSettings()" style="margin-top:12px;padding:8px 20px;border-radius:4px;font-size:13px;font-weight:600;cursor:pointer;border:none;background:#0078D4;color:white">Configure Data Source</button></p></div>`;
@@ -1595,9 +1582,11 @@ function renderDashboard(){
     const statusData={};d.forEach(x=>{const s=x.status||'Not Set';statusData[s]=(statusData[s]||0)+1});
     const deptData={};d.forEach(x=>{const dp=x.dept||'Unknown';deptData[dp]=(deptData[dp]||0)+1});
     const depts=[
-        {key:'Engineering',icon:'📐',color:'#4C5D71'},
+        {key:'Substructure',icon:'🏗️',color:'#4C5D71'},
+        {key:'Superstructure',icon:'🏢',color:'#00B7C3'},
+        {key:'Calculations',icon:'🧮',color:'#8764B8'},
+        {key:'Method Statement',icon:'📋',color:'#0078D4'},
         {key:'Procurement',icon:'📦',color:'#ED7D31'},
-        {key:'QA/QC',icon:'✅',color:'#0078D4'},
         {key:'HSE',icon:'🛡️',color:'#D92C2C'}
     ].filter(dp=>allowedDeptNames.includes(dp.key));
     const deptOptions=depts.map(dp=>'<option>'+dp.key+'</option>').join('');
@@ -1852,7 +1841,7 @@ function renderTable(){
     }
 
     let html='<thead><tr>';
-    const firstColLabel=currentView==='procurement'?'S. No':currentView==='construction'?'Activity ID':'Project Name';
+    const firstColLabel=currentView==='procurement'?'S. No':'Project Name';
     html+=`<th onclick="sortBy('proj')" class="${sortCol==='proj'?'sorted':''}">${firstColLabel}<span class="sort-arrow">${arrow('proj')}</span></th>`;
     cols.forEach(c=>{if(c!=='proj')html+=`<th onclick="sortBy('${c}')" class="${sortCol===c?'sorted':''}">${COL_LABELS[c]||c}<span class="sort-arrow">${arrow(c)}</span></th>`;});
     html+='</tr></thead><tbody>';
@@ -1862,9 +1851,9 @@ function renderTable(){
         if(currentView==='procurement'){
             firstCell=i+1;
             clickLabel='S. No: '+(i+1);
-        }else if(currentView==='engineering'){
-            firstCell=item.MSL||'MSL';
-            clickLabel='MSL: '+(item.MSL||'MSL');
+        }else if(currentView==='substructure'||currentView==='superstructure'){
+            firstCell=item.dwgNo||item['Drawing_x0020_Number']||item['Drawing Number']||'—';
+            clickLabel='Drawing: '+(item.dwgNo||item['Drawing_x0020_Number']||'—');
         }else{
             firstCell=item.proj||item.Title||'';
             clickLabel='Project: '+firstCell;
@@ -1950,7 +1939,7 @@ function renderDeptView(view){
     }
 
     let kpis='';
-    if(view==='engineering'){
+    if(view==='substructure'||view==='superstructure'){
         // Determine each document's current revision level by checking raw column names
         const revFields=[{key:'rev03',cols:['REV 03 (OUT MDH)']},
                          {key:'rev02',cols:['REV 02 OUT(MDH)','REV 02 IN']},
@@ -1979,7 +1968,7 @@ function renderDeptView(view){
             return statuses.map(([s,c])=>s+' ('+c+')').join(', ');
         }
         const rev00=revGroups.rev00.length, rev01=revGroups.rev01.length, rev02=revGroups.rev02.length, rev03=revGroups.rev03.length;
-        kpis=kpi('📐','Total Documents',total,'#4C5D71',null,null,null,null,items)+
+        kpis=kpi('📐','Total Drawings',total,'#4C5D71',null,null,null,null,items)+
               kpi('⏰','Overdue',overdue,'#D92C2C',null,null,null,null,items.filter(isOverdue))+
               kpi('⬜','Rev 00',rev00,'#8A8886',total?rev00/total*100:0,null,null,revStatusSummary('rev00',rev00),revGroups.rev00)+
               kpi('1️⃣','Rev 01',rev01,'#00B7C3',total?rev01/total*100:0,null,null,revStatusSummary('rev01',rev01),revGroups.rev01)+
@@ -2034,45 +2023,7 @@ function renderDeptView(view){
             kpi('📎','MAT Submitted',matSubmitted,sc(pc(matSubmitted)),pc(matSubmitted),tr(matSubmitted,total),null,matSubmitted+'/'+total,items.filter(x=>{const m=getMatStatus(x);return m&&m!=='n/a';}))+
             kpi('✔️','MAT Approved',matApproved,sc(pc(matApproved)),pc(matApproved),tr(matApproved,total),null,matApproved+'/'+total,items.filter(x=>{const m=getMatStatus(x);return m&&m!=='n/a'&&m!=='mar open'&&m!=='mar_open';}))+
             kpi('🔄','Open MAR',matOpen,sc(pc(matOpen),true),pc(matOpen),tr(total-matOpen,total),null,matOpen+'/'+total,items.filter(x=>{const m=getMatStatus(x);return m==='mar open'||m==='mar_open';}));
-    }else if(view==='construction'){
-        const notStarted=items.filter(x=>x.status==='Not Started').length;
-        const inProgress=items.filter(x=>x.status==='In Progress').length;
-        const forInsp=items.filter(x=>x.status==='For Inspection').length;
-        const partInsp=items.filter(x=>x.status==='Partially Inspected').length;
-        const accDone=items.filter(x=>x.status==='ACC Completed').length;
-        const sdcDone=items.filter(x=>x.status==='SDC Completed').length;
-        kpis=kpi('🏗️','Total Activities',total,'#4C5D71',null,null,null,null,items)+
-              kpi('⏰','Overdue',overdue,'#D92C2C',null,null,null,null,items.filter(isOverdue))+
-              kpi('📋','Not Started',notStarted,'#8A8886',total?notStarted/total*100:0,null,null,null,items.filter(x=>x.status==='Not Started'))+
-              kpi('🔄','In Progress',inProgress,'#00B7C3',total?inProgress/total*100:0,null,'In Progress',null,items.filter(x=>x.status==='In Progress'))+
-              kpi('🔍','For Inspection',forInsp,'#ED7D31',total?forInsp/total*100:0,null,null,null,items.filter(x=>x.status==='For Inspection'))+
-              kpi('🔎','Partially Inspected',partInsp,'#FFB900',total?partInsp/total*100:0,null,null,null,items.filter(x=>x.status==='Partially Inspected'))+
-              kpi('✅','ACC Completed',accDone,'#107C10',total?accDone/total*100:0,null,null,null,items.filter(x=>x.status==='ACC Completed'))+
-              kpi('📌','SDC Completed',sdcDone,'#8764B8',total?sdcDone/total*100:0,null,null,null,items.filter(x=>x.status==='SDC Completed'));
-    }else if(view==='cost'){
-        const budget=items.reduce((s,x)=>s+(x.budget||x['Budget']||0),0);
-        const actual=items.reduce((s,x)=>s+(x.actual||x['Actual Cost']||x['Actual']||0),0);
-        const variance=budget-actual;
-        const varCls=variance>=0?'up':'down';
-        const varTxt=variance>=0?'Under Budget':'Over Budget';
-        kpis=kpi('💰','Total Budget','$'+budget.toLocaleString(),'#107C10',null,null,null,null,items)+
-              kpi('💳','Actual Cost','$'+actual.toLocaleString(),'#D92C2C',budget?Math.min(100,actual/budget*100):0,null,null,null,items)+
-              kpi('📊','Variance','$'+Math.abs(variance).toLocaleString(),variance>=0?'#00B7C3':'#ED7D31',null,{txt:varTxt,cls:varCls},null,items)+
-              kpi('✅','Under Budget',items.filter(x=>(x.budget||0)>(x.actual||0)).length,'#107C10',null,null,null,null,items.filter(x=>(x.budget||0)>(x.actual||0)))+
-              kpi('⚠️','Over Budget',items.filter(x=>(x.budget||0)<(x.actual||0)).length,'#D92C2C',null,null,null,null,items.filter(x=>(x.budget||0)<(x.actual||0)))+
-              kpi('⏰','Overdue Items',overdue,'#D92C2C',null,null,'Delayed',null,items.filter(isOverdue));
-    }else if(view==='planning'){
-        const crit=items.filter(x=>x.critical||x['Critical']==='Yes').length;
-        const avgDelay=total?Math.round(items.reduce((s,x)=>s+Math.max(0,calcDelay(x)),0)/total):0;
-        const onTrack=items.filter(x=>!isOverdue(x)).length;
-        kpis=kpi('📅','Total Activities',total,'#4C5D71',null,null,null,null,items)+
-              kpi('🔴','Critical Path',crit,'#D92C2C',crit/total*100,null,null,null,items.filter(x=>x.critical||x['Critical']==='Yes'))+
-              kpi('⏱️','Avg Delay',avgDelay+'d','#ED7D31',null,avgDelay>0?{txt:'Behind',cls:'down'}:{txt:'On Track',cls:'up'},null,null,items)+
-              kpi('⏰','Overdue',overdue,'#D92C2C',null,null,'Delayed',null,items.filter(isOverdue))+
-              kpi('✅','On Track',onTrack,'#107C10',onTrack/total*100,null,null,null,items.filter(x=>!isOverdue(x)))+
-              kpi('📊','Completed',completed,'#00B7C3',completed/total*100,null,'Completed',null,items.filter(x=>x.status==='Completed'));
-    }else if(view==='qaqc'){
-        // Method Statement status groups
+    }else if(view==='methodstatement'){
         const groups={};
         items.forEach(x=>{
             const s=x.status||'Not Set'; if(!groups[s])groups[s]=[];
@@ -2094,6 +2045,15 @@ function renderDeptView(view){
               kpi('⏰','Overdue',overdue,'#D92C2C',null,null,null,null,items.filter(isOverdue))+
               kpi('📊','Approval Rate',appRate+'%','#00B7C3',appRate,null,null,null,items)+
               kpi('🏷️','Disciplines',disciplines,'#8764B8',null,null,null,null,items);
+    }else if(view==='calculations'){
+        const approved=items.filter(x=>x.status==='Approved'||x.status==='Completed').length;
+        const inReview=items.filter(x=>x.status==='Under Review'||x.status==='In Review').length;
+        const pending=items.filter(x=>x.status==='Pending'||x.status==='Not Started').length;
+        kpis=kpi('🧮','Total Calcs',total,'#4C5D71',null,null,null,null,items)+
+              kpi('✅','Approved',approved,'#107C10',total?approved/total*100:0,null,null,null,items.filter(x=>x.status==='Approved'||x.status==='Completed'))+
+              kpi('🔍','In Review',inReview,'#0078D4',total?inReview/total*100:0,null,null,null,items.filter(x=>x.status==='Under Review'||x.status==='In Review'))+
+              kpi('⏳','Pending',pending,'#ED7D31',total?pending/total*100:0,null,null,null,items.filter(x=>x.status==='Pending'||x.status==='Not Started'))+
+              kpi('⏰','Overdue',overdue,'#D92C2C',null,null,null,null,items.filter(isOverdue));
     }else if(view==='hse'){
         // Task by Priority
         const priCritical=items.filter(x=>x.priority==='Critical'||x.priority==='Urgent').length;
@@ -2483,12 +2443,12 @@ function getMyAccess(deptId){
 
 function hasAnyAccess(){
   if(myPerms==='ALL') return true;
-  return ['engineering','procurement','qaqc','hse'].some(k=>getMyAccess(k)!=='none');
+  return ['substructure','superstructure','calculations','methodstatement','procurement','hse'].some(k=>getMyAccess(k)!=='none');
 }
 
 // Map view key to permission dept ID
 function viewToDeptId(viewKey){
-  const m={procurement:'procurement',engineering:'engineering',construction:'construction',cost:'cost',planning:'planning',qaqc:'qaqc',hse:'hse'};
+  const m={procurement:'procurement',substructure:'substructure',superstructure:'superstructure',calculations:'calculations',methodstatement:'methodstatement',hse:'hse'};
   return m[viewKey]||null;
 }
 

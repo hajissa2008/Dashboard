@@ -322,16 +322,12 @@ html,body{height:100%;font-family:'Segoe UI',-apple-system,system-ui,sans-serif;
 const storage = localStorage;
 
 const DEPTS = [
-  // Hidden: uncomment to restore Construction
-  // { id:'construction', title:'Construction', site:'https://sascontractingsa.sharepoint.com/sites/Alenshaiah', list:'Maseel Activity' },
-  { id:'engineering',  title:'Engineering',  site:'https://sascontractingsa.sharepoint.com/sites/Alenshaiah', list:'Shop Drawing Status' },
-  { id:'procurement',  title:'Procurement',  site:'https://sascontractingsa.sharepoint.com/sites/Alenshaiah', list:'Procurement_Tracker Log' },
-  // Hidden: uncomment to restore Cost Control
-  // { id:'cost',         title:'Cost Control', site:'https://sascontractingsa.sharepoint.com/sites/Alenshaiah', list:'Construction Cost' },
-  // Hidden: uncomment to restore Planning
-  // { id:'planning',     title:'Planning',     site:'https://sascontractingsa.sharepoint.com/sites/Alenshaiah', list:'Planning Tracker' },
-  { id:'qaqc', title:'QA/QC', site:'https://sascontractingsa.sharepoint.com/sites/Alenshaiah', list:'QAQC Tracker' },
-  { id:'hse',          title:'HSE',          site:'https://sascontractingsa.sharepoint.com/sites/Alenshaiah', list:'HSE Tracker' }
+  { id:'substructure',    title:'Substructure',    site:'https://sascontractingsa.sharepoint.com/sites/Alenshaiah', list:'Shop Drawing Status' },
+  { id:'superstructure',  title:'Superstructure',  site:'https://sascontractingsa.sharepoint.com/sites/Alenshaiah', list:'SUPERSTRUCTURE' },
+  { id:'calculations',    title:'Calculations',    site:'https://sascontractingsa.sharepoint.com/sites/Alenshaiah', list:'Calculations' },
+  { id:'methodstatement', title:'Method Statement',site:'https://sascontractingsa.sharepoint.com/sites/Alenshaiah', list:'QAQC Tracker' },
+  { id:'procurement',     title:'Procurement',     site:'https://sascontractingsa.sharepoint.com/sites/Alenshaiah', list:'Procurement_Tracker Log' },
+  { id:'hse',             title:'HSE',             site:'https://sascontractingsa.sharepoint.com/sites/Alenshaiah', list:'HSE Tracker' }
 ];
 
 let currentDept = null;
@@ -1285,7 +1281,7 @@ function openExport(){
   document.getElementById('export-status').className='save-status';
   document.getElementById('export-status').textContent='';
   document.getElementById('export-btn').disabled=false;
-  const depts=DEPTS.filter(d=>d.id!=='cost'&&d.id!=='planning'&&d.id!=='construction');
+  const depts=DEPTS;
   const choiceCols=columnDefs.filter(c=>c.type==='choice'&&c.choices&&c.choices.length);
   const dateCols=columnDefs.filter(c=>c.type==='date');
   let html='';
@@ -1339,7 +1335,7 @@ async function runExport(){
     const excludeChoices=Object.keys(choiceFilters).length?choiceFilters:null;
     const fn=htmlEscape(currentDept.title).replace(/[^a-z0-9]/gi,'_')+'_Export_'+new Date().toISOString().slice(0,10);
     if(deptVal==='all'){
-      const allDepts=DEPTS.filter(d=>d.id!=='cost'&&d.id!=='planning'&&d.id!=='construction');
+      const allDepts=DEPTS;
       if(format==='excel'){await exportAllExcel(allDepts,dateFrom,dateTo,excludeChoices,fn,status);}
       else{await exportAllPDF(allDepts,dateFrom,dateTo,excludeChoices,fn,status);}
     }else{
