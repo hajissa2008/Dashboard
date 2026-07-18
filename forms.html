@@ -1522,19 +1522,19 @@ async function loadLogoDataURL(){
 }
 function addPDFHeader(doc,deptTitle,dateFrom,dateTo,logoData){
   const pw=doc.internal.pageSize.getWidth();
-  doc.setFillColor(245,245,245);doc.rect(0,0,pw,28,'F');
-  doc.setDrawColor(76,93,113);doc.setLineWidth(0.6);doc.line(8,27,pw-8,27);
+  doc.setFillColor(245,245,245);doc.rect(0,0,pw,30,'F');
+  doc.setDrawColor(76,93,113);doc.setLineWidth(0.6);doc.line(8,29,pw-8,29);
   if(logoData){
     try{
-      const maxW=18,maxH=18,ratio=Math.min(maxW/logoData.width,maxH/logoData.height);
+      const maxW=24,maxH=12,ratio=Math.min(maxW/logoData.width,maxH/logoData.height);
       const w=Math.round(logoData.width*ratio),h=Math.round(logoData.height*ratio);
-      doc.addImage(logoData.url,'PNG',10,4,w,h);
+      doc.addImage(logoData.url,'PNG',10,5,w,h);
     }catch{}
   }
   doc.setFontSize(11);doc.setFont('helvetica','bold');doc.text('AlEnshaiah - Project Management System',pw/2,10,{align:'center'});
   doc.setFontSize(9);doc.setFont('helvetica','normal');doc.text(deptTitle||'Data Export',pw/2,16.5,{align:'center'});
   doc.setFontSize(7);doc.text(new Date().toLocaleString(),pw-8,8,{align:'right'});
-  if(dateFrom||dateTo){doc.setFontSize(8);doc.text('Period: '+(dateFrom||'...')+' to '+(dateTo||'...'),pw/2,21.5,{align:'center'});}
+  if(dateFrom||dateTo){doc.setFontSize(8);doc.text('Period: '+(dateFrom||'...')+' to '+(dateTo||'...'),pw/2,22,{align:'center'});}
 }
 function addPDFFooter(doc,pageNum,totalPages){
   const pw=doc.internal.pageSize.getWidth();
@@ -1736,7 +1736,7 @@ async function exportPDF(items,cols,dept,dateFrom,dateTo,excludeChoices,fn,statu
   const widths=calcColWidths(headers,data,usableW);
   const colStyles={};widths.forEach((w,i)=>{colStyles[i]={cellWidth:w};});
   addPDFHeader(doc,dept.title+' - Tracker Log',dateFrom,dateTo,logoData);
-  let startY=dateFrom||dateTo?35:32;
+  let startY=dateFrom||dateTo?38:35;
   startY=addKpiSection(doc,items,startY,dept);
   if(startY>doc.internal.pageSize.getHeight()-15){startY=10;doc.addPage();}
   doc.autoTable({
@@ -1762,7 +1762,7 @@ async function exportAllPDF(depts,dateFrom,dateTo,excludeChoices,fn,status){
   const ml=6,mr=6,usableW=pw-ml-mr;
   const logoData=await loadLogoDataURL();
   addPDFHeader(doc,'All Departments - Tracker Log',dateFrom,dateTo,logoData);
-  let startY=dateFrom||dateTo?35:32;
+  let startY=dateFrom||dateTo?38:35;
   for(let i=0;i<depts.length;i++){
     const d=depts[i];
     status.textContent='Fetching '+d.title+'...';
