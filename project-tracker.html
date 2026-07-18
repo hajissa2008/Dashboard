@@ -1472,40 +1472,6 @@ function renderDashboard(){
         {key:'Procurement',icon:'📦',color:'#ED7D31'}
     ].filter(dp=>allowedDeptNames.includes(dp.key));
     const deptOptions=depts.map(dp=>'<option>'+dp.key+'</option>').join('');
-    let deptKpis='';
-    depts.forEach(dp=>{
-        const vk=VIEW_KEYS.find(k=>VIEWS[k].title===dp.key||VIEWS[k].dept===dp.key);
-        const vd=vk?viewData[vk]:null;
-        const useViewData=vd&&vd.connected&&vd.data.length>0;
-        const items=useViewData?vd.data:d.filter(x=>x.dept===dp.key);
-        const t=items.length;
-        if(t===0){deptKpis+=`<div class="kpi-card" style="opacity:.5;grid-column:span 1"><div class="kpi-accent" style="background:${dp.color}"></div><div class="kpi-icon">${dp.icon}</div><div class="kpi-label">${dp.key}</div><div class="kpi-value" style="font-size:18px">0</div><div class="kpi-sub">No items</div></div>`;return;}
-        const ns=items.filter(x=>x.status==='Not Started'||x.status==='Not Set').length;
-        const ip=items.filter(x=>x.status==='In Progress'||x.status==='Under Review').length;
-        const c=items.filter(x=>x.status==='Completed').length;
-        const od=items.filter(isOverdue).length;
-        const ap=t?Math.round(items.reduce((s,x)=>s+(x.prog||0),0)/t):0;
-        let deptCols=VIEWS[vk]?.cols||['proj','prog','status','delayDays'];
-        if(useViewData&&items.length>0){
-            const skipKeys=new Set(['dept','priority','proj','status','Title','Modified','Created','EditorLookupId','AuthorLookupId','ID','id','ContentType','_UIVersionString','Attachments','Edit','LinkTitleNoMenu','LinkTitle','ItemChildCount','FolderChildCount','_ComplianceFlags','_ComplianceTag','_ComplianceTagWrittenTime','_ComplianceTagUserId','AppAuthorLookupId','AppEditorLookupId','@odata.etag','FileSystemObjectType','ServerUrl','EncodedAbsUrl','BaseName','FileRef','FileLeafRef','UniqueId','ProgId','CheckoutUserId','CheckoutUser','CheckedOutUserId','CheckedOutUser','HasCopyDestinations','CopySource','OData__UIVersionString','UIVersion','Order','GUID','WorkflowInstanceId','WorkflowVersion','WorkflowName','File_x0020_Type','DocIcon','XMLTZone','_HasCopyDestinations','_CopySource','ScopeId','LinkFilename','LinkFilenameNoMenu','FSObjType','SortBehavior','PermMask','FileDirRef','Last_x0020_Modified','Created_x0020_Date','Editor','Author']);
-            const dk=Object.keys(items[0]).filter(k=>!skipKeys.has(k)&&!k.startsWith('@')&&!k.startsWith('_')&&!ALIAS_SHORTS.has(k));
-            if(dk.length>0)deptCols=dk;
-        }
-        const ci=pushKpi(dp.key,items,deptCols,false);
-        deptKpis+=`<div class="kpi-card" onclick="showKpiModalFromCache(${ci})" title="Click to view ${dp.key} details" style="grid-column:span 1;cursor:pointer">
-          <div class="kpi-accent" style="background:${dp.color}"></div>
-          <div class="kpi-icon">${dp.icon}</div>
-          <div class="kpi-label">${dp.key}</div>
-          <div class="kpi-value" style="font-size:18px">${t}</div>
-          <div class="kpi-sub">
-            <span style="color:var(--text-secondary)">NS:</span>${ns}
-            <span style="color:var(--text-secondary);margin-left:6px">IP:</span>${ip}
-            <span style="color:var(--green);margin-left:6px">C:</span>${c}
-            <span style="color:var(--red);margin-left:6px">OD:</span>${od}
-          </div>
-          <div class="kpi-bar"><div class="kpi-bar-fill" style="width:${ap}%;background:${dp.color}"></div></div>
-        </div>`;
-    });
     document.getElementById('content').innerHTML=`
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
       <div style="font-size:12px;color:var(--text-secondary)">${connectedViews.length>0?connectedViews.length+' connected lists':'Demo data'} · ${compRate}% complete</div>
@@ -1545,20 +1511,120 @@ function renderDashboard(){
         <div class="kpi-sub">Avg delay ${avgDelay}d</div>
       </div>
     </div>
-    <h3 style="font-size:13px;font-weight:600;color:var(--text-secondary);margin:0 0 12px;text-transform:uppercase;letter-spacing:.5px">📋 Department Overview</h3>
-    <div class="kpi-grid">${deptKpis}</div>
     ${(()=>{
-        let teamHtml='';
-        const allowedViews=connectedViews.filter(v=>myPerms==='ALL'||getMyAccess(viewToDeptId(v))!=='none');
-        allowedViews.forEach(v=>{
-            const items=viewData[v]?.data||[];
-            const cols=VIEW_PERSON_COLS[v]||['assigned'];
-            const team=getTeam(items,cols);
-            if(team.length>0){
-                teamHtml+=`<div style="margin:4px 0 8px"><span style="font-size:13px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.5px">${VIEWS[v].title} Team</span>${renderTeam(team,true)}</div>`;
+        let deptHtml='';
+        depts.forEach(dp=>{
+            const vk=VIEW_KEYS.find(k=>VIEWS[k].title===dp.key||VIEWS[k].dept===dp.key);
+            if(!vk)return;
+            const vd=vk?viewData[vk]:null;
+            const useViewData=vd&&vd.connected&&vd.data.length>0;
+            const items=useViewData?vd.data:d.filter(x=>x.dept===dp.key);
+            const t=items.length; if(t===0)return;
+            const ns=items.filter(x=>x.status==='Not Started'||x.status==='Not Set').length;
+            const ip=items.filter(x=>x.status==='In Progress'||x.status==='Under Review').length;
+            const c=items.filter(x=>x.status==='Completed').length;
+            const od=items.filter(isOverdue).length;
+            const ap=t?Math.round(items.reduce((s,x)=>s+(x.prog||0),0)/t):0;
+            const ovr=t?Math.round(od/t*100):0;
+            let deptCols=VIEWS[vk]?.cols||['proj','prog','status','delayDays'];
+            if(useViewData&&items.length>0){
+                const skipKeys=new Set(['dept','priority','proj','status','Title','Modified','Created','EditorLookupId','AuthorLookupId','ID','id','ContentType','_UIVersionString','Attachments','Edit','LinkTitleNoMenu','LinkTitle','ItemChildCount','FolderChildCount','_ComplianceFlags','_ComplianceTag','_ComplianceTagWrittenTime','_ComplianceTagUserId','AppAuthorLookupId','AppEditorLookupId','@odata.etag','FileSystemObjectType','ServerUrl','EncodedAbsUrl','BaseName','FileRef','FileLeafRef','UniqueId','ProgId','CheckoutUserId','CheckoutUser','CheckedOutUserId','CheckedOutUser','HasCopyDestinations','CopySource','OData__UIVersionString','UIVersion','Order','GUID','WorkflowInstanceId','WorkflowVersion','WorkflowName','File_x0020_Type','DocIcon','XMLTZone','_HasCopyDestinations','_CopySource','ScopeId','LinkFilename','LinkFilenameNoMenu','FSObjType','SortBehavior','PermMask','FileDirRef','Last_x0020_Modified','Created_x0020_Date','Editor','Author']);
+                const dk=Object.keys(items[0]).filter(k=>!skipKeys.has(k)&&!k.startsWith('@')&&!k.startsWith('_')&&!ALIAS_SHORTS.has(k));
+                if(dk.length>0)deptCols=dk;
             }
+            function dc(v,pct,invert){
+                if(pct==null&&v==null)return dp.color;
+                const p=pct??(t?v/t*100:0);
+                if(invert){if(p<=20)return'#107C10';if(p<=50)return'#ED7D31';return'#D92C2C';}
+                if(p>=70)return'#107C10';if(p>=40)return'#ED7D31';return'#D92C2C';
+            }
+            function dtr(g,tot){if(!tot)return'';const r=g/tot;return r>=0.7?'ON TRACK':r>=0.4?'FAIR':'BEHIND';}
+            let kpis='';
+            if(vk==='substructure'||vk==='superstructure'){
+                const revFields=[{key:'rev03',cols:['REV 03 (OUT MDH)']},{key:'rev02',cols:['REV 02 OUT(MDH)','REV 02 IN']},{key:'rev01',cols:['REV 01 OUT(MDH)','REV 01  IN']},{key:'rev00',cols:['REV 00 (OUT MDH)','REV 00  IN']}];
+                const revCounts={rev00:0,rev01:0,rev02:0,rev03:0};
+                items.forEach(item=>{for(const rf of revFields){const colName=rf.cols.find(c=>item[c]!==undefined&&item[c]!==null&&item[c]!=='');const value=colName?item[colName]:item[rf.key];if(value!==undefined&&value!==null&&value!==''){revCounts[rf.key]++;break;}}});
+                const disciplines=new Set(items.map(x=>x.engDisc||x['Discipline']||'')).size;
+                const phases=new Set(items.map(x=>x.phase||x['ProjectPhase']||x['Phase']||'')).size;
+                const parts=new Set(items.map(x=>x.part||x['Part']||'')).size;
+                const ci=window._kpiCache.length;window._kpiCache.push({title:dp.key,items,cols:deptCols});
+                kpis=
+                    `<div class="kpi-card" onclick="showKpiModalFromCache(${ci})" style="cursor:pointer"><div class="kpi-accent" style="background:#4C5D71"></div><div class="kpi-icon">📐</div><div class="kpi-label">Total</div><div class="kpi-value">${t}</div></div>`+
+                    `<div class="kpi-card" onclick="showKpiModalFromCache(${window._kpiCache.push({title:'Overdue',items:items.filter(isOverdue),cols:deptCols})-1})" style="cursor:pointer"><div class="kpi-accent" style="background:#D92C2C"></div><div class="kpi-icon">⏰</div><div class="kpi-label">Overdue</div><div class="kpi-value">${od}</div><div class="kpi-sub">${ovr}%</div></div>`+
+                    `<div class="kpi-card" style=""><div class="kpi-accent" style="background:#8A8886"></div><div class="kpi-icon">⬜</div><div class="kpi-label">Rev 00</div><div class="kpi-value">${revCounts.rev00}</div><div class="kpi-bar"><div class="kpi-bar-fill" style="width:${t?revCounts.rev00/t*100:0}%;background:#8A8886"></div></div></div>`+
+                    `<div class="kpi-card" style=""><div class="kpi-accent" style="background:#00B7C3"></div><div class="kpi-icon">1️⃣</div><div class="kpi-label">Rev 01</div><div class="kpi-value">${revCounts.rev01}</div><div class="kpi-bar"><div class="kpi-bar-fill" style="width:${t?revCounts.rev01/t*100:0}%;background:#00B7C3"></div></div></div>`+
+                    `<div class="kpi-card" style=""><div class="kpi-accent" style="background:#ED7D31"></div><div class="kpi-icon">2️⃣</div><div class="kpi-label">Rev 02</div><div class="kpi-value">${revCounts.rev02}</div><div class="kpi-bar"><div class="kpi-bar-fill" style="width:${t?revCounts.rev02/t*100:0}%;background:#ED7D31"></div></div></div>`+
+                    `<div class="kpi-card" style=""><div class="kpi-accent" style="background:#8764B8"></div><div class="kpi-icon">3️⃣</div><div class="kpi-label">Rev 03</div><div class="kpi-value">${revCounts.rev03}</div><div class="kpi-bar"><div class="kpi-bar-fill" style="width:${t?revCounts.rev03/t*100:0}%;background:#8764B8"></div></div></div>`+
+                    `<div class="kpi-card" style=""><div class="kpi-accent" style="background:#0078D4"></div><div class="kpi-icon">🏷️</div><div class="kpi-label">Disciplines</div><div class="kpi-value">${disciplines}</div></div>`+
+                    `<div class="kpi-card" style=""><div class="kpi-accent" style="background:#D92C2C"></div><div class="kpi-icon">📅</div><div class="kpi-label">Phases</div><div class="kpi-value">${phases}</div></div>`+
+                    `<div class="kpi-card" style=""><div class="kpi-accent" style="background:#4C5D71"></div><div class="kpi-icon">📁</div><div class="kpi-label">Parts</div><div class="kpi-value">${parts}</div></div>`;
+            }else if(vk==='procurement'){
+                function poIsIssued(x){const ad=x.actualPoDate||x['Actual PO']||x['Actual PO DATE']||x['ACTUAL PO DATE']||x['ACTUAL_x0020_PO_x0020_DATE']||'';if(ad&&ad!=='N/A')return true;const ps=x['Actual PO Status']||x['ACTUAL PO Status']||x['ACTUAL PO STATUS']||x['ACTUAL_x0020_PO_x0020_Status']||x['ACTUAL_x0020_PO_x0020_STATUS']||'';if(typeof ps==='string'&&ps.toLowerCase()==='done')return true;const pq=x.pqStatus||x['PQ  Status']||x['PQ_x0020__x0020_Status']||x['PQ_x0020_Status']||'';if(typeof pq==='string'&&pq.toLowerCase()==='done')return true;return x.poRef&&x.poRef!==''&&x.poRef!=='N/A';}
+                const poIssued=items.filter(poIsIssued).length,poPending=t-poIssued;
+                function delIsDone(x){const ds=(x.deliveryStatus||x['Actual Delivery Status']||x['ACTUAL DELIVERY STATUS']||x['ACTUAL_x0020_DELIVERY_x0020_STATUS']||'').toLowerCase();return ds==='done'||ds==='as site required'||/deliver|receiv|complet/i.test(ds)&&!/pend|overdue|part/i.test(ds);}
+                const delDelivered=items.filter(delIsDone).length,delPending=t-delDelivered;
+                function isLongLead(x){const v=x.leadTime||x['Lead Time']||x['PROCUREMENT LEAD TIME']||x['PROCUREMENT_x0020_LEAD_x0020_TIME']||'';return Number(v)>60||(typeof v==='string'&&v.toLowerCase()==='lli');}
+                const longLead=items.filter(isLongLead).length;
+                function isPqApproved(x){const s=x.pqStatus||x['PQ  Status']||x['PQ_x0020__x0020_Status']||x['PQ_x0020_Status']||'';return /approv|accept|pass/i.test(s)||/^[be]$/i.test(s);}
+                const pqApproved=items.filter(isPqApproved).length;
+                function getMatStatus(x){return (x.matSubStatus||x['Material Submitta STATUS']||x['Material Submittal Status']||x['Material Submitta Status']||x['Material_x0020_Submitta_x0020_STATUS']||'').toLowerCase();}
+                const matOpen=items.filter(x=>{const m=getMatStatus(x);return m==='mar open'||m==='mar_open';}).length;
+                const matSubmitted=items.filter(x=>{const m=getMatStatus(x);return m&&m!=='n/a';}).length;
+                const matApproved=items.filter(x=>{const m=getMatStatus(x);return m&&m!=='n/a'&&m!=='mar open'&&m!=='mar_open';}).length;
+                function pc(v){return t?Math.round(v/t*100):0;}
+                function sc(pct,invert){if(invert){if(pct<=20)return'#107C10';if(pct<=50)return'#ED7D31';return'#D92C2C';}if(pct>=70)return'#107C10';if(pct>=40)return'#ED7D31';return'#D92C2C';}
+                kpis=
+                    `<div class="kpi-card"><div class="kpi-accent" style="background:#4C5D71"></div><div class="kpi-icon">📦</div><div class="kpi-label">Total Items</div><div class="kpi-value">${t}</div></div>`+
+                    `<div class="kpi-card" onclick="showKpiModalFromCache(${window._kpiCache.push({title:'PO Issued',items:items.filter(poIsIssued),cols:deptCols})-1})" style="cursor:pointer"><div class="kpi-accent" style="background:${sc(pc(poIssued))}"></div><div class="kpi-icon">📄</div><div class="kpi-label">PO Issued</div><div class="kpi-value">${poIssued}</div><div class="kpi-sub">${dtr(poIssued,t)}</div><div class="kpi-bar"><div class="kpi-bar-fill" style="width:${pc(poIssued)}%;background:${sc(pc(poIssued))}"></div></div></div>`+
+                    `<div class="kpi-card" onclick="showKpiModalFromCache(${window._kpiCache.push({title:'PO Pending',items:items.filter(x=>!poIsIssued(x)),cols:deptCols})-1})" style="cursor:pointer"><div class="kpi-accent" style="background:${sc(pc(poPending),true)}"></div><div class="kpi-icon">📋</div><div class="kpi-label">PO Pending</div><div class="kpi-value">${poPending}</div><div class="kpi-sub">${dtr(t-poPending,t)}</div><div class="kpi-bar"><div class="kpi-bar-fill" style="width:${pc(poPending)}%;background:${sc(pc(poPending),true)}"></div></div></div>`+
+                    `<div class="kpi-card" onclick="showKpiModalFromCache(${window._kpiCache.push({title:'Delivery Completed',items:items.filter(delIsDone),cols:deptCols})-1})" style="cursor:pointer"><div class="kpi-accent" style="background:${sc(pc(delDelivered))}"></div><div class="kpi-icon">✅</div><div class="kpi-label">Del. Completed</div><div class="kpi-value">${delDelivered}</div><div class="kpi-sub">${dtr(delDelivered,t)}</div><div class="kpi-bar"><div class="kpi-bar-fill" style="width:${pc(delDelivered)}%;background:${sc(pc(delDelivered))}"></div></div></div>`+
+                    `<div class="kpi-card" onclick="showKpiModalFromCache(${window._kpiCache.push({title:'Deliveries Pending',items:items.filter(x=>!delIsDone(x)),cols:deptCols})-1})" style="cursor:pointer"><div class="kpi-accent" style="background:${sc(pc(delPending),true)}"></div><div class="kpi-icon">⏳</div><div class="kpi-label">Del. Pending</div><div class="kpi-value">${delPending}</div><div class="kpi-sub">${dtr(t-delPending,t)}</div><div class="kpi-bar"><div class="kpi-bar-fill" style="width:${pc(delPending)}%;background:${sc(pc(delPending),true)}"></div></div></div>`+
+                    `<div class="kpi-card" onclick="showKpiModalFromCache(${window._kpiCache.push({title:'Long Lead Items',items:items.filter(isLongLead),cols:deptCols})-1})" style="cursor:pointer"><div class="kpi-accent" style="background:${sc(pc(longLead),true)}"></div><div class="kpi-icon">⏱️</div><div class="kpi-label">Long Lead</div><div class="kpi-value">${longLead}</div><div class="kpi-sub">${dtr(t-longLead,t)}</div><div class="kpi-bar"><div class="kpi-bar-fill" style="width:${pc(longLead)}%;background:${sc(pc(longLead),true)}"></div></div></div>`+
+                    `<div class="kpi-card" onclick="showKpiModalFromCache(${window._kpiCache.push({title:'PQ Approved',items:items.filter(isPqApproved),cols:deptCols})-1})" style="cursor:pointer"><div class="kpi-accent" style="background:${sc(pc(pqApproved))}"></div><div class="kpi-icon">📋</div><div class="kpi-label">PQ Approved</div><div class="kpi-value">${pqApproved}</div><div class="kpi-sub">${dtr(pqApproved,t)}</div><div class="kpi-bar"><div class="kpi-bar-fill" style="width:${pc(pqApproved)}%;background:${sc(pc(pqApproved))}"></div></div></div>`+
+                    `<div class="kpi-card" onclick="showKpiModalFromCache(${window._kpiCache.push({title:'MAT Submitted',items:items.filter(x=>{const m=getMatStatus(x);return m&&m!=='n/a';}),cols:deptCols})-1})" style="cursor:pointer"><div class="kpi-accent" style="background:#0F6B3A"></div><div class="kpi-icon">📎</div><div class="kpi-label">MAT Submitted</div><div class="kpi-value">${matSubmitted}</div><div class="kpi-sub">${dtr(matSubmitted,t)}</div><div class="kpi-bar"><div class="kpi-bar-fill" style="width:${pc(matSubmitted)}%;background:#0F6B3A"></div></div></div>`+
+                    `<div class="kpi-card" onclick="showKpiModalFromCache(${window._kpiCache.push({title:'MAT Approved',items:items.filter(x=>{const m=getMatStatus(x);return m&&m!=='n/a'&&m!=='mar open'&&m!=='mar_open';}),cols:deptCols})-1})" style="cursor:pointer"><div class="kpi-accent" style="background:#0F6B3A"></div><div class="kpi-icon">✔️</div><div class="kpi-label">MAT Approved</div><div class="kpi-value">${matApproved}</div><div class="kpi-sub">${dtr(matApproved,t)}</div><div class="kpi-bar"><div class="kpi-bar-fill" style="width:${pc(matApproved)}%;background:#0F6B3A"></div></div></div>`+
+                    `<div class="kpi-card" onclick="showKpiModalFromCache(${window._kpiCache.push({title:'Open MAR',items:items.filter(x=>{const m=getMatStatus(x);return m==='mar open'||m==='mar_open';}),cols:deptCols})-1})" style="cursor:pointer"><div class="kpi-accent" style="background:${sc(pc(matOpen),true)}"></div><div class="kpi-icon">🔄</div><div class="kpi-label">Open MAR</div><div class="kpi-value">${matOpen}</div><div class="kpi-sub">${dtr(t-matOpen,t)}</div><div class="kpi-bar"><div class="kpi-bar-fill" style="width:${pc(matOpen)}%;background:${sc(pc(matOpen),true)}"></div></div></div>`;
+            }else if(vk==='calculations'){
+                const approved=items.filter(x=>x.status==='Approved'||x.status==='Completed').length;
+                const inReview=items.filter(x=>x.status==='Under Review'||x.status==='In Review').length;
+                const pending=items.filter(x=>x.status==='Pending'||x.status==='Not Started').length;
+                kpis=
+                    `<div class="kpi-card"><div class="kpi-accent" style="background:#4C5D71"></div><div class="kpi-icon">🧮</div><div class="kpi-label">Total</div><div class="kpi-value">${t}</div></div>`+
+                    `<div class="kpi-card" onclick="showKpiModalFromCache(${window._kpiCache.push({title:'Approved',items:items.filter(x=>x.status==='Approved'||x.status==='Completed'),cols:deptCols})-1})" style="cursor:pointer"><div class="kpi-accent" style="background:#107C10"></div><div class="kpi-icon">✅</div><div class="kpi-label">Approved</div><div class="kpi-value">${approved}</div><div class="kpi-sub">${t?Math.round(approved/t*100):0}%</div><div class="kpi-bar"><div class="kpi-bar-fill" style="width:${t?approved/t*100:0}%;background:#107C10"></div></div></div>`+
+                    `<div class="kpi-card" onclick="showKpiModalFromCache(${window._kpiCache.push({title:'In Review',items:items.filter(x=>x.status==='Under Review'||x.status==='In Review'),cols:deptCols})-1})" style="cursor:pointer"><div class="kpi-accent" style="background:#0078D4"></div><div class="kpi-icon">🔍</div><div class="kpi-label">In Review</div><div class="kpi-value">${inReview}</div><div class="kpi-sub">${t?Math.round(inReview/t*100):0}%</div><div class="kpi-bar"><div class="kpi-bar-fill" style="width:${t?inReview/t*100:0}%;background:#0078D4"></div></div></div>`+
+                    `<div class="kpi-card" onclick="showKpiModalFromCache(${window._kpiCache.push({title:'Pending',items:items.filter(x=>x.status==='Pending'||x.status==='Not Started'),cols:deptCols})-1})" style="cursor:pointer"><div class="kpi-accent" style="background:#ED7D31"></div><div class="kpi-icon">⏳</div><div class="kpi-label">Pending</div><div class="kpi-value">${pending}</div><div class="kpi-sub">${t?Math.round(pending/t*100):0}%</div><div class="kpi-bar"><div class="kpi-bar-fill" style="width:${t?pending/t*100:0}%;background:#ED7D31"></div></div></div>`+
+                    `<div class="kpi-card" onclick="showKpiModalFromCache(${window._kpiCache.push({title:'Overdue',items:items.filter(isOverdue),cols:deptCols})-1})" style="cursor:pointer"><div class="kpi-accent" style="background:#D92C2C"></div><div class="kpi-icon">⏰</div><div class="kpi-label">Overdue</div><div class="kpi-value">${od}</div><div class="kpi-sub">${ovr}%</div></div>`;
+            }else if(vk==='methodstatement'){
+                const approved=items.filter(x=>x.status==='Approved As Submitted'||x.status==='Approved As Noted').length;
+                const underReview=items.filter(x=>x.status==='Under Review').length;
+                const resubmit=items.filter(x=>x.status==='Revise & Resubmit').length;
+                const rejected=items.filter(x=>x.status==='Rejected').length;
+                const forInfo=items.filter(x=>x.status==='For Information').length;
+                const appRate=t?Math.round(approved/t*100):0;
+                const disciplines=new Set(items.map(x=>x.discipline||'')).size;
+                kpis=
+                    `<div class="kpi-card"><div class="kpi-accent" style="background:#4C5D71"></div><div class="kpi-icon">📄</div><div class="kpi-label">Total MS</div><div class="kpi-value">${t}</div></div>`+
+                    `<div class="kpi-card" onclick="showKpiModalFromCache(${window._kpiCache.push({title:'Approved',items:items.filter(x=>x.status==='Approved As Submitted'||x.status==='Approved As Noted'),cols:deptCols})-1})" style="cursor:pointer"><div class="kpi-accent" style="background:#107C10"></div><div class="kpi-icon">✅</div><div class="kpi-label">Approved</div><div class="kpi-value">${approved}</div><div class="kpi-bar"><div class="kpi-bar-fill" style="width:${appRate}%;background:#107C10"></div></div></div>`+
+                    `<div class="kpi-card" onclick="showKpiModalFromCache(${window._kpiCache.push({title:'Under Review',items:items.filter(x=>x.status==='Under Review'),cols:deptCols})-1})" style="cursor:pointer"><div class="kpi-accent" style="background:#0078D4"></div><div class="kpi-icon">🔍</div><div class="kpi-label">Under Review</div><div class="kpi-value">${underReview}</div></div>`+
+                    `<div class="kpi-card" onclick="showKpiModalFromCache(${window._kpiCache.push({title:'Revise & Resubmit',items:items.filter(x=>x.status==='Revise & Resubmit'),cols:deptCols})-1})" style="cursor:pointer"><div class="kpi-accent" style="background:#ED7D31"></div><div class="kpi-icon">🔄</div><div class="kpi-label">Revise & Resub.</div><div class="kpi-value">${resubmit}</div></div>`+
+                    `<div class="kpi-card" onclick="showKpiModalFromCache(${window._kpiCache.push({title:'Rejected',items:items.filter(x=>x.status==='Rejected'),cols:deptCols})-1})" style="cursor:pointer"><div class="kpi-accent" style="background:#D92C2C"></div><div class="kpi-icon">❌</div><div class="kpi-label">Rejected</div><div class="kpi-value">${rejected}</div></div>`+
+                    `<div class="kpi-card" onclick="showKpiModalFromCache(${window._kpiCache.push({title:'For Information',items:items.filter(x=>x.status==='For Information'),cols:deptCols})-1})" style="cursor:pointer"><div class="kpi-accent" style="background:#8A8886"></div><div class="kpi-icon">ℹ️</div><div class="kpi-label">For Info</div><div class="kpi-value">${forInfo}</div></div>`+
+                    `<div class="kpi-card" onclick="showKpiModalFromCache(${window._kpiCache.push({title:'Overdue',items:items.filter(isOverdue),cols:deptCols})-1})" style="cursor:pointer"><div class="kpi-accent" style="background:#D92C2C"></div><div class="kpi-icon">⏰</div><div class="kpi-label">Overdue</div><div class="kpi-value">${od}</div></div>`+
+                    `<div class="kpi-card"><div class="kpi-accent" style="background:#00B7C3"></div><div class="kpi-icon">📊</div><div class="kpi-label">Approval Rate</div><div class="kpi-value">${appRate}%</div><div class="kpi-bar"><div class="kpi-bar-fill" style="width:${appRate}%;background:#00B7C3"></div></div></div>`+
+                    `<div class="kpi-card"><div class="kpi-accent" style="background:#8764B8"></div><div class="kpi-icon">🏷️</div><div class="kpi-label">Disciplines</div><div class="kpi-value">${disciplines}</div></div>`;
+            }else{
+                kpis=
+                    `<div class="kpi-card"><div class="kpi-accent" style="background:#4C5D71"></div><div class="kpi-icon">📊</div><div class="kpi-label">Total</div><div class="kpi-value">${t}</div></div>`+
+                    `<div class="kpi-card" onclick="showKpiModalFromCache(${window._kpiCache.push({title:'Completed',items:items.filter(x=>x.status==='Completed'),cols:deptCols})-1})" style="cursor:pointer"><div class="kpi-accent" style="background:#107C10"></div><div class="kpi-icon">📈</div><div class="kpi-label">Completed</div><div class="kpi-value">${c}</div><div class="kpi-bar"><div class="kpi-bar-fill" style="width:${t?c/t*100:0}%;background:#107C10"></div></div></div>`+
+                    `<div class="kpi-card" onclick="showKpiModalFromCache(${window._kpiCache.push({title:'In Progress',items:items.filter(x=>x.status==='In Progress'||x.status==='Under Review'),cols:deptCols})-1})" style="cursor:pointer"><div class="kpi-accent" style="background:#00B7C3"></div><div class="kpi-icon">🔄</div><div class="kpi-label">In Progress</div><div class="kpi-value">${ip}</div></div>`+
+                    `<div class="kpi-card" onclick="showKpiModalFromCache(${window._kpiCache.push({title:'Overdue',items:items.filter(isOverdue),cols:deptCols})-1})" style="cursor:pointer"><div class="kpi-accent" style="background:#D92C2C"></div><div class="kpi-icon">⏰</div><div class="kpi-label">Overdue</div><div class="kpi-value">${od}</div><div class="kpi-sub">${ovr}%</div></div>`+
+                    `<div class="kpi-card"><div class="kpi-accent" style="background:#8764B8"></div><div class="kpi-icon">📊</div><div class="kpi-label">Avg Progress</div><div class="kpi-value">${ap}%</div><div class="kpi-bar"><div class="kpi-bar-fill" style="width:${ap}%;background:#8764B8"></div></div></div>`;
+            }
+            const team=getTeam(items,VIEW_PERSON_COLS[vk]||['assigned']);
+            const teamHtml=team.length>0?`<div style="margin:8px 0 0">${renderTeam(team,true)}</div>`:'';
+            deptHtml+=`<div style="margin-top:18px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><span style="font-size:18px">${dp.icon}</span><h3 style="margin:0;font-size:14px;font-weight:600;color:var(--text-primary);text-transform:uppercase;letter-spacing:.5px">${dp.key}</h3><span style="font-size:11px;color:var(--text-secondary);background:var(--gray-light);padding:1px 8px;border-radius:10px">${t} items</span></div><div class="kpi-grid">${kpis}</div>${teamHtml}</div>`;
         });
-        return teamHtml;
+        return deptHtml;
     })()}
     <div class="charts-row">
       <div class="chart-card">
@@ -1584,29 +1650,8 @@ function renderDashboard(){
         </div>
         <canvas id="chart-dept"></canvas>
       </div>
-    </div>
-    <div class="table-wrap">
-      <div class="table-toolbar">
-        <span class="view-label">Executive Dashboard</span>
-        <span class="view-badge">${total} items</span>
-        <span style="flex:1"></span>
-        <div class="filter-group">
-          <select id="filter-dept" onchange="renderTable()">
-            <option value="">All Departments</option>
-            ${deptOptions}
-          </select>
-          <select id="filter-status" onchange="renderTable()">
-            <option value="">All Statuses</option>
-            <option>Not Started</option><option>In Progress</option><option>Under Review</option>
-            <option>Waiting Approval</option><option>Completed</option><option>Delayed</option>
-            <option>On Hold</option><option>Cancelled</option>
-          </select>
-        </div>
-      </div>
-      <div class="table-scroll"><table id="data-table"><tbody id="table-body"></tbody></table></div>
     </div>`;
     renderDashboardCharts();
-    renderTable();
 }
 
 function showKpiModal(title, items, columns){
