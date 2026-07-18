@@ -1506,6 +1506,8 @@ function renderDashboard(){
         <div class="kpi-value">${di.t}</div>
         <div class="kpi-sub">${total?Math.round(di.t/total*100):0}% of total</div>
       </div>`).join('')}
+    </div>
+    <div class="kpi-grid">
       <div class="kpi-card" onclick="showKpiModalFromCache(${ciNotStarted})" style="cursor:pointer">
         <div class="kpi-accent" style="background:#8C8C8C"></div><div class="kpi-icon">⏸️</div>
         <div class="kpi-label">Not Started</div><div class="kpi-value">${notStarted}</div>

@@ -1526,7 +1526,7 @@ function addPDFHeader(doc,deptTitle,dateFrom,dateTo,logoData){
   doc.setDrawColor(76,93,113);doc.setLineWidth(0.6);doc.line(8,29,pw-8,29);
   if(logoData){
     try{
-      const maxW=24,maxH=12,ratio=Math.min(maxW/logoData.width,maxH/logoData.height);
+      const maxW=48,maxH=24,ratio=Math.min(maxW/logoData.width,maxH/logoData.height);
       const w=Math.round(logoData.width*ratio),h=Math.round(logoData.height*ratio);
       doc.addImage(logoData.url,'PNG',10,5,w,h);
     }catch{}
