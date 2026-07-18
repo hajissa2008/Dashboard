@@ -584,7 +584,21 @@ async function spApiCall(url,method,body,binary){
   return resp;
 }
 
-const SKIP_COLS = new Set(['ContentType','AuthorLookupId','EditorLookupId','_UIVersionString','Attachments','Edit','LinkTitleNoMenu','LinkTitle','ItemChildCount','FolderChildCount','_ComplianceFlags','_ComplianceTag','_ComplianceTagWrittenTime','_ComplianceTagUserId','AppAuthorLookupId','AppEditorLookupId','@odata.etag']);
+const SKIP_COLS = new Set([
+  'ContentType','AuthorLookupId','EditorLookupId','_UIVersionString','Attachments','Edit',
+  'LinkTitleNoMenu','LinkTitle','ItemChildCount','FolderChildCount',
+  '_ComplianceFlags','_ComplianceTag','_ComplianceTagWrittenTime','_ComplianceTagUserId',
+  'AppAuthorLookupId','AppEditorLookupId','@odata.etag',
+  'ID','id','Modified','Created','Title',
+  'FileSystemObjectType','ServerUrl','EncodedAbsUrl','BaseName','FileRef','FileLeafRef',
+  'UniqueId','ProgId','CheckoutUserId','CheckoutUser','CheckedOutUserId','CheckedOutUser',
+  'HasCopyDestinations','CopySource','OData__UIVersionString','UIVersion',
+  'Order','GUID','WorkflowInstanceId','WorkflowVersion','WorkflowName','File_x0020_Type',
+  'DocIcon','XMLTZone','_HasCopyDestinations','_CopySource','ScopeId','LinkFilename',
+  'LinkFilenameNoMenu','FSObjType','SortBehavior','PermMask','FileDirRef','Last_x0020_Modified',
+  'Created_x0020_Date','Editor','Author'
+]);
+const EXPORT_SKIP_COLS = SKIP_COLS;
 
 async function apiCall(url,method,body){
   const opts={method:method||'GET',headers:{'Authorization':'Bearer '+spToken,'Accept':'application/json'}};

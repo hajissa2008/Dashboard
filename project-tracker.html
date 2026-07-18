@@ -839,7 +839,7 @@ async function fetchColumnNames(siteUrl, listName){
     });
     if(!resp.ok) return null;
     const json = await resp.json();
-    const skip = ['ID','ContentType','Modified','Created','AuthorLookupId','EditorLookupId','_UIVersionString','Attachments','Edit','LinkTitleNoMenu','LinkTitle','ItemChildCount','FolderChildCount','_ComplianceFlags','_ComplianceTag','_ComplianceTagWrittenTime','_ComplianceTagUserId','AppAuthorLookupId','AppEditorLookupId'];
+    const skip = ['ID','ContentType','Modified','Created','AuthorLookupId','EditorLookupId','_UIVersionString','Attachments','Edit','LinkTitleNoMenu','LinkTitle','ItemChildCount','FolderChildCount','_ComplianceFlags','_ComplianceTag','_ComplianceTagWrittenTime','_ComplianceTagUserId','AppAuthorLookupId','AppEditorLookupId','FileSystemObjectType','ServerUrl','EncodedAbsUrl','BaseName','FileRef','FileLeafRef','UniqueId','ProgId','CheckoutUserId','CheckoutUser','CheckedOutUserId','CheckedOutUser','HasCopyDestinations','CopySource','OData__UIVersionString','UIVersion','Order','GUID','WorkflowInstanceId','WorkflowVersion','WorkflowName','File_x0020_Type','DocIcon','XMLTZone','_HasCopyDestinations','_CopySource','ScopeId','LinkFilename','LinkFilenameNoMenu','FSObjType','SortBehavior','PermMask','FileDirRef','Last_x0020_Modified','Created_x0020_Date','Editor','Author'];
     const rename = {}, pairs=[], allCols=[];
     (json.value||[]).forEach(col => {
         const n=col.name;
@@ -991,7 +991,7 @@ async function connectSingleView(view){
             updateViewNavDot(view,'online');
             return true;
         }
-        const skipKeys = ['ID','id','Title','ContentType','Modified','Created','AuthorLookupId','EditorLookupId','_UIVersionString','Attachments','Edit','LinkTitleNoMenu','LinkTitle','ItemChildCount','FolderChildCount','_ComplianceFlags','_ComplianceTag','_ComplianceTagWrittenTime','_ComplianceTagUserId','AppAuthorLookupId','AppEditorLookupId','@odata.etag'];
+        const skipKeys = ['ID','id','Title','ContentType','Modified','Created','AuthorLookupId','EditorLookupId','_UIVersionString','Attachments','Edit','LinkTitleNoMenu','LinkTitle','ItemChildCount','FolderChildCount','_ComplianceFlags','_ComplianceTag','_ComplianceTagWrittenTime','_ComplianceTagUserId','AppAuthorLookupId','AppEditorLookupId','@odata.etag','FileSystemObjectType','ServerUrl','EncodedAbsUrl','BaseName','FileRef','FileLeafRef','UniqueId','ProgId','CheckoutUserId','CheckoutUser','CheckedOutUserId','CheckedOutUser','HasCopyDestinations','CopySource','OData__UIVersionString','UIVersion','Order','GUID','WorkflowInstanceId','WorkflowVersion','WorkflowName','File_x0020_Type','DocIcon','XMLTZone','_HasCopyDestinations','_CopySource','ScopeId','LinkFilename','LinkFilenameNoMenu','FSObjType','SortBehavior','PermMask','FileDirRef','Last_x0020_Modified','Created_x0020_Date','Editor','Author'];
         const schemaInfo = columnNameMap[list];
         const schemaCols = schemaInfo?.allColumns;
         const rename = schemaInfo?.rename || {};
@@ -1403,7 +1403,7 @@ function renderDashboardCharts(){
                 const vk=VIEW_KEYS.find(k=>VIEWS[k].title===label||VIEWS[k].dept===label);
                 let cols=(vk&&VIEWS[vk]?.cols)||['proj','prog','status','dept','delayDays','priority'];
                 if(vk&&viewData[vk]?.connected&&viewData[vk]?.data?.length>0){
-                    const skipKeys=new Set(['dept','priority','proj','status','Title','Modified','Created','EditorLookupId','AuthorLookupId','ID','id','ContentType']);
+                    const skipKeys=new Set(['dept','priority','proj','status','Title','Modified','Created','EditorLookupId','AuthorLookupId','ID','id','ContentType','_UIVersionString','Attachments','Edit','LinkTitleNoMenu','LinkTitle','ItemChildCount','FolderChildCount','_ComplianceFlags','_ComplianceTag','_ComplianceTagWrittenTime','_ComplianceTagUserId','AppAuthorLookupId','AppEditorLookupId','@odata.etag','FileSystemObjectType','ServerUrl','EncodedAbsUrl','BaseName','FileRef','FileLeafRef','UniqueId','ProgId','CheckoutUserId','CheckoutUser','CheckedOutUserId','CheckedOutUser','HasCopyDestinations','CopySource','OData__UIVersionString','UIVersion','Order','GUID','WorkflowInstanceId','WorkflowVersion','WorkflowName','File_x0020_Type','DocIcon','XMLTZone','_HasCopyDestinations','_CopySource','ScopeId','LinkFilename','LinkFilenameNoMenu','FSObjType','SortBehavior','PermMask','FileDirRef','Last_x0020_Modified','Created_x0020_Date','Editor','Author']);
                     const dk=Object.keys(items[0]).filter(k=>!skipKeys.has(k)&&!k.startsWith('@')&&!k.startsWith('_')&&!ALIAS_SHORTS.has(k));
                     if(dk.length>0)cols=dk;
                 }
@@ -1474,7 +1474,7 @@ function renderDashboard(){
         const ap=t?Math.round(items.reduce((s,x)=>s+(x.prog||0),0)/t):0;
         let deptCols=VIEWS[vk]?.cols||['proj','prog','status','delayDays'];
         if(useViewData&&items.length>0){
-            const skipKeys=new Set(['dept','priority','proj','status','Title','Modified','Created','EditorLookupId','AuthorLookupId','ID','id','ContentType']);
+            const skipKeys=new Set(['dept','priority','proj','status','Title','Modified','Created','EditorLookupId','AuthorLookupId','ID','id','ContentType','_UIVersionString','Attachments','Edit','LinkTitleNoMenu','LinkTitle','ItemChildCount','FolderChildCount','_ComplianceFlags','_ComplianceTag','_ComplianceTagWrittenTime','_ComplianceTagUserId','AppAuthorLookupId','AppEditorLookupId','@odata.etag','FileSystemObjectType','ServerUrl','EncodedAbsUrl','BaseName','FileRef','FileLeafRef','UniqueId','ProgId','CheckoutUserId','CheckoutUser','CheckedOutUserId','CheckedOutUser','HasCopyDestinations','CopySource','OData__UIVersionString','UIVersion','Order','GUID','WorkflowInstanceId','WorkflowVersion','WorkflowName','File_x0020_Type','DocIcon','XMLTZone','_HasCopyDestinations','_CopySource','ScopeId','LinkFilename','LinkFilenameNoMenu','FSObjType','SortBehavior','PermMask','FileDirRef','Last_x0020_Modified','Created_x0020_Date','Editor','Author']);
             const dk=Object.keys(items[0]).filter(k=>!skipKeys.has(k)&&!k.startsWith('@')&&!k.startsWith('_')&&!ALIAS_SHORTS.has(k));
             if(dk.length>0)deptCols=dk;
         }
@@ -1635,7 +1635,7 @@ function showKpiWbsModal(title, allItems){
         const vk=VIEW_KEYS.find(k=>VIEWS[k].title===dept||VIEWS[k].dept===dept);
         let cols=(vk&&VIEWS[vk]?.cols)||['proj','prog','status','dept','delayDays','priority'];
         if(vk&&viewData[vk]?.connected&&viewData[vk]?.data?.length>0){
-            const skipKeys=new Set(['dept','priority','proj','status','Title','Modified','Created','EditorLookupId','AuthorLookupId','ID','id','ContentType']);
+            const skipKeys=new Set(['dept','priority','proj','status','Title','Modified','Created','EditorLookupId','AuthorLookupId','ID','id','ContentType','_UIVersionString','Attachments','Edit','LinkTitleNoMenu','LinkTitle','ItemChildCount','FolderChildCount','_ComplianceFlags','_ComplianceTag','_ComplianceTagWrittenTime','_ComplianceTagUserId','AppAuthorLookupId','AppEditorLookupId','@odata.etag','FileSystemObjectType','ServerUrl','EncodedAbsUrl','BaseName','FileRef','FileLeafRef','UniqueId','ProgId','CheckoutUserId','CheckoutUser','CheckedOutUserId','CheckedOutUser','HasCopyDestinations','CopySource','OData__UIVersionString','UIVersion','Order','GUID','WorkflowInstanceId','WorkflowVersion','WorkflowName','File_x0020_Type','DocIcon','XMLTZone','_HasCopyDestinations','_CopySource','ScopeId','LinkFilename','LinkFilenameNoMenu','FSObjType','SortBehavior','PermMask','FileDirRef','Last_x0020_Modified','Created_x0020_Date','Editor','Author']);
             const dk=Object.keys(items[0]).filter(k=>!skipKeys.has(k)&&!k.startsWith('@')&&!k.startsWith('_')&&!ALIAS_SHORTS.has(k));
             if(dk.length>0)cols=dk;
         }
@@ -1693,7 +1693,7 @@ function renderTable(){
 
     let cols;
     if(currentView!=='dashboard'&&d.length>0){
-        const skipKeys = new Set(['dept','priority','proj','status','Title','Modified','Created','EditorLookupId','AuthorLookupId','ID','id','ContentType']);
+        const skipKeys = new Set(['dept','priority','proj','status','Title','Modified','Created','EditorLookupId','AuthorLookupId','ID','id','ContentType','_UIVersionString','Attachments','Edit','LinkTitleNoMenu','LinkTitle','ItemChildCount','FolderChildCount','_ComplianceFlags','_ComplianceTag','_ComplianceTagWrittenTime','_ComplianceTagUserId','AppAuthorLookupId','AppEditorLookupId','@odata.etag','FileSystemObjectType','ServerUrl','EncodedAbsUrl','BaseName','FileRef','FileLeafRef','UniqueId','ProgId','CheckoutUserId','CheckoutUser','CheckedOutUserId','CheckedOutUser','HasCopyDestinations','CopySource','OData__UIVersionString','UIVersion','Order','GUID','WorkflowInstanceId','WorkflowVersion','WorkflowName','File_x0020_Type','DocIcon','XMLTZone','_HasCopyDestinations','_CopySource','ScopeId','LinkFilename','LinkFilenameNoMenu','FSObjType','SortBehavior','PermMask','FileDirRef','Last_x0020_Modified','Created_x0020_Date','Editor','Author']);
         // Use actual SharePoint keys when connected, but exclude all alias short names
         const dataKeys=Object.keys(d[0]).filter(k=>!skipKeys.has(k)&&!k.startsWith('@')&&!k.startsWith('_')&&!ALIAS_SHORTS.has(k));
         cols=dataKeys.length>0?dataKeys:(VIEWS[currentView]?.cols||[]);
@@ -1770,7 +1770,7 @@ function renderDeptView(view){
     const useViewData=vd&&vd.connected&&vd.data.length>0;
     const items=useViewData?vd.data:DATA.filter(x=>x.dept===v.dept);
     // Compute view columns (same logic as renderTable)
-    const _skipKeys=new Set(['dept','priority','proj','status','Title','Modified','Created','EditorLookupId','AuthorLookupId','ID','id','ContentType']);
+    const _skipKeys=new Set(['dept','priority','proj','status','Title','Modified','Created','EditorLookupId','AuthorLookupId','ID','id','ContentType','_UIVersionString','Attachments','Edit','LinkTitleNoMenu','LinkTitle','ItemChildCount','FolderChildCount','_ComplianceFlags','_ComplianceTag','_ComplianceTagWrittenTime','_ComplianceTagUserId','AppAuthorLookupId','AppEditorLookupId','@odata.etag','FileSystemObjectType','ServerUrl','EncodedAbsUrl','BaseName','FileRef','FileLeafRef','UniqueId','ProgId','CheckoutUserId','CheckoutUser','CheckedOutUserId','CheckedOutUser','HasCopyDestinations','CopySource','OData__UIVersionString','UIVersion','Order','GUID','WorkflowInstanceId','WorkflowVersion','WorkflowName','File_x0020_Type','DocIcon','XMLTZone','_HasCopyDestinations','_CopySource','ScopeId','LinkFilename','LinkFilenameNoMenu','FSObjType','SortBehavior','PermMask','FileDirRef','Last_x0020_Modified','Created_x0020_Date','Editor','Author']);
     const _dataKeys=items.length>0?Object.keys(items[0]).filter(k=>!_skipKeys.has(k)&&!k.startsWith('@')&&!k.startsWith('_')&&!ALIAS_SHORTS.has(k)):[];
     const viewCols=_dataKeys.length>0?_dataKeys:v.cols;
     const total=items.length;
