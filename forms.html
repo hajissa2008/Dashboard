@@ -1176,6 +1176,7 @@ async function saveItem(){
       else if(c.type==='date'){val=el.value||null;}
       else{val=el.value||null;}
       if(val!==null&&val!=='')fields[c.name]=val;
+      else if(val===null||val==='')fields[c.name]=null;
     });
     if(!currentDept)throw new Error('No department selected');
     console.log('SAVE:',{editingId,fields,dept:currentDept.id,list:currentDept.list});
