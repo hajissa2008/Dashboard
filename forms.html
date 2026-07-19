@@ -600,8 +600,15 @@ const SKIP_COLS = new Set([
 ]);
 const EXPORT_SKIP_COLS = SKIP_COLS;
 
+async function ensureGraphToken(){
+  if(!msalApp||!spUser)throw new Error('Not authenticated');
+  const resp=await msalApp.acquireTokenSilent({scopes:SP_SCOPES,account:spUser});
+  spToken=resp.accessToken;
+  return spToken;
+}
 async function apiCall(url,method,body){
-  const opts={method:method||'GET',headers:{'Authorization':'Bearer '+spToken,'Accept':'application/json'}};
+  const token=await ensureGraphToken();
+  const opts={method:method||'GET',headers:{'Authorization':'Bearer '+token,'Accept':'application/json'}};
   if(body){opts.headers['Content-Type']='application/json'; opts.body=JSON.stringify(body);}
   const resp=await fetch(url,opts);
   if(!resp.ok){
@@ -612,7 +619,7 @@ async function apiCall(url,method,body){
 }
 
 async function fetchColumnDefinitions(siteUrl,listName){
-  const json=await (await spApiCall(graphListColumnsUrl(siteUrl,listName))).json();
+  const json=await apiCall(graphListColumnsUrl(siteUrl,listName));
   const cols=[];
   (json.value||[]).forEach(col=>{
     const n=col.name;
@@ -635,7 +642,7 @@ async function fetchColumnDefinitions(siteUrl,listName){
 }
 
 async function fetchSPItems(siteUrl,listName){
-  const json=await (await spApiCall(graphListItemsUrl(siteUrl,listName))).json();
+  const json=await apiCall(graphListItemsUrl(siteUrl,listName));
   return (json.value||[]).map(item=>{
     const fields={};
     for(const [k,v] of Object.entries(item.fields||{})){
@@ -650,13 +657,13 @@ async function fetchSPItems(siteUrl,listName){
 async function createSPItem(siteUrl,listName,itemFields){
   const body={fields:{}};
   for(const [k,v] of Object.entries(itemFields)){if(!k.startsWith('_'))body.fields[k]=v;}
-  return await spApiCall(graphListUrl(siteUrl,listName)+'/items','POST',body);
+  return await apiCall(graphListUrl(siteUrl,listName)+'/items','POST',body);
 }
 
 async function updateSPItem(siteUrl,listName,itemId,itemFields){
   const body={};
   for(const [k,v] of Object.entries(itemFields)){if(!k.startsWith('_'))body[k]=v;}
-  return await spApiCall(graphItemFieldsUrl(siteUrl,listName,itemId),'PATCH',body);
+  return await apiCall(graphItemFieldsUrl(siteUrl,listName,itemId),'PATCH',body);
 }
 
 async function spApiCallJson(url,method,body,binary){
