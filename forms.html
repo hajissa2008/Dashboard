@@ -567,8 +567,10 @@ function spRestAttachmentsUrl(siteUrl,listName,itemId){
 }
 
 async function ensureSpSiteToken(siteUrl){
-  if(spSiteToken)return spSiteToken;
   if(!msalApp||!spUser)throw new Error('Not authenticated');
+  try{
+    if(spSiteToken){const u=new URL(siteUrl);const r=await fetch(u.origin+'/_api/web/currentuser',{headers:{'Authorization':'Bearer '+spSiteToken}});if(r.ok)return spSiteToken;}
+  }catch{}
   const u=new URL(siteUrl);
   const resp=await msalApp.acquireTokenSilent({scopes:[u.origin+'/.default'],account:spUser});
   spSiteToken=resp.accessToken;
@@ -666,7 +668,23 @@ async function createSPItem(siteUrl,listName,itemFields){
 async function updateSPItem(siteUrl,listName,itemId,itemFields){
   const body={};
   for(const [k,v] of Object.entries(itemFields)){if(!k.startsWith('_'))body[k]=v;}
-  return await apiCall(graphItemFieldsUrl(siteUrl,listName,itemId),'PATCH',body);
+  const listEnc=listName.replace(/'/g,"''");
+  const url=`${siteUrl.replace(/\/+$/,'')}/_api/web/lists/getbytitle('${listEnc}')/items(${itemId})`;
+  const token=await ensureSpSiteToken(siteUrl);
+  const opts={
+    method:'POST',
+    headers:{
+      'Authorization':'Bearer '+token,
+      'Accept':'application/json',
+      'Content-Type':'application/json',
+      'IF-MATCH':'*',
+      'X-HTTP-Method':'MERGE'
+    },
+    body:JSON.stringify(body)
+  };
+  const resp=await fetch(url,opts);
+  if(!resp.ok){let txt;try{txt=await resp.text();}catch{txt='';}throw new Error(`SP PATCH HTTP ${resp.status}: ${txt.substring(0,300)}`);}
+  return resp;
 }
 
 async function spApiCallJson(url,method,body,binary){
@@ -853,15 +871,16 @@ async function loadDeptData(){
 }
 
 async function refreshItems(){
-  if(!currentDept||!spToken)return;
+  if(!currentDept||!spToken){console.warn('REFRESH SKIP: currentDept=%o spToken=%o',currentDept,spToken);return;}
   setLoading(true);
   try{
     allItems=await fetchSPItems(currentDept.site,currentDept.list);
+    console.log('REFRESH: got',allItems.length,'items, first item id=',allItems[0]?._id,null);
     filteredItems=[...allItems];
     attachmentCounts={};
     onSearch();
     showToast('Refreshed: '+allItems.length+' items','success');
-  }catch(e){showToast('Refresh failed: '+e.message,'error');}
+  }catch(e){console.error('REFRESH FAIL:',e);showToast('Refresh failed: '+e.message,'error');}
   setLoading(false);
   if(allItems.length)fetchAllAttachmentCounts();
 }
