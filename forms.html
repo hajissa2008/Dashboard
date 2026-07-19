@@ -602,6 +602,9 @@ const EXPORT_SKIP_COLS = SKIP_COLS;
 
 async function ensureGraphToken(){
   if(!msalApp||!spUser)throw new Error('Not authenticated');
+  try{
+    if(spToken){const r=await fetch('https://graph.microsoft.com/v1.0/me',{headers:{'Authorization':'Bearer '+spToken}});if(r.ok)return spToken;}
+  }catch{}
   const resp=await msalApp.acquireTokenSilent({scopes:SP_SCOPES,account:spUser});
   spToken=resp.accessToken;
   return spToken;
@@ -612,8 +615,8 @@ async function apiCall(url,method,body){
   if(body){opts.headers['Content-Type']='application/json'; opts.body=JSON.stringify(body);}
   const resp=await fetch(url,opts);
   if(!resp.ok){
-    const txt=await resp.text().catch(()=>'');
-    throw new Error(`HTTP ${resp.status}: ${txt.substring(0,200)}`);
+    let txt; try{txt=await resp.text();}catch{txt='';}
+    throw new Error(`HTTP ${resp.status} ${method||'GET'} ${url.substring(0,120)}: ${txt.substring(0,300)}`);
   }
   return await resp.json();
 }
@@ -1034,6 +1037,8 @@ function startEdit(idx){
   if(idx<0||idx>=filteredItems.length)return;
   selectedItem=filteredItems[idx]; renderTable();
   editingId=selectedItem._id;
+  if(editingId===undefined||editingId===null){showToast('Cannot edit: item has no ID','error');return;}
+  console.log('EDIT: id='+editingId+' type='+typeof editingId,selectedItem);
   // Hide header edit button
   const eb=document.querySelector('.header-edit-btn');
   if(eb)eb.style.display='none';
@@ -1154,6 +1159,8 @@ async function saveItem(){
       if(val!==null&&val!=='')fields[c.name]=val;
     });
     if(!currentDept)throw new Error('No department selected');
+    console.log('SAVE:',{editingId,fields,dept:currentDept.id,list:currentDept.list});
+    if(Object.keys(fields).length===0)throw new Error('No fields to save - form fields may be empty');
     if(editingId){await updateSPItem(currentDept.site,currentDept.list,editingId,fields); statusEl.textContent='✓ Updated'; showToast('Item updated','success');}
     else{await createSPItem(currentDept.site,currentDept.list,fields); statusEl.textContent='✓ Created'; showToast('Item created','success');}
     statusEl.className='save-status saved';
