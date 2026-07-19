@@ -612,7 +612,7 @@ async function apiCall(url,method,body){
 }
 
 async function fetchColumnDefinitions(siteUrl,listName){
-  const json=await apiCall(graphListColumnsUrl(siteUrl,listName));
+  const json=await (await spApiCall(graphListColumnsUrl(siteUrl,listName))).json();
   const cols=[];
   (json.value||[]).forEach(col=>{
     const n=col.name;
@@ -635,7 +635,7 @@ async function fetchColumnDefinitions(siteUrl,listName){
 }
 
 async function fetchSPItems(siteUrl,listName){
-  const json=await apiCall(graphListItemsUrl(siteUrl,listName));
+  const json=await (await spApiCall(graphListItemsUrl(siteUrl,listName))).json();
   return (json.value||[]).map(item=>{
     const fields={};
     for(const [k,v] of Object.entries(item.fields||{})){
@@ -650,13 +650,13 @@ async function fetchSPItems(siteUrl,listName){
 async function createSPItem(siteUrl,listName,itemFields){
   const body={fields:{}};
   for(const [k,v] of Object.entries(itemFields)){if(!k.startsWith('_'))body.fields[k]=v;}
-  return await apiCall(graphListUrl(siteUrl,listName)+'/items','POST',body);
+  return await spApiCall(graphListUrl(siteUrl,listName)+'/items','POST',body);
 }
 
 async function updateSPItem(siteUrl,listName,itemId,itemFields){
   const body={};
   for(const [k,v] of Object.entries(itemFields)){if(!k.startsWith('_'))body[k]=v;}
-  return await apiCall(graphItemFieldsUrl(siteUrl,listName,itemId),'PATCH',body);
+  return await spApiCall(graphItemFieldsUrl(siteUrl,listName,itemId),'PATCH',body);
 }
 
 async function spApiCallJson(url,method,body,binary){
