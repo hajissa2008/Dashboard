@@ -1467,7 +1467,7 @@ function renderDashboard(){
     const codeStatus=x=>{
       const d=x.dept||'';
       if(d==='Substructure'||d==='Superstructure'){
-        const rv=x.rev04||x.rev03||x.rev02||x.rev01||x.rev00||x.rev||'';
+        const rv=x.rev04||x.rev03||x.rev02||x.rev01||x.rev00||x.rev||x.finalCode||x['Final Code']||x['Final_x0020_Code']||x['Status Code']||x['Status_x0020_Code']||x['STATUS CODE']||x['statusCode']||'';
         const c=String(rv).toUpperCase();
         if(!c||c==='')return'Not Started';
         if(c==='A'||c==='B'||c==='E')return'Completed';
@@ -1479,7 +1479,7 @@ function renderDashboard(){
         if(/done|deliver|receiv|complet|site.required/i.test(ds)&&!/pend|overdue|part/i.test(ds))return'Completed';
         return'In Progress';
       }
-      const c=(x.finalCode||x['Final Code']||x['Final_x0020_Code']||x.rev||'').toUpperCase();
+      const c=(x.finalCode||x['Final Code']||x['Final_x0020_Code']||x['Status Code']||x['Status_x0020_Code']||x.rev||'').toUpperCase();
       if(!c)return'Not Started';
       if(c==='A'||c==='B'||c==='E')return'Completed';
       return'In Progress';
