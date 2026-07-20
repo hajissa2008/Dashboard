@@ -879,7 +879,7 @@ function siteToGraphPath(siteUrl){
   return u.hostname+':'+u.pathname.replace(/\/+$/,'');
 }
 function graphListUrl(siteUrl,listName){
-  return `https://graph.microsoft.com/v1.0/sites/${siteToGraphPath(siteUrl)}:/lists/${encodeURIComponent(listName)}`;
+  return `https://graph.microsoft.com/v1.0/sites/${siteToGraphPath(siteUrl)}/lists/${encodeURIComponent(listName)}`;
 }
 function graphListColumnsUrl(siteUrl,listName){
   return graphListUrl(siteUrl,listName)+'/columns';
