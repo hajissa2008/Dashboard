@@ -1462,10 +1462,10 @@ function renderDashboard(){
     window._kpiCache=[];
     const pushKpi=(title,items,cols,wbs)=>{const idx=window._kpiCache.length;window._kpiCache.push({title,items,cols:cols||['proj','prog','status','dept','delayDays','priority'],wbs});return idx;};
     const total=d.length;
-    const notStarted=d.filter(x=>x.status==='Not Started'||x.status==='Not Set').length;
-    const inProg=d.filter(x=>x.status==='In Progress'||x.status==='Under Review').length;
-    const completed=d.filter(x=>x.status==='Completed').length;
-    const overdue=d.filter(isOverdue).length;
+    const codeStatus=x=>{const c=(x.finalCode||x['Final Code']||x['Final_x0020_Code']||x.rev||'').toUpperCase();if(!c)return'Not Started';if(c==='A'||c==='B'||c==='E')return'Completed';return'In Progress';};
+    const notStarted=d.filter(x=>codeStatus(x)==='Not Started').length;
+    const inProg=d.filter(x=>codeStatus(x)==='In Progress').length;
+    const completed=d.filter(x=>codeStatus(x)==='Completed').length;
     const avgProg=total?Math.round(d.reduce((s,x)=>s+(Number(x.prog||x['CompletionPct']||0)),0)/total):0;
     const compRate=total?Math.round(completed/total*100):0;
     const avgDelay=Math.round(d.reduce((s,x)=>s+Math.max(0,calcDelay(x)),0)/Math.max(1,total));
@@ -1473,10 +1473,9 @@ function renderDashboard(){
     const totalActual=d.reduce((s,x)=>s+(Number(x.actual||x['ActualCost']||x['Actual Cost']||0)),0);
     const variance=totalBudget-totalActual;
     const ciTotal=pushKpi('All Items',d,null,true);
-    const ciNotStarted=pushKpi('Not Started',d.filter(x=>x.status==='Not Started'||x.status==='Not Set'),null,true);
-    const ciInProg=pushKpi('In Progress',d.filter(x=>x.status==='In Progress'||x.status==='Under Review'),null,true);
-    const ciCompleted=pushKpi('Completed',d.filter(x=>x.status==='Completed'),null,true);
-    const ciOverdue=pushKpi('Overdue Items',d.filter(isOverdue),null,true);
+    const ciNotStarted=pushKpi('Not Started',d.filter(x=>codeStatus(x)==='Not Started'),null,true);
+    const ciInProg=pushKpi('In Progress',d.filter(x=>codeStatus(x)==='In Progress'),null,true);
+    const ciCompleted=pushKpi('Completed',d.filter(x=>codeStatus(x)==='Completed'),null,true);
     const statusData={};d.forEach(x=>{const s=x.status||'Not Set';statusData[s]=(statusData[s]||0)+1});
     const deptData={};d.forEach(x=>{const dp=x.dept||'Unknown';deptData[dp]=(deptData[dp]||0)+1});
     const depts=[
@@ -1510,18 +1509,16 @@ function renderDashboard(){
           <span style="color:var(--text-secondary)">NS:</span>${notStarted} (${total?Math.round(notStarted/total*100):0}%)
           <span style="color:var(--text-secondary);margin-left:8px">IP:</span>${inProg} (${total?Math.round(inProg/total*100):0}%)
           <span style="color:var(--green);margin-left:8px">C:</span>${completed} (${total?Math.round(completed/total*100):0}%)
-          <span style="color:var(--red);margin-left:8px">OD:</span>${overdue} (${total?Math.round(overdue/total*100):0}%)
         </div>
       </div>
       ${(()=>{
         function statN(n,t){return n+' ('+(t?Math.round(n/t*100):0)+'%)'}
         function statRow(items){
-          const ns=items.filter(x=>x.status==='Not Started'||x.status==='Not Set').length;
-          const ip=items.filter(x=>x.status==='In Progress'||x.status==='Under Review').length;
-          const c=items.filter(x=>x.status==='Completed').length;
-          const od=items.filter(isOverdue).length;
+          const ns=items.filter(x=>codeStatus(x)==='Not Started').length;
+          const ip=items.filter(x=>codeStatus(x)==='In Progress').length;
+          const c=items.filter(x=>codeStatus(x)==='Completed').length;
           const tt=items.length;
-          return '<span style="color:var(--text-secondary)">NS:</span>'+statN(ns,tt)+' <span style="color:var(--text-secondary);margin-left:6px">IP:</span>'+statN(ip,tt)+' <span style="color:var(--green);margin-left:6px">C:</span>'+statN(c,tt)+' <span style="color:var(--red);margin-left:6px">OD:</span>'+statN(od,tt);
+          return '<span style="color:var(--text-secondary)">NS:</span>'+statN(ns,tt)+' <span style="color:var(--text-secondary);margin-left:6px">IP:</span>'+statN(ip,tt)+' <span style="color:var(--green);margin-left:6px">C:</span>'+statN(c,tt);
         }
         const sub=deptInfo.find(d=>d.key==='Substructure');
         const sup=deptInfo.find(d=>d.key==='Superstructure');
@@ -1577,11 +1574,6 @@ function renderDashboard(){
         <div class="kpi-accent" style="background:#107C10"></div><div class="kpi-icon">✅</div>
         <div class="kpi-label">Completed</div><div class="kpi-value">${completed}</div>
         <div class="kpi-sub">${compRate}% completion rate</div>
-      </div>
-      <div class="kpi-card" onclick="showKpiModalFromCache(${ciOverdue})" style="cursor:pointer">
-        <div class="kpi-accent" style="background:#D92C2C"></div><div class="kpi-icon">⚠️</div>
-        <div class="kpi-label">Overdue</div><div class="kpi-value">${overdue}</div>
-        <div class="kpi-sub">Avg delay ${avgDelay}d</div>
       </div>
     </div>
     ${(()=>{
