@@ -1462,7 +1462,26 @@ function renderDashboard(){
     window._kpiCache=[];
     const pushKpi=(title,items,cols,wbs)=>{const idx=window._kpiCache.length;window._kpiCache.push({title,items,cols:cols||['proj','prog','status','dept','delayDays','priority'],wbs});return idx;};
     const total=d.length;
-    const codeStatus=x=>{const c=(x.finalCode||x['Final Code']||x['Final_x0020_Code']||x.rev||'').toUpperCase();if(!c)return'Not Started';if(c==='A'||c==='B'||c==='E')return'Completed';return'In Progress';};
+    const codeStatus=x=>{
+      const d=x.dept||'';
+      if(d==='Substructure'||d==='Superstructure'){
+        const rv=x.rev||x.rev00||x.rev01||x.rev02||x.rev03||'';
+        const c=String(rv).toUpperCase();
+        if(!c||c==='')return'Not Started';
+        if(c==='A'||c==='B'||c==='E')return'Completed';
+        return'In Progress';
+      }
+      if(d==='Procurement'){
+        const ds=(x.deliveryStatus||x['Actual Delivery Status']||x['ACTUAL DELIVERY STATUS']||x['ACTUAL_x0020_DELIVERY_x0020_STATUS']||'').toLowerCase();
+        if(!ds)return'Not Started';
+        if(/done|deliver|receiv|complet|site.required/i.test(ds)&&!/pend|overdue|part/i.test(ds))return'Completed';
+        return'In Progress';
+      }
+      const c=(x.finalCode||x['Final Code']||x['Final_x0020_Code']||x.rev||'').toUpperCase();
+      if(!c)return'Not Started';
+      if(c==='A'||c==='B'||c==='E')return'Completed';
+      return'In Progress';
+    };
     const notStarted=d.filter(x=>codeStatus(x)==='Not Started').length;
     const inProg=d.filter(x=>codeStatus(x)==='In Progress').length;
     const completed=d.filter(x=>codeStatus(x)==='Completed').length;
