@@ -714,7 +714,7 @@ function setStatusMsg(msg,isError){
 // ======================== AUTH ========================
 function initMsal(){
   const tenant=storage.getItem('dcform-tenant')||'684547e2-bb8b-450a-a3e1-3a6bc15e9471';
-  const client=storage.getItem('dcform-client')||'';
+  const client=storage.getItem('dcform-client')||'04f83c11-e51c-4a8a-be86-9e3a49f3e952';
   if(!tenant||!client) return false;
   try{
     msalApp = new msal.PublicClientApplication({
