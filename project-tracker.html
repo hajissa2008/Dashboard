@@ -1526,7 +1526,12 @@ function renderDashboard(){
         const vd=vk?viewData[vk]:null;
         const useViewData=vd&&vd.connected&&vd.data.length>0;
         const items=useViewData?vd.data:d.filter(x=>x.dept===dp.key);
-        const cols=VIEWS[vk]?.cols||['proj','prog','status','delayDays'];
+        let cols=VIEWS[vk]?.cols||['proj','prog','status','delayDays'];
+        if(useViewData&&items.length>0){
+            const skipKeys=new Set(['dept','priority','proj','status','Title','Modified','Created','EditorLookupId','AuthorLookupId','ID','id','ContentType','_UIVersionString','Attachments','Edit','LinkTitleNoMenu','LinkTitle','ItemChildCount','FolderChildCount','_ComplianceFlags','_ComplianceTag','_ComplianceTagWrittenTime','_ComplianceTagUserId','AppAuthorLookupId','AppEditorLookupId','@odata.etag','FileSystemObjectType','ServerUrl','EncodedAbsUrl','BaseName','FileRef','FileLeafRef','UniqueId','ProgId','CheckoutUserId','CheckoutUser','CheckedOutUserId','CheckedOutUser','HasCopyDestinations','CopySource','OData__UIVersionString','UIVersion','Order','GUID','WorkflowInstanceId','WorkflowVersion','WorkflowName','File_x0020_Type','DocIcon','XMLTZone','_HasCopyDestinations','_CopySource','ScopeId','LinkFilename','LinkFilenameNoMenu','FSObjType','SortBehavior','PermMask','FileDirRef','Last_x0020_Modified','Created_x0020_Date','Editor','Author']);
+            const dataKeys=Object.keys(items[0]).filter(k=>!skipKeys.has(k)&&!k.startsWith('@')&&!k.startsWith('_')&&!ALIAS_SHORTS.has(k));
+            if(dataKeys.length>0)cols=dataKeys;
+        }
         return{...dp,t:items.length,items,ci:pushKpi(dp.key,items,cols,false)};
     });
     document.getElementById('content').innerHTML=`
@@ -1565,6 +1570,14 @@ function renderDashboard(){
           const sdRow=statRow(sdItems);
           const subRow=sub?statRow(sub.items):'';
           const supRow=sup?statRow(sup.items):'';
+          let debugHtml='';
+          if(sub?.items?.[0]&&!window._sdDebugged){
+            window._sdDebugged=true;
+            const f=sub.items[0];
+            const cs=codeStatus(f);
+            const pairs=Object.keys(f).sort().filter(k=>{const v=String(f[k]).trim();return v.length>0&&!k.startsWith('@')&&!/^(Modified|Created|Editor|Author|ID|id|Title|FileRef|FileLeafRef|UniqueId|GUID|OData|odata|_UIVersion)/.test(k);}).map(k=>k+': '+JSON.stringify(String(f[k]).substring(0,40))).join('<br>');
+            debugHtml='<div style="font-size:9px;margin-bottom:6px;padding:4px;background:#fff3cd;border-radius:4px;max-height:120px;overflow:auto"><b>🔍 Sub 1st item · codeStatus='+cs+'</b><br>'+pairs+'</div>';
+          }
           html+=`<div class="kpi-card" style="cursor:default;grid-column:span 2">
             <div class="kpi-accent" style="background:linear-gradient(90deg,#4C5D71,#00B7C3)"></div>
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
@@ -1573,6 +1586,7 @@ function renderDashboard(){
               <span style="margin-left:auto;font-size:22px;font-weight:700">${sdTotal}</span>
             </div>
             <div style="font-size:11px;margin-bottom:6px">${sdRow}</div>
+            ${debugHtml}
             <div style="display:flex;gap:8px">
               ${sub&&sub.t>0?`<div onclick="showKpiModalFromCache(${sub.ci})" style="flex:1;padding:10px;cursor:pointer;background:var(--gray-light);border-radius:8px;border:1px solid var(--gray-border)">
                 <div style="font-size:11px;font-weight:600;color:#4C5D71;margin-bottom:4px">🏗️ Substructure · ${sub.t}</div>
