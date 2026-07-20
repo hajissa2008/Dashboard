@@ -2017,25 +2017,58 @@ function renderDeptView(view){
                 }
             }
         });
-        const disciplines=new Set(items.map(x=>x.engDisc||x['Discipline']||'')).size;
-        const phases=new Set(items.map(x=>x.phase||x['ProjectPhase']||x['Phase']||'')).size;
-        const parts=new Set(items.map(x=>x.part||x['Part']||'')).size;
-        function revStatusSummary(levelKey,count){
-            if(!count)return'No docs';
-            const statuses=Object.entries(revStatuses[levelKey]).sort((a,b)=>b[1]-a[1]).slice(0,2);
-            return statuses.map(([s,c])=>s+' ('+c+')').join(', ');
+        function getRevCode(item,rf){
+            const colName=rf.cols.find(c=>item[c]!==undefined&&item[c]!==null&&item[c]!=='');
+            return colName?String(item[colName]).trim():String(item[rf.key]||'').trim();
+        }
+        function revCodeStatus(code){
+            const c=code.toUpperCase();
+            if(!c||c==='0')return'Not Started';
+            if(c==='A'||c==='B')return'Completed';
+            return'In Progress';
+        }
+        function revStatusBreakdown(levelKey){
+            const itemsAtLevel=revGroups[levelKey];
+            const approved=itemsAtLevel.filter(x=>{const v=getRevCode(x,revFields.find(r=>r.key===levelKey));return/^[ab]$/i.test(v);}).length;
+            const notApproved=itemsAtLevel.filter(x=>{const v=getRevCode(x,revFields.find(r=>r.key===levelKey));return/^[cd]$/i.test(v);}).length;
+            const pending=itemsAtLevel.filter(x=>{const v=getRevCode(x,revFields.find(r=>r.key===levelKey));const c=v.toUpperCase();return c==='O'||c&&!/^[abcd0]$/i.test(v);}).length;
+            const nsNoRev=total-itemsAtLevel.length;
+            const parts=[];
+            if(approved)parts.push('A:'+approved);
+            if(notApproved)parts.push('C/D:'+notApproved);
+            if(pending)parts.push('O:'+pending);
+            if(nsNoRev)parts.push('NS:'+nsNoRev);
+            return parts.join(' ');
+        }
+        const disciplinesMap={};
+        const phasesMap={};
+        const partsMap={};
+        items.forEach(x=>{
+            const d=x.engDisc||x['Discipline']||'';
+            if(d){disciplinesMap[d]=(disciplinesMap[d]||0)+1;}
+            const p=x.phase||x['ProjectPhase']||x['Phase']||'';
+            if(p){phasesMap[p]=(phasesMap[p]||0)+1;}
+            const pt=x.part||x['Part']||'';
+            if(pt){partsMap[pt]=(partsMap[pt]||0)+1;}
+        });
+        const disciplines=Object.keys(disciplinesMap).length;
+        const phases=Object.keys(phasesMap).length;
+        const parts=Object.keys(partsMap).length;
+        function mapSummary(m){
+            return Object.entries(m).sort((a,b)=>b[1]-a[1]).slice(0,4).map(([k,v])=>k+':'+v).join(' ');
         }
         const rev04=revGroups.rev04.length, rev03=revGroups.rev03.length, rev02=revGroups.rev02.length, rev01=revGroups.rev01.length, rev00=revGroups.rev00.length;
+        const rev04Sub=revStatusBreakdown('rev04');
         kpis=kpi('📐','Total Drawings',total,'#4C5D71',null,null,null,null,items)+
               kpi('⏰','Overdue',overdue,'#D92C2C',null,null,null,null,items.filter(isOverdue))+
-              kpi('4️⃣','Rev 04',rev04,'#D92C2C',total?rev04/total*100:0,null,null,revStatusSummary('rev04',rev04),revGroups.rev04)+
-              kpi('⬜','Rev 00',rev00,'#8A8886',total?rev00/total*100:0,null,null,revStatusSummary('rev00',rev00),revGroups.rev00)+
-              kpi('1️⃣','Rev 01',rev01,'#00B7C3',total?rev01/total*100:0,null,null,revStatusSummary('rev01',rev01),revGroups.rev01)+
-              kpi('2️⃣','Rev 02',rev02,'#ED7D31',total?rev02/total*100:0,null,null,revStatusSummary('rev02',rev02),revGroups.rev02)+
-              kpi('3️⃣','Rev 03',rev03,'#8764B8',total?rev03/total*100:0,null,null,revStatusSummary('rev03',rev03),revGroups.rev03)+
-              kpi('🏷️','Disciplines',disciplines,'#0078D4',null,null,null,null,items)+
-              kpi('📅','Phases',phases,'#D92C2C',null,null,null,null,items)+
-              kpi('📁','Parts',parts,'#4C5D71',null,null,null,null,items);
+              kpi('4️⃣','Rev 04',rev04,'#D92C2C',total?rev04/total*100:0,null,null,rev04Sub,revGroups.rev04)+
+              kpi('⬜','Rev 00',rev00,'#8A8886',total?rev00/total*100:0,null,null,revStatusBreakdown('rev00'),revGroups.rev00)+
+              kpi('1️⃣','Rev 01',rev01,'#00B7C3',total?rev01/total*100:0,null,null,revStatusBreakdown('rev01'),revGroups.rev01)+
+              kpi('2️⃣','Rev 02',rev02,'#ED7D31',total?rev02/total*100:0,null,null,revStatusBreakdown('rev02'),revGroups.rev02)+
+              kpi('3️⃣','Rev 03',rev03,'#8764B8',total?rev03/total*100:0,null,null,revStatusBreakdown('rev03'),revGroups.rev03)+
+              kpi('🏷️','Disciplines',disciplines,'#0078D4',null,null,null,mapSummary(disciplinesMap),null)+
+              kpi('📅','Phases',phases,'#D92C2C',null,null,null,mapSummary(phasesMap),null)+
+              kpi('📁','Parts',parts,'#4C5D71',null,null,null,mapSummary(partsMap),null);
     }else if(view==='procurement'){
         if(items.length){
             const s=items[0];
