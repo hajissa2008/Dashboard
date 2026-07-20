@@ -278,9 +278,6 @@ body.dark th .sort-arrow{color:var(--text-secondary)}
       <span class="icon">📊</span> Executive Dashboard <span class="count" id="count-all">0</span>
     </a>
     <div class="nav-section">Department Views</div>
-    <a class="nav-item" data-view="procurement" onclick="switchView('procurement')">
-      <span class="icon">📦</span> Procurement <span class="count" id="count-procurement">0</span><span class="status-dot" id="dot-procurement" style="display:inline-block;vertical-align:middle;margin-left:4px"></span>
-    </a>
     <div class="nav-folder">
       <div class="nav-folder-header" onclick="toggleFolder(this)">
         <span class="arrow">▶</span><span class="icon">📐</span> Shop Drawing
@@ -294,6 +291,9 @@ body.dark th .sort-arrow{color:var(--text-secondary)}
         </a>
       </div>
     </div>
+    <a class="nav-item" data-view="procurement" onclick="switchView('procurement')">
+      <span class="icon">📦</span> Procurement <span class="count" id="count-procurement">0</span><span class="status-dot" id="dot-procurement" style="display:inline-block;vertical-align:middle;margin-left:4px"></span>
+    </a>
     <a class="nav-item" data-view="calculations" onclick="switchView('calculations')">
       <span class="icon">🧮</span> Calculations <span class="count" id="count-calculations">0</span><span class="status-dot" id="dot-calculations" style="display:inline-block;vertical-align:middle;margin-left:4px"></span>
     </a>
