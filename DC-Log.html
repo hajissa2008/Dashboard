@@ -11,7 +11,6 @@
 :root{--primary:#4C5D71;--primary-dark:#3A4A5E;--primary-light:#E8ECF0;--blue:var(--primary);--blue-dark:var(--primary-dark);--blue-light:var(--primary-light);--green:#107C10;--green-light:#E6F7E6;--red:#D92C2C;--red-light:#FDE8E8;--orange:#ED7D31;--orange-light:#FFF0E0;--yellow:#FFB900;--yellow-light:#FFF8E1;--gray:#8A8886;--gray-light:#F3F2F1;--gray-border:#EDEBE9;--text-primary:#201E1F;--text-secondary:#605E5C;--white:#FFFFFF;--bg:#F3F2F1;--shadow:0 1px 3px rgba(0,0,0,.08);--radius:6px;--sidebar-w:240px;--header-h:48px}
 body.dark{--primary:#7A8FA5;--primary-dark:#8DA3B9;--primary-light:#2A3540;--blue:var(--primary);--blue-dark:var(--primary-dark);--blue-light:var(--primary-light);--green:#4CAF50;--green-light:#1B3A1B;--red:#F44336;--red-light:#3D1A1A;--orange:#FF9800;--orange-light:#3D2A0A;--yellow:#FFC107;--yellow-light:#3D3000;--gray:#A09E9C;--gray-light:#2D2D2D;--gray-border:#3D3D3D;--text-primary:#E0E0E0;--text-secondary:#B0B0B0;--white:#1E1E1E;--bg:#121212;--shadow:0 1px 3px rgba(0,0,0,.3)}
 html,body{height:100%;font-family:'Segoe UI',-apple-system,system-ui,sans-serif;font-size:14px;color:var(--text-primary);background:var(--bg)}
-html,body{height:100%;font-family:'Segoe UI',-apple-system,system-ui,sans-serif;font-size:14px;color:var(--text-primary);background:var(--gray-light)}
 
 .signin-overlay{position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#2C3A4B 0%,var(--primary) 50%,#6B7F95 100%);overflow:hidden}
 .signin-overlay.hidden{display:none}
@@ -703,7 +702,7 @@ const DEPTS = [
     "id": "piv",
     "title": "Photos (PIV)",
     "site": "https://sascontractingsa.sharepoint.com/sites/Alenshaiah",
-    "list": "PIV - Photos,",
+    "list": "PIV - Photos",
     "group": "Documents & Records",
     "icon": "\ud83d\udcf7"
   },
@@ -922,8 +921,9 @@ async function fetchColumnDefinitions(siteUrl,listName){
   (json.value||[]).forEach(col=>{
     const n=col.name;
     if(!n||SKIP_COLS.has(n)||n.startsWith('_'))return;
-    let type='text';
-    if(col.choice)type='choice';
+    let type='text',choices=null;
+    if(col.choice){type='choice';choices=col.choice.choices||[];}
+    else if(col.multiChoice){type='multiChoice';choices=col.multiChoice.choices||[];}
     else if(col.boolean)type='boolean';
     else if(col.dateTime)type='date';
     else if(col.number)type='number';
@@ -931,7 +931,8 @@ async function fetchColumnDefinitions(siteUrl,listName){
     else if(col.note)type='note';
     else if(col.lookup)type='lookup';
     else if(col.personOrGroup)type='person';
-    cols.push({name:n, displayName:col.displayName||n, type, choices:col.choice?(col.choice.choices||[]):null});
+    else if(col.url)type='url';
+    cols.push({name:n, displayName:col.displayName||n, type, choices});
   });
   return cols;
 }

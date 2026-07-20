@@ -646,7 +646,7 @@ const DEPTS = [
     "id": "piv",
     "title": "Photos (PIV)",
     "site": "https://sascontractingsa.sharepoint.com/sites/Alenshaiah",
-    "list": "PIV - Photos,",
+    "list": "PIV - Photos",
     "group": "Documents & Records",
     "icon": "\ud83d\udcf7"
   },
@@ -965,12 +965,14 @@ async function fetchColumnDefinitions(siteUrl,listName){
     if(col.text)type='text';
     else if(col.note)type='note';
     else if(col.choice){type='choice';choices=col.choice.choices||[];}
+    else if(col.multiChoice){type='multiChoice';choices=col.multiChoice.choices||[];}
     else if(col.number)type='number';
     else if(col.currency)type='currency';
     else if(col.dateTime)type='date';
     else if(col.boolean)type='boolean';
     else if(col.lookup)type='lookup';
     else if(col.personOrGroup)type='person';
+    else if(col.url)type='url';
     else if(col.taxonomy)type='taxonomy';
     else type='text';
     cols.push({name:n,displayName:col.displayName||n,type,choices,required:col.required||false,description:col.description||''});
@@ -1469,6 +1471,8 @@ function openForm(title,data){
         html+=`<textarea id="${fid}"${req}>${htmlEscape(vDisplay)}</textarea>`; break;
       case 'person': case 'lookup': case 'taxonomy':
         html+=`<input type="text" id="${fid}" value="${htmlEscape(vDisplay)}"${req} placeholder="${htmlEscape(c.displayName)}">`; break;
+      case 'url':
+        html+=`<input type="url" id="${fid}" value="${htmlEscape(vDisplay)}"${req} placeholder="https://...">`; break;
       default:
         html+=`<input type="text" id="${fid}" value="${htmlEscape(vDisplay)}"${req}>`;
     }
