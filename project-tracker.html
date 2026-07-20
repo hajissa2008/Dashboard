@@ -1479,7 +1479,7 @@ function renderDashboard(){
       const d=x.dept||'';
       if(d==='Substructure'||d==='Superstructure'){
         let code='';
-        const codeFields=['rev04','rev03','rev02','rev01','rev00','rev','finalCode','Final Code','Final_x0020_Code','Status Code','Status_x0020_Code','STATUS CODE','statusCode'];
+        const codeFields=['drawingStatus','Drawing Status','Drawing_x0020_Status','rev04','rev03','rev02','rev01','rev00','rev','finalCode','Final Code','Final_x0020_Code','Status Code','Status_x0020_Code','STATUS CODE','statusCode'];
         for(const f of codeFields){const v=x[f];if(v&&String(v).trim()){code=String(v).trim();break;}}
         if(!code){const skip=new Set(['dept','status','priority','proj','id','Title','prog','assigned','remarks','phase','part','eng','checker','appr','subDate','clientReview','apprDate','ifcDate','engDisc','spec','calc','rfi','tq','due','pStart','pFinish','aStart','aFinish','delayDays','desStatus','actId','actName','cat']);for(const k of Object.keys(x)){if(skip.has(k))continue;const v=String(x[k]).trim();if(v.length===1&&/^[A-Z]$/i.test(v)){code=v;break;}}}
         const c=code.toUpperCase();
