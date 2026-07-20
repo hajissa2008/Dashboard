@@ -1157,6 +1157,10 @@ async function connectSingleView(view){
                 'EXPECTED SUBMISSION DATE':['expSubDate'],'Expected Submission Date':['expSubDate'],'Expected_x0020_Submission_x0020_Date':['expSubDate'],
                 'SHEET NAME':['sheetName'],'Sheet Name':['sheetName'],'Sheet_x0020_Name':['sheetName'],'SHEET_x0020_NAME':['sheetName'],
                 'DRAWING STATUS':['status'],'Drawing Status':['status'],'Drawing_x0020_Status':['status'],'DRAWING_x0020_STATUS':['status'],
+                // Substructure/Superstructure column aliases
+                'DISCIPLINE':['engDisc','discipline'],
+                'PHASE NO.':['phase'],'PHASE_x0020_NO_x002e_':['phase'],'Phase No.':['phase'],
+                'PART NAME (SITE)':['part'],'PART NAME':['part'],'PART_x0020_NAME_x0020__x0028_SITE_x0029_':['part'],'Part Name (Site)':['part'],
                 // All-caps column names from Maseel Activity export
                 'STATUS':['status'],'PROGRESS':['prog'],'START':['pStart'],'FINISH':['pFinish'],
                 'start':['pStart'],'finish':['pFinish']
@@ -1658,9 +1662,9 @@ function renderDashboard(){
                 const revFields=[{key:'rev04',cols:['REV 04 (OUT MDH)','REV 04']},{key:'rev03',cols:['REV 03 (OUT MDH)']},{key:'rev02',cols:['REV 02 OUT(MDH)','REV 02 IN']},{key:'rev01',cols:['REV 01 OUT(MDH)','REV 01  IN']},{key:'rev00',cols:['REV 00 (OUT MDH)','REV 00  IN']}];
                 const revCounts={rev04:0,rev03:0,rev02:0,rev01:0,rev00:0};
                 items.forEach(item=>{for(const rf of revFields){const colName=rf.cols.find(c=>item[c]!==undefined&&item[c]!==null&&item[c]!=='');const value=colName?item[colName]:item[rf.key];if(value!==undefined&&value!==null&&value!==''){revCounts[rf.key]++;break;}}});
-                const disciplines=new Set(items.map(x=>x.engDisc||x['Discipline']||'')).size;
-                const phases=new Set(items.map(x=>x.phase||x['ProjectPhase']||x['Phase']||'')).size;
-                const parts=new Set(items.map(x=>x.part||x['Part']||'')).size;
+                const disciplines=new Set(items.map(x=>x.engDisc||x['Discipline']||x['DISCIPLINE']||'')).size;
+                const phases=new Set(items.map(x=>x.phase||x['ProjectPhase']||x['Phase']||x['PHASE NO.']||x['PHASE_x0020_NO_x002e_']||'')).size;
+                const parts=new Set(items.map(x=>x.part||x['Part']||x['PART NAME (SITE)']||x['PART_x0020_NAME_x0020__x0028_SITE_x0029_']||'')).size;
                 const ci=window._kpiCache.length;window._kpiCache.push({title:dp.key,items,cols:deptCols});
                 kpis=
                     `<div class="kpi-card" onclick="showKpiModalFromCache(${ci})" style="cursor:pointer"><div class="kpi-accent" style="background:#4C5D71"></div><div class="kpi-icon">📐</div><div class="kpi-label">Total</div><div class="kpi-value">${t}</div></div>`+
@@ -2038,11 +2042,11 @@ function renderDeptView(view){
         const phasesMap={};
         const partsMap={};
         items.forEach(x=>{
-            const d=x.engDisc||x['Discipline']||'';
+            const d=x.engDisc||x['Discipline']||x['DISCIPLINE']||'';
             if(d){disciplinesMap[d]=(disciplinesMap[d]||0)+1;}
-            const p=x.phase||x['ProjectPhase']||x['Phase']||'';
+            const p=x.phase||x['ProjectPhase']||x['Phase']||x['PHASE NO.']||x['PHASE_x0020_NO_x002e_']||'';
             if(p){phasesMap[p]=(phasesMap[p]||0)+1;}
-            const pt=x.part||x['Part']||'';
+            const pt=x.part||x['Part']||x['PART NAME (SITE)']||x['PART_x0020_NAME_x0020__x0028_SITE_x0029_']||'';
             if(pt){partsMap[pt]=(partsMap[pt]||0)+1;}
         });
         const disciplines=Object.keys(disciplinesMap).length;
