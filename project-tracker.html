@@ -1558,6 +1558,20 @@ function renderDashboard(){
         const others=deptInfo.filter(d=>d.key!=='Substructure'&&d.key!=='Superstructure');
         let html='';
         if(sdTotal>0){
+          if(!window._sdDebug&&sub?.items?.[0]){
+            window._sdDebug=true;
+            const s=sub.items[0];
+            console.log('=== SUBSTRUCTURE FIRST ITEM KEYS ===');
+            Object.keys(s).sort().forEach(k=>{const v=s[k];if(v!==''&&v!==null&&v!==undefined&&!k.startsWith('@'))console.log('  '+k+':',JSON.stringify(v));});
+            console.log('=== END SUBSTRUCTURE KEYS ===');
+          }
+          if(!window._sdDebug2&&sup?.items?.[0]){
+            window._sdDebug2=true;
+            const s=sup.items[0];
+            console.log('=== SUPERSTRUCTURE FIRST ITEM KEYS ===');
+            Object.keys(s).sort().forEach(k=>{const v=s[k];if(v!==''&&v!==null&&v!==undefined&&!k.startsWith('@'))console.log('  '+k+':',JSON.stringify(v));});
+            console.log('=== END SUPERSTRUCTURE KEYS ===');
+          }
           const sdItems=[].concat(sub?sub.items:[],sup?sup.items:[]);
           const sdRow=statRow(sdItems);
           const subRow=sub?statRow(sub.items):'';
