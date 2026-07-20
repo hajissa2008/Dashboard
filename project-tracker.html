@@ -1101,8 +1101,18 @@ async function connectSingleView(view){
                 'REV 02 OUT(MDH)':['rev02'],'REV 02 IN':['rev02'],
                 'REV03':['rev03'],'REV 03':['rev03'],'REV_03':['rev03'],'REV_x0020_03':['rev03'],
                 'REV 03 (OUT MDH)':['rev03'],
+                'REV 03 Status':['rev03'],'REV 03 STATUS':['rev03'],'REV03 STATUS':['rev03'],
+                'REV_x0020_03_x0020_Status':['rev03'],'REV_x0020_03_x0020_STATUS':['rev03'],
                 'REV04':['rev04'],'REV 04':['rev04'],'REV_04':['rev04'],'REV_x0020_04':['rev04'],
                 'REV 04 (OUT MDH)':['rev04'],
+                'REV 04 Status':['rev04'],'REV 04 STATUS':['rev04'],'REV04 STATUS':['rev04'],
+                'REV_x0020_04_x0020_Status':['rev04'],'REV_x0020_04_x0020_STATUS':['rev04'],
+                'REV 02 Status':['rev02'],'REV 02 STATUS':['rev02'],'REV02 STATUS':['rev02'],
+                'REV_x0020_02_x0020_Status':['rev02'],'REV_x0020_02_x0020_STATUS':['rev02'],
+                'REV 01 Status':['rev01'],'REV 01 STATUS':['rev01'],'REV01 STATUS':['rev01'],
+                'REV_x0020_01_x0020_Status':['rev01'],'REV_x0020_01_x0020_STATUS':['rev01'],
+                'REV 00 Status':['rev00'],'REV 00 STATUS':['rev00'],'REV00 STATUS':['rev00'],
+                'REV_x0020_00_x0020_Status':['rev00'],'REV_x0020_00_x0020_STATUS':['rev00'],
                 'Phase':['phase'],'Part':['part'],
                 'ProjectPhase':['phase'],'Drawing_x0020_Number':['dwgNo'],'Drawing_x0020_Title':['dwgTitle'],'Drawing_x0020_Type':['dwgType'],
                 'Assigned_x0020_To':['assigned'],'AssignedTo':['assigned'],'ResponsibleDepartment':['dept'],
@@ -1133,6 +1143,7 @@ async function connectSingleView(view){
                 'Contractor_x0020_Ref_x002e_':['contractorRef'],'ContractorRef':['contractorRef'],
                 'Final_x0020_Rev_x002e_':['finalRev'],'FinalRev':['finalRev'],
                 'Final_x0020_Code':['finalCode'],
+                'Final Code':['finalCode'],'FINAL CODE':['finalCode'],'finalCode':['finalCode'],
                 'Doc_x0020_Type':['docType'],'DocType':['docType'],
                 'Discipline':['discipline'],
                 'Subject_x0020__x002f__x0020_Description':['description'],'SubjectDescription':['description'],'Subject':['description'],'Description':['description'],
@@ -1467,13 +1478,7 @@ function renderDashboard(){
     const codeStatus=x=>{
       const d=x.dept||'';
       if(d==='Substructure'||d==='Superstructure'){
-        let rv=x.rev04||x.rev03||x.rev02||x.rev01||x.rev00||x.rev||x.finalCode||x['Final Code']||x['Final_x0020_Code']||x['Status Code']||x['Status_x0020_Code']||x['STATUS CODE']||x['statusCode']||'';
-        if(!String(rv).trim()){
-          for(const k of Object.keys(x)){
-            const v=String(x[k]).trim();
-            if(v.length===1&&/^[A-Z]$/i.test(v)){rv=v;break;}
-          }
-        }
+        const rv=x.rev04||x.rev03||x.rev02||x.rev01||x.rev00||x.rev||x.finalCode||x['Final Code']||x['Final_x0020_Code']||x['Status Code']||x['Status_x0020_Code']||x['STATUS CODE']||x['statusCode']||'';
         const c=String(rv).toUpperCase();
         if(!c||c==='')return'Not Started';
         if(c==='A'||c==='B'||c==='E')return'Completed';
