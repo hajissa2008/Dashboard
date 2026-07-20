@@ -1478,9 +1478,12 @@ function renderDashboard(){
     const codeStatus=x=>{
       const d=x.dept||'';
       if(d==='Substructure'||d==='Superstructure'){
-        const rv=x.rev04||x.rev03||x.rev02||x.rev01||x.rev00||x.rev||x.finalCode||x['Final Code']||x['Final_x0020_Code']||x['Status Code']||x['Status_x0020_Code']||x['STATUS CODE']||x['statusCode']||'';
-        const c=String(rv).toUpperCase();
-        if(!c||c==='')return'Not Started';
+        let code='';
+        const codeFields=['rev04','rev03','rev02','rev01','rev00','rev','finalCode','Final Code','Final_x0020_Code','Status Code','Status_x0020_Code','STATUS CODE','statusCode'];
+        for(const f of codeFields){const v=x[f];if(v&&String(v).trim()){code=String(v).trim();break;}}
+        if(!code){const skip=new Set(['dept','status','priority','proj','id','Title','prog','assigned','remarks','phase','part','eng','checker','appr','subDate','clientReview','apprDate','ifcDate','engDisc','spec','calc','rfi','tq','due','pStart','pFinish','aStart','aFinish','delayDays','desStatus','actId','actName','cat']);for(const k of Object.keys(x)){if(skip.has(k))continue;const v=String(x[k]).trim();if(v.length===1&&/^[A-Z]$/i.test(v)){code=v;break;}}}
+        const c=code.toUpperCase();
+        if(!c)return'Not Started';
         if(c==='A'||c==='B'||c==='E')return'Completed';
         return'In Progress';
       }
@@ -1558,20 +1561,6 @@ function renderDashboard(){
         const others=deptInfo.filter(d=>d.key!=='Substructure'&&d.key!=='Superstructure');
         let html='';
         if(sdTotal>0){
-          if(!window._sdDebug&&sub?.items?.[0]){
-            window._sdDebug=true;
-            const s=sub.items[0];
-            console.log('=== SUBSTRUCTURE FIRST ITEM KEYS ===');
-            Object.keys(s).sort().forEach(k=>{const v=s[k];if(v!==''&&v!==null&&v!==undefined&&!k.startsWith('@'))console.log('  '+k+':',JSON.stringify(v));});
-            console.log('=== END SUBSTRUCTURE KEYS ===');
-          }
-          if(!window._sdDebug2&&sup?.items?.[0]){
-            window._sdDebug2=true;
-            const s=sup.items[0];
-            console.log('=== SUPERSTRUCTURE FIRST ITEM KEYS ===');
-            Object.keys(s).sort().forEach(k=>{const v=s[k];if(v!==''&&v!==null&&v!==undefined&&!k.startsWith('@'))console.log('  '+k+':',JSON.stringify(v));});
-            console.log('=== END SUPERSTRUCTURE KEYS ===');
-          }
           const sdItems=[].concat(sub?sub.items:[],sup?sup.items:[]);
           const sdRow=statRow(sdItems);
           const subRow=sub?statRow(sub.items):'';
