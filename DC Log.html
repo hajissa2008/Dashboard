@@ -1,0 +1,1389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AlEnshaiah - DC Log</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://alcdn.msauth.net/browser/2.32.2/js/msal-browser.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--primary:#4C5D71;--primary-dark:#3A4A5E;--primary-light:#E8ECF0;--blue:var(--primary);--blue-dark:var(--primary-dark);--blue-light:var(--primary-light);--green:#107C10;--green-light:#E6F7E6;--red:#D92C2C;--red-light:#FDE8E8;--orange:#ED7D31;--orange-light:#FFF0E0;--yellow:#FFB900;--yellow-light:#FFF8E1;--gray:#8A8886;--gray-light:#F3F2F1;--gray-border:#EDEBE9;--text-primary:#201E1F;--text-secondary:#605E5C;--white:#FFFFFF;--bg:#F3F2F1;--shadow:0 1px 3px rgba(0,0,0,.08);--radius:6px;--sidebar-w:240px;--header-h:48px}
+body.dark{--primary:#7A8FA5;--primary-dark:#8DA3B9;--primary-light:#2A3540;--blue:var(--primary);--blue-dark:var(--primary-dark);--blue-light:var(--primary-light);--green:#4CAF50;--green-light:#1B3A1B;--red:#F44336;--red-light:#3D1A1A;--orange:#FF9800;--orange-light:#3D2A0A;--yellow:#FFC107;--yellow-light:#3D3000;--gray:#A09E9C;--gray-light:#2D2D2D;--gray-border:#3D3D3D;--text-primary:#E0E0E0;--text-secondary:#B0B0B0;--white:#1E1E1E;--bg:#121212;--shadow:0 1px 3px rgba(0,0,0,.3)}
+html,body{height:100%;font-family:'Segoe UI',-apple-system,system-ui,sans-serif;font-size:14px;color:var(--text-primary);background:var(--bg)}
+html,body{height:100%;font-family:'Segoe UI',-apple-system,system-ui,sans-serif;font-size:14px;color:var(--text-primary);background:var(--gray-light)}
+
+.signin-overlay{position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#2C3A4B 0%,var(--primary) 50%,#6B7F95 100%);overflow:hidden}
+.signin-overlay.hidden{display:none}
+.signin-overlay.hidden~.app{display:flex}
+.app{display:none;height:100vh;overflow:hidden}
+.signin-overlay::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 20% 50%,rgba(255,255,255,.06) 0%,transparent 60%),radial-gradient(ellipse at 80% 20%,rgba(255,255,255,.04) 0%,transparent 50%)}
+.signin-card{position:relative;width:400px;max-width:90vw;background:var(--white);border-radius:16px;box-shadow:0 25px 60px rgba(0,0,0,.3),0 0 0 1px rgba(255,255,255,.08);padding:48px 40px 36px;text-align:center;animation:fadeSlideUp .5s ease}
+@keyframes fadeSlideUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
+.signin-logo{margin-bottom:8px}
+.signin-logo-img{width:120px;height:auto;max-height:100px;margin:0 auto 4px;display:block;object-fit:contain}
+.signin-badge{display:inline-block;padding:3px 12px;background:var(--primary-light);color:var(--primary);font-size:11px;font-weight:600;border-radius:12px;text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px}
+.signin-title{font-size:26px;font-weight:700;color:var(--text-primary);margin-bottom:4px}
+.signin-subtitle{font-size:14px;color:var(--text-secondary);margin-bottom:28px}
+.signin-error{display:none;background:#FDE8E8;color:#D92C2C;font-size:12px;padding:10px 14px;border-radius:8px;margin-bottom:16px;text-align:left;line-height:1.4}
+.signin-error.show{display:block}
+.signin-progress{display:none;align-items:center;justify-content:center;gap:10px;padding:10px 0;margin-bottom:16px;font-size:13px;color:var(--text-secondary)}
+.signin-progress.show{display:flex}
+.signin-progress .spinner{width:18px;height:18px;border:2px solid var(--gray-border);border-top-color:var(--primary);border-radius:50%;animation:spin .8s linear infinite;flex-shrink:0}
+.signin-btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:13px 24px;background:var(--primary);color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;transition:all .2s;box-shadow:0 4px 14px rgba(0,0,0,.2)}
+.signin-btn:hover{background:var(--primary-dark);box-shadow:0 6px 20px rgba(0,0,0,.25);transform:translateY(-1px)}
+.signin-btn:active{transform:translateY(0);box-shadow:0 2px 8px rgba(0,0,0,.15)}
+.signin-btn:disabled{opacity:.6;cursor:not-allowed;transform:none}
+.signin-footer{font-size:11px;color:var(--text-secondary);margin-top:20px}
+@media(max-width:768px){
+  .signin-card{padding:36px 24px 28px}
+  .signin-title{font-size:22px}
+}
+.sidebar{width:var(--sidebar-w);background:var(--white);border-right:1px solid var(--gray-border);display:flex;flex-direction:column;flex-shrink:0;z-index:100}
+.sidebar-header{padding:12px 16px;border-bottom:1px solid var(--gray-border);display:flex;align-items:center;gap:10px}
+.sidebar-header .logo{width:28px;height:28px;background:var(--blue);border-radius:4px;display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:14px}
+.sidebar-header h1{font-size:14px;font-weight:600;color:var(--text-primary)}
+.sidebar-header span{font-size:10px;color:var(--text-secondary)}
+.sidebar-nav{flex:1;overflow-y:auto;padding:8px 0}
+.nav-folder{margin:0}
+.nav-folder-header{display:flex;align-items:center;gap:8px;padding:6px 16px;cursor:pointer;color:var(--text-primary);font-size:13px;font-weight:600;transition:all .15s;border-left:3px solid transparent;user-select:none}
+.nav-folder-header:hover{background:var(--gray-light)}
+.nav-folder-header .arrow{font-size:10px;transition:transform .2s;width:14px;text-align:center}
+.nav-folder-header .arrow.open{transform:rotate(90deg)}
+.nav-folder-items{overflow:hidden;max-height:0;transition:max-height .3s ease}
+.nav-folder-items.open{max-height:200px}
+.nav-folder-items .nav-item{padding-left:28px}
+.nav-section{padding:6px 16px 4px;font-size:10px;font-weight:600;text-transform:uppercase;color:var(--text-secondary);letter-spacing:.5px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:8px 16px;cursor:pointer;color:var(--text-primary);font-size:13px;transition:all .15s;border-left:3px solid transparent;text-decoration:none}
+.nav-item:hover{background:var(--gray-light)}
+.nav-item.active{background:var(--blue-light);border-left-color:var(--blue);color:var(--blue);font-weight:600}
+.nav-item .icon{width:18px;text-align:center;font-size:14px}
+.nav-item .count{margin-left:auto;background:var(--gray-light);padding:1px 8px;border-radius:10px;font-size:11px;color:var(--text-secondary)}
+.nav-item .status-dot{width:8px;height:8px;border-radius:50%;margin-left:auto;flex-shrink:0}
+.nav-item .status-dot.online{background:var(--green)}
+.nav-item .status-dot.offline{background:var(--red)}
+.nav-item .status-dot.loading{background:var(--yellow);animation:pulse 1s infinite}
+
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.header{height:var(--header-h);background:var(--white);border-bottom:1px solid var(--gray-border);display:flex;align-items:center;padding:0 20px;gap:16px;flex-shrink:0}
+.header .menu-toggle{display:none;background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-primary);padding:4px}
+.header h2{font-size:16px;font-weight:600;flex:1}
+.header .header-right{display:flex;align-items:center;gap:12px}
+.header .search-wrap{position:relative;width:260px}
+.header .search-wrap input{width:100%;padding:6px 12px 6px 32px;border:1px solid var(--gray-border);border-radius:20px;font-size:13px;outline:none;transition:border .2s}
+.header .search-wrap input:focus{border-color:var(--blue)}
+.header .search-wrap .search-icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text-secondary);font-size:13px}
+.data-source-badge{display:flex;align-items:center;gap:6px;padding:4px 10px;border-radius:16px;font-size:11px;font-weight:600;cursor:pointer;border:none}
+.data-source-badge.live{background:#E6F7E6;color:var(--green)}
+.data-source-badge.demo{background:var(--yellow-light);color:#8A6D00}
+.data-source-badge.error{background:var(--red-light);color:var(--red)}
+.data-source-badge .dot{width:7px;height:7px;border-radius:50%}
+.data-source-badge.live .dot{background:var(--green)}
+.data-source-badge.demo .dot{background:#8A6D00}
+.data-source-badge.error .dot{background:var(--red)}
+.dark-toggle,.gear-btn{background:none;border:none;font-size:18px;cursor:pointer;padding:4px 8px;border-radius:50%;color:var(--text-primary);transition:background .15s,color .15s;line-height:1;position:relative}
+.dark-toggle:hover,.gear-btn:hover{background:var(--gray-light)}
+.gear-btn.live{color:var(--green)}
+.gear-btn.error{color:var(--red)}
+.gear-btn.demo{color:var(--orange)}
+
+/* Settings Panel */
+.settings-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:200}
+.settings-overlay.show{display:block}
+.kpi-modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:300}
+.kpi-modal-overlay.show{display:flex;align-items:center;justify-content:center}
+.kpi-modal{background:var(--white);border-radius:8px;width:90vw;max-width:1000px;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 8px 30px rgba(0,0,0,.25)}
+.kpi-modal-head{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid var(--gray-border)}
+.kpi-modal-head h3{font-size:15px;font-weight:600;margin:0}
+.kpi-modal-close{background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-secondary);padding:2px 6px;border-radius:4px}
+.kpi-modal-close:hover{background:var(--bg-light)}
+.kpi-modal-body{overflow:auto;flex:1;padding:12px 20px 20px}
+.kpi-modal-body table{width:100%;border-collapse:collapse;font-size:12px}
+.kpi-modal-body th{background:var(--bg-light);padding:8px 10px;text-align:left;font-weight:600;border-bottom:2px solid var(--gray-border);white-space:nowrap}
+.kpi-modal-body td{padding:6px 10px;border-bottom:1px solid var(--gray-border);max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.kpi-modal-body tr:hover td{background:var(--bg-light)}
+.kpi-modal-count{font-size:12px;color:var(--text-secondary);padding:0 20px 10px}
+.settings-panel{position:fixed;top:0;right:-400px;width:380px;max-width:90vw;height:100%;background:var(--white);box-shadow:-4px 0 20px rgba(0,0,0,.15);z-index:201;transition:right .3s;overflow-y:auto}
+.settings-panel.open{right:0}
+.settings-header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--gray-border)}
+.settings-header h3{font-size:16px;font-weight:600}
+.settings-close{background:none;border:none;font-size:22px;cursor:pointer;color:var(--text-secondary);padding:4px}
+.settings-body{padding:20px}
+.settings-body label{display:block;font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:4px;margin-top:16px}
+.settings-body label:first-child{margin-top:0}
+.settings-body input,.settings-body select{width:100%;padding:8px 12px;border:1px solid var(--gray-border);border-radius:4px;font-size:13px;outline:none}
+.settings-body input:focus,.settings-body select:focus{border-color:var(--blue)}
+.settings-body .hint{font-size:11px;color:var(--text-secondary);margin-top:4px}
+.settings-body .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 20px;border-radius:4px;font-size:13px;font-weight:600;cursor:pointer;border:none;margin-top:16px}
+.settings-body .btn-primary{background:var(--blue);color:white}
+.settings-body .btn-primary:hover{background:var(--blue-dark)}
+.settings-body .btn-outline{background:transparent;border:1px solid var(--gray-border);color:var(--text-primary)}
+.settings-body .btn-outline:hover{background:var(--gray-light)}
+.cfg-section{border:1px solid var(--gray-border);border-radius:8px;padding:16px;margin-bottom:16px}
+.cfg-section-title{font-size:14px;font-weight:700;margin-bottom:2px}
+.cfg-section-desc{font-size:11px;color:var(--text-secondary);margin-bottom:8px}
+.cfg-section label{margin-top:8px}
+.cfg-section .btn{margin-top:8px}
+.connection-status{padding:12px;border-radius:4px;font-size:13px;margin-top:16px}
+.connection-status.connected{background:var(--green-light);color:var(--green);border:1px solid var(--green)}
+.connection-status.disconnected{background:var(--red-light);color:var(--red);border:1px solid var(--red)}
+.connection-status.loading{background:var(--yellow-light);color:#8A6D00;border:1px solid var(--yellow)}
+
+/* Content */
+.content{flex:1;overflow-y:auto;padding:16px 20px}
+
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px;margin-bottom:20px}
+.kpi-card{position:relative;background:var(--white);border-radius:10px;padding:16px 18px;box-shadow:0 1px 4px rgba(0,0,0,.06),0 2px 8px rgba(0,0,0,.04);border:none;overflow:hidden;cursor:pointer;transition:transform .2s,box-shadow .2s;user-select:none}
+.kpi-card:hover{transform:translateY(-3px);box-shadow:0 4px 12px rgba(0,0,0,.1),0 8px 24px rgba(0,0,0,.08)}
+.kpi-card:active{transform:translateY(-1px)}
+.kpi-card .kpi-accent{position:absolute;top:0;left:0;width:4px;height:100%;border-radius:0 2px 2px 0}
+.kpi-card .kpi-icon{font-size:20px;margin-bottom:6px;display:inline-block}
+.kpi-card .kpi-label{font-size:11px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.4px;font-weight:600;margin-bottom:4px}
+.kpi-card .kpi-value{font-size:24px;font-weight:700;color:var(--text-primary);line-height:1.2}
+.kpi-card .kpi-sub{font-size:11px;color:var(--text-secondary);margin-top:4px;display:flex;align-items:center;gap:4px}
+.kpi-card .kpi-pct{font-size:13px;font-weight:600;color:var(--text-primary);margin-top:2px}
+.kpi-card .kpi-bar{height:4px;border-radius:2px;margin-top:10px;background:var(--gray-border);overflow:hidden}
+.kpi-card .kpi-bar-fill{height:100%;border-radius:2px;transition:width .6s ease}
+.kpi-card .kpi-trend{font-size:10px;font-weight:600;padding:1px 6px;border-radius:8px}
+.kpi-card .kpi-trend.up{background:var(--green-light);color:var(--green)}
+.kpi-card .kpi-trend.down{background:var(--red-light);color:var(--red)}
+.kpi-card .kpi-trend.neutral{background:var(--gray-light);color:var(--gray)}
+
+.charts-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
+.chart-card{background:var(--white);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px}
+.chart-card h3{font-size:13px;font-weight:600;color:var(--text-primary);margin-bottom:12px}
+
+.table-wrap{background:var(--white);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+.table-toolbar{display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid var(--gray-border);flex-wrap:wrap}
+.table-toolbar .filter-group{display:flex;align-items:center;gap:6px}
+.table-toolbar select{padding:4px 8px;border:1px solid var(--gray-border);border-radius:4px;font-size:12px;background:var(--white);outline:none}
+.table-toolbar .view-label{font-size:12px;font-weight:600;color:var(--text-secondary)}
+.table-toolbar .view-badge{background:var(--blue);color:white;padding:2px 10px;border-radius:12px;font-size:11px;font-weight:600}
+.table-scroll{overflow-x:auto;max-height:65vh;overflow-y:auto}
+.table-scroll::-webkit-scrollbar{height:6px;width:6px}
+.table-scroll::-webkit-scrollbar-thumb{background:var(--gray-border);border-radius:3px}
+table{width:100%;border-collapse:collapse;white-space:nowrap;font-size:12px}
+thead{position:sticky;top:0;z-index:10}
+th{background:var(--gray-light);color:var(--text-secondary);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.3px;padding:8px 10px;text-align:left;border-bottom:2px solid var(--gray-border);cursor:pointer;user-select:none;white-space:nowrap}
+th:hover{color:var(--text-primary)}
+th .sort-arrow{display:inline-block;margin-left:4px;opacity:.4;font-size:10px}
+th.sorted .sort-arrow{opacity:1;color:var(--blue)}
+td{padding:7px 10px;border-bottom:1px solid var(--gray-border);color:var(--text-primary)}
+tr:hover td{background:var(--blue-light)}
+
+.status-badge{display:inline-block;padding:2px 10px;border-radius:12px;font-size:11px;font-weight:600}
+.status-Completed,.status-Approved,.status-IFC{background:var(--green-light);color:var(--green)}
+.status-In\ Progress,.status-Submitted,.status-Under\ Consultant\ Review{background:var(--blue-light);color:var(--blue)}
+.status-Under\ Review,.status-Waiting\ Approval,.status-Internal\ Review,.status-Approved\ with\ Comments{background:var(--orange-light);color:var(--orange)}
+.status-Delayed,.status-Revise\ &\ Resubmit,.status-Rejected{background:var(--red-light);color:var(--red)}
+.status-On\ Hold,.status-Cancelled{background:var(--gray-light);color:var(--gray)}
+.status-Not\ Started,.status-Draft{background:#F0F0F0;color:#666}
+.status-Ready\ for\ Submission{background:var(--yellow-light);color:#8A6D00}
+
+.priority-badge{display:inline-block;padding:1px 8px;border-radius:10px;font-size:10px;font-weight:700;text-transform:uppercase}
+.priority-Critical{background:var(--red-light);color:var(--red)}
+.priority-High{background:var(--orange-light);color:var(--orange)}
+.priority-Medium{background:var(--yellow-light);color:#8A6D00}
+.priority-Low{background:var(--green-light);color:var(--green)}
+
+.progress-bar{display:flex;align-items:center;gap:6px}
+.progress-track{flex:1;height:6px;background:var(--gray-border);border-radius:3px;overflow:hidden}
+.progress-fill{height:100%;border-radius:3px;transition:width .3s}
+.progress-fill.green{background:var(--green)}.progress-fill.blue{background:var(--blue)}
+.progress-fill.orange{background:var(--orange)}.progress-fill.red{background:var(--red)}
+.progress-text{font-size:11px;font-weight:600;min-width:32px;text-align:right}
+
+.person{display:flex;align-items:center;gap:6px}
+.person-avatar{width:24px;height:24px;border-radius:50%;background:var(--blue);color:white;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;flex-shrink:0}
+
+.overdue{color:var(--red);font-weight:600}
+.on-track{color:var(--green);font-weight:500}
+.drawing-link{color:var(--blue);cursor:pointer;text-decoration:none;font-weight:500}
+.drawing-link:hover{text-decoration:underline}
+
+.team-grid{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 16px}
+.team-card{background:var(--bg);border:1px solid var(--gray-border);border-radius:6px;padding:10px 14px;flex:1 1 200px;min-width:180px;transition:box-shadow .15s}
+.team-card:hover{box-shadow:0 2px 8px rgba(0,0,0,.08)}
+.team-card.team-warn{border-left:3px solid var(--red)}
+.team-card .person-avatar{width:36px;height:36px;font-size:15px}
+.team-roles{font-size:11px;color:var(--text-secondary);margin-top:2px}
+.team-meta{font-size:11px;color:var(--text-secondary);margin-top:2px}
+.team-more{display:flex;align-items:center;justify-content:center;color:var(--text-secondary);font-size:13px;font-weight:500;cursor:pointer}
+
+.empty-state{padding:40px;text-align:center;color:var(--text-secondary)}
+.empty-state .empty-icon{font-size:40px;margin-bottom:8px}
+.loading-state{padding:60px;text-align:center;color:var(--text-secondary)}
+.spinner{width:32px;height:32px;border:3px solid var(--gray-border);border-top-color:var(--blue);border-radius:50%;animation:spin .6s linear infinite;margin:0 auto 12px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+body.dark .sidebar,body.dark .header,body.dark .kpi-card,body.dark .chart-card,body.dark .table-wrap,body.dark .settings-panel{background:var(--white)}
+body.dark .kpi-card:hover{box-shadow:0 4px 12px rgba(255,255,255,.05),0 8px 24px rgba(255,255,255,.03)}
+body.dark .sidebar{border-right-color:var(--gray-border)}
+body.dark .header{border-bottom-color:var(--gray-border)}
+body.dark .sidebar-header{border-bottom-color:var(--gray-border)}
+body.dark table th{background:var(--bg);color:var(--text-secondary);border-bottom-color:var(--gray-border)}
+body.dark td{border-bottom-color:var(--gray-border);color:var(--text-primary)}
+body.dark tr:hover td{background:var(--blue-light)}
+body.dark .settings-header{border-bottom-color:var(--gray-border)}
+body.dark .table-toolbar{border-bottom-color:var(--gray-border)}
+body.dark .settings-body input,body.dark .settings-body select{background:var(--bg);border-color:var(--gray-border);color:var(--text-primary)}
+body.dark .empty-state{color:var(--text-secondary)}
+body.dark th .sort-arrow{color:var(--text-secondary)}
+
+@media(max-width:768px){
+.sidebar{position:fixed;left:-280px;transition:left .25s;height:100%;box-shadow:2px 0 12px rgba(0,0,0,.15)}
+.sidebar.open{left:0}
+.sidebar-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:99}
+.sidebar-backdrop.show{display:block}
+.header .menu-toggle{display:block}
+.header .search-wrap{width:140px}
+.kpi-grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+.charts-row{grid-template-columns:1fr}
+.content{padding:12px}
+}
+
+
+/* DC Log additions */
+.kpi-card .kpi-label{white-space:normal}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:4px;font-size:12px;font-weight:600;cursor:pointer;border:none;transition:all .15s}
+.btn-primary{background:var(--blue);color:white}
+.btn-primary:hover{background:var(--blue-dark)}
+.btn-outline{background:transparent;border:1px solid var(--gray-border);color:var(--text-primary)}
+.btn-outline:hover{background:var(--gray-light)}
+
+</style>
+</head>
+<body>
+<div class="signin-overlay" id="signin-overlay">
+  <div class="signin-card" id="signin-card">
+    <div class="signin-logo" id="signin-logo">
+      <div style="width:80px;height:80px;background:var(--primary);border-radius:16px;display:flex;align-items:center;justify-content:center;color:white;font-size:36px;font-weight:700;margin:0 auto">AE</div>
+    </div>
+    <div class="signin-badge" id="signin-badge">DC Log</div>
+    <h1 class="signin-title">AlEnshaiah</h1>
+    <p class="signin-subtitle">DC Log &middot; Document Control Dashboard</p>
+    <div class="signin-error" id="signin-error"></div>
+    <div class="signin-progress" id="signin-progress"><div class="spinner"></div><span>Authenticating...</span></div>
+    <button class="signin-btn" id="signin-btn" onclick="loginSP()">
+      <svg width="18" height="18" viewBox="0 0 21 21" fill="none"><rect x="1" y="1" width="9" height="9" fill="#F25022"/><rect x="11" y="1" width="9" height="9" fill="#7FBA00"/><rect x="1" y="11" width="9" height="9" fill="#00A4EF"/><rect x="11" y="11" width="9" height="9" fill="#FFB900"/></svg>
+      Sign in with Microsoft
+    </button>
+    <p class="signin-footer">Access your DC Log data &middot; Secure SSO &middot; <a href="#" onclick="openSettings();return false" style="color:var(--primary);text-decoration:none;font-weight:600">&#9881;&#65039; Config</a> &middot; <a href="#" onclick="guestAccess();return false" style="color:var(--text-secondary);text-decoration:none">Continue as Guest</a></p>
+  </div>
+</div>
+<div class="app">
+
+<div class="sidebar-backdrop" id="backdrop" onclick="toggleSidebar()"></div>
+
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <div style="width:28px;height:28px;background:var(--blue);border-radius:4px;display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:14px">AE</div>
+    <div><h1>DC Log</h1><span>AlEnshaiah Contracting</span></div>
+  </div>
+  <nav class="sidebar-nav" id="nav"></nav>
+</aside>
+
+<main class="main">
+  <header class="header">
+    <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+    <div style="width:28px;height:28px;background:var(--primary);border-radius:4px;display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:12px;margin-right:6px">AE</div>
+    <h2 id="view-title">DC Log Dashboard</h2>
+    <div class="header-right">
+      <div id="auth-header" style="display:flex;align-items:center;gap:6px;margin-right:8px">
+        <button class="btn btn-primary" id="hdr-login-btn" onclick="loginSP()" style="padding:3px 10px;font-size:11px;display:none">🔑 Sign In</button>
+        <span id="hdr-user-name" style="font-size:12px;font-weight:600;display:none"></span>
+        <button class="btn btn-outline" id="hdr-logout-btn" onclick="logoutSP()" style="padding:3px 8px;font-size:11px;display:none">Sign Out</button>
+      </div>
+      <div class="search-wrap">
+        <span class="search-icon">🔍</span>
+        <input type="text" placeholder="Search this list..." id="search" oninput="onGlobalSearch()">
+      </div>
+      <button class="gear-btn" onclick="refreshAll()" title="Reload all DC Log lists">🔄</button>
+      <span id="refresh-status" style="font-size:10px;color:var(--text-secondary);white-space:nowrap"></span>
+      <button class="gear-btn" id="gear-btn" onclick="openSettings()" title="Configuration">⚙️</button>
+      <button class="dark-toggle" id="dark-toggle" onclick="toggleDark()" title="Toggle dark mode">🌙</button>
+    </div>
+  </header>
+
+  <!-- Settings Panel -->
+  <div class="settings-overlay" id="settings-overlay" onclick="closeSettings()"></div>
+  <div class="settings-panel" id="settings-panel">
+    <div class="settings-header">
+      <h3>DC Log Configuration</h3>
+      <button class="settings-close" onclick="closeSettings()">&times;</button>
+    </div>
+    <div class="settings-body">
+      <div class="cfg-section">
+        <div class="cfg-section-title">Sign in with Microsoft</div>
+        <div class="cfg-section-desc">Authenticate via Azure AD to access the 42 DC Log SharePoint lists at sascontractingsa.sharepoint.com/sites/Alenshaiah.</div>
+        <label>Tenant ID</label>
+        <input type="text" id="cfg-tenant" value="684547e2-bb8b-450a-a3e1-3a6bc15e9471">
+        <div class="hint">From Azure AD &rarr; App registrations &rarr; Your app &rarr; Overview.</div>
+        <label>Client ID</label>
+        <input type="text" id="cfg-client" value="" placeholder="App Registration Client ID for THIS app">
+        <div class="hint">From the same app registration. This file's URL must be added as a redirect URI.</div>
+
+        <div id="redirect-uri-box" style="background:var(--yellow-light);border-radius:4px;padding:8px;margin-top:8px;font-size:11px;line-height:1.4">
+          <strong>⚠️ Required:</strong> Add this exact URL in Azure AD &rarr; Authentication &rarr; <strong>Single-page application (SPA)</strong> redirect URIs:
+          <div style="font-family:monospace;background:var(--white);padding:6px 8px;border-radius:3px;margin-top:4px;word-break:break-all" id="redirect-uri-display"></div>
+          <div style="margin-top:4px;color:var(--text-secondary)">Also enable <strong>Allow public client flows</strong> &rarr; <strong>Yes</strong>. You can reuse the same App Registration as DC Form / Project Tracker &mdash; just add this file's URL as an additional redirect URI.</div>
+        </div>
+
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button class="btn btn-primary" onclick="loginSP()" id="settings-login-btn">🔑 Sign In</button>
+          <button class="btn btn-outline" onclick="saveAuthConfig()">💾 Save</button>
+          <button class="btn btn-outline" onclick="logoutSP()" id="settings-logout-btn" style="display:none">🚪 Sign Out</button>
+        </div>
+        <div id="settings-auth-status" style="font-size:12px;margin-top:4px"></div>
+      </div>
+      <div class="cfg-section">
+        <div class="cfg-section-title">About this app</div>
+        <div class="cfg-section-desc">DC Log connects live to all 42 SharePoint lists created for the MSL Skeleton DC Log (Outgoing Log). Data refreshes on demand via the 🔄 button. Use <strong>DC Form.html</strong> to add, edit, or attach files to records.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- KPI Detail Modal -->
+  <div class="kpi-modal-overlay" id="kpi-modal-overlay" onclick="closeKpiModal(event)">
+    <div class="kpi-modal" onclick="event.stopPropagation()">
+      <div class="kpi-modal-head">
+        <h3 id="kpi-modal-title"></h3>
+        <button class="kpi-modal-close" onclick="closeKpiModal()">✕</button>
+      </div>
+      <div class="kpi-modal-count" id="kpi-modal-count"></div>
+      <div class="kpi-modal-body" id="kpi-modal-body"></div>
+    </div>
+  </div>
+
+  <div class="content" id="content">
+    <div class="loading-state">
+      <div class="spinner"></div>
+      <p>Sign in to load DC Log data...</p>
+    </div>
+  </div>
+</main>
+
+</div>
+
+<script>
+
+// ======================== SAFE STORAGE ========================
+const storage = {
+  _data: {},
+  getItem(k){ try{ return localStorage.getItem(k) }catch(e){ return this._data[k]||null } },
+  setItem(k,v){ try{ localStorage.setItem(k,v) }catch(e){ this._data[k]=v } },
+  removeItem(k){ try{ localStorage.removeItem(k) }catch(e){ delete this._data[k]; } }
+};
+
+// ======================== LIST CONFIG (42 DC Log lists) ========================
+const DEPTS = [
+  {
+    "id": "sor",
+    "title": "SOR",
+    "site": "https://sascontractingsa.sharepoint.com/sites/Alenshaiah",
+    "list": "SOR",
+    "group": "Correspondence & Registers",
+    "icon": "\ud83d\udce4"
+  },
+  {
+    "id": "incoming",
+    "title": "Incoming",
+    "site": "https://sascontractingsa.sharepoint.com/sites/Alenshaiah",
+    "list": "Incoming",
+    "group": "Correspondence & Registers",
+    "icon": "\ud83d\udce5"
+  },
+  {
+    "id": "outgoing",
+    "title": "Outgoing",
+    "site": "https://sascontractingsa.sharepoint.com/sites/Alenshaiah",
+    "list": "Outgoing",
+    "group": "Correspondence & Registers",
+    "icon": "\ud83d\udce4"
+  },
+  {
+    "id": "letters2",
+    "title": "Letters (2)",
+    "site": "https://sascontractingsa.sharepoint.com/sites/Alenshaiah",
+    "list": "Letters (2)",
+    "group": "Correspondence & Registers",
+    "icon": "\u2709\ufe0f"
+  },
+  {
+    "id": "oic-to-acc",
+    "title": "OIC to ACC",
+    "site": "https://sascontractingsa.sharepoint.com/sites/Alenshaiah",
+    "list": "OIC TO ACC",
+    "group": "Correspondence & Registers",
+    "icon": "\ud83d\udce8"
+  },
+  {
+    "id": "mom",
+    "title": "MOM",
+    "site": "https://sascontractingsa.sharepoint.com/sites/Alenshaiah",
+    "list": "MOM",
+    "group": "Correspondence & Registers",
+    "icon": "\ud83d\udcdd"
+  },
+  {
+    "id": "sdc-to-acc-ifc",
+    "title": "SDC to ACC (IFC)",
+    "site": "https://sascontractingsa.sharepoint.com/sites/Alenshaiah",
+    "list": "SDC TO ACC (IFC)",
+    "group": "Correspondence & Registers",
+    "icon": "\ud83d\udce8"
+  },
+  {
+    "id": "internal-sor",
+    "title": "Internal SOR's",
+    "site": "https://sascontractingsa.sharepoint.com/sites/Alenshaiah",
+    "list": "Internal SOR's",
+    "group": "Correspondence & Registers",
+    "icon": "\ud83d\udce4"
+  },
+  {
+    "id": "calculations",
+    "title": "Calculations",
+    "site": "https://sascontractingsa.sharepoint.com/sites/Alenshaiah",
+    "list": "Calculations (DC Log)",
+    "group": "Design & Technical",
+    "icon": "\ud83e\uddee"
+  },
+  {
+    "id": "plans",
+    "title": "Plans",
+    "site": "https://sascontractingsa.sharepoint.com/sites/Alenshaiah",
+    "list": "Plans",
+    "group": "Design & Technical",
+    "icon": "\ud83d\uddc2\ufe0f"
+  },
+  {
+    "id": "dw-drawings",
+    "title": "Drawings (DW)",
+    "site": "https://sascontractingsa.sharepoint.com/sites/Alenshaiah",
+    "list": "DW-Drawings",
+    "group": "Design & Technical",
+    "icon": "\ud83d\udcd0"
+  },
+  {
+    "id": "mst",
+    "title": "Method Statements (MST)",
+    "site": "https://sascontractingsa.sharepoint.com/sites/Alenshaiah",
+    "list": "MST - Method Statements",
+    "group": "Design & Technical",
+    "icon": "\ud83d\udccb"
+  },
+  {
+    "id": "org-chart",
+    "title": "Organization Chart",
+    "site": "https://sascontractingsa.sharepoint.com/sites/Alenshaiah",
+    "list": "Organization Chart",
+    "group": "Design & Technical",
+    "icon": "\ud83c\udfe2"
+  },
+  {
+    "id": "scl",
+    "title": "Schedules (SCL)",
+    "site": "https://sascontractingsa.sharepoint.com/sites/Alenshaiah",
+    "list": "SCL - Schedules",
+    "group": "Design & Technical",
+    "icon": "\ud83d\udcc5"
+  },
+  {
+    "id": "sna",
+    "title": "Start of New Activity (SNA)",
+    "site": "https://sascontractingsa.sharepoint.com/sites/Alenshaiah",
+    "list": "SNA- Start of new Activity",
+    "group": "Design & Technical",
+    "icon": "\ud83d\udea7"
+  },
+  {
+    "id": "ncr",
+    "title": "NCR - Non-Conformance Report",
+    "site": "https://sascontractingsa.sharepoint.com/sites/Alenshaiah",
+    "list": "NCR - Non-Conformance Report",
+    "group": "Submittals & Approvals",
+    "icon": "\u26a0\ufe0f"
+  },
+  {
+    "id": "si",
+    "title": "Site Instructions (SI)",
+    "site": "https://sascontractingsa.sharepoint.com/sites/Alenshaiah",
+    "list": "SI - Site Instructions",
+    "group": "Submittals & Approvals",
+    "icon": "\ud83d\udccc"
+  },
+  {
+    "id": "ei",
+    "title": "Engineer's Instruction (EI)",
+    "site": "https://sascontractingsa.sharepoint.com/sites/Alenshaiah",
+    "list": "EI - Engineer's Instruction",
+    "group": "Submittals & Approvals",
+    "icon": "\ud83d\udccc"
+  },
+  {
+    "id": "wir",
+    "title": "Work Inspection Request (WIR)",
+    "site": "https://sascontractingsa.sharepoint.com/sites/Alenshaiah",
+    "list": "WIR - Work Inspection Request",
+    "group": "Submittals & Approvals",
+    "icon": "\ud83d\udd0d"
+  },
+  {
+    "id": "mir",
+    "title": "Material Insp. Request (MIR)",
+    "site": "https://sascontractingsa.sharepoint.com/sites/Alenshaiah",
+    "list": "MIR- Material Insp Request",
+    "group": "Submittals & Approvals",
+    "icon": "\ud83d\udd0d"
+  },
+  {
+    "id": "ms",
+    "title": "Materials Submittal (MS)",
+    "site": "https://sascontractingsa.sharepoint.com/sites/Alenshaiah",
+    "list": "MS - Materials Submittal",
+    "group": "Submittals & Approvals",
+    "icon": "\ud83d\udce6"
+  },
+  {
+    "id": "pq",
+    "title": "Pre-Qualifications (PQ)",
+    "site": "https://sascontractingsa.sharepoint.com/sites/Alenshaiah",
+    "list": "PQ -Pre-Qualifications",
+    "group": "Submittals & Approvals",
+    "icon": "\u2705"
+  },
+  {
+    "id": "rfi",
+    "title": "Request for Info (RFI)",
+    "site": "https://sascontractingsa.sharepoint.com/sites/Alenshaiah",
+    "list": "RFI-Request for Info",
+    "group": "Submittals & Approvals",
+    "icon": "\u2753"
+  },
+  {
+    "id": "sca",
+    "title": "Subcon Approval (SCA)",
+    "site": "https://sascontractingsa.sharepoint.com/sites/Alenshaiah",
+    "list": "SCA - Subcon Approval",
+    "group": "Submittals & Approvals",
+    "icon": "\u2705"
+  },
+  {
+    "id": "merf",
+    "title": "MERF",
+    "site": "https://sascontractingsa.sharepoint.com/sites/Alenshaiah",
+    "list": "MERF",
+    "group": "Submittals & Approvals",
+    "icon": "\ud83d\udcc4"
+  },
+  {
+    "id": "internal-ncr",
+    "title": "Internal NCR's",
+    "site": "https://sascontractingsa.sharepoint.com/sites/Alenshaiah",
+    "list": "Internal NCR's",
+    "group": "Submittals & Approvals",
+    "icon": "\u26a0\ufe0f"
+  },
+  {
+    "id": "mqr",
+    "title": "Quality Observation Report (MQR)",
+    "site": "https://sascontractingsa.sharepoint.com/sites/Alenshaiah",
+    "list": "MQR - QUALITY OBSERVATION RPT",
+    "group": "Reports",
+    "icon": "\ud83d\udcca"
+  },
+  {
+    "id": "mpr",
+    "title": "Monthly Progress Report (MPR)",
+    "site": "https://sascontractingsa.sharepoint.com/sites/Alenshaiah",
+    "list": "MPR - MONTHLY PROGRESS RPT",
+    "group": "Reports",
+    "icon": "\ud83d\udcc8"
+  },
+  {
+    "id": "wpr",
+    "title": "Weekly Progress Report (WPR)",
+    "site": "https://sascontractingsa.sharepoint.com/sites/Alenshaiah",
+    "list": "WPR - WEEKLY PROGRESS RPT",
+    "group": "Reports",
+    "icon": "\ud83d\udcc8"
+  },
+  {
+    "id": "test-reports",
+    "title": "Test Reports",
+    "site": "https://sascontractingsa.sharepoint.com/sites/Alenshaiah",
+    "list": "Test Reports",
+    "group": "Reports",
+    "icon": "\ud83e\uddea"
+  },
+  {
+    "id": "dcr",
+    "title": "Daily Report (DCR)",
+    "site": "https://sascontractingsa.sharepoint.com/sites/Alenshaiah",
+    "list": "DCR - Daily report SKT",
+    "group": "Reports",
+    "icon": "\ud83d\udcc6"
+  },
+  {
+    "id": "hsr",
+    "title": "Health & Safety Reports (HSR)",
+    "site": "https://sascontractingsa.sharepoint.com/sites/Alenshaiah",
+    "list": "HSR (Health & Safety Reports)",
+    "group": "Reports",
+    "icon": "\ud83e\ude7a"
+  },
+  {
+    "id": "hse-obs",
+    "title": "Safety Observations (HSE)",
+    "site": "https://sascontractingsa.sharepoint.com/sites/Alenshaiah",
+    "list": "HSE (Safety Observations)",
+    "group": "HSE",
+    "icon": "\ud83e\uddba"
+  },
+  {
+    "id": "hse-incident",
+    "title": "Incident Reports (HSE)",
+    "site": "https://sascontractingsa.sharepoint.com/sites/Alenshaiah",
+    "list": "HSE - Incident Reports",
+    "group": "HSE",
+    "icon": "\ud83d\udea8"
+  },
+  {
+    "id": "others",
+    "title": "Others - General",
+    "site": "https://sascontractingsa.sharepoint.com/sites/Alenshaiah",
+    "list": "Others - General",
+    "group": "Documents & Records",
+    "icon": "\ud83d\udcc1"
+  },
+  {
+    "id": "prc",
+    "title": "Procedure (PRC)",
+    "site": "https://sascontractingsa.sharepoint.com/sites/Alenshaiah",
+    "list": "PRC - Procedure",
+    "group": "Documents & Records",
+    "icon": "\ud83d\udcd8"
+  },
+  {
+    "id": "omm",
+    "title": "Operation & Maintenance (OMM)",
+    "site": "https://sascontractingsa.sharepoint.com/sites/Alenshaiah",
+    "list": "OMM - Operation & Maintenance",
+    "group": "Documents & Records",
+    "icon": "\ud83d\udee0\ufe0f"
+  },
+  {
+    "id": "tm",
+    "title": "Technical Manual (TM)",
+    "site": "https://sascontractingsa.sharepoint.com/sites/Alenshaiah",
+    "list": "TM - Technical Manual",
+    "group": "Documents & Records",
+    "icon": "\ud83d\udcd7"
+  },
+  {
+    "id": "ds",
+    "title": "Data Sheet (DS)",
+    "site": "https://sascontractingsa.sharepoint.com/sites/Alenshaiah",
+    "list": "DS - Data Sheet",
+    "group": "Documents & Records",
+    "icon": "\ud83d\udcc4"
+  },
+  {
+    "id": "crt",
+    "title": "Certificate (CRT)",
+    "site": "https://sascontractingsa.sharepoint.com/sites/Alenshaiah",
+    "list": "CRT - Certificate",
+    "group": "Documents & Records",
+    "icon": "\ud83c\udfc5"
+  },
+  {
+    "id": "piv",
+    "title": "Photos (PIV)",
+    "site": "https://sascontractingsa.sharepoint.com/sites/Alenshaiah",
+    "list": "PIV - Photos,",
+    "group": "Documents & Records",
+    "icon": "\ud83d\udcf7"
+  },
+  {
+    "id": "cp",
+    "title": "Contractor Proposal (CP)",
+    "site": "https://sascontractingsa.sharepoint.com/sites/Alenshaiah",
+    "list": "CP - Contractor Proposal",
+    "group": "Documents & Records",
+    "icon": "\ud83d\udcd1"
+  }
+];
+const DEPT_GROUPS = ["Correspondence & Registers", "Design & Technical", "Submittals & Approvals", "Reports", "HSE", "Documents & Records"];
+const DEPTS_BY_ID = {};
+DEPTS.forEach(d=>DEPTS_BY_ID[d.id]=d);
+
+const GROUP_ICONS = {
+  'Correspondence & Registers':'📮',
+  'Design & Technical':'📐',
+  'Submittals & Approvals':'✅',
+  'Reports':'📊',
+  'HSE':'🦺',
+  'Documents & Records':'🗄️'
+};
+
+// ======================== DATA CACHE ========================
+const listCache = {}; // id -> {cols, items, loaded, loading, error}
+DEPTS.forEach(d=>{ listCache[d.id] = {cols:[], items:[], loaded:false, loading:false, error:null}; });
+let currentView = 'dashboard';
+window._kpiCache = [];
+
+// ======================== SHAREPOINT AUTH (MSAL.js) ========================
+const SP_SCOPES = ['Sites.Read.All','User.Read'];
+let msalApp = null;
+let spToken = null;
+let spUser = null;
+
+function initMsal(){
+  const tenant = storage.getItem('dclog-tenant') || document.getElementById('cfg-tenant').value.trim();
+  const client = storage.getItem('dclog-client') || document.getElementById('cfg-client').value.trim();
+  if(!tenant||!client) return false;
+  const redirectUri = location.origin + location.pathname;
+  msalApp = new msal.PublicClientApplication({
+    auth:{ clientId: client, authority: 'https://login.microsoftonline.com/' + tenant, redirectUri: redirectUri },
+    cache:{ cacheLocation: 'localStorage' },
+    system:{ allowNativeBroker:false, loggerOptions:{ loggerCallback:(level,message,containsPii)=>{ if(!containsPii) console.log('[MSAL]',message); }, piiLoggingEnabled:false } }
+  });
+  return true;
+}
+
+async function loginSP(){
+  if(location.protocol==='file:'){ showSigninError('⚠️ Cannot sign in from a local file. Deploy to a web server to use SSO authentication.'); return; }
+  if(typeof msal==='undefined'){ showSigninError('⚠️ Microsoft Authentication Library (MSAL) failed to load. Check your connection or ad blocker and reload.'); return; }
+  if(!initMsal()){ showSigninError('⚠️ Azure AD is not configured. Click the ⚙️ Config link below to set your Tenant ID and Client ID.'); return; }
+  showSigninProgress(true);
+  try{
+    const resp = await msalApp.loginPopup({ scopes: SP_SCOPES });
+    handleAuthResponse(resp);
+  }catch(e){
+    showSigninProgress(false);
+    if(e.message&&e.message.includes('popup_window_error')){ showSigninError('⚠️ Popup was blocked. Allow popups for this site and try again.'); }
+    else{ showSigninError('Login failed: '+e.message); }
+  }
+}
+
+async function ssoSilentAttempt(){
+  if(!msalApp) return false;
+  try{
+    const resp = await msalApp.ssoSilent({ scopes: SP_SCOPES });
+    handleAuthResponse(resp);
+    return true;
+  }catch(e){ return false; }
+}
+
+function handleAuthResponse(resp){
+  if(resp&&resp.account){
+    spUser=resp.account; spToken=resp.accessToken;
+    showSigninProgress(false); hideSigninOverlay(); updateAuthUI();
+    loadUserPerms().then(()=>{ finishSetup(); });
+  }else{
+    showSigninProgress(false); updateAuthUI();
+  }
+}
+
+function showSigninError(msg){
+  const el=document.getElementById('signin-error');
+  const card=document.getElementById('signin-card');
+  if(el){el.textContent=msg;el.classList.add('show');}
+  if(card)card.style.animation='none';
+}
+function showSigninProgress(show){
+  const el=document.getElementById('signin-progress');
+  const btn=document.getElementById('signin-btn');
+  if(el)el.classList.toggle('show',show);
+  if(btn)btn.disabled=show;
+}
+function hideSigninOverlay(){ document.getElementById('signin-overlay').classList.add('hidden'); }
+function showSigninOverlay(){ document.getElementById('signin-overlay').classList.remove('hidden'); }
+function guestAccess(){ hideSigninOverlay(); finishSetup(); }
+
+async function getTokenSP(){
+  if(!msalApp||!spUser) return spToken||null;
+  try{
+    const resp = await msalApp.acquireTokenSilent({ scopes: SP_SCOPES, account: spUser });
+    spToken = resp.accessToken;
+    return spToken;
+  }catch(e){
+    if(spToken) return spToken;
+    console.warn('getTokenSP: silent failed, no fallback token', e.message);
+    return null;
+  }
+}
+
+function logoutSP(){
+  spToken=null; spUser=null;
+  if(msalApp) msalApp.logoutPopup();
+  updateAuthUI();
+}
+
+function updateAuthUI(){
+  const nameEl=document.getElementById('hdr-user-name');
+  const loginBtn=document.getElementById('hdr-login-btn');
+  const logoutBtn=document.getElementById('hdr-logout-btn');
+  if(spUser){
+    if(nameEl){nameEl.textContent=spUser.name||spUser.username||'';nameEl.style.display='';}
+    if(loginBtn)loginBtn.style.display='none';
+    if(logoutBtn)logoutBtn.style.display='';
+  }else{
+    if(nameEl)nameEl.style.display='none';
+    if(loginBtn)loginBtn.style.display='';
+    if(logoutBtn)logoutBtn.style.display='none';
+  }
+}
+
+// ======================== PERMISSIONS ========================
+let myPerms = 'ALL';
+const PERM_LIST = 'Permissions';
+const ADMIN_EMAIL = 'm.hajissa@alenshaiah.com';
+const currentApp = 'DCLog';
+
+async function ensureSpSiteToken(siteUrl){
+  if(!msalApp||!spUser) throw new Error('Not authenticated');
+  const u=new URL(siteUrl);
+  const resp=await msalApp.acquireTokenSilent({scopes:[u.origin+'/.default'],account:spUser});
+  return resp.accessToken;
+}
+
+async function loadUserPerms(){
+  myPerms='ALL';
+  if(!spUser||!spToken)return;
+  const email=spUser.username||'';
+  if(!email)return;
+  try{
+    const token=await ensureSpSiteToken(SITE_URL);
+    const url=SITE_URL+'/_api/web/lists/getbytitle(\''+PERM_LIST+'\')/items';
+    const resp=await fetch(url,{headers:{'Authorization':'Bearer '+token,'Accept':'application/json'}});
+    if(!resp.ok){ if(resp.status===404){myPerms='ALL';return} throw new Error(await resp.text()) }
+    const data=await resp.json();
+    const items=data.d?data.d.results:data.value||[];
+    if(!items.length){myPerms='ALL';return}
+    myPerms={};
+    const userLower=email.toLowerCase();
+    items.forEach(item=>{
+      if((item.Title||'').toLowerCase()===userLower){
+        const app=item.App||'Both';
+        if(app===currentApp||app==='Both'){ myPerms[item.DeptID]=item.Access.toLowerCase(); }
+      }
+    });
+  }catch(e){
+    if(e.message&&!e.message.includes('404'))console.error('Perm load:',e);
+    myPerms='ALL';
+  }
+}
+function getMyAccess(deptId){ if(myPerms==='ALL')return 'edit'; return myPerms[deptId]||'none'; }
+function hasAnyAccess(){ if(myPerms==='ALL')return true; return DEPTS.some(d=>getMyAccess(d.id)!=='none'); }
+function visibleDepts(){ return myPerms==='ALL'?DEPTS:DEPTS.filter(d=>getMyAccess(d.id)!=='none'); }
+
+// ======================== GRAPH HELPERS ========================
+const SITE_URL = 'https://sascontractingsa.sharepoint.com/sites/Alenshaiah';
+function siteToGraphPath(siteUrl){
+  const u=new URL(siteUrl);
+  return u.hostname+':'+u.pathname.replace(/\/+$/,'');
+}
+function graphListUrl(siteUrl,listName){
+  return `https://graph.microsoft.com/v1.0/sites/${siteToGraphPath(siteUrl)}:/lists/${encodeURIComponent(listName)}`;
+}
+function graphListItemsUrl(siteUrl,listName,top){
+  return graphListUrl(siteUrl,listName)+`/items?$top=${top||500}&expand=fields`;
+}
+function graphListColumnsUrl(siteUrl,listName){
+  return graphListUrl(siteUrl,listName)+'/columns';
+}
+const SKIP_COLS = new Set([
+  'ID','ContentType','Modified','Created','AuthorLookupId','EditorLookupId','_UIVersionString','Attachments','Edit',
+  'LinkTitleNoMenu','LinkTitle','ItemChildCount','FolderChildCount','_ComplianceFlags','_ComplianceTag','_ComplianceTagWrittenTime',
+  '_ComplianceTagUserId','AppAuthorLookupId','AppEditorLookupId','FileSystemObjectType','ServerUrl','EncodedAbsUrl','BaseName',
+  'FileRef','FileLeafRef','UniqueId','ProgId','CheckoutUserId','CheckoutUser','CheckedOutUserId','CheckedOutUser',
+  'HasCopyDestinations','CopySource','OData__UIVersionString','UIVersion','Order','GUID','WorkflowInstanceId','WorkflowVersion',
+  'WorkflowName','File_x0020_Type','DocIcon','XMLTZone','_HasCopyDestinations','_CopySource','ScopeId','LinkFilename',
+  'LinkFilenameNoMenu','FSObjType','SortBehavior','PermMask','FileDirRef','Last_x0020_Modified','Created_x0020_Date','Editor','Author'
+]);
+
+async function apiGet(url){
+  const token=await getTokenSP();
+  const resp=await fetch(url,{headers:{'Authorization':'Bearer '+token,'Accept':'application/json'}});
+  if(!resp.ok){
+    let txt=''; try{txt=await resp.text();}catch(e){}
+    throw new Error(`HTTP ${resp.status}: ${txt.substring(0,200)}`);
+  }
+  return await resp.json();
+}
+
+async function fetchColumnDefinitions(siteUrl,listName){
+  const json=await apiGet(graphListColumnsUrl(siteUrl,listName));
+  const cols=[];
+  (json.value||[]).forEach(col=>{
+    const n=col.name;
+    if(!n||SKIP_COLS.has(n)||n.startsWith('_'))return;
+    let type='text';
+    if(col.choice)type='choice';
+    else if(col.boolean)type='boolean';
+    else if(col.dateTime)type='date';
+    else if(col.number)type='number';
+    else if(col.currency)type='currency';
+    else if(col.note)type='note';
+    else if(col.lookup)type='lookup';
+    else if(col.personOrGroup)type='person';
+    cols.push({name:n, displayName:col.displayName||n, type, choices:col.choice?(col.choice.choices||[]):null});
+  });
+  return cols;
+}
+
+async function fetchListItems(siteUrl,listName){
+  let allItems=[], nextUrl=graphListItemsUrl(siteUrl,listName);
+  while(nextUrl){
+    const token=await getTokenSP();
+    const resp=await fetch(nextUrl,{headers:{'Authorization':'Bearer '+token,'Accept':'application/json'}});
+    if(!resp.ok){ let txt=''; try{txt=await resp.text();}catch(e){} throw new Error(`HTTP ${resp.status}: ${txt.substring(0,200)}`); }
+    const json=await resp.json();
+    if(json.value) allItems=allItems.concat(json.value);
+    nextUrl=json['@odata.nextLink']||null;
+  }
+  return allItems;
+}
+
+function fieldsToDisplay(rawItem, rename){
+  const out={};
+  for(const [k,v] of Object.entries(rawItem.fields||{})){
+    let val=v;
+    if(val && typeof val==='object'){ val = val.Title || val.LookupValue || val.Email || JSON.stringify(val); }
+    out[rename[k]||k]=val;
+  }
+  out._id=rawItem.id;
+  return out;
+}
+
+// ======================== LOAD LIST DATA ========================
+async function loadList(id, force){
+  const dept=DEPTS_BY_ID[id];
+  const cache=listCache[id];
+  if(!dept||!cache) return null;
+  if(cache.loaded && !force) return cache;
+  if(cache.loading) return cache;
+  cache.loading=true; cache.error=null;
+  updateNavDot(id,'loading');
+  try{
+    const cols=await fetchColumnDefinitions(dept.site,dept.list);
+    const rename={};
+    cols.forEach(c=>{ if(c.displayName!==c.name) rename[c.name]=c.displayName; });
+    const rawItems=await fetchListItems(dept.site,dept.list);
+    const items=rawItems.map(it=>fieldsToDisplay(it,rename));
+    cache.cols=cols; cache.items=items; cache.loaded=true; cache.loading=false;
+    updateNavDot(id,'online'); updateNavCount(id,items.length);
+    return cache;
+  }catch(e){
+    cache.loading=false; cache.error=e.message; cache.loaded=false;
+    updateNavDot(id,'offline');
+    console.error('[loadList]',id,e);
+    return cache;
+  }
+}
+
+let _bulkLoadRunning=false;
+async function loadAllLists(){
+  if(_bulkLoadRunning) return;
+  _bulkLoadRunning=true;
+  const depts=visibleDepts();
+  let done=0;
+  updateRefreshStatus(`Loading 0/${depts.length}...`);
+  for(const d of depts){
+    await loadList(d.id, false);
+    done++;
+    updateRefreshStatus(`Loading ${done}/${depts.length}...`);
+    if(currentView==='dashboard') renderDashboard();
+    else if(currentView===d.id) renderListView(d.id);
+  }
+  updateRefreshStatus('');
+  _bulkLoadRunning=false;
+  if(currentView==='dashboard') renderDashboard();
+}
+
+async function refreshAll(){
+  DEPTS.forEach(d=>listCache[d.id].loaded=false);
+  await loadAllLists();
+}
+
+function updateRefreshStatus(msg){
+  const el=document.getElementById('refresh-status');
+  if(el)el.textContent=msg;
+}
+
+// ======================== SIDEBAR ========================
+function buildSidebar(){
+  const nav=document.getElementById('nav');
+  const depts=visibleDepts();
+  let html=`<div class="nav-section">Overview</div>
+  <a class="nav-item${currentView==='dashboard'?' active':''}" data-view="dashboard" onclick="switchView('dashboard')">
+    <span class="icon">📊</span> DC Log Dashboard
+  </a>
+  <div class="nav-section">DC Log Registers</div>`;
+  DEPT_GROUPS.forEach(g=>{
+    const inGroup=depts.filter(d=>d.group===g);
+    if(!inGroup.length)return;
+    html+=`<div class="nav-folder">
+      <div class="nav-folder-header" onclick="toggleFolder(this)">
+        <span class="arrow">▶</span><span class="icon">${GROUP_ICONS[g]||'📁'}</span> ${g}
+      </div>
+      <div class="nav-folder-items">`;
+    inGroup.forEach(d=>{
+      html+=`<a class="nav-item" data-view="${d.id}" onclick="switchView('${d.id}')">
+        <span class="icon">${d.icon}</span> ${d.title}
+        <span class="count" id="count-${d.id}">–</span>
+        <span class="status-dot" id="dot-${d.id}" style="display:inline-block;vertical-align:middle;margin-left:4px"></span>
+      </a>`;
+    });
+    html+='</div></div>';
+  });
+  nav.innerHTML=html;
+}
+function toggleFolder(el){
+  const arrow=el.querySelector('.arrow');
+  const items=el.nextElementSibling;
+  const open=items.classList.toggle('open');
+  arrow.classList.toggle('open',open);
+}
+function toggleSidebar(){
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('backdrop').classList.toggle('show');
+}
+function updateNavDot(id,state){
+  const el=document.getElementById('dot-'+id);
+  if(!el)return;
+  el.className='status-dot '+(state||'');
+}
+function updateNavCount(id,n){
+  const el=document.getElementById('count-'+id);
+  if(el)el.textContent=n;
+}
+
+// ======================== VIEW SWITCHING ========================
+function switchView(id){
+  currentView=id;
+  document.querySelectorAll('.nav-item').forEach(el=>el.classList.toggle('active',el.dataset.view===id));
+  document.querySelectorAll('.nav-folder').forEach(f=>{
+    const hasActive=!!f.querySelector('.nav-item.active');
+    if(hasActive){
+      f.querySelector('.nav-folder-items')?.classList.add('open');
+      f.querySelector('.arrow')?.classList.add('open');
+    }
+  });
+  if(window.innerWidth<=768){ document.getElementById('sidebar').classList.remove('open'); document.getElementById('backdrop').classList.remove('show'); }
+  const search=document.getElementById('search'); if(search)search.value='';
+  if(id==='dashboard'){
+    document.getElementById('view-title').textContent='DC Log Dashboard';
+    renderDashboard();
+    if(!_bulkLoadRunning) loadAllLists();
+    return;
+  }
+  const dept=DEPTS_BY_ID[id];
+  document.getElementById('view-title').textContent=dept?(dept.title+' ('+dept.list+')'):'DC Log';
+  const cache=listCache[id];
+  if(!cache.loaded && !cache.loading){
+    document.getElementById('content').innerHTML='<div class="loading-state"><div class="spinner"></div><p>Loading '+(dept?dept.title:'')+'...</p></div>';
+    loadList(id).then(()=>renderListView(id));
+  }else if(cache.loading){
+    document.getElementById('content').innerHTML='<div class="loading-state"><div class="spinner"></div><p>Loading '+(dept?dept.title:'')+'...</p></div>';
+  }else{
+    renderListView(id);
+  }
+}
+
+// ======================== KPI HEURISTICS ========================
+const STATUS_NAME_HINTS = /status|final code|final_rev|code$/i;
+const GREEN_HINTS=/complet|approved|closed|^ifc$|^c$|done|resolved|passed|issued/i;
+const BLUE_HINTS=/progress|submitted|under review|^b$|review/i;
+const ORANGE_HINTS=/pending|^o$|open|revise|resubmit|hold|waiting|comment/i;
+const RED_HINTS=/reject|overdue|delay|critical|^d$/i;
+const GRAY_HINTS=/draft|not started|^e$|cancel|n\/a|^-$/i;
+const PALETTE=['#4C5D71','#00B7C3','#8764B8','#ED7D31','#107C10','#D92C2C','#FFB900','#8A8886'];
+
+function colorForValue(val,idx){
+  const s=String(val||'').trim();
+  if(GREEN_HINTS.test(s))return '#107C10';
+  if(BLUE_HINTS.test(s))return '#00B7C3';
+  if(ORANGE_HINTS.test(s))return '#ED7D31';
+  if(RED_HINTS.test(s))return '#D92C2C';
+  if(GRAY_HINTS.test(s))return '#8A8886';
+  return PALETTE[idx%PALETTE.length];
+}
+
+function pickKpiColumns(cols, items){
+  if(!items.length)return [];
+  const candidates=[];
+  cols.forEach(c=>{
+    if(c.type==='note'||c.type==='lookup')return;
+    const name=c.displayName;
+    const vals=items.map(it=>(it[name]==null||it[name]==='')?null:String(it[name]).trim()).filter(v=>v!==null);
+    if(vals.length < items.length*0.3) return; // too sparse
+    const uniq=[...new Set(vals)];
+    if(uniq.length<2||uniq.length>8) return;
+    const score=(STATUS_NAME_HINTS.test(name)?100:0) + (c.type==='choice'?20:0) - uniq.length;
+    candidates.push({name, uniq, count:vals.length, score});
+  });
+  candidates.sort((a,b)=>b.score-a.score);
+  return candidates.slice(0,2);
+}
+
+function pushKpiCache(title,items,cols){
+  window._kpiCache.push({title,items,cols});
+  return window._kpiCache.length-1;
+}
+
+function buildKpiCardsHtml(dept, items, cols){
+  const t=items.length;
+  let html=`<div class="kpi-card" style="cursor:default"><div class="kpi-accent" style="background:#4C5D71"></div><div class="kpi-icon">${dept?dept.icon:'📊'}</div><div class="kpi-label">Total Records</div><div class="kpi-value">${t}</div></div>`;
+  if(!t) return html;
+  const kpiCols=pickKpiColumns(cols, items);
+  let cardCount=1;
+  kpiCols.forEach(kc=>{
+    kc.uniq.slice(0,6).forEach((val,i)=>{
+      if(cardCount>=8)return;
+      const matching=items.filter(it=>String(it[kc.name]||'').trim()===val);
+      const idx=pushKpiCache(kc.name+': '+val, matching, cols);
+      const pct=t?Math.round(matching.length/t*100):0;
+      const color=colorForValue(val,i);
+      html+=`<div class="kpi-card" onclick="showKpiModalFromCache(${idx})">
+        <div class="kpi-accent" style="background:${color}"></div>
+        <div class="kpi-label">${escapeHtml(kc.name)}</div>
+        <div class="kpi-value" style="font-size:18px">${escapeHtml(val)}</div>
+        <div class="kpi-sub">${matching.length} items (${pct}%)</div>
+        <div class="kpi-bar"><div class="kpi-bar-fill" style="width:${pct}%;background:${color}"></div></div>
+      </div>`;
+      cardCount++;
+    });
+  });
+  return html;
+}
+
+function escapeHtml(s){
+  return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+// ======================== LIST VIEW (KPI + TABLE) ========================
+let sortState={col:null,dir:1};
+function renderListView(id){
+  const dept=DEPTS_BY_ID[id];
+  const cache=listCache[id];
+  const content=document.getElementById('content');
+  if(cache.error){
+    content.innerHTML=`<div class="empty-state"><div class="empty-icon">⚠️</div><h3>Could not load ${escapeHtml(dept.title)}</h3><p>${escapeHtml(cache.error)}</p><p style="margin-top:8px"><button class="btn btn-outline" onclick="loadList('${id}',true).then(()=>renderListView('${id}'))">Retry</button></p></div>`;
+    return;
+  }
+  const items=cache.items, cols=cache.cols;
+  if(!items.length){
+    content.innerHTML=`<div class="kpi-grid">${buildKpiCardsHtml(dept,items,cols)}</div><div class="empty-state"><div class="empty-icon">📭</div><h3>No records yet</h3><p>This list is currently empty in SharePoint.</p></div>`;
+    return;
+  }
+  const search=(document.getElementById('search')?.value||'').toLowerCase();
+  let rows=items;
+  if(search){
+    rows=items.filter(it=>cols.some(c=>String(it[c.displayName]||'').toLowerCase().includes(search)));
+  }
+  if(sortState.col){
+    rows=[...rows].sort((a,b)=>{
+      const av=a[sortState.col], bv=b[sortState.col];
+      if(av==null&&bv==null)return 0;
+      if(av==null)return 1; if(bv==null)return -1;
+      const an=Number(av), bn=Number(bv);
+      let cmp;
+      if(!isNaN(an)&&!isNaN(bn)&&av!==''&&bv!=='') cmp=an-bn;
+      else cmp=String(av).localeCompare(String(bv));
+      return cmp*sortState.dir;
+    });
+  }
+  let html=`<div class="kpi-grid">${buildKpiCardsHtml(dept,items,cols)}</div>
+  <div class="table-wrap">
+    <div class="table-toolbar">
+      <span class="view-label">Showing</span><span class="view-badge">${rows.length} / ${items.length}</span>
+    </div>
+    <div class="table-scroll"><table><thead><tr>`;
+  cols.forEach(c=>{
+    const sorted=sortState.col===c.displayName;
+    html+=`<th onclick="sortByCol('${id}','${c.displayName.replace(/'/g,"\\'")}')" class="${sorted?'sorted':''}">${escapeHtml(c.displayName)}<span class="sort-arrow">${sorted?(sortState.dir===1?'▲':'▼'):'⇕'}</span></th>`;
+  });
+  html+='</tr></thead><tbody>';
+  rows.forEach(it=>{
+    html+='<tr>'+cols.map(c=>`<td title="${escapeHtml(it[c.displayName])}">${escapeHtml(it[c.displayName])}</td>`).join('')+'</tr>';
+  });
+  html+='</tbody></table></div></div>';
+  content.innerHTML=html;
+}
+function sortByCol(id,col){
+  if(sortState.col===col) sortState.dir*=-1;
+  else{ sortState.col=col; sortState.dir=1; }
+  renderListView(id);
+}
+
+// ======================== DASHBOARD ========================
+function renderDashboard(){
+  const content=document.getElementById('content');
+  const depts=visibleDepts();
+  const loadedDepts=depts.filter(d=>listCache[d.id].loaded);
+  const totalRecords=loadedDepts.reduce((s,d)=>s+listCache[d.id].items.length,0);
+  const groupTotals={};
+  DEPT_GROUPS.forEach(g=>groupTotals[g]=0);
+  loadedDepts.forEach(d=>{ groupTotals[d.group]=(groupTotals[d.group]||0)+listCache[d.id].items.length; });
+
+  let html=`<div class="kpi-grid">
+    <div class="kpi-card" style="cursor:default"><div class="kpi-accent" style="background:#4C5D71"></div><div class="kpi-icon">🗄️</div><div class="kpi-label">Total Lists</div><div class="kpi-value">${depts.length}</div></div>
+    <div class="kpi-card" style="cursor:default"><div class="kpi-accent" style="background:#00B7C3"></div><div class="kpi-icon">📄</div><div class="kpi-label">Total Records</div><div class="kpi-value">${totalRecords}</div></div>
+    <div class="kpi-card" style="cursor:default"><div class="kpi-accent" style="background:#107C10"></div><div class="kpi-icon">✅</div><div class="kpi-label">Lists Loaded</div><div class="kpi-value">${loadedDepts.length} / ${depts.length}</div></div>
+    <div class="kpi-card" style="cursor:default"><div class="kpi-accent" style="background:#8764B8"></div><div class="kpi-icon">🏷️</div><div class="kpi-label">Categories</div><div class="kpi-value">${DEPT_GROUPS.length}</div></div>
+  </div>
+  <div class="charts-row">
+    <div class="chart-card"><h3>Records by Category</h3><canvas id="chart-groups" height="220"></canvas></div>
+    <div class="chart-card"><h3>Top Lists by Record Count</h3><canvas id="chart-toplists" height="220"></canvas></div>
+  </div>
+  <div class="table-wrap"><div class="table-toolbar"><span class="view-label">All DC Log Registers</span></div>
+  <div class="table-scroll"><table><thead><tr><th>List</th><th>Category</th><th>Records</th><th>Status</th></tr></thead><tbody>`;
+  depts.forEach(d=>{
+    const c=listCache[d.id];
+    const statusTxt=c.loading?'Loading…':c.error?'Error':c.loaded?'Loaded':'Not loaded';
+    html+=`<tr style="cursor:pointer" onclick="switchView('${d.id}')"><td>${d.icon} ${escapeHtml(d.title)}</td><td>${escapeHtml(d.group)}</td><td>${c.loaded?c.items.length:'–'}</td><td>${statusTxt}</td></tr>`;
+  });
+  html+='</tbody></table></div></div>';
+  content.innerHTML=html;
+
+  renderDashboardCharts(groupTotals, loadedDepts);
+}
+
+let _chartGroups=null, _chartTop=null;
+function renderDashboardCharts(groupTotals, loadedDepts){
+  const gc=document.getElementById('chart-groups');
+  const tc=document.getElementById('chart-toplists');
+  if(!gc||!tc||typeof Chart==='undefined')return;
+  if(_chartGroups)_chartGroups.destroy();
+  if(_chartTop)_chartTop.destroy();
+  const groupLabels=DEPT_GROUPS.filter(g=>groupTotals[g]>0);
+  const groupColors=['#4C5D71','#00B7C3','#8764B8','#ED7D31','#107C10','#D92C2C'];
+  _chartGroups=new Chart(gc.getContext('2d'),{type:'doughnut',data:{
+    labels:groupLabels, datasets:[{data:groupLabels.map(g=>groupTotals[g]), backgroundColor:groupColors}]
+  },options:{plugins:{legend:{position:'bottom',labels:{boxWidth:10,font:{size:10}}}}}});
+
+  const top=[...loadedDepts].sort((a,b)=>listCache[b.id].items.length-listCache[a.id].items.length).slice(0,10);
+  _chartTop=new Chart(tc.getContext('2d'),{type:'bar',data:{
+    labels:top.map(d=>d.title), datasets:[{data:top.map(d=>listCache[d.id].items.length), backgroundColor:'#4C5D71'}]
+  },options:{indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{beginAtZero:true}}}});
+}
+
+// ======================== KPI MODAL ========================
+function showKpiModalFromCache(idx){
+  const d=window._kpiCache[idx];
+  if(!d)return;
+  document.getElementById('kpi-modal-title').textContent=d.title;
+  document.getElementById('kpi-modal-count').textContent=d.items.length+' item(s)';
+  const body=document.getElementById('kpi-modal-body');
+  if(!d.items.length){ body.innerHTML='<p style="color:var(--text-secondary)">No items.</p>'; document.getElementById('kpi-modal-overlay').classList.add('show'); return; }
+  const cols=d.cols;
+  let html='<table><thead><tr>'+cols.map(c=>`<th>${escapeHtml(c.displayName)}</th>`).join('')+'</tr></thead><tbody>';
+  d.items.forEach(it=>{
+    html+='<tr>'+cols.map(c=>`<td>${escapeHtml(it[c.displayName])}</td>`).join('')+'</tr>';
+  });
+  html+='</tbody></table>';
+  body.innerHTML=html;
+  document.getElementById('kpi-modal-overlay').classList.add('show');
+}
+function closeKpiModal(ev){
+  if(ev && ev.target!==document.getElementById('kpi-modal-overlay'))return;
+  document.getElementById('kpi-modal-overlay').classList.remove('show');
+}
+
+// ======================== SETTINGS PANEL ========================
+function openSettings(){
+  const tenant=storage.getItem('dclog-tenant');
+  const client=storage.getItem('dclog-client');
+  if(tenant)document.getElementById('cfg-tenant').value=tenant;
+  if(client)document.getElementById('cfg-client').value=client;
+  const uriEl=document.getElementById('redirect-uri-display');
+  if(uriEl){
+    const redirectUri=location.origin+location.pathname;
+    uriEl.textContent=redirectUri;
+    const ok=redirectUri.startsWith('https://')&&!redirectUri.includes('file:');
+    uriEl.style.background=ok?'var(--white)':'var(--red-light)';
+  }
+  const statusEl=document.getElementById('settings-auth-status');
+  if(spUser){
+    document.getElementById('settings-login-btn').style.display='none';
+    document.getElementById('settings-logout-btn').style.display='';
+    statusEl.textContent='Signed in as '+spUser.name;
+    statusEl.style.color='var(--green)';
+  }else{
+    document.getElementById('settings-login-btn').style.display='';
+    document.getElementById('settings-logout-btn').style.display='none';
+    statusEl.textContent='Not signed in';
+    statusEl.style.color='var(--red)';
+  }
+  document.getElementById('settings-overlay').classList.add('show');
+  document.getElementById('settings-panel').classList.add('open');
+}
+function closeSettings(){
+  document.getElementById('settings-overlay').classList.remove('show');
+  document.getElementById('settings-panel').classList.remove('open');
+}
+function saveAuthConfig(){
+  const tenant=document.getElementById('cfg-tenant').value.trim();
+  const client=document.getElementById('cfg-client').value.trim();
+  if(tenant)storage.setItem('dclog-tenant',tenant);
+  if(client)storage.setItem('dclog-client',client);
+  alert('Saved. Click Sign In to (re)authenticate.');
+}
+
+// ======================== DARK MODE ========================
+function toggleDark(){
+  document.body.classList.toggle('dark');
+  storage.setItem('dclog-dark', document.body.classList.contains('dark')?'1':'');
+  document.getElementById('dark-toggle').textContent=document.body.classList.contains('dark')?'☀️':'🌙';
+}
+
+// ======================== SEARCH ========================
+function onGlobalSearch(){
+  if(currentView!=='dashboard') renderListView(currentView);
+}
+
+// ======================== INIT ========================
+function finishSetup(){
+  buildSidebar();
+  updateAuthUI();
+  if(!hasAnyAccess()){
+    document.getElementById('content').innerHTML='<div class="empty-state"><div class="empty-icon">🔒</div><h3>Access Denied</h3><p>You do not have permission to view any DC Log registers. Contact your administrator.</p></div>';
+    return;
+  }
+  switchView('dashboard');
+}
+
+(function init(){
+  if(storage.getItem('dclog-dark')){ document.body.classList.add('dark'); }
+  buildSidebar();
+  const dt=document.getElementById('dark-toggle');
+  if(dt) dt.textContent=document.body.classList.contains('dark')?'☀️':'🌙';
+  if(location.protocol==='file:'){
+    showSigninError('⚠️ This app cannot run from a local file path. Deploy it to a web server (e.g. SharePoint site pages, IIS, or GitHub Pages) for SSO and SharePoint access.');
+    return;
+  }
+  if(typeof msal==='undefined'){
+    showSigninError('⚠️ Microsoft Authentication Library (MSAL) failed to load. Check your connection or ad blocker, then reload.');
+    return;
+  }
+  if(!initMsal()){ showSigninError('⚠️ Azure AD is not configured. Click ⚙️ Config below to set your Tenant ID and Client ID.'); return; }
+  const accounts=msalApp.getAllAccounts();
+  if(accounts.length>0){
+    spUser=accounts[0];
+    msalApp.acquireTokenSilent({scopes:SP_SCOPES,account:spUser})
+      .then(r=>{ spToken=r.accessToken; hideSigninOverlay(); loadUserPerms().then(finishSetup); })
+      .catch(()=>{ spToken=null; showSigninProgress(true); ssoSilentAttempt().then(authed=>{ showSigninProgress(false); if(!authed) updateAuthUI(); }); });
+  }else{
+    showSigninProgress(true);
+    ssoSilentAttempt().then(authed=>{ showSigninProgress(false); if(!authed) updateAuthUI(); });
+  }
+})();
+
+</script>
+</body>
+</html>

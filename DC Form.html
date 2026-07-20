@@ -1,0 +1,2247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AlEnshaiah - DC Form</title>
+<script src="https://alcdn.msauth.net/browser/2.32.2/js/msal-browser.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--primary:#4C5D71;--primary-dark:#3A4A5E;--primary-light:#E8ECF0;--green:#107C10;--green-light:#E6F7E6;--red:#D92C2C;--red-light:#FDE8E8;--orange:#ED7D31;--orange-light:#FFF0E0;--yellow:#FFB900;--blue:#0078D4;--gray:#8A8886;--gray-light:#F3F2F1;--gray-border:#EDEBE9;--text-primary:#201E1F;--text-secondary:#605E5C;--white:#FFFFFF;--bg:#F3F2F1;--shadow:0 1px 3px rgba(0,0,0,.08);--radius:6px;--header-h:52px}
+body.dark{--primary:#7A8FA5;--primary-dark:#8DA3B9;--primary-light:#2A3540;--green:#4CAF50;--green-light:#1B3A1B;--red:#F44336;--red-light:#3D1A1A;--orange:#FF9800;--orange-light:#3D2A0A;--yellow:#FFC107;--gray:#A09E9C;--gray-light:#2D2D2D;--gray-border:#3D3D3D;--text-primary:#E0E0E0;--text-secondary:#B0B0B0;--white:#1E1E1E;--bg:#121212;--shadow:0 1px 3px rgba(0,0,0,.3);--blue:#4FC3F7}
+html,body{height:100%;font-family:'Segoe UI',-apple-system,system-ui,sans-serif;font-size:14px;color:var(--text-primary);background:var(--bg)}
+.app{display:flex;flex-direction:column;height:100vh;overflow:hidden}
+.header{height:var(--header-h);background:var(--white);border-bottom:1px solid var(--gray-border);display:flex;align-items:center;padding:0 20px;gap:12px;flex-shrink:0;z-index:100}
+.header .logo{width:28px;height:28px;background:var(--primary);border-radius:4px;display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:14px;flex-shrink:0}
+.header h1{font-size:15px;font-weight:600;flex-shrink:0}
+.header .spacer{flex:1}
+.dept-select{display:flex;align-items:center;gap:6px}
+.dept-select label{font-size:12px;font-weight:600;color:var(--text-secondary);white-space:nowrap}
+.dept-select select{padding:5px 10px;border:1px solid var(--gray-border);border-radius:4px;font-size:13px;background:var(--white);color:var(--text-primary);outline:none;cursor:pointer}
+.dept-select select:focus{border-color:var(--primary)}
+.dept-select select:disabled{opacity:.5;cursor:not-allowed}
+.auth-area{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.auth-area .user-name{font-size:12px;color:var(--text-secondary);white-space:nowrap}
+.auth-btn{padding:5px 14px;border-radius:4px;font-size:12px;font-weight:600;cursor:pointer;border:none;transition:all .15s}
+.auth-btn.login{background:var(--primary);color:white}
+.auth-btn.login:hover{background:var(--primary-dark)}
+.auth-btn.logout{background:var(--red-light);color:var(--red);border:1px solid var(--red)}
+.auth-btn.logout:hover{background:var(--red);color:white}
+.toolbar{display:flex;align-items:center;gap:10px;padding:12px 20px;background:var(--white);border-bottom:1px solid var(--gray-border);flex-wrap:wrap;flex-shrink:0}
+.toolbar .search-box{flex:1;min-width:200px;position:relative}
+.toolbar .search-box input{width:100%;padding:7px 12px 7px 32px;border:1px solid var(--gray-border);border-radius:20px;font-size:13px;outline:none;background:var(--bg);color:var(--text-primary)}
+.toolbar .search-box input:focus{border-color:var(--primary)}
+.toolbar .search-box .icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text-secondary);font-size:14px}
+.toolbar .btn{padding:7px 16px;border-radius:4px;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:all .15s;display:inline-flex;align-items:center;gap:5px}
+.toolbar .btn-primary{background:var(--primary);color:white}
+.toolbar .btn-primary:hover{background:var(--primary-dark)}
+.toolbar .btn-success{background:var(--green);color:white}
+.toolbar .btn-success:hover{background:#0a5c0a}
+.toolbar .btn-outline{background:transparent;border:1px solid var(--gray-border);color:var(--text-primary)}
+.toolbar .btn-outline:hover{background:var(--gray-light)}
+.toolbar .count-badge{font-size:12px;color:var(--text-secondary);padding:3px 10px;background:var(--gray-light);border-radius:10px;white-space:nowrap}
+.toolbar .status-msg{font-size:11px;color:var(--text-secondary);padding:3px 10px;background:var(--yellow-light);border-radius:10px;display:none;white-space:nowrap}
+.main{display:flex;flex:1;overflow:hidden}
+.results-panel{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.results-panel .table-wrap{flex:1;overflow:auto;padding:0 20px 20px}
+.results-panel table{width:100%;border-collapse:collapse;font-size:12px}
+.results-panel th{position:sticky;top:0;background:var(--white);padding:8px 10px;text-align:left;font-weight:600;border-bottom:2px solid var(--gray-border);white-space:nowrap;z-index:2;color:var(--text-secondary);font-size:11px;text-transform:uppercase;letter-spacing:.3px}
+.results-panel td{padding:7px 10px;border-bottom:1px solid var(--gray-border);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.results-panel tr{cursor:pointer;transition:background .1s}
+.results-panel tr:hover td{background:var(--primary-light)}
+.results-panel tr.selected td{background:var(--primary-light);border-bottom-color:var(--primary)}
+.results-panel .empty-state{text-align:center;padding:60px 20px;color:var(--text-secondary)}
+.results-panel .empty-state .icon{font-size:48px;margin-bottom:12px}
+.results-panel .empty-state h3{font-size:16px;font-weight:600;margin-bottom:4px;color:var(--text-primary)}
+.results-panel .empty-state p{font-size:13px}
+.form-overlay{position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:300;display:flex;justify-content:flex-end}
+.form-overlay.hidden{display:none}
+.form-panel{width:55vw;max-width:900px;min-width:480px;height:100vh;background:var(--white);box-shadow:-4px 0 24px rgba(0,0,0,.15);display:flex;flex-direction:column;overflow:hidden;animation:slideInRight .25s ease}
+@keyframes slideInRight{from{transform:translateX(100%)}to{transform:translateX(0)}}
+.form-panel .form-header{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid var(--gray-border);flex-shrink:0}
+.form-panel .form-header h3{font-size:14px;font-weight:600}
+.form-panel .form-close{background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-secondary);padding:2px 6px;border-radius:4px}
+.form-panel .form-close:hover{background:var(--gray-light)}
+.form-panel .form-body{flex:1 1 0;min-height:0;overflow-y:auto;padding:12px 16px 16px}
+.form-panel .form-footer{display:flex;gap:8px;padding:12px 16px;border-top:1px solid var(--gray-border);flex-shrink:0;justify-content:flex-end;align-items:center}
+.form-panel .form-footer .btn{padding:7px 20px;border-radius:4px;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:all .15s}
+.form-panel .form-footer .btn-primary{background:var(--primary);color:white}
+.form-panel .form-footer .btn-primary:hover{background:var(--primary-dark)}
+.form-panel .form-footer .btn-primary:disabled{opacity:.5;cursor:not-allowed}
+.form-panel .form-footer .btn-danger{background:var(--red);color:white}
+.form-panel .form-footer .btn-danger:hover{background:#b71c1c}
+.form-panel .form-footer .btn-outline{background:transparent;border:1px solid var(--gray-border);color:var(--text-primary)}
+.form-panel .form-footer .btn-outline:hover{background:var(--gray-light)}
+.form-group{margin-bottom:14px}
+.form-group label{display:block;font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:3px}
+.form-group .required::after{content:' *';color:var(--red)}
+.form-group input,.form-group select,.form-group textarea{width:100%;padding:7px 10px;border:1px solid var(--gray-border);border-radius:4px;font-size:13px;outline:none;background:var(--white);color:var(--text-primary);font-family:inherit}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:var(--primary);box-shadow:0 0 0 2px var(--primary-light)}
+.form-group textarea{resize:vertical;min-height:60px}
+.form-group .hint{font-size:11px;color:var(--text-secondary);margin-top:2px}
+.form-group input[type=date]{padding:6px 10px}
+.form-group .chk-group{display:flex;flex-wrap:wrap;gap:6px}
+.form-group .chk-group label{display:flex;align-items:center;gap:4px;font-weight:400;font-size:12px;cursor:pointer;padding:3px 8px;border:1px solid var(--gray-border);border-radius:4px;transition:all .1s}
+.form-group .chk-group label:hover{background:var(--gray-light)}
+.form-group .chk-group input[type=checkbox]{width:auto;margin:0;cursor:pointer}
+.form-group .chk-group label.selected{background:var(--primary-light);border-color:var(--primary);color:var(--primary)}
+.attachment-section{border-top:1px solid var(--gray-border);margin-top:8px;padding-top:12px}
+.attachment-section>label{display:block;font-size:12px;font-weight:600;margin-bottom:8px;color:var(--text-secondary)}
+.attachment-item{display:flex;align-items:center;gap:8px;padding:6px 8px;border:1px solid var(--gray-border);border-radius:4px;margin-bottom:4px;font-size:12px}
+.attachment-item .name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.attachment-item .size{color:var(--text-secondary);flex-shrink:0;font-size:11px}
+.attachment-item .btn-icon{background:none;border:none;cursor:pointer;padding:2px 6px;border-radius:3px;font-size:13px;color:var(--text-secondary);flex-shrink:0;transition:all .1s}
+.attachment-item .btn-icon:hover{background:var(--gray-light)}
+.attachment-item .btn-icon.download{color:var(--blue)}
+.attachment-item .btn-icon.download:hover{background:var(--primary-light)}
+.attachment-item .btn-icon.delete{color:var(--red)}
+.attachment-item .btn-icon.delete:hover{background:var(--red-light)}
+.attachment-upload{display:flex;gap:6px;margin-top:8px;align-items:center}
+.attachment-upload input[type=file]{flex:1;font-size:12px}
+.attachment-upload .btn{padding:6px 14px;font-size:12px}
+.attachment-loading{text-align:center;padding:16px;color:var(--text-secondary);font-size:12px}
+.attachment-empty{text-align:center;padding:16px;color:var(--text-secondary);font-size:12px}
+.save-status{padding:4px 12px;border-radius:4px;font-size:12px;font-weight:600;display:none}
+.save-status.saving{display:inline-block;background:var(--yellow-light);color:#8A6D00}
+.save-status.saved{display:inline-block;background:var(--green-light);color:var(--green)}
+.save-status.error{display:inline-block;background:var(--red-light);color:var(--red)}
+.loading-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.15);z-index:500;align-items:center;justify-content:center}
+.loading-overlay.show{display:flex}
+.loading-overlay .spinner{width:40px;height:40px;border:4px solid var(--gray-border);border-top-color:var(--primary);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.toast{position:fixed;bottom:24px;right:24px;padding:12px 20px;border-radius:6px;font-size:13px;font-weight:600;z-index:600;box-shadow:0 4px 16px rgba(0,0,0,.15);display:none;animation:slideUp .3s ease}
+.toast.show{display:block}
+.toast.success{background:var(--green);color:white}
+.toast.error{background:var(--red);color:white}
+@keyframes slideUp{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
+.bulk-overlay{position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:400;display:none;align-items:center;justify-content:center}
+.bulk-overlay.show{display:flex}
+.bulk-modal{background:var(--white);border-radius:8px;width:90vw;max-width:800px;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 8px 30px rgba(0,0,0,.25)}
+.bulk-modal-head{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid var(--gray-border);flex-shrink:0}
+.bulk-modal-head h3{font-size:15px;font-weight:600;margin:0}
+.bulk-modal-close{background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-secondary);padding:2px 6px;border-radius:4px}
+.bulk-modal-close:hover{background:var(--gray-light)}
+.bulk-modal-body{flex:1;overflow:auto;padding:16px 20px}
+.bulk-modal-foot{display:flex;gap:8px;padding:12px 20px;border-top:1px solid var(--gray-border);flex-shrink:0;justify-content:flex-end;align-items:center}
+.bulk-modal-foot .btn{padding:7px 20px;border-radius:4px;font-size:13px;font-weight:600;cursor:pointer;border:none}
+.bulk-modal-foot .btn-primary{background:var(--primary);color:white}
+.bulk-modal-foot .btn-primary:hover{background:var(--primary-dark)}
+.bulk-modal-foot .btn-primary:disabled{opacity:.5;cursor:not-allowed}
+.bulk-modal-foot .btn-outline{background:transparent;border:1px solid var(--gray-border);color:var(--text-primary)}
+.bulk-modal-foot .btn-outline:hover{background:var(--gray-light)}
+.bulk-drop-zone{border:2px dashed var(--gray-border);border-radius:8px;padding:40px;text-align:center;cursor:pointer;transition:all .15s;margin-bottom:12px}
+.bulk-drop-zone:hover,.bulk-drop-zone.dragover{border-color:var(--primary);background:var(--primary-light)}
+.bulk-drop-zone .icon{font-size:40px;margin-bottom:8px}
+.bulk-drop-zone p{font-size:13px;color:var(--text-secondary);margin-bottom:4px}
+.bulk-preview{overflow-x:auto;margin-top:8px}
+.bulk-preview table{width:100%;border-collapse:collapse;font-size:11px}
+.bulk-preview th{background:var(--gray-light);padding:6px 8px;text-align:left;font-weight:600;border-bottom:2px solid var(--gray-border);white-space:nowrap;position:sticky;top:0}
+.bulk-preview td{padding:5px 8px;border-bottom:1px solid var(--gray-border);max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bulk-preview .skip-col{opacity:.4}
+.bulk-progress{margin-top:12px;display:none}
+.bulk-progress.show{display:block}
+.bulk-progress-bar{height:8px;background:var(--gray-border);border-radius:4px;overflow:hidden;margin-bottom:4px}
+.bulk-progress-fill{height:100%;background:var(--primary);border-radius:4px;transition:width .3s;width:0}
+.export-overlay{position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:400;display:none;align-items:center;justify-content:center}
+.export-overlay.show{display:flex}
+.export-modal{background:var(--white);border-radius:8px;width:90vw;max-width:560px;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 8px 30px rgba(0,0,0,.25)}
+.export-modal-head{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid var(--gray-border);flex-shrink:0}
+.export-modal-head h3{font-size:15px;font-weight:600;margin:0}
+.export-modal-close{background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-secondary);padding:2px 6px;border-radius:4px}
+.export-modal-close:hover{background:var(--gray-light)}
+.export-modal-body{flex:1;overflow:auto;padding:16px 20px}
+.export-modal-foot{display:flex;gap:8px;padding:12px 20px;border-top:1px solid var(--gray-border);flex-shrink:0;justify-content:flex-end;align-items:center}
+.export-modal-foot .btn{padding:7px 20px;border-radius:4px;font-size:13px;font-weight:600;cursor:pointer;border:none}
+.export-modal-foot .btn-primary{background:var(--primary);color:white}
+.export-modal-foot .btn-primary:hover{background:var(--primary-dark)}
+.export-modal-foot .btn-primary:disabled{opacity:.5;cursor:not-allowed}
+.export-modal-foot .btn-outline{background:transparent;border:1px solid var(--gray-border);color:var(--text-primary)}
+.export-modal-foot .btn-outline:hover{background:var(--gray-light)}
+.export-section{margin-bottom:14px}
+.export-section-title{font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.export-row{display:flex;gap:10px;margin-bottom:6px}
+.export-row label{font-size:12px;color:var(--text-primary);display:flex;align-items:center;gap:4px;white-space:nowrap}
+.export-row input[type=date],.export-row select{padding:5px 8px;border:1px solid var(--gray-border);border-radius:4px;font-size:12px;outline:none;background:var(--white);color:var(--text-primary);flex:1}
+.export-row input[type=date]:focus,.export-row select:focus{border-color:var(--primary)}
+.export-status-group{display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:4px}
+.export-status-group label{font-size:12px;color:var(--text-primary);display:flex;align-items:center;gap:3px;cursor:pointer}
+.export-format-group{display:flex;gap:16px;margin-top:4px}
+.export-format-group label{font-size:13px;color:var(--text-primary);display:flex;align-items:center;gap:4px;cursor:pointer;padding:6px 12px;border:1px solid var(--gray-border);border-radius:4px;transition:all .1s}
+.export-format-group label:hover{border-color:var(--primary);background:var(--primary-light)}
+.export-format-group input:checked+span{font-weight:600}
+.export-format-group input{accent-color:var(--primary)}
+.bulk-progress-text{font-size:11px;color:var(--text-secondary);text-align:center}
+.dark-toggle{background:none;border:none;font-size:18px;cursor:pointer;padding:4px;border-radius:50%;color:var(--text-primary);transition:background .15s;line-height:1}
+.dark-toggle:hover{background:var(--gray-light)}
+.signin-overlay{position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#2C3A4B 0%,var(--primary) 50%,#6B7F95 100%);overflow:hidden}
+.signin-overlay.hidden{display:none}
+.signin-overlay.hidden~.app{display:flex}
+.app{display:none}
+.signin-overlay::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 20% 50%,rgba(255,255,255,.06) 0%,transparent 60%),radial-gradient(ellipse at 80% 20%,rgba(255,255,255,.04) 0%,transparent 50%)}
+.signin-card{position:relative;width:400px;max-width:90vw;background:var(--white);border-radius:16px;box-shadow:0 25px 60px rgba(0,0,0,.3),0 0 0 1px rgba(255,255,255,.08);padding:48px 40px 36px;text-align:center;animation:fadeSlideUp .5s ease}
+@keyframes fadeSlideUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
+.signin-logo{margin-bottom:8px}
+.signin-logo-img{width:120px;height:auto;max-height:100px;margin:0 auto 4px;display:block;object-fit:contain}
+.signin-badge{display:inline-block;padding:3px 12px;background:var(--primary-light);color:var(--primary);font-size:11px;font-weight:600;border-radius:12px;text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px}
+.signin-title{font-size:26px;font-weight:700;color:var(--text-primary);margin-bottom:4px}
+.signin-subtitle{font-size:14px;color:var(--text-secondary);margin-bottom:28px}
+.signin-error{display:none;background:#FDE8E8;color:#D92C2C;font-size:12px;padding:10px 14px;border-radius:8px;margin-bottom:16px;text-align:left;line-height:1.4}
+.signin-error.show{display:block}
+.signin-progress{display:none;align-items:center;justify-content:center;gap:10px;padding:10px 0;margin-bottom:16px;font-size:13px;color:var(--text-secondary)}
+.signin-progress.show{display:flex}
+.signin-progress .spinner{width:18px;height:18px;border:2px solid var(--gray-border);border-top-color:var(--primary);border-radius:50%;animation:spin .8s linear infinite;flex-shrink:0}
+.signin-btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:13px 24px;background:var(--primary);color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;transition:all .2s;box-shadow:0 4px 14px rgba(0,0,0,.2)}
+.signin-btn:hover{background:var(--primary-dark);box-shadow:0 6px 20px rgba(0,0,0,.25);transform:translateY(-1px)}
+.signin-btn:active{transform:translateY(0);box-shadow:0 2px 8px rgba(0,0,0,.15)}
+.signin-btn:disabled{opacity:.6;cursor:not-allowed;transform:none}
+.signin-footer{font-size:11px;color:var(--text-secondary);margin-top:20px}
+@media(max-width:768px){
+  .main{flex-direction:column}
+  .form-panel{width:95vw;max-height:90vh}
+  .toolbar{flex-wrap:wrap}
+  .header h1{font-size:13px}
+  .signin-card{padding:36px 24px 28px}
+  .signin-title{font-size:22px}
+}
+</style>
+</head>
+<body>
+<div class="signin-overlay" id="signin-overlay">
+  <div class="signin-card" id="signin-card">
+    <div class="signin-logo" id="signin-logo">
+      <div style="width:80px;height:80px;background:var(--primary);border-radius:16px;display:flex;align-items:center;justify-content:center;color:white;font-size:36px;font-weight:700;margin:0 auto">AE</div>
+    </div>
+    <div class="signin-badge" id="signin-badge">DC Form</div>
+    <h1 class="signin-title">AlEnshaiah</h1>
+    <p class="signin-subtitle">DC Log &middot; Data Entry</p>
+    <div class="signin-error" id="signin-error"></div>
+    <div class="signin-progress" id="signin-progress"><div class="spinner"></div><span>Authenticating...</span></div>
+    <button class="signin-btn" id="signin-btn" onclick="loginSP()">
+      <svg width="18" height="18" viewBox="0 0 21 21" fill="none"><rect x="1" y="1" width="9" height="9" fill="#F25022"/><rect x="11" y="1" width="9" height="9" fill="#7FBA00"/><rect x="1" y="11" width="9" height="9" fill="#00A4EF"/><rect x="11" y="11" width="9" height="9" fill="#FFB900"/></svg>
+      Sign in with Microsoft
+    </button>
+    <p class="signin-footer">Access your project data · Secure SSO · <a href="#" onclick="showConfig();return false" style="color:var(--primary);text-decoration:none;font-weight:600">⚙️ Config</a></p>
+  </div>
+</div>
+<div class="app" id="app-root">
+  <header class="header">
+    <div class="logo">AE</div>
+    <h1>DC Form</h1>
+    <div class="dept-select">
+      <label for="dept-select">Department</label>
+      <select id="dept-select" onchange="onDeptChange()"></select>
+    </div>
+    <div class="spacer"></div>
+    <button class="dark-toggle" id="dark-toggle" onclick="toggleDark()" title="Toggle dark mode">🌙</button>
+    <div class="auth-area">
+      <span class="user-name" id="user-name"></span>
+      <button class="auth-btn login" id="login-btn" onclick="loginSP()">Sign In</button>
+      <button class="auth-btn logout" id="logout-btn" onclick="logoutSP()" style="display:none">Sign Out</button>
+    </div>
+  </header>
+  <div class="toolbar">
+    <div class="search-box">
+      <span class="icon">🔍</span>
+      <input type="text" id="search-input" placeholder="Search items..." oninput="onSearch()">
+    </div>
+    <span class="count-badge" id="result-count">0 items</span>
+    <button class="btn btn-success" onclick="startCreate()" id="btn-new" style="display:none">+ New Item</button>
+    <button class="btn btn-outline" onclick="refreshItems()" id="btn-refresh" style="display:none">🔄 Refresh</button>
+    <button class="btn btn-outline" onclick="downloadTemplate()" id="btn-template" style="display:none">📥 Template</button>
+    <button class="btn btn-outline" onclick="openBulkUpload()" id="btn-bulk" style="display:none">📤 Bulk Upload</button>
+    <button class="btn btn-outline" onclick="openExport()" id="btn-export" style="display:none">📊 Export</button>
+    <button class="btn btn-outline" onclick="openPermManager()" id="btn-permissions" style="display:none">👥 Permissions</button>
+    <span class="status-msg" id="status-msg"></span>
+    <button class="btn btn-outline" onclick="showConfig()">⚙️ Config</button>
+  </div>
+  <div class="main">
+    <div class="results-panel">
+      <div class="table-wrap" id="table-wrap">
+        <div class="empty-state" id="empty-state">
+          <div class="icon" id="empty-icon">📋</div>
+          <h3 id="empty-title">Welcome</h3>
+          <p id="empty-msg">Sign in with your Microsoft account, then select a department to get started.</p>
+        </div>
+        <table id="results-table" style="display:none">
+          <thead id="table-head"></thead>
+          <tbody id="table-body"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="form-overlay hidden" id="form-overlay" onclick="if(event.target===this)closeForm()">
+      <div class="form-panel" id="form-panel">
+        <div class="form-header">
+          <h3 id="form-title">New Item</h3>
+          <button class="form-close" onclick="closeForm()">✕</button>
+        </div>
+        <div class="form-body" id="form-body"></div>
+        <div class="form-footer">
+          <span class="save-status" id="save-status"></span>
+          <button class="btn btn-outline" onclick="closeForm()">Cancel</button>
+          <button class="btn btn-primary" id="save-btn" onclick="saveItem()">💾 Save</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="bulk-overlay" id="bulk-overlay" onclick="if(event.target===this)closeBulkUpload()">
+  <div class="bulk-modal">
+    <div class="bulk-modal-head">
+      <h3 id="bulk-title">📤 Bulk Upload</h3>
+      <button class="bulk-modal-close" onclick="closeBulkUpload()">✕</button>
+    </div>
+    <div class="bulk-modal-body" id="bulk-body"></div>
+    <div class="bulk-modal-foot" id="bulk-foot">
+      <span class="save-status" id="bulk-status"></span>
+      <button class="btn btn-outline" onclick="closeBulkUpload()">Cancel</button>
+      <button class="btn btn-primary" id="bulk-import-btn" onclick="importBulkItems()" disabled>📤 Import</button>
+    </div>
+  </div>
+</div>
+<div class="export-overlay" id="export-overlay" onclick="if(event.target===this)closeExport()">
+  <div class="export-modal">
+    <div class="export-modal-head">
+      <h3>📊 Export Data</h3>
+      <button class="export-modal-close" onclick="closeExport()">✕</button>
+    </div>
+    <div class="export-modal-body" id="export-body"></div>
+    <div class="export-modal-foot">
+      <span class="save-status" id="export-status"></span>
+      <button class="btn btn-outline" onclick="closeExport()">Cancel</button>
+      <button class="btn btn-primary" id="export-btn" onclick="runExport()">📥 Export</button>
+    </div>
+  </div>
+</div>
+<div class="loading-overlay" id="loading"><div class="spinner"></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+const storage = localStorage;
+
+const DEPTS = [
+  {
+    "id": "sor",
+    "title": "SOR",
+    "site": "https://sascontractingsa.sharepoint.com/sites/Alenshaiah",
+    "list": "SOR",
+    "group": "Correspondence & Registers",
+    "icon": "\ud83d\udce4"
+  },
+  {
+    "id": "incoming",
+    "title": "Incoming",
+    "site": "https://sascontractingsa.sharepoint.com/sites/Alenshaiah",
+    "list": "Incoming",
+    "group": "Correspondence & Registers",
+    "icon": "\ud83d\udce5"
+  },
+  {
+    "id": "outgoing",
+    "title": "Outgoing",
+    "site": "https://sascontractingsa.sharepoint.com/sites/Alenshaiah",
+    "list": "Outgoing",
+    "group": "Correspondence & Registers",
+    "icon": "\ud83d\udce4"
+  },
+  {
+    "id": "letters2",
+    "title": "Letters (2)",
+    "site": "https://sascontractingsa.sharepoint.com/sites/Alenshaiah",
+    "list": "Letters (2)",
+    "group": "Correspondence & Registers",
+    "icon": "\u2709\ufe0f"
+  },
+  {
+    "id": "oic-to-acc",
+    "title": "OIC to ACC",
+    "site": "https://sascontractingsa.sharepoint.com/sites/Alenshaiah",
+    "list": "OIC TO ACC",
+    "group": "Correspondence & Registers",
+    "icon": "\ud83d\udce8"
+  },
+  {
+    "id": "mom",
+    "title": "MOM",
+    "site": "https://sascontractingsa.sharepoint.com/sites/Alenshaiah",
+    "list": "MOM",
+    "group": "Correspondence & Registers",
+    "icon": "\ud83d\udcdd"
+  },
+  {
+    "id": "sdc-to-acc-ifc",
+    "title": "SDC to ACC (IFC)",
+    "site": "https://sascontractingsa.sharepoint.com/sites/Alenshaiah",
+    "list": "SDC TO ACC (IFC)",
+    "group": "Correspondence & Registers",
+    "icon": "\ud83d\udce8"
+  },
+  {
+    "id": "internal-sor",
+    "title": "Internal SOR's",
+    "site": "https://sascontractingsa.sharepoint.com/sites/Alenshaiah",
+    "list": "Internal SOR's",
+    "group": "Correspondence & Registers",
+    "icon": "\ud83d\udce4"
+  },
+  {
+    "id": "calculations",
+    "title": "Calculations",
+    "site": "https://sascontractingsa.sharepoint.com/sites/Alenshaiah",
+    "list": "Calculations (DC Log)",
+    "group": "Design & Technical",
+    "icon": "\ud83e\uddee"
+  },
+  {
+    "id": "plans",
+    "title": "Plans",
+    "site": "https://sascontractingsa.sharepoint.com/sites/Alenshaiah",
+    "list": "Plans",
+    "group": "Design & Technical",
+    "icon": "\ud83d\uddc2\ufe0f"
+  },
+  {
+    "id": "dw-drawings",
+    "title": "Drawings (DW)",
+    "site": "https://sascontractingsa.sharepoint.com/sites/Alenshaiah",
+    "list": "DW-Drawings",
+    "group": "Design & Technical",
+    "icon": "\ud83d\udcd0"
+  },
+  {
+    "id": "mst",
+    "title": "Method Statements (MST)",
+    "site": "https://sascontractingsa.sharepoint.com/sites/Alenshaiah",
+    "list": "MST - Method Statements",
+    "group": "Design & Technical",
+    "icon": "\ud83d\udccb"
+  },
+  {
+    "id": "org-chart",
+    "title": "Organization Chart",
+    "site": "https://sascontractingsa.sharepoint.com/sites/Alenshaiah",
+    "list": "Organization Chart",
+    "group": "Design & Technical",
+    "icon": "\ud83c\udfe2"
+  },
+  {
+    "id": "scl",
+    "title": "Schedules (SCL)",
+    "site": "https://sascontractingsa.sharepoint.com/sites/Alenshaiah",
+    "list": "SCL - Schedules",
+    "group": "Design & Technical",
+    "icon": "\ud83d\udcc5"
+  },
+  {
+    "id": "sna",
+    "title": "Start of New Activity (SNA)",
+    "site": "https://sascontractingsa.sharepoint.com/sites/Alenshaiah",
+    "list": "SNA- Start of new Activity",
+    "group": "Design & Technical",
+    "icon": "\ud83d\udea7"
+  },
+  {
+    "id": "ncr",
+    "title": "NCR - Non-Conformance Report",
+    "site": "https://sascontractingsa.sharepoint.com/sites/Alenshaiah",
+    "list": "NCR - Non-Conformance Report",
+    "group": "Submittals & Approvals",
+    "icon": "\u26a0\ufe0f"
+  },
+  {
+    "id": "si",
+    "title": "Site Instructions (SI)",
+    "site": "https://sascontractingsa.sharepoint.com/sites/Alenshaiah",
+    "list": "SI - Site Instructions",
+    "group": "Submittals & Approvals",
+    "icon": "\ud83d\udccc"
+  },
+  {
+    "id": "ei",
+    "title": "Engineer's Instruction (EI)",
+    "site": "https://sascontractingsa.sharepoint.com/sites/Alenshaiah",
+    "list": "EI - Engineer's Instruction",
+    "group": "Submittals & Approvals",
+    "icon": "\ud83d\udccc"
+  },
+  {
+    "id": "wir",
+    "title": "Work Inspection Request (WIR)",
+    "site": "https://sascontractingsa.sharepoint.com/sites/Alenshaiah",
+    "list": "WIR - Work Inspection Request",
+    "group": "Submittals & Approvals",
+    "icon": "\ud83d\udd0d"
+  },
+  {
+    "id": "mir",
+    "title": "Material Insp. Request (MIR)",
+    "site": "https://sascontractingsa.sharepoint.com/sites/Alenshaiah",
+    "list": "MIR- Material Insp Request",
+    "group": "Submittals & Approvals",
+    "icon": "\ud83d\udd0d"
+  },
+  {
+    "id": "ms",
+    "title": "Materials Submittal (MS)",
+    "site": "https://sascontractingsa.sharepoint.com/sites/Alenshaiah",
+    "list": "MS - Materials Submittal",
+    "group": "Submittals & Approvals",
+    "icon": "\ud83d\udce6"
+  },
+  {
+    "id": "pq",
+    "title": "Pre-Qualifications (PQ)",
+    "site": "https://sascontractingsa.sharepoint.com/sites/Alenshaiah",
+    "list": "PQ -Pre-Qualifications",
+    "group": "Submittals & Approvals",
+    "icon": "\u2705"
+  },
+  {
+    "id": "rfi",
+    "title": "Request for Info (RFI)",
+    "site": "https://sascontractingsa.sharepoint.com/sites/Alenshaiah",
+    "list": "RFI-Request for Info",
+    "group": "Submittals & Approvals",
+    "icon": "\u2753"
+  },
+  {
+    "id": "sca",
+    "title": "Subcon Approval (SCA)",
+    "site": "https://sascontractingsa.sharepoint.com/sites/Alenshaiah",
+    "list": "SCA - Subcon Approval",
+    "group": "Submittals & Approvals",
+    "icon": "\u2705"
+  },
+  {
+    "id": "merf",
+    "title": "MERF",
+    "site": "https://sascontractingsa.sharepoint.com/sites/Alenshaiah",
+    "list": "MERF",
+    "group": "Submittals & Approvals",
+    "icon": "\ud83d\udcc4"
+  },
+  {
+    "id": "internal-ncr",
+    "title": "Internal NCR's",
+    "site": "https://sascontractingsa.sharepoint.com/sites/Alenshaiah",
+    "list": "Internal NCR's",
+    "group": "Submittals & Approvals",
+    "icon": "\u26a0\ufe0f"
+  },
+  {
+    "id": "mqr",
+    "title": "Quality Observation Report (MQR)",
+    "site": "https://sascontractingsa.sharepoint.com/sites/Alenshaiah",
+    "list": "MQR - QUALITY OBSERVATION RPT",
+    "group": "Reports",
+    "icon": "\ud83d\udcca"
+  },
+  {
+    "id": "mpr",
+    "title": "Monthly Progress Report (MPR)",
+    "site": "https://sascontractingsa.sharepoint.com/sites/Alenshaiah",
+    "list": "MPR - MONTHLY PROGRESS RPT",
+    "group": "Reports",
+    "icon": "\ud83d\udcc8"
+  },
+  {
+    "id": "wpr",
+    "title": "Weekly Progress Report (WPR)",
+    "site": "https://sascontractingsa.sharepoint.com/sites/Alenshaiah",
+    "list": "WPR - WEEKLY PROGRESS RPT",
+    "group": "Reports",
+    "icon": "\ud83d\udcc8"
+  },
+  {
+    "id": "test-reports",
+    "title": "Test Reports",
+    "site": "https://sascontractingsa.sharepoint.com/sites/Alenshaiah",
+    "list": "Test Reports",
+    "group": "Reports",
+    "icon": "\ud83e\uddea"
+  },
+  {
+    "id": "dcr",
+    "title": "Daily Report (DCR)",
+    "site": "https://sascontractingsa.sharepoint.com/sites/Alenshaiah",
+    "list": "DCR - Daily report SKT",
+    "group": "Reports",
+    "icon": "\ud83d\udcc6"
+  },
+  {
+    "id": "hsr",
+    "title": "Health & Safety Reports (HSR)",
+    "site": "https://sascontractingsa.sharepoint.com/sites/Alenshaiah",
+    "list": "HSR (Health & Safety Reports)",
+    "group": "Reports",
+    "icon": "\ud83e\ude7a"
+  },
+  {
+    "id": "hse-obs",
+    "title": "Safety Observations (HSE)",
+    "site": "https://sascontractingsa.sharepoint.com/sites/Alenshaiah",
+    "list": "HSE (Safety Observations)",
+    "group": "HSE",
+    "icon": "\ud83e\uddba"
+  },
+  {
+    "id": "hse-incident",
+    "title": "Incident Reports (HSE)",
+    "site": "https://sascontractingsa.sharepoint.com/sites/Alenshaiah",
+    "list": "HSE - Incident Reports",
+    "group": "HSE",
+    "icon": "\ud83d\udea8"
+  },
+  {
+    "id": "others",
+    "title": "Others - General",
+    "site": "https://sascontractingsa.sharepoint.com/sites/Alenshaiah",
+    "list": "Others - General",
+    "group": "Documents & Records",
+    "icon": "\ud83d\udcc1"
+  },
+  {
+    "id": "prc",
+    "title": "Procedure (PRC)",
+    "site": "https://sascontractingsa.sharepoint.com/sites/Alenshaiah",
+    "list": "PRC - Procedure",
+    "group": "Documents & Records",
+    "icon": "\ud83d\udcd8"
+  },
+  {
+    "id": "omm",
+    "title": "Operation & Maintenance (OMM)",
+    "site": "https://sascontractingsa.sharepoint.com/sites/Alenshaiah",
+    "list": "OMM - Operation & Maintenance",
+    "group": "Documents & Records",
+    "icon": "\ud83d\udee0\ufe0f"
+  },
+  {
+    "id": "tm",
+    "title": "Technical Manual (TM)",
+    "site": "https://sascontractingsa.sharepoint.com/sites/Alenshaiah",
+    "list": "TM - Technical Manual",
+    "group": "Documents & Records",
+    "icon": "\ud83d\udcd7"
+  },
+  {
+    "id": "ds",
+    "title": "Data Sheet (DS)",
+    "site": "https://sascontractingsa.sharepoint.com/sites/Alenshaiah",
+    "list": "DS - Data Sheet",
+    "group": "Documents & Records",
+    "icon": "\ud83d\udcc4"
+  },
+  {
+    "id": "crt",
+    "title": "Certificate (CRT)",
+    "site": "https://sascontractingsa.sharepoint.com/sites/Alenshaiah",
+    "list": "CRT - Certificate",
+    "group": "Documents & Records",
+    "icon": "\ud83c\udfc5"
+  },
+  {
+    "id": "piv",
+    "title": "Photos (PIV)",
+    "site": "https://sascontractingsa.sharepoint.com/sites/Alenshaiah",
+    "list": "PIV - Photos,",
+    "group": "Documents & Records",
+    "icon": "\ud83d\udcf7"
+  },
+  {
+    "id": "cp",
+    "title": "Contractor Proposal (CP)",
+    "site": "https://sascontractingsa.sharepoint.com/sites/Alenshaiah",
+    "list": "CP - Contractor Proposal",
+    "group": "Documents & Records",
+    "icon": "\ud83d\udcd1"
+  }
+];
+const DEPT_GROUPS = ["Correspondence & Registers", "Design & Technical", "Submittals & Approvals", "Reports", "HSE", "Documents & Records"];
+
+let currentDept = null;
+let allItems = [];
+let filteredItems = [];
+let selectedItem = null;
+let editingId = null;
+let columnDefs = [];
+let renameMap = {};
+let attachmentCounts = {};
+let myPerms = 'ALL'; // 'ALL' = legacy (no list), or { deptId: 'read'|'edit' }
+const PERM_LIST = 'Permissions';
+const ADMIN_EMAIL = 'm.hajissa@alenshaiah.com';
+
+// MSAL
+const SP_SCOPES = ['Sites.ReadWrite.All','User.Read'];
+let msalApp = null;
+let spToken = null;
+let spUser = null;
+let spSiteToken = null;
+
+// ======================== HELPERS ========================
+function htmlEscape(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function stripHtml(s){const d=document.createElement('div');d.innerHTML=String(s);return d.textContent||d.innerText||'';}
+
+function showToast(msg,type){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.className='toast '+type+' show';
+  setTimeout(()=>t.classList.remove('show'),3000);
+}
+
+function setLoading(on){
+  document.getElementById('loading').classList.toggle('show',on);
+}
+
+function setEmpty(icon,title,msg){
+  const es=document.getElementById('empty-state');
+  es.style.display='';
+  document.getElementById('results-table').style.display='none';
+  document.getElementById('empty-icon').textContent=icon||'📋';
+  document.getElementById('empty-title').textContent=title||'';
+  document.getElementById('empty-msg').textContent=msg||'';
+}
+
+function setStatusMsg(msg,isError){
+  const el=document.getElementById('status-msg');
+  el.textContent=msg||'';
+  el.style.display=msg?'':'none';
+  el.style.background=isError?'var(--red-light)':'var(--yellow-light)';
+  el.style.color=isError?'var(--red)':'#8A6D00';
+}
+
+// ======================== AUTH ========================
+function initMsal(){
+  const tenant=storage.getItem('dcform-tenant')||'684547e2-bb8b-450a-a3e1-3a6bc15e9471';
+  const client=storage.getItem('dcform-client')||'';
+  if(!tenant||!client) return false;
+  try{
+    msalApp = new msal.PublicClientApplication({
+      auth:{ clientId:client, authority:'https://login.microsoftonline.com/'+tenant, redirectUri:location.origin+location.pathname },
+      cache:{ cacheLocation:'localStorage' },
+      system:{ allowNativeBroker:false, loggerOptions:{ loggerCallback:()=>{}, piiLoggingEnabled:false } }
+    });
+    return true;
+  }catch(e){
+    console.error('MSAL init failed:',e);
+    return false;
+  }
+}
+
+async function loginSP(){
+  if(location.protocol==='file:'){ showSigninError('⚠️ Cannot sign in from a local file. Deploy to GitHub Pages or a web server to use SSO authentication.'); return; }
+  if(typeof msal==='undefined'){ showSigninError('⚠️ Microsoft Authentication Library (MSAL) failed to load. Check your internet connection or ad blocker and reload.'); return; }
+  if(!initMsal()){ showSigninError('⚠️ Azure AD is not configured. Click the ⚙️ link below to set up your Tenant ID and Client ID.'); return; }
+  showSigninProgress(true);
+  try{
+    const resp = await msalApp.loginPopup({ scopes: SP_SCOPES });
+    handleAuthResponse(resp);
+  }catch(e){
+    showSigninProgress(false);
+    if(e.message&&e.message.includes('popup_window_error')){ showSigninError('⚠️ Popup was blocked. Allow popups for this site and try again.'); }
+    else{ showSigninError('Login failed: '+e.message); }
+  }
+}
+
+async function ssoSilentAttempt(){
+  if(!msalApp) return false;
+  try{
+    const resp = await msalApp.ssoSilent({ scopes: SP_SCOPES });
+    handleAuthResponse(resp);
+    return true;
+  }catch(e){
+    return false;
+  }
+}
+
+async function getTokenSP(){
+  if(!msalApp||!spUser) return null;
+  try{
+    const resp = await msalApp.acquireTokenSilent({ scopes: SP_SCOPES, account: spUser });
+    spToken = resp.accessToken; return spToken;
+  }catch(e){
+    if(spToken) return spToken;
+    return null;
+  }
+}
+
+async function loadUserPerms(){
+  myPerms='ALL';
+  if(!spUser||!spToken)return;
+  const email=spUser.username||'';
+  if(!email)return;
+  const siteUrl='https://sascontractingsa.sharepoint.com/sites/Alenshaiah';
+  try{
+    const token=await ensureSpSiteToken(siteUrl);
+    const url=siteUrl+'/_api/web/lists/getbytitle(\''+PERM_LIST+'\')/items';
+    const resp=await fetch(url,{headers:{'Authorization':'Bearer '+token,'Accept':'application/json'}});
+    if(!resp.ok){if(resp.status===404){myPerms='ALL';return}throw new Error(await resp.text())}
+    const data=await resp.json();
+    const items=data.d?data.d.results:data.value||[];
+    if(!items.length){myPerms='ALL';return}
+    myPerms={};
+    const userLower=email.toLowerCase();
+    const currentApp='DCForm';
+    items.forEach(item=>{
+      if((item.Title||'').toLowerCase()===userLower){
+        const app=item.App||'Both';
+        if(app===currentApp||app==='Both'){
+          myPerms[item.DeptID]=item.Access.toLowerCase();
+        }
+      }
+    });
+  }catch(e){
+    if(e.message&&!e.message.includes('404'))console.error('Perm load:',e);
+    myPerms='ALL';
+  }
+}
+
+function getMyAccess(deptId){
+  if(myPerms==='ALL')return 'edit';
+  return myPerms[deptId]||'none';
+}
+
+function hasAnyFormAccess(){
+  if(myPerms==='ALL') return true;
+  return DEPTS.some(d=>getMyAccess(d.id)!=='none');
+}
+
+function handleAuthResponse(resp){
+  if(resp&&resp.account){
+    spUser=resp.account; spToken=resp.accessToken;
+    showSigninProgress(false); hideSigninOverlay(); updateAuthUI();
+    loadUserPerms().then(()=>{
+      initDeptSelect();
+      if(!hasAnyFormAccess()){
+        setEmpty('🔒','Access Denied','You do not have permission to access any department. Contact your administrator.');
+        document.getElementById('dept-select').disabled=true;
+        return;
+      }
+      const d=storage.getItem('dcform-last-dept'); if(d)onDeptChange();
+    });
+  }else{
+    showSigninProgress(false); updateAuthUI();
+  }
+}
+
+function logoutSP(){
+  spToken=null; spUser=null; spSiteToken=null;
+  if(msalApp) msalApp.logoutPopup();
+  updateAuthUI(); onDeptChange();
+}
+
+function showSigninError(msg){
+  const el=document.getElementById('signin-error');
+  const card=document.getElementById('signin-card');
+  if(el){el.textContent=msg;el.classList.add('show');}
+  if(card)card.style.animation='none';
+}
+function showSigninProgress(show){
+  const el=document.getElementById('signin-progress');
+  const btn=document.getElementById('signin-btn');
+  if(el)el.classList.toggle('show',show);
+  if(btn)btn.disabled=show;
+}
+function hideSigninOverlay(){
+  document.getElementById('signin-overlay').classList.add('hidden');
+}
+function showSigninOverlay(){
+  document.getElementById('signin-overlay').classList.remove('hidden');
+}
+
+function updateAuthUI(){
+  const un=document.getElementById('user-name');
+  const li=document.getElementById('login-btn');
+  const lo=document.getElementById('logout-btn');
+  if(spUser){
+    if(li)li.style.display='none';
+    if(lo)lo.style.display='';
+    if(un){un.style.display=''; un.textContent='👤 '+(spUser.name||spUser.username);}
+    hideSigninOverlay();
+  }else{
+    if(li)li.style.display='';
+    if(lo)lo.style.display='none';
+    if(un)un.style.display='none';
+    showSigninOverlay();
+  }
+}
+
+function toggleDark(){
+  document.body.classList.toggle('dark');
+  document.getElementById('dark-toggle').textContent=document.body.classList.contains('dark')?'☀️':'🌙';
+  storage.setItem('dcform-dark',document.body.classList.contains('dark')?'1':'');
+}
+
+// ======================== SHAREPOINT API ========================
+function siteToGraphPath(siteUrl){
+  const u=new URL(siteUrl);
+  return u.hostname+':'+u.pathname.replace(/\/+$/,'');
+}
+function graphListUrl(siteUrl,listName){
+  return `https://graph.microsoft.com/v1.0/sites/${siteToGraphPath(siteUrl)}:/lists/${encodeURIComponent(listName)}`;
+}
+function graphListColumnsUrl(siteUrl,listName){
+  return graphListUrl(siteUrl,listName)+'/columns';
+}
+function graphListItemsUrl(siteUrl,listName){
+  return graphListUrl(siteUrl,listName)+'/items?$top=5000&expand=fields';
+}
+function graphItemFieldsUrl(siteUrl,listName,itemId){
+  return graphListUrl(siteUrl,listName)+`/items/${itemId}/fields`;
+}
+function spRestListUrl(siteUrl,listName){
+  const s=siteUrl.replace(/\/+$/,'');
+  return `${s}/_api/web/lists/getbytitle('${listName.replace(/'/g,"''")}')`;
+}
+function spRestAttachmentsUrl(siteUrl,listName,itemId){
+  return `${spRestListUrl(siteUrl,listName)}/items(${itemId})/AttachmentFiles`;
+}
+
+async function ensureSpSiteToken(siteUrl){
+  if(!msalApp||!spUser)throw new Error('Not authenticated');
+  try{
+    if(spSiteToken){const u=new URL(siteUrl);const r=await fetch(u.origin+'/_api/web/currentuser',{headers:{'Authorization':'Bearer '+spSiteToken}});if(r.ok)return spSiteToken;}
+  }catch{}
+  const u=new URL(siteUrl);
+  const resp=await msalApp.acquireTokenSilent({scopes:[u.origin+'/.default'],account:spUser});
+  spSiteToken=resp.accessToken;
+  return spSiteToken;
+}
+async function spApiCall(url,method,body,binary){
+  const token=await ensureSpSiteToken(currentDept.site);
+  const opts={method:method||'GET',headers:{'Authorization':'Bearer '+token,'Accept':'application/json'}};
+  if(body&&!binary){opts.headers['Content-Type']='application/json';opts.body=JSON.stringify(body);}
+  else if(body&&binary){opts.headers['Content-Type']='application/octet-stream';opts.body=body;}
+  const resp=await fetch(url,opts);
+  if(!resp.ok){const t=await resp.text().catch(()=>'');throw new Error(`HTTP ${resp.status}: ${t.substring(0,200)}`);}
+  return resp;
+}
+
+const SKIP_COLS = new Set([
+  'ContentType','AuthorLookupId','EditorLookupId','_UIVersionString','Attachments','Edit',
+  'LinkTitleNoMenu','LinkTitle','ItemChildCount','FolderChildCount',
+  '_ComplianceFlags','_ComplianceTag','_ComplianceTagWrittenTime','_ComplianceTagUserId',
+  'AppAuthorLookupId','AppEditorLookupId','@odata.etag',
+  'ID','id','Modified','Created','Title',
+  'FileSystemObjectType','ServerUrl','EncodedAbsUrl','BaseName','FileRef','FileLeafRef',
+  'UniqueId','ProgId','CheckoutUserId','CheckoutUser','CheckedOutUserId','CheckedOutUser',
+  'HasCopyDestinations','CopySource','OData__UIVersionString','UIVersion',
+  'Order','GUID','WorkflowInstanceId','WorkflowVersion','WorkflowName','File_x0020_Type',
+  'DocIcon','XMLTZone','_HasCopyDestinations','_CopySource','ScopeId','LinkFilename',
+  'LinkFilenameNoMenu','FSObjType','SortBehavior','PermMask','FileDirRef','Last_x0020_Modified',
+  'Created_x0020_Date','Editor','Author'
+]);
+const EXPORT_SKIP_COLS = SKIP_COLS;
+
+async function ensureGraphToken(){
+  if(!msalApp||!spUser)throw new Error('Not authenticated');
+  try{
+    if(spToken){const r=await fetch('https://graph.microsoft.com/v1.0/me',{headers:{'Authorization':'Bearer '+spToken}});if(r.ok)return spToken;}
+  }catch{}
+  const resp=await msalApp.acquireTokenSilent({scopes:SP_SCOPES,account:spUser});
+  spToken=resp.accessToken;
+  return spToken;
+}
+async function apiCall(url,method,body){
+  const token=await ensureGraphToken();
+  const opts={method:method||'GET',headers:{'Authorization':'Bearer '+token,'Accept':'application/json'}};
+  if(body){opts.headers['Content-Type']='application/json'; opts.body=JSON.stringify(body);}
+  const resp=await fetch(url,opts);
+  if(!resp.ok){
+    let txt; try{txt=await resp.text();}catch{txt='';}
+    throw new Error(`HTTP ${resp.status} ${method||'GET'} ${url.substring(0,120)}: ${txt.substring(0,300)}`);
+  }
+  return await resp.json();
+}
+
+async function fetchColumnDefinitions(siteUrl,listName){
+  const json=await apiCall(graphListColumnsUrl(siteUrl,listName));
+  const cols=[];
+  (json.value||[]).forEach(col=>{
+    const n=col.name;
+    if(!n||SKIP_COLS.has(n)||n.startsWith('_'))return;
+    let type='text',choices=null;
+    if(col.text)type='text';
+    else if(col.note)type='note';
+    else if(col.choice){type='choice';choices=col.choice.choices||[];}
+    else if(col.number)type='number';
+    else if(col.currency)type='currency';
+    else if(col.dateTime)type='date';
+    else if(col.boolean)type='boolean';
+    else if(col.lookup)type='lookup';
+    else if(col.personOrGroup)type='person';
+    else if(col.taxonomy)type='taxonomy';
+    else type='text';
+    cols.push({name:n,displayName:col.displayName||n,type,choices,required:col.required||false,description:col.description||''});
+  });
+  return cols;
+}
+
+async function fetchSPItems(siteUrl,listName){
+  const json=await apiCall(graphListItemsUrl(siteUrl,listName));
+  return (json.value||[]).map(item=>{
+    const fields={};
+    for(const [k,v] of Object.entries(item.fields||{})){
+      const dn=renameMap[k]||k;
+      fields[dn]=v;
+      if(dn!==k)fields[k]=v;
+    }
+    return {...fields,_id:item.id,_etag:item?.fields?.['@odata.etag']||''};
+  });
+}
+
+async function createSPItem(siteUrl,listName,itemFields){
+  const body={fields:{}};
+  for(const [k,v] of Object.entries(itemFields)){if(!k.startsWith('_'))body.fields[k]=v;}
+  return await apiCall(graphListUrl(siteUrl,listName)+'/items','POST',body);
+}
+
+async function updateSPItem(siteUrl,listName,itemId,itemFields){
+  const body={};
+  for(const [k,v] of Object.entries(itemFields)){if(!k.startsWith('_'))body[k]=v;}
+  const listEnc=listName.replace(/'/g,"''");
+  const url=`${siteUrl.replace(/\/+$/,'')}/_api/web/lists/getbytitle('${listEnc}')/items(${itemId})`;
+  const token=await ensureSpSiteToken(siteUrl);
+  const opts={
+    method:'POST',
+    headers:{
+      'Authorization':'Bearer '+token,
+      'Accept':'application/json',
+      'Content-Type':'application/json',
+      'IF-MATCH':'*',
+      'X-HTTP-Method':'MERGE'
+    },
+    body:JSON.stringify(body)
+  };
+  const resp=await fetch(url,opts);
+  if(!resp.ok){let txt;try{txt=await resp.text();}catch{txt='';}throw new Error(`SP PATCH HTTP ${resp.status}: ${txt.substring(0,300)}`);}
+  return resp;
+}
+
+async function spApiCallJson(url,method,body,binary){
+  const resp=await spApiCall(url,method,body,binary);
+  return await resp.json();
+}
+
+async function fetchAttachments(siteUrl,listName,itemId){
+  const url=spRestAttachmentsUrl(siteUrl,listName,itemId);
+  const json=await spApiCallJson(url);
+  const files=json.value||(json.d&&json.d.results)||[];
+  return files.map(f=>({id:f.FileName||f.id,name:f.FileName||f.name,size:f.Length||f.size||0,fileName:f.FileName||f.name}));
+}
+async function deleteAttachment(siteUrl,listName,itemId,attachmentName){
+  const url=spRestAttachmentsUrl(siteUrl,listName,itemId)+`/getByFileName('${attachmentName.replace(/'/g,"''")}')/deleteObject`;
+  await spApiCall(url,'POST');
+}
+async function uploadAttachment(siteUrl,listName,itemId,fileName,binaryBlob){
+  const url=spRestAttachmentsUrl(siteUrl,listName,itemId)+`/add(FileName='${fileName.replace(/'/g,"''")}')`;
+  try{
+    await spApiCall(url,'POST',binaryBlob,true);
+  }catch(e){
+    if(e.message&&e.message.includes('already in use')){
+      await deleteAttachment(siteUrl,listName,itemId,fileName);
+      await spApiCall(url,'POST',binaryBlob,true);
+    }else{
+      throw e;
+    }
+  }
+}
+async function downloadAttachment(attachmentName,fileName){
+  fileName=decodeURIComponent(fileName);
+  const name=decodeURIComponent(attachmentName);
+  const url=spRestAttachmentsUrl(currentDept.site,currentDept.list,editingId)+`/getByFileName('${name.replace(/'/g,"''")}')/$value`;
+  const resp=await spApiCall(url);
+  const blob=await resp.blob();
+  const blobUrl=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=blobUrl;a.download=fileName;a.click();
+  URL.revokeObjectURL(blobUrl);
+}
+async function downloadViewAttachment(attachmentName,itemId){
+  const name=decodeURIComponent(attachmentName);
+  const url=spRestAttachmentsUrl(currentDept.site,currentDept.list,itemId)+`/getByFileName('${name.replace(/'/g,"''")}')/$value`;
+  const resp=await spApiCall(url);
+  const blob=await resp.blob();
+  const blobUrl=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=blobUrl;a.download=name;a.click();
+  URL.revokeObjectURL(blobUrl);
+}
+
+async function loadAttachmentsList(){
+  const el=document.getElementById('attachment-list');
+  if(!el)return;
+  try{
+    const atts=await fetchAttachments(currentDept.site,currentDept.list,editingId);
+    if(!atts.length){el.innerHTML='<div class="attachment-empty">No attachments</div>';return;}
+    el.innerHTML=atts.map(a=>{
+      const name=htmlEscape(a.name);
+      const size=a.size?` <span class="size">${fmtSize(a.size)}</span>`:'';
+      const jsName=encodeURIComponent(a.name);
+      return `<div class="attachment-item"><span class="name">${name}</span>${size}<button class="btn-icon download" title="Download" onclick="downloadAttachment('${jsName}','${jsName}')">⬇</button><button class="btn-icon delete" title="Delete" onclick="deleteAttachmentItem('${jsName}')">✕</button></div>`;
+    }).join('');
+  }catch(e){
+    console.error('loadAttachments:',e);
+    el.innerHTML='<div class="attachment-empty">Failed to load attachments</div>';
+  }
+}
+
+function fmtSize(bytes){
+  if(!bytes)return '';
+  if(bytes<1024)return bytes+' B';
+  if(bytes<1048576)return (bytes/1024).toFixed(1)+' KB';
+  return (bytes/1048576).toFixed(1)+' MB';
+}
+
+async function uploadSelectedAttachments(){
+  const input=document.getElementById('attachment-file');
+  if(!input||!input.files||!input.files.length){showToast('Select files first','error');return;}
+  const btn=input.nextElementSibling;
+  btn.disabled=true;btn.textContent='Uploading...';
+  try{
+    for(const file of input.files){
+      await uploadAttachment(currentDept.site,currentDept.list,editingId,file.name,file);
+    }
+    input.value='';
+    showToast('Uploaded','success');
+    await loadAttachmentsList();
+  }catch(e){
+    console.error('upload:',e);
+    showToast('Upload failed: '+e.message,'error');
+  }
+  btn.disabled=false;btn.textContent='Upload';
+}
+
+async function deleteAttachmentItem(fileName){
+  fileName=decodeURIComponent(fileName);
+  if(!confirm('Delete attachment "'+fileName+'"?'))return;
+  try{
+    await deleteAttachment(currentDept.site,currentDept.list,editingId,fileName);
+    showToast('Deleted','success');
+    await loadAttachmentsList();
+  }catch(e){
+    console.error('delete:',e);
+    showToast('Delete failed: '+e.message,'error');
+  }
+}
+
+async function fetchAllAttachmentCounts(){
+  if(!currentDept||!allItems.length)return;
+  const ids=allItems.map(i=>i._id);
+  for(let i=0;i<ids.length;i+=20){
+    const batch=ids.slice(i,i+20);
+    const results=await Promise.allSettled(batch.map(id=>
+      fetchAttachments(currentDept.site,currentDept.list,id).then(atts=>({id,count:atts.length}))
+    ));
+    results.forEach(r=>{if(r.status==='fulfilled')attachmentCounts[r.value.id]=r.value.count;});
+  }
+  if(currentDept)renderTable();
+}
+
+// ======================== DEPT MANAGEMENT ========================
+function initDeptSelect(){
+  const sel=document.getElementById('dept-select');
+  const available=myPerms==='ALL'?DEPTS:DEPTS.filter(d=>getMyAccess(d.id)!=='none');
+  let html='<option value="">— Select List —</option>';
+  DEPT_GROUPS.forEach(g=>{
+    const inGroup=available.filter(d=>d.group===g);
+    if(!inGroup.length)return;
+    html+=`<optgroup label="${g.replace(/&/g,'&amp;')}">`+inGroup.map(d=>`<option value="${d.id}">${(d.icon||'')} ${d.title}</option>`).join('')+'</optgroup>';
+  });
+  sel.innerHTML=html;
+  const saved=storage.getItem('dcform-last-dept');
+  if(saved&&available.find(d=>d.id===saved)){sel.value=saved; onDeptChange();}
+  // Show Permissions button for admin
+  const btn=document.getElementById('btn-permissions');
+  if(btn&&spUser){const email=(spUser.username||'').toLowerCase();btn.style.display=email===ADMIN_EMAIL.toLowerCase()?'':'none'}
+}
+
+function openPermManager(){window.open('permissions.html','_blank')}
+
+async function onDeptChange(){
+  const id=document.getElementById('dept-select').value;
+  document.getElementById('btn-new').style.display='none';
+  document.getElementById('btn-refresh').style.display='none';
+  document.getElementById('btn-template').style.display='none';
+  document.getElementById('btn-bulk').style.display='none';
+  closeForm();
+  selectedItem=null; editingId=null;
+  if(!id){currentDept=null; setEmpty('📋','Select a department','Choose a department above to load items from SharePoint.'); return;}
+  currentDept=DEPTS.find(d=>d.id===id);
+  if(!spToken||!spUser){setEmpty('🔒','Sign in required','Sign in with your Microsoft account...'); return;}
+  const access=getMyAccess(id);
+  if(access==='none'){setEmpty('🔒','Access Denied','You do not have permission to access this department.'); return;}
+  document.getElementById('btn-refresh').style.display='';
+  document.getElementById('btn-template').style.display='';
+  document.getElementById('btn-export').style.display='';
+  if(access==='edit'){
+    document.getElementById('btn-new').style.display='';
+    document.getElementById('btn-bulk').style.display='';
+  }
+  await loadDeptData();
+}
+
+async function loadDeptData(){
+  if(!currentDept)return;
+  setLoading(true);
+  setStatusMsg('Loading schema...');
+  try{
+    columnDefs=[]; renameMap={}; attachmentCounts={}; spSiteToken=null;
+    const cols=await fetchColumnDefinitions(currentDept.site,currentDept.list);
+    columnDefs=cols;
+    cols.forEach(c=>{if(c.name!==c.displayName)renameMap[c.name]=c.displayName;});
+    setStatusMsg('Loading items ('+cols.length+' columns)...');
+    allItems=await fetchSPItems(currentDept.site,currentDept.list);
+    filteredItems=[...allItems];
+    setStatusMsg('');
+    document.getElementById('btn-new').style.display='';
+    document.getElementById('btn-refresh').style.display='';
+    document.getElementById('btn-template').style.display='';
+    document.getElementById('btn-bulk').style.display='';
+    document.getElementById('btn-export').style.display='';
+    onSearch();
+  }catch(e){
+    console.error('loadDeptData:',e);
+    setStatusMsg('Error: '+e.message,true);
+    setEmpty('❌','Failed to load data',e.message);
+  }
+  setLoading(false);
+  if(allItems.length)fetchAllAttachmentCounts();
+}
+
+async function refreshItems(){
+  if(!currentDept||!spToken){console.warn('REFRESH SKIP: currentDept=%o spToken=%o',currentDept,spToken);return;}
+  setLoading(true);
+  try{
+    allItems=await fetchSPItems(currentDept.site,currentDept.list);
+    console.log('REFRESH: got',allItems.length,'items, first item id=',allItems[0]?._id,null);
+    filteredItems=[...allItems];
+    attachmentCounts={};
+    onSearch();
+    showToast('Refreshed: '+allItems.length+' items','success');
+  }catch(e){console.error('REFRESH FAIL:',e);showToast('Refresh failed: '+e.message,'error');}
+  setLoading(false);
+  if(allItems.length)fetchAllAttachmentCounts();
+}
+
+// ======================== SEARCH ========================
+function onSearch(){
+  const q=document.getElementById('search-input').value.trim().toLowerCase();
+  filteredItems=q?allItems.filter(item=>{for(const v of Object.values(item)){if(v&&String(v).toLowerCase().includes(q))return true;}return false;}):[...allItems];
+  renderTable();
+}
+
+// ======================== TABLE ========================
+function reorderColumns(cols){
+  if(currentDept&&currentDept.id==='calculations'){
+    const order=['S.No','TYPE','SHEET NAME','PHASE','BUILDING/PART','DISCIPLINE','EXPECTED SUBMISSION DATE','DRAWING STATUS'];
+    const idxMap={};
+    cols.forEach((c,i)=>{const idx=order.findIndex(o=>o.toUpperCase()===c.displayName.toUpperCase());if(idx>=0)idxMap[c.name]=idx;});
+    const known=[],unknown=[];
+    cols.forEach(c=>{(idxMap[c.name]!==undefined?known:unknown).push(c);});
+    known.sort((a,b)=>idxMap[a.name]-idxMap[b.name]);
+    return [...known,...unknown];
+  }
+  const result=[...cols];
+  const descIdx=result.findIndex(c=>/(description|matDesc)/i.test(c.name)||/(description)/i.test(c.displayName));
+  const rfqIdx=result.findIndex(c=>/(rfq)/i.test(c.name)||/(rfq)/i.test(c.displayName));
+  if(descIdx>=0&&rfqIdx>=0&&rfqIdx!==descIdx+1){
+    const [rfq]=result.splice(rfqIdx,1);
+    const adjDescIdx=rfqIdx<descIdx?descIdx-1:descIdx;
+    result.splice(adjDescIdx+1,0,rfq);
+  }
+  return result;
+}
+function fmtVal(v){
+  if(typeof v==='string'&&/^\d{4}-\d{2}-\d{2}[T ]/.test(v))return v.substring(0,10);
+  return String(v??'');
+}
+function reorderForExport(cols){
+  if(currentDept&&currentDept.id==='calculations'){
+    const order=['S.No','TYPE','SHEET NAME','PHASE','BUILDING/PART','DISCIPLINE','EXPECTED SUBMISSION DATE','DRAWING STATUS'];
+    const orderUpper=order.map(o=>o.toUpperCase());
+    const known=[],unknown=[];
+    cols.forEach(c=>{
+      const dnUpper=c.displayName?c.displayName.toUpperCase():c.name.toUpperCase();
+      const idx=orderUpper.indexOf(dnUpper);
+      if(idx>=0)known.push({col:c,idx});
+      else unknown.push(c);
+    });
+    known.sort((a,b)=>a.idx-b.idx);
+    const result=[...known.map(k=>k.col),...unknown];
+    const remarkIdx=result.findIndex(c=>/(remarks)/i.test(c.name)||/(remarks)/i.test(c.displayName));
+    if(remarkIdx>=0)result.splice(remarkIdx+1);
+    return result;
+  }
+  const result=[...cols];
+  const descIdx=result.findIndex(c=>/(description|matDesc)/i.test(c.name)||/(description)/i.test(c.displayName));
+  const rfqIdx=result.findIndex(c=>/(rfq)/i.test(c.name)||/(rfq)/i.test(c.displayName));
+  if(descIdx>=0&&rfqIdx>=0&&rfqIdx!==descIdx+1){
+    const [rfq]=result.splice(rfqIdx,1);
+    const adjDescIdx=rfqIdx<descIdx?descIdx-1:descIdx;
+    result.splice(adjDescIdx+1,0,rfq);
+  }
+  const remarkIdx=result.findIndex(c=>/(remarks)/i.test(c.name)||/(remarks)/i.test(c.displayName));
+  if(remarkIdx>=0)result.splice(remarkIdx+1);
+  return result;
+}
+function renderTable(){
+  if(!currentDept||filteredItems.length===0){
+    if(currentDept)setEmpty('🔍','No results','Try a different search or click + New Item.');
+    else setEmpty('📋','Select a department','Choose a department above.');
+    document.getElementById('result-count').textContent='0 items';
+    return;
+  }
+  document.getElementById('empty-state').style.display='none';
+  document.getElementById('results-table').style.display='';
+  document.getElementById('result-count').textContent=filteredItems.length+' items';
+
+  const shownCols=reorderColumns(columnDefs.filter(c=>!SKIP_COLS.has(c.name)&&c.name!=='Title'));
+  const titleCol=columnDefs.find(c=>c.name==='Title');
+  if(titleCol&&!shownCols.includes(titleCol))shownCols.unshift(titleCol);
+  document.getElementById('table-head').innerHTML='<tr><th style="width:18px"></th><th style="width:30px">#</th><th style="width:32px;text-align:center" title="Attachments">📎</th>'+shownCols.map(c=>`<th>${htmlEscape(c.displayName)}</th>`).join('')+'</tr>';
+
+  document.getElementById('table-body').innerHTML=filteredItems.map((item,i)=>{
+    const isSel=selectedItem&&item._id===selectedItem._id;
+    const aN=attachmentCounts[item._id];
+    return `<tr class="${isSel?'selected':''}" onclick="openDetail(${i})">
+      <td><span style="color:var(--blue);font-size:11px;cursor:pointer" onclick="event.stopPropagation();startEdit(${i})">✏️</span></td>
+      <td style="color:var(--text-secondary)">${i+1}</td>
+      <td style="text-align:center;font-size:12px;color:var(--text-secondary)">${aN>0?'📎'+aN:aN===0?'—':''}</td>
+      ${shownCols.map(c=>{
+        const lookup=c.displayName||c.name;
+        let v=item[lookup]!==undefined?item[lookup]:'';
+        if(v&&typeof v==='object'){v=v.LookupValue||v.Title||v.Email||JSON.stringify(v).substring(0,50);}
+        if(c.type==='boolean')v=v?'✓':'';
+        const s=htmlEscape(stripHtml(v));
+        return `<td title="${s}">${s.substring(0,80)}</td>`;
+      }).join('')}
+    </tr>`;
+  }).join('');
+}
+
+// ======================== DETAIL VIEW / EDIT / FORM ========================
+function openDetail(idx){
+  if(idx<0||idx>=filteredItems.length)return;
+  selectedItem=filteredItems[idx]; renderTable();
+  const item=selectedItem;
+  const label=item.Title||item.title||'Item #'+(idx+1);
+  document.getElementById('form-title').textContent=label;
+  // Add Edit button in header next to close
+  const header=document.querySelector('.form-header');
+  const closeBtn=header.querySelector('.form-close');
+  let editBtn=header.querySelector('.header-edit-btn');
+  if(!editBtn){
+    editBtn=document.createElement('button');
+    editBtn.className='btn btn-primary header-edit-btn';
+    editBtn.textContent='✏️ Edit';
+    editBtn.style.cssText='padding:4px 12px;font-size:12px;border-radius:4px;border:none;cursor:pointer;margin-right:8px';
+    closeBtn.parentNode.insertBefore(editBtn,closeBtn);
+  }
+  editBtn.onclick=()=>startEdit(idx);
+  const access=currentDept?getMyAccess(currentDept.id):'none';
+  editBtn.style.display=access==='edit'?'':'none';
+  const body=document.getElementById('form-body');
+  const skipForm=new Set(['_id','_etag','ContentType','AppAuthor','AppEditor','Author','Editor']);
+  let html='';
+  reorderColumns(columnDefs).forEach(c=>{
+    if(skipForm.has(c.name)||c.hidden)return;
+    const lookup=c.displayName||c.name;
+    let raw=item[lookup]!==undefined&&item[lookup]!==null?item[lookup]:item[c.name]!==undefined?item[c.name]:'';
+    if(c.name==='ID'&&!raw&&item._id!==undefined)raw=item._id;
+    let vDisplay=raw;
+    if(raw&&typeof raw==='object'){vDisplay=raw.LookupValue||raw.Title||raw.Email||JSON.stringify(raw);}
+    vDisplay=stripHtml(vDisplay);
+    const desc=c.description?`<div class="hint">${htmlEscape(stripHtml(c.description))}</div>`:'';
+    html+=`<div class="form-group"><label>${htmlEscape(c.displayName||c.name)}</label>${desc}<div style="padding:6px 0;font-size:13px;color:var(--text-primary);word-break:break-word;border-bottom:1px solid var(--gray-border)">${vDisplay?htmlEscape(vDisplay):'<span style="color:var(--text-secondary);font-style:italic">Not set</span>'}</div></div>`;
+  });
+  const aN=attachmentCounts[item._id];
+  html+=`<div class="form-group"><label>Attachments</label><div id="attachment-list-view" style="padding:6px 0;font-size:13px">${aN>0?'<div class="attachment-loading">Loading...</div>':'<span style="color:var(--text-secondary);font-style:italic">None</span>'}</div></div>`;
+  body.innerHTML=html;
+  document.getElementById('save-status').className='save-status';
+  document.getElementById('save-status').textContent='';
+  // Footer: only Close button
+  // Load attachment files with download buttons in view mode
+  if(aN>0&&item._id){
+    fetchAttachments(currentDept.site,currentDept.list,item._id).then(atts=>{
+      const el=document.getElementById('attachment-list-view');
+      if(!el)return;
+      el.innerHTML=atts.map(a=>{
+        const name=htmlEscape(a.name);
+        const size=a.size?` <span class="size">${fmtSize(a.size)}</span>`:'';
+        const jsName=encodeURIComponent(a.name);
+        return `<div class="attachment-item"><span class="name">${name}</span>${size}<button class="btn-icon download" title="Download" onclick="downloadViewAttachment('${jsName}','${item._id}')">⬇</button></div>`;
+      }).join('');
+    }).catch(()=>{
+      const el=document.getElementById('attachment-list-view');
+      if(el)el.innerHTML='<span style="color:var(--text-secondary)">Failed to load</span>';
+    });
+  }
+  if(!document.getElementById('save-btn')){
+    document.querySelector('.form-footer').innerHTML='<span class="save-status" id="save-status"></span><button class="btn btn-outline" onclick="closeForm()">Close</button>';
+  }else{
+    document.getElementById('save-btn').style.display='none';
+  }
+  document.getElementById('form-overlay').classList.remove('hidden');
+}
+
+function selectItem(idx){
+  if(idx<0||idx>=filteredItems.length)return;
+  selectedItem=filteredItems[idx]; renderTable();
+}
+
+function startEdit(idx){
+  if(getMyAccess(currentDept?.id||'')!=='edit'){showToast('Read-only access','error');return}
+  if(idx<0||idx>=filteredItems.length)return;
+  selectedItem=filteredItems[idx]; renderTable();
+  editingId=selectedItem._id;
+  if(editingId===undefined||editingId===null){showToast('Cannot edit: item has no ID','error');return;}
+  console.log('EDIT: id='+editingId+' type='+typeof editingId,selectedItem);
+  // Hide header edit button
+  const eb=document.querySelector('.header-edit-btn');
+  if(eb)eb.style.display='none';
+  // Restore footer buttons if in detail view
+  const sb=document.getElementById('save-btn');
+  if(sb){
+    sb.style.display='';
+  }else{
+    const f=document.querySelector('.form-footer');
+    f.innerHTML='<span class="save-status" id="save-status"></span><button class="btn btn-outline" onclick="closeForm()">Cancel</button><button class="btn btn-primary" id="save-btn" onclick="saveItem()">💾 Update</button>';
+  }
+  openForm('Edit Item',selectedItem);
+}
+
+function startCreate(){
+  if(getMyAccess(currentDept?.id||'')!=='edit'){showToast('Read-only access','error');return}
+  editingId=null; selectedItem=null; renderTable();
+  // Hide header edit button
+  const eb=document.querySelector('.header-edit-btn');
+  if(eb)eb.style.display='none';
+  // Restore footer buttons if in detail view
+  const sb=document.getElementById('save-btn');
+  if(sb){
+    sb.style.display='';
+  }else{
+    const f=document.querySelector('.form-footer');
+    f.innerHTML='<span class="save-status" id="save-status"></span><button class="btn btn-outline" onclick="closeForm()">Cancel</button><button class="btn btn-primary" id="save-btn" onclick="saveItem()">💾 Create</button>';
+  }
+  openForm('New Item',{});
+}
+
+function openForm(title,data){
+  document.getElementById('form-title').textContent=title;
+  const body=document.getElementById('form-body');
+  const skipForm=new Set(['_id','_etag','ContentType','AppAuthor','AppEditor','Author','Editor']);
+  let html='';
+  reorderColumns(columnDefs).forEach(c=>{
+    if(skipForm.has(c.name)||c.hidden)return;
+    const lookup=c.displayName||c.name;
+    let raw=data[lookup]!==undefined&&data[lookup]!==null?data[lookup]:data[c.name]!==undefined?data[c.name]:'';
+    let vDisplay=raw;
+    if(raw&&typeof raw==='object'){vDisplay=raw.LookupValue||raw.Title||raw.Email||'';}
+    vDisplay=stripHtml(vDisplay);
+    const req=c.required?' required':'';
+    const reqStar=c.required?' class="required"':'';
+    const desc=c.description?`<div class="hint">${htmlEscape(stripHtml(c.description))}</div>`:'';
+    const fid='f_'+c.name.replace(/[^a-zA-Z0-9_-]/g,'_');
+    html+=`<div class="form-group"><label for="${fid}"${reqStar}>${htmlEscape(c.displayName)}</label>${desc}`;
+    switch(c.type){
+      case 'choice':
+        html+=`<select id="${fid}"${req}>`;
+        if(!c.required)html+=`<option value="">—</option>`;
+        (c.choices||[]).forEach(ch=>{const eh=htmlEscape(ch);html+=`<option value="${eh}"${String(vDisplay)===String(ch)?' selected':''}>${eh}</option>`;});
+        html+=`</select>`; break;
+      case 'multiChoice':{
+        const vals=new Set(String(vDisplay).split(';').map(s=>s.trim()).filter(Boolean));
+        html+=`<div class="chk-group" id="${fid}">`;
+        (c.choices||[]).forEach(ch=>{const ck=vals.has(ch)?' checked':'';const eh=htmlEscape(ch);html+=`<label class="${ck?'selected':''}"><input type="checkbox" value="${eh}"${ck} onchange="this.parentElement.classList.toggle('selected')"> ${eh}</label>`;});
+        html+=`</div>`; break;
+      }
+      case 'boolean':
+        html+=`<select id="${fid}"><option value="">—</option><option value="1"${vDisplay===true||vDisplay==='1'||vDisplay==='Yes'?' selected':''}>Yes</option><option value="0"${vDisplay===false||vDisplay==='0'||vDisplay==='No'?' selected':''}>No</option></select>`; break;
+      case 'date':{
+        let dval='';
+        if(vDisplay){const d=new Date(vDisplay);if(!isNaN(d))dval=d.toISOString().split('T')[0];}
+        html+=`<input type="date" id="${fid}" value="${htmlEscape(dval)}"${req}>`; break;
+      }
+      case 'number': case 'currency':
+        html+=`<input type="number" id="${fid}" value="${htmlEscape(vDisplay)}" step="${c.type==='currency'?'0.01':'1'}"${req}>`; break;
+      case 'note':
+        html+=`<textarea id="${fid}"${req}>${htmlEscape(vDisplay)}</textarea>`; break;
+      case 'person': case 'lookup': case 'taxonomy':
+        html+=`<input type="text" id="${fid}" value="${htmlEscape(vDisplay)}"${req} placeholder="${htmlEscape(c.displayName)}">`; break;
+      default:
+        html+=`<input type="text" id="${fid}" value="${htmlEscape(vDisplay)}"${req}>`;
+    }
+    html+=`</div>`;
+  });
+  html+=`<div class="attachment-section"><label>Attachments</label><div id="attachment-list">${editingId?'<div class="attachment-loading">Loading...</div>':'<div class="attachment-empty">Save the item first to add attachments.</div>'}</div>${editingId?'<div class="attachment-upload"><input type="file" id="attachment-file" multiple><button class="btn btn-primary" onclick="uploadSelectedAttachments()">Upload</button></div>':''}</div>`;
+  body.innerHTML=html;
+  document.getElementById('form-overlay').classList.remove('hidden');
+  document.getElementById('save-status').className='save-status';
+  document.getElementById('save-btn').textContent=editingId?'💾 Update':'💾 Create';
+  if(editingId)loadAttachmentsList();
+}
+
+function closeForm(){
+  document.getElementById('form-overlay').classList.add('hidden');
+  editingId=null; selectedItem=null; renderTable();
+  if(currentDept&&allItems.length)fetchAllAttachmentCounts();
+  // Hide header edit button if present
+  const eb=document.querySelector('.header-edit-btn');
+  if(eb)eb.style.display='none';
+}
+
+// ======================== SAVE ========================
+async function saveItem(){
+  document.getElementById('save-btn').disabled=true;
+  const statusEl=document.getElementById('save-status');
+  statusEl.className='save-status saving'; statusEl.textContent='Saving...';
+  try{
+    const fields={};
+    const skipForm=new Set(['_id','_etag','ID','ContentType','AppAuthor','AppEditor','Author','Editor','Created','Modified']);
+    columnDefs.forEach(c=>{
+      if(skipForm.has(c.name))return;
+      const fid='f_'+c.name.replace(/[^a-zA-Z0-9_-]/g,'_');
+      const el=document.getElementById(fid);
+      if(!el)return;
+      let val;
+      if(c.type==='multiChoice'){
+        const inputs=document.querySelectorAll('#'+fid+' input[type=checkbox]:checked');
+        val=inputs.length>0?Array.from(inputs).map(inp=>inp.value).join('; '):null;
+      }else if(c.type==='boolean'){
+        val=el.value; if(val==='1'||val==='true')val=true; else if(val==='0'||val==='false')val=false; else val=null;
+      }else if(c.type==='number'||c.type==='currency'){val=el.value!==''?Number(el.value):null;}
+      else if(c.type==='date'){val=el.value||null;}
+      else{val=el.value||null;}
+      if(val!==null&&val!=='')fields[c.name]=val;
+      else if(val===null||val==='')fields[c.name]=null;
+    });
+    if(!currentDept)throw new Error('No department selected');
+    console.log('SAVE:',{editingId,fields,dept:currentDept.id,list:currentDept.list});
+    if(Object.keys(fields).length===0)throw new Error('No fields to save - form fields may be empty');
+    if(editingId){await updateSPItem(currentDept.site,currentDept.list,editingId,fields); statusEl.textContent='✓ Updated'; showToast('Item updated','success');}
+    else{await createSPItem(currentDept.site,currentDept.list,fields); statusEl.textContent='✓ Created'; showToast('Item created','success');}
+    statusEl.className='save-status saved';
+    await refreshItems();
+    setTimeout(()=>closeForm(),600);
+  }catch(e){
+    console.error('Save:',e);
+    statusEl.className='save-status error'; statusEl.textContent='✗ '+e.message;
+    showToast('Save failed: '+e.message,'error');
+  }
+  document.getElementById('save-btn').disabled=false;
+}
+
+// ======================== BULK UPLOAD ========================
+function downloadTemplate(){
+  if(!columnDefs.length||!currentDept){showToast('No columns loaded','error');return;}
+  const cols=columnDefs;
+  const headers=cols.map(c=>c.displayName||c.name);
+  const sample=cols.map(c=>{
+    if(c.type==='date')return '2025-01-01';
+    if(c.type==='choice'&&c.choices&&c.choices.length)return c.choices[0];
+    if(c.type==='number'||c.type==='currency')return '0';
+    if(c.type==='boolean')return 'true';
+    return '';
+  });
+  const esc=(v)=>'"'+String(v).replace(/"/g,'""')+'"';
+  const csv=esc('Title')+','+headers.map(esc).join(',')+'\n'+
+            esc('Sample Item')+','+sample.map(esc).join(',')+'\n'+
+            esc('')+','+headers.map(()=>'').join(',')+'\n';
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download=(currentDept.title||'template')+'_template.csv';
+  a.click();URL.revokeObjectURL(a.href);
+  showToast('Template downloaded','success');
+}
+
+let bulkData=null;
+function openBulkUpload(){
+  bulkData=null;
+  document.getElementById('bulk-import-btn').disabled=true;
+  document.getElementById('bulk-status').className='save-status';
+  document.getElementById('bulk-status').textContent='';
+  document.getElementById('bulk-body').innerHTML=
+    '<div class="bulk-drop-zone" id="bulk-drop-zone" onclick="document.getElementById(\'bulk-file-input\').click()">'+
+      '<div class="icon">📄</div><p>Click to select a CSV file or drag & drop here</p>'+
+      '<p style="font-size:11px">First row should be column headers matching the department fields</p>'+
+      '<div class="hint" style="margin-top:8px;font-size:11px">📥 <a href="#" onclick="downloadTemplate();return false" style="color:var(--blue)">Download template</a> first if needed</div>'+
+    '</div>'+
+    '<input type="file" id="bulk-file-input" accept=".csv" style="display:none" onchange="handleBulkFile(this.files)">'+
+    '<div id="bulk-preview-area"></div>';
+  const dz=document.getElementById('bulk-drop-zone');
+  dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('dragover');});
+  dz.addEventListener('dragleave',()=>dz.classList.remove('dragover'));
+  dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('dragover');if(e.dataTransfer.files.length)handleBulkFile(e.dataTransfer.files);});
+  document.getElementById('bulk-overlay').classList.add('show');
+}
+
+function closeBulkUpload(){
+  document.getElementById('bulk-overlay').classList.remove('show');
+  bulkData=null;
+}
+
+function handleBulkFile(files){
+  if(!files||!files.length)return;
+  const file=files[0];
+  const reader=new FileReader();
+  reader.onload=function(e){
+    const text=e.target.result;
+    parseBulkCSV(text);
+  };
+  reader.readAsText(file);
+}
+
+function parseBulkCSV(text){
+  const lines=text.split(/\r?\n/).filter(l=>l.trim());
+  if(lines.length<2){showToast('CSV must have headers and at least one data row','error');return;}
+  const headers=parseCSVLine(lines[0]);
+  const rows=lines.slice(1).map(l=>parseCSVLine(l));
+  const nonEmptyRows=rows.filter(r=>r.some(c=>c.trim()));
+  if(!nonEmptyRows.length){showToast('No data rows found','error');return;}
+  const colDefs=columnDefs.filter(c=>!c.name.startsWith('_')&&c.name!=='ID'&&c.name!=='ContentType');
+  const mapping=headers.map(h=>{
+    const trimmed=h.trim();
+    const match=colDefs.find(c=>(c.displayName||c.name).toLowerCase()===trimmed.toLowerCase());
+    return {header:trimmed,col:match||null,skip:!match};
+  });
+  const previewRows=nonEmptyRows.slice(0,10);
+  let html='<div style="margin-bottom:8px;font-size:12px;color:var(--text-secondary)">'+
+    '<strong>'+nonEmptyRows.length+'</strong> row(s) parsed'+
+    ' · <strong>'+mapping.filter(m=>m.col).length+'/'+headers.length+'</strong> columns matched'+
+    (nonEmptyRows.length>10?' · showing first 10':'')+
+    '</div>';
+  html+=`<div class="bulk-preview"><table><thead><tr>`;
+  mapping.forEach(m=>{
+    html+=`<th title="${m.col?m.col.displayName+' ('+m.col.name+')':'Unmatched column'}">${htmlEscape(m.header)}${m.skip?' <span style="color:var(--orange);font-size:10px">⚠️ skip</span>':''}</th>`;
+  });
+  html+=`</tr></thead><tbody>`;
+  previewRows.forEach(row=>{
+    html+=`<tr>`;
+    row.forEach((cell,i)=>{
+      html+=`<td>${htmlEscape(cell.substring(0,100))}</td>`;
+    });
+    html+=`</tr>`;
+  });
+  html+=`</tbody></table></div>`;
+  const mappedCount=mapping.filter(m=>m.col).length;
+  document.getElementById('bulk-preview-area').innerHTML=html;
+  document.getElementById('bulk-import-btn').disabled=mappedCount===0||nonEmptyRows.length===0;
+  bulkData={headers,rows:nonEmptyRows,mapping};
+}
+
+function parseCSVLine(line){
+  const result=[];let current='',inQuotes=false;
+  for(let i=0;i<line.length;i++){
+    const c=line[i];
+    if(inQuotes){
+      if(c==='"'){if(line[i+1]==='"'){current+='"';i++;}else inQuotes=false;}
+      else current+=c;
+    }else{
+      if(c==='"')inQuotes=true;
+      else if(c===','){result.push(current);current='';}
+      else current+=c;
+    }
+  }
+  result.push(current);
+  return result;
+}
+
+async function importBulkItems(){
+  if(!bulkData||!bulkData.rows.length||!currentDept||!spToken)return;
+  const btn=document.getElementById('bulk-import-btn');
+  const statusEl=document.getElementById('bulk-status');
+  btn.disabled=true;statusEl.className='save-status saving';statusEl.textContent='Importing...';
+  const validCols=bulkData.mapping.filter(m=>m.col).map(m=>m.col.name);
+  const total=bulkData.rows.length;
+  let success=0,fail=0;
+  for(let i=0;i<total;i++){
+    const row=bulkData.rows[i];
+    const fields={};
+    bulkData.mapping.forEach((m,ci)=>{
+      if(m.col&&row[ci]!==undefined&&row[ci].trim()!==''){
+        let val=row[ci].trim();
+        if(m.col.type==='number'||m.col.type==='currency'){const n=Number(val);if(!isNaN(n))val=n;}
+        else if(m.col.type==='boolean'){val=val.toLowerCase()==='true'||val==='1'||val==='yes';}
+        fields[m.col.name]=val;
+      }
+    });
+    try{
+      await createSPItem(currentDept.site,currentDept.list,fields);
+      success++;
+    }catch(e){
+      fail++;
+      console.error('Bulk import row '+i+':',e.message);
+    }
+    if(i%5===0||i===total-1){
+      statusEl.textContent='Importing... '+Math.round((i+1)/total*100)+'% ('+success+' ok, '+fail+' failed)';
+    }
+  }
+  statusEl.className='save-status '+(fail===0?'saved':'error');
+  statusEl.textContent=fail===0?'✓ '+success+' items created':'✓ '+success+' created, ✗ '+fail+' failed';
+  showToast(fail===0?'All '+success+' items created':success+' created, '+fail+' failed','success');
+  await refreshItems();
+  btn.disabled=false;
+  if(fail===0)setTimeout(()=>closeBulkUpload(),1500);
+}
+
+// ======================== EXPORT ========================
+function openExport(){
+  if(!currentDept||!allItems.length){showToast('No data to export','error');return;}
+  document.getElementById('export-status').className='save-status';
+  document.getElementById('export-status').textContent='';
+  document.getElementById('export-btn').disabled=false;
+  const depts=DEPTS;
+  const choiceCols=columnDefs.filter(c=>c.type==='choice'&&c.choices&&c.choices.length);
+  const dateCols=columnDefs.filter(c=>c.type==='date');
+  let html='';
+  html+='<div class="export-section"><div class="export-section-title">Department</div><div class="export-row">';
+  html+='<select id="export-dept"><option value="current">'+htmlEscape(currentDept.title)+' (Current)</option>';
+  depts.forEach(d=>{if(d.id!==currentDept.id)html+='<option value="'+d.id+'">'+htmlEscape(d.title)+'</option>';});
+  html+='<option value="all">All Departments</option></select></div></div>';
+  if(dateCols.length){
+    html+='<div class="export-section"><div class="export-section-title">Date Range</div><div class="export-row">';
+    html+='<label>From: <input type="date" id="export-date-from"></label>';
+    html+='<label>To: <input type="date" id="export-date-to"></label></div></div>';
+  }
+  choiceCols.forEach(c=>{
+    html+='<div class="export-section"><div class="export-section-title">'+htmlEscape(c.displayName||c.name)+'</div>';
+    html+='<div class="export-status-group">';
+    html+='<label><input type="checkbox" class="export-choice-all" data-col="'+c.name+'" checked onchange="toggleChoiceGroup(this)"> All</label>';
+    c.choices.forEach(ch=>{
+      html+='<label><input type="checkbox" class="export-choice" data-col="'+c.name+'" value="'+htmlEscape(ch)+'" checked> '+htmlEscape(ch)+'</label>';
+    });
+    html+='</div></div>';
+  });
+  html+='<div class="export-section"><div class="export-section-title">Format</div><div class="export-format-group">';
+  html+='<label><input type="radio" name="export-format" value="excel" checked><span>📗 Excel</span></label>';
+  html+='<label><input type="radio" name="export-format" value="pdf"><span>📄 PDF</span></label></div></div>';
+  document.getElementById('export-body').innerHTML=html;
+  document.getElementById('export-overlay').classList.add('show');
+}
+function closeExport(){
+  document.getElementById('export-overlay').classList.remove('show');
+}
+function toggleChoiceGroup(el){
+  const checked=el.checked;
+  el.closest('.export-section').querySelectorAll('.export-choice').forEach(cb=>cb.checked=checked);
+}
+async function runExport(){
+  const btn=document.getElementById('export-btn');
+  const status=document.getElementById('export-status');
+  btn.disabled=true;status.className='save-status saving';status.textContent='Preparing...';
+  try{
+    const format=document.querySelector('input[name="export-format"]:checked').value;
+    const deptVal=document.getElementById('export-dept').value;
+    const dateFrom=document.getElementById('export-date-from')?document.getElementById('export-date-from').value:'';
+    const dateTo=document.getElementById('export-date-to')?document.getElementById('export-date-to').value:'';
+    const choiceFilters={};
+    document.querySelectorAll('.export-choice').forEach(cb=>{
+      if(!cb.checked){
+        if(!choiceFilters[cb.dataset.col])choiceFilters[cb.dataset.col]=[];
+        choiceFilters[cb.dataset.col].push(cb.value);
+      }
+    });
+    const excludeChoices=Object.keys(choiceFilters).length?choiceFilters:null;
+    const fn=htmlEscape(currentDept.title).replace(/[^a-z0-9]/gi,'_')+'_Export_'+new Date().toISOString().slice(0,10);
+    if(deptVal==='all'){
+      const allDepts=DEPTS;
+      if(format==='excel'){await exportAllExcel(allDepts,dateFrom,dateTo,excludeChoices,fn,status);}
+      else{await exportAllPDF(allDepts,dateFrom,dateTo,excludeChoices,fn,status);}
+    }else{
+      let dept=deptVal==='current'?currentDept:DEPTS.find(d=>d.id===deptVal);
+      if(!dept)dept=currentDept;
+      let items=dept.id===currentDept.id?filteredItems:await fetchSPItems(dept.site,dept.list);
+      let cols=dept.id===currentDept.id?columnDefs:await fetchColumnDefinitions(dept.site,dept.list);
+      items=applyExportFilters(items,cols,dateFrom,dateTo,excludeChoices);
+      if(format==='excel'){await exportExcel(items,cols,dept,dateFrom,dateTo,excludeChoices,fn,status);}
+      else{await exportPDF(items,cols,dept,dateFrom,dateTo,excludeChoices,fn,status);}
+    }
+    status.className='save-status saved';status.textContent='✓ Exported';
+    showToast('Export complete','success');
+  }catch(e){console.error('Export:',e);status.className='save-status error';status.textContent='Error: '+e.message;showToast('Export failed: '+e.message,'error');}
+  btn.disabled=false;
+}
+function applyExportFilters(items,cols,dateFrom,dateTo,excludeChoices){
+  let result=items;
+  if(dateFrom||dateTo){
+    const dateCols=cols.filter(c=>c.type==='date');
+    if(dateCols.length){
+      const dc=dateCols[0].name;
+      result=result.filter(item=>{
+        const val=item[dc];
+        if(!val)return false;
+        const d=new Date(val);
+        if(isNaN(d.getTime()))return true;
+        if(dateFrom&&d<new Date(dateFrom))return false;
+        if(dateTo){const end=new Date(dateTo);end.setHours(23,59,59,999);if(d>end)return false;}
+        return true;
+      });
+    }
+  }
+  if(excludeChoices){
+    Object.keys(excludeChoices).forEach(col=>{
+      const excluded=excludeChoices[col];
+      result=result.filter(item=>!excluded.includes(item[col]));
+    });
+  }
+  return result;
+}
+async function fetchDeptData(dept){
+  const cols=await fetchColumnDefinitions(dept.site,dept.list);
+  const items=await fetchSPItems(dept.site,dept.list);
+  return {cols,items};
+}
+async function exportAllExcel(depts,dateFrom,dateTo,excludeChoices,fn,status){
+  if(typeof XLSX==='undefined'){showToast('Excel library not loaded','error');return;}
+  const wb=XLSX.utils.book_new();
+  for(let i=0;i<depts.length;i++){
+    const d=depts[i];
+    status.textContent='Fetching '+d.title+'...';
+    const {cols,items}=await fetchDeptData(d);
+    const filtered=applyExportFilters(items,cols,dateFrom,dateTo,excludeChoices);
+    const visible=reorderForExport(cols);
+    const rows=filtered.map(item=>{
+      const row={};visible.forEach(c=>{row[c.displayName||c.name]=item[c.name]??item[c.displayName||c.name]??'';});return row;
+    });
+    const ws=XLSX.utils.json_to_sheet(rows);
+    XLSX.utils.sheet_add_aoa(ws,[[d.title+' - AlEnshaiah','','','','Generated: '+new Date().toLocaleDateString()]],{origin:'A1'});
+    ws['!merges']=[{s:{r:0,c:0},e:{r:0,c:Math.max(visible.length-1,4)}}];
+    const wscols=visible.map(()=>({wch:20}));
+    ws['!cols']=wscols;
+    XLSX.utils.book_append_sheet(wb,ws,d.title.slice(0,31));
+  }
+  XLSX.writeFile(wb,fn+'.xlsx');
+}
+async function exportExcel(items,cols,dept,dateFrom,dateTo,excludeChoices,fn,status){
+  if(typeof XLSX==='undefined'){showToast('Excel library not loaded','error');return;}
+  const wb=XLSX.utils.book_new();
+  const visible=reorderForExport(cols);
+  const rows=items.map(item=>{
+    const row={};visible.forEach(c=>{row[c.displayName||c.name]=item[c.name]??item[c.displayName||c.name]??'';});return row;
+  });
+  const ws=XLSX.utils.json_to_sheet(rows);
+  XLSX.utils.sheet_add_aoa(ws,[['AlEnshaiah - Project Management System']],{origin:'A1'});
+  XLSX.utils.sheet_add_aoa(ws,[[dept.title+' - Data Export','','','','Generated: '+new Date().toLocaleDateString()]],{origin:'A2'});
+  if(dateFrom||dateTo){XLSX.utils.sheet_add_aoa(ws,[['Date Range: '+(dateFrom||'...')+' to '+(dateTo||'...')]],{origin:'A3'});}
+  const headers=visible.map(c=>c.displayName||c.name);
+  XLSX.utils.sheet_add_aoa(ws,[headers],{origin:{r:dateFrom||dateTo?3:2,c:0}});
+  const startRow=dateFrom||dateTo?4:3;
+  XLSX.utils.sheet_add_json(ws,rows,{origin:{r:startRow,c:0},skipHeader:true});
+  ws['!merges']=[{s:{r:0,c:0},e:{r:0,c:Math.max(visible.length-1,4)}}];
+  ws['!cols']=visible.map(()=>({wch:22}));
+  XLSX.utils.book_append_sheet(wb,ws,'Data');
+  XLSX.writeFile(wb,fn+'.xlsx');
+}
+function downloadBlob(blob,name){
+  const safeName=name.replace(/[<>:"/\\|?*]/g,'_');
+  // Method 1: anchor click with blob URL
+  try{
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;a.download=safeName;a.style.display='none';
+    document.body.appendChild(a);a.click();
+    setTimeout(()=>document.body.removeChild(a),1000);
+    return;
+  }catch(e){console.warn('downloadBlob method 1 failed:',e);}
+  // Method 2: window.open fallback
+  try{
+    const url=URL.createObjectURL(blob);
+    window.open(url,'_blank');
+    setTimeout(()=>URL.revokeObjectURL(url),30000);
+  }catch(e){console.warn('downloadBlob method 2 failed:',e);}
+}
+function exportVisibleCols(cols){
+  return cols.filter(c=>!EXPORT_SKIP_COLS.has(c.name)&&!EXPORT_SKIP_COLS.has(c.displayName)&&!c.name.startsWith('_'));
+}
+function calcColWidths(headers,data,usableWidth){
+  const n=headers.length;
+  if(n===0)return[];
+  const minW=10,maxW=70;
+  // Content weight per column (header + data length)
+  const weights=headers.map((h,i)=>{
+    let maxLen=h.length;
+    for(let r=0;r<Math.min(data.length,200);r++){
+      if(data[r]&&data[r][i])maxLen=Math.max(maxLen,String(data[r][i]).length);
+    }
+    return Math.max(maxLen,1);
+  });
+  const totalW=weights.reduce((a,b)=>a+b,0);
+  if(totalW<=0)return Array(n).fill(usableWidth/n);
+  // Distribute proportionally
+  let widths=weights.map(w=>(w/totalW)*usableWidth);
+  // Iteratively enforce min/max and redistribute surplus/deficit
+  for(let iter=0;iter<20;iter++){
+    const clamped=widths.map(w=>Math.max(minW,Math.min(maxW,w)));
+    const sum=clamped.reduce((a,b)=>a+b,0);
+    if(Math.abs(sum-usableWidth)<0.5)return clamped;
+    const freeIdx=[];
+    for(let i=0;i<n;i++)if(clamped[i]>minW&&clamped[i]<maxW)freeIdx.push(i);
+    if(freeIdx.length===0)return clamped;
+    const diff=usableWidth-sum;
+    const freeWeight=freeIdx.reduce((s,i)=>s+weights[i],0);
+    if(freeWeight<=0)return clamped;
+    widths=clamped.map((w,i)=>freeIdx.includes(i)?w+diff*(weights[i]/freeWeight):w);
+  }
+  return widths.map(w=>Math.max(minW,Math.min(maxW,w)));
+}
+async function loadLogoDataURL(){
+  try{
+    const r=await fetch('logo.png');
+    if(r.ok){const b=await r.blob();const url=await new Promise((res,rej)=>{const f=new FileReader();f.onload=()=>res(f.result);f.onerror=rej;f.readAsDataURL(b);});const img=new Image();await new Promise((res,rej)=>{img.onload=res;img.onerror=rej;img.src=url;});return{url,width:img.naturalWidth,height:img.naturalHeight};}
+  }catch{}
+  return null;
+}
+function addPDFHeader(doc,deptTitle,dateFrom,dateTo,logoData){
+  const pw=doc.internal.pageSize.getWidth();
+  doc.setFillColor(245,245,245);doc.rect(0,0,pw,30,'F');
+  doc.setDrawColor(76,93,113);doc.setLineWidth(0.6);doc.line(8,29,pw-8,29);
+  if(logoData){
+    try{
+      const maxW=48,maxH=24,ratio=Math.min(maxW/logoData.width,maxH/logoData.height);
+      const w=Math.round(logoData.width*ratio),h=Math.round(logoData.height*ratio);
+      doc.addImage(logoData.url,'PNG',10,5,w,h);
+    }catch{}
+  }
+  doc.setFontSize(11);doc.setFont('helvetica','bold');doc.text('AlEnshaiah - Project Management System',pw/2,10,{align:'center'});
+  doc.setFontSize(9);doc.setFont('helvetica','normal');doc.text(deptTitle||'Data Export',pw/2,16.5,{align:'center'});
+  doc.setFontSize(7);doc.text(new Date().toLocaleString(),pw-8,8,{align:'right'});
+  if(dateFrom||dateTo){doc.setFontSize(8);doc.text('Period: '+(dateFrom||'...')+' to '+(dateTo||'...'),pw/2,22,{align:'center'});}
+}
+function addPDFFooter(doc,pageNum,totalPages){
+  const pw=doc.internal.pageSize.getWidth();
+  doc.setDrawColor(200,200,200);doc.setLineWidth(0.3);doc.line(8,doc.internal.pageSize.getHeight()-10,pw-8,doc.internal.pageSize.getHeight()-10);
+  doc.setFontSize(7);doc.setFont('helvetica','normal');doc.setTextColor(150,150,150);
+  doc.text('AlEnshaiah Contracting Co.',pw/2,doc.internal.pageSize.getHeight()-5,{align:'center'});
+  if(totalPages>1)doc.text('Page '+pageNum+' of '+totalPages,pw-8,doc.internal.pageSize.getHeight()-5,{align:'right'});
+  doc.setTextColor(0,0,0);
+}
+function computeKpis(items){
+  const kpis={total:items.length};
+  if(!items.length)return kpis;
+  const first=items[0];
+  const statusKey=['status','WorkStatus','workStatus','STATUS','Status'].find(k=>first[k]!==undefined);
+  if(statusKey){
+    items.forEach(x=>{
+      const v=(x[statusKey]||'').toLowerCase();
+      if(/complete|done|acc\b.*comp|sdc\b.*comp/i.test(v))kpis.completed=(kpis.completed||0)+1;
+      else if(/in.?progress|inprogress|for.?insp|under.?review|submitted|open/i.test(v))kpis.inProgress=(kpis.inProgress||0)+1;
+      else if(/not.?start|yet.?to.?start/i.test(v))kpis.notStarted=(kpis.notStarted||0)+1;
+      if(/overdue|delay/i.test(v))kpis.overdue=(kpis.overdue||0)+1;
+    });
+  }
+  const progKey=['prog','Progress','progress','CompletionPct','DailyProgress','WeeklyProgress'].find(k=>first[k]!==undefined);
+  if(progKey){
+    const vals=items.map(x=>Number(x[progKey])).filter(v=>!isNaN(v));
+    if(vals.length)kpis.avgProg=Math.round(vals.reduce((a,b)=>a+b,0)/vals.length);
+  }
+  return kpis;
+}
+function computeProcurementKpis(items){
+  function val(x){return x.matSubStatus||x['Material Submitta STATUS']||x['Material_x0020_Submitta_x0020_STATUS']||'';}
+  function poIsIssued(x){
+    const ad=x.actualPoDate||x['Actual PO']||x['Actual PO DATE']||x['ACTUAL PO DATE']||x['ACTUAL_x0020_PO_x0020_DATE']||'';
+    if(ad&&ad!=='N/A')return true;
+    const ps=x['Actual PO Status']||x['ACTUAL PO Status']||x['ACTUAL PO STATUS']||x['ACTUAL_x0020_PO_x0020_Status']||x['ACTUAL_x0020_PO_x0020_STATUS']||'';
+    if(typeof ps==='string'&&ps.toLowerCase()==='done')return true;
+    const pq=x.pqStatus||x['PQ  Status']||x['PQ_x0020__x0020_Status']||x['PQ_x0020_Status']||'';
+    if(typeof pq==='string'&&pq.toLowerCase()==='done')return true;
+    return x.poRef&&x.poRef!==''&&x.poRef!=='N/A';
+  }
+  function delIsDone(x){
+    const ds=(x.deliveryStatus||x['Actual Delivery Status']||x['ACTUAL DELIVERY STATUS']||x['ACTUAL_x0020_DELIVERY_x0020_STATUS']||'').toLowerCase();
+    return ds==='done'||ds==='as site required'||/deliver|receiv|complet/i.test(ds)&&!/pend|overdue|part/i.test(ds);
+  }
+  function isLongLead(x){const v=x.leadTime||x['Lead Time']||x['PROCUREMENT LEAD TIME']||x['PROCUREMENT_x0020_LEAD_x0020_TIME']||'';return Number(v)>60||(typeof v==='string'&&v.toLowerCase()==='lli');}
+  function isPqApproved(x){const s=x.pqStatus||x['PQ  Status']||x['PQ_x0020__x0020_Status']||x['PQ_x0020_Status']||'';return /approv|accept|pass/i.test(s)||/^[be]$/i.test(s);}
+  function isMarOpen(x){const m=val(x);return m&&m!==''&&m!=='N/A'&&m.toLowerCase()==='mar open';}
+  function hasMat(x){const m=val(x);return m&&m!==''&&m!=='N/A';}
+  const t=items.length;
+  const pi=items.filter(poIsIssued).length;
+  const pp=t-pi;
+  const dd=items.filter(delIsDone).length;
+  const dp=t-dd;
+  const ll=items.filter(isLongLead).length;
+  const pa=items.filter(isPqApproved).length;
+  const ms=items.filter(hasMat).length;
+  const ma=items.filter(x=>hasMat(x)&&!isMarOpen(x)).length;
+  const mo=items.filter(isMarOpen).length;
+  return {
+    total:t,poIssued:pi,poPending:pp,delCompleted:dd,delPending:dp,
+    longLead:ll,pqApproved:pa,matSubmitted:ms,matApproved:ma,openMar:mo
+  };
+}
+function addKpiSection(doc,items,startY,dept){
+  if(!items||!items.length)return startY;
+  const isProc=dept&&dept.id==='procurement';
+  const pw=doc.internal.pageSize.getWidth();
+  const ml=6,gap=2,total=items.length;
+  const CARD_BG=[240,240,242];  // gentle gray background
+  const CARD_SHADOW=[210,210,215];
+  // Status colors: green=on track, orange=fair, red=behind
+  const G=[112,173,71],O=[37,150,190],R=[192,4,1],MAT=[15,107,120];
+  // Status color based on percentage (same logic as project-tracker)
+  function sc(pct,invert){
+    if(invert){if(pct<=20)return G;if(pct<=50)return O;return R;}
+    if(pct>=70)return G;if(pct>=40)return O;return R;
+  }
+  function tr(g,t){if(!t)return'';const r=g/t;return r>=0.7?'ON TRACK':r>=0.4?'FAIR':'BEHIND';}
+  // Progress bar: gray track, fill in status color
+  function drawProgressBar(x,y,w,pct,color){
+    const bw=w-10,bh=2.2,bx=x+5,by=y;
+    doc.setFillColor(220,220,225);
+    doc.roundedRect(bx,by,bw,bh,1.1,1.1,'F');
+    const fillW=Math.min(Math.max(pct,0),100)/100*bw;
+    if(fillW>0.5){doc.setFillColor(...color);doc.roundedRect(bx,by,fillW,bh,1.1,1.1,'F');}
+  }
+  // Draw one KPI card with management-friendly design
+  function drawCard(card,x,y,boxW,boxH){
+    const col=card.c||[80,80,90];
+    // Shadow
+    doc.setFillColor(...CARD_SHADOW);
+    doc.roundedRect(x+0.3,y+0.3,boxW,boxH,3,3,'F');
+    // Gray card body
+    doc.setFillColor(...CARD_BG);
+    doc.roundedRect(x,y,boxW,boxH,3,3,'F');
+    // Bold top accent line in status color
+    doc.setDrawColor(...col);doc.setLineWidth(1.2);
+    doc.line(x+4,y+0.5,x+boxW-4,y+0.5);
+    // Trend label (top-right)
+    if(card.t){
+      doc.setFontSize(6);doc.setFont('helvetica','bold');doc.setTextColor(...col);
+      doc.text(card.t,x+boxW-3,y+3,{align:'right'});
+    }
+    // Label (uppercase, bold, status-colored)
+    doc.setFontSize(6.5);doc.setFont('helvetica','bold');doc.setTextColor(...col);
+    doc.text(card.l.toUpperCase(),x+boxW/2,y+4.5,{align:'center'});
+    // Count: "X / Y" (large, bold, status-colored)
+    doc.setFontSize(13);doc.setFont('helvetica','bold');doc.setTextColor(...col);
+    if(card.v!==undefined&&card.noTotal){
+      doc.text(String(card.v),x+boxW/2,y+9.5,{align:'center'});
+    }else if(card.v!==undefined&&card.p!==undefined){
+      doc.text(card.v+' / '+total,x+boxW/2-2,y+9.5,{align:'right'});
+      doc.setFontSize(7.5);doc.setFont('helvetica','bold');doc.setTextColor(100,100,110);
+      doc.text(card.p+'%',x+boxW/2+3,y+9.5,{align:'left'});
+    }else{
+      doc.setFontSize(13);doc.setFont('helvetica','bold');doc.setTextColor(60,60,70);
+      doc.text(String(card.v),x+boxW/2,y+9.5,{align:'center'});
+    }
+    // Progress bar at bottom
+    if(card.p!==undefined)drawProgressBar(x,y+12,boxW,card.p,col);
+    doc.setTextColor(0,0,0);doc.setFont('helvetica','normal');
+  }
+  // Centered start X for card rows (truly centered on page)
+  function centerX(n,boxW){const tw=n*boxW+(n-1)*gap;return(pw-tw)/2;}
+  if(isProc){
+    const k=computeProcurementKpis(items);
+    startY+=4;
+    doc.setFontSize(9);doc.setFont('helvetica','bold');doc.setTextColor(60,60,80);
+    doc.text('PERFORMANCE OVERVIEW',pw/2,startY,{align:'center'});
+    doc.setTextColor(0,0,0);doc.setFont('helvetica','normal');
+    const pc=v=>total?Math.round(v/total*100):0;
+    const cards=[
+      {l:'Total Items',v:total,c:[80,80,90],noTotal:true},
+      {l:'PO Issued',v:k.poIssued,c:sc(pc(k.poIssued)),p:pc(k.poIssued),t:tr(k.poIssued,total)},
+      {l:'PO Pending',v:k.poPending,c:sc(pc(k.poPending),true),p:pc(k.poPending),t:tr(total-k.poPending,total)},
+      {l:'Del. Completed',v:k.delCompleted,c:sc(pc(k.delCompleted)),p:pc(k.delCompleted),t:tr(k.delCompleted,total)},
+      {l:'Del. Pending',v:k.delPending,c:sc(pc(k.delPending),true),p:pc(k.delPending),t:tr(total-k.delPending,total)},
+      {l:'Long Lead',v:k.longLead,c:[192,4,1],p:pc(k.longLead),t:tr(total-k.longLead,total)},
+      {l:'PQ Approved',v:k.pqApproved,c:sc(pc(k.pqApproved)),p:pc(k.pqApproved),t:tr(k.pqApproved,total)},
+      {l:'MAT Submitted',v:k.matSubmitted,c:MAT,p:pc(k.matSubmitted),t:tr(k.matSubmitted,total)},
+      {l:'MAT Approved',v:k.matApproved,c:MAT,p:pc(k.matApproved),t:tr(k.matApproved,total)},
+      {l:'Open MAR',v:k.openMar,c:sc(pc(k.openMar),true),p:pc(k.openMar),t:tr(total-k.openMar,total)}
+    ];
+    const cols=5,rows=2;
+    const boxW=(pw-2*ml-(cols-1)*gap)/cols;
+    const boxH=18;
+    const sx=centerX(cols,boxW);
+    const cardY=startY+5;
+    for(let r=0;r<rows;r++){
+      let x=sx;
+      for(let c=0;c<cols;c++){
+        const idx=r*cols+c;
+        if(idx>=cards.length)break;
+        drawCard(cards[idx],x,cardY+r*(boxH+gap),boxW,boxH);
+        x+=boxW+gap;
+      }
+    }
+    const sepY=cardY+rows*(boxH+gap)+3;
+    doc.setDrawColor(200,200,205);doc.setLineWidth(0.6);
+    doc.line(sx,sepY,sx+cols*boxW+(cols-1)*gap,sepY);
+    doc.setTextColor(0,0,0);doc.setFont('helvetica','normal');
+    return sepY+3;
+  }
+  const kpis=computeKpis(items);
+  startY+=4;
+  doc.setFontSize(9);doc.setFont('helvetica','bold');doc.setTextColor(60,60,80);
+  doc.text('PERFORMANCE OVERVIEW',pw/2,startY,{align:'center'});
+  doc.setTextColor(0,0,0);doc.setFont('helvetica','normal');
+  const cards=[];
+  cards.push({l:'Total Items',v:total,c:[80,80,90],noTotal:true});
+  if(kpis.completed!==undefined)cards.push({l:'Completed',v:kpis.completed,c:G});
+  if(kpis.inProgress!==undefined)cards.push({l:'In Progress',v:kpis.inProgress,c:O});
+  if(kpis.notStarted!==undefined)cards.push({l:'Not Started',v:kpis.notStarted,c:[140,140,140]});
+  if(kpis.overdue!==undefined)cards.push({l:'Overdue',v:kpis.overdue,c:R});
+  if(kpis.avgProg!==undefined)cards.push({l:'Avg Progress',v:kpis.avgProg+'%',c:[80,80,90]});
+  const boxW=(pw-2*ml-(cards.length-1)*gap)/cards.length;
+  const boxH=16;
+  const sx=centerX(cards.length,boxW);
+  const cardY=startY+5;
+  let x=sx;
+  cards.forEach(c=>{drawCard(c,x,cardY,boxW,boxH);x+=boxW+gap;});
+  const sepY=cardY+boxH+3;
+  doc.setDrawColor(200,200,205);doc.setLineWidth(0.6);
+  doc.line(sx,sepY,sx+cards.length*boxW+(cards.length-1)*gap,sepY);
+  doc.setTextColor(0,0,0);doc.setFont('helvetica','normal');
+  return sepY+3;
+}
+async function exportPDF(items,cols,dept,dateFrom,dateTo,excludeChoices,fn,status){
+  if(typeof jspdf==='undefined'){showToast('PDF library not loaded','error');return;}
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF('l','mm','a3');
+  const pw=doc.internal.pageSize.getWidth();
+  const ml=6,mr=6,usableW=pw-ml-mr;
+  const logoData=await loadLogoDataURL();
+  const visible=reorderForExport(cols);
+  const headers=visible.map(c=>(c.displayName||c.name));
+  const data=items.map(item=>visible.map(c=>fmtVal(item[c.name]??item[c.displayName||c.name])));
+  const widths=calcColWidths(headers,data,usableW);
+  const colStyles={};widths.forEach((w,i)=>{colStyles[i]={cellWidth:w};});
+  addPDFHeader(doc,dept.title+' - Tracker Log',dateFrom,dateTo,logoData);
+  let startY=dateFrom||dateTo?38:35;
+  startY=addKpiSection(doc,items,startY,dept);
+  if(startY>doc.internal.pageSize.getHeight()-15){startY=10;doc.addPage();}
+  doc.autoTable({
+    head:[headers],body:data,startY,
+    styles:{fontSize:7,fontStyle:'bold',cellPadding:0.6,overflow:'linebreak',lineColor:[200,200,200],lineWidth:0.05},
+    headStyles:{fillColor:[76,93,113],fontSize:7,fontStyle:'bold',halign:'center',valign:'middle',lineColor:[76,93,113],lineWidth:0.15,textColor:255},
+    alternateRowStyles:{fillColor:[246,246,246]},
+    columnStyles:colStyles,
+    margin:{left:ml,right:mr,bottom:8},
+    didDrawPage:function(d){
+      const pn=doc.internal.getCurrentPageInfo().pageNumber;
+      const tp=doc.internal.getNumberOfPages();
+      addPDFFooter(doc,pn,tp);
+    }
+  });
+  try{downloadBlob(doc.output('blob'),fn+'.pdf');}catch(e){console.warn('Blob output failed, using doc.save:',e);doc.save(fn+'.pdf');}
+}
+async function exportAllPDF(depts,dateFrom,dateTo,excludeChoices,fn,status){
+  if(typeof jspdf==='undefined'){showToast('PDF library not loaded','error');return;}
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF('l','mm','a3');
+  const pw=doc.internal.pageSize.getWidth();
+  const ml=6,mr=6,usableW=pw-ml-mr;
+  const logoData=await loadLogoDataURL();
+  addPDFHeader(doc,'All Departments - Tracker Log',dateFrom,dateTo,logoData);
+  let startY=dateFrom||dateTo?38:35;
+  for(let i=0;i<depts.length;i++){
+    const d=depts[i];
+    status.textContent='Fetching '+d.title+'...';
+    const {cols,items}=await fetchDeptData(d);
+    const filtered=applyExportFilters(items,cols,dateFrom,dateTo,excludeChoices);
+    if(!filtered.length)continue;
+    const visible=reorderForExport(cols);
+    const headers=visible.map(c=>(c.displayName||c.name));
+    const data=filtered.map(item=>visible.map(c=>fmtVal(item[c.name]??item[c.displayName||c.name])));
+    const widths=calcColWidths(headers,data,usableW);
+    const colStyles={};widths.forEach((w,i)=>{colStyles[i]={cellWidth:w};});
+    if(startY>doc.internal.pageSize.getHeight()-20){doc.addPage();startY=8;}
+    doc.setFontSize(8);doc.setFont('helvetica','bold');
+    doc.text(d.title,pw/2,startY+2,{align:'center'});startY+=4;
+    startY=addKpiSection(doc,filtered,startY,d);
+    if(startY>doc.internal.pageSize.getHeight()-15){doc.addPage();startY=10;}
+    doc.autoTable({
+      head:[headers],body:data,startY,
+      styles:{fontSize:7,fontStyle:'bold',cellPadding:0.6,overflow:'linebreak',lineColor:[200,200,200],lineWidth:0.05},
+      headStyles:{fillColor:[76,93,113],fontSize:7,fontStyle:'bold',halign:'center',valign:'middle',lineColor:[76,93,113],lineWidth:0.15,textColor:255},
+      alternateRowStyles:{fillColor:[246,246,246]},
+      columnStyles:colStyles,
+      margin:{left:ml,right:mr,bottom:8},
+      didDrawPage:function(d){
+        const pn=doc.internal.getCurrentPageInfo().pageNumber;
+        const tp=doc.internal.getNumberOfPages();
+        addPDFFooter(doc,pn,tp);
+      }
+    });
+    startY=doc.lastAutoTable.finalY+6;
+  }
+  try{downloadBlob(doc.output('blob'),fn+'.pdf');}catch(e){console.warn('Blob output failed, using doc.save:',e);doc.save(fn+'.pdf');}
+}
+
+// ======================== CONFIG ========================
+function showConfig(){
+  const redirectUri=location.origin+location.pathname;
+  const savedTenant=storage.getItem('dcform-tenant')||'';
+  const savedClient=storage.getItem('dcform-client')||'';
+  const overlay=document.createElement('div');
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:1100;display:flex;align-items:center;justify-content:center';
+  overlay.innerHTML=`<div style="background:var(--white);border-radius:8px;box-shadow:0 8px 30px rgba(0,0,0,.25);width:90vw;max-width:520px;padding:20px;max-height:90vh;overflow-y:auto">
+    <h3 style="margin-bottom:16px;font-size:16px">⚙️ Azure AD Configuration</h3>
+    <div class="form-group"><label class="required">Tenant ID</label><input type="text" id="cfg-tenant" value="${savedTenant}" placeholder="Your Microsoft Entra ID Tenant ID"></div>
+    <div class="form-group"><label class="required">Client ID</label><input type="text" id="cfg-client" value="${savedClient}" placeholder="App Registration Client ID for THIS app"></div>
+    <div style="background:var(--yellow-light);border-radius:6px;padding:10px 12px;margin-bottom:12px;font-size:12px;line-height:1.5">
+      <strong>📋 Azure AD Setup (popup flow)</strong>
+      <ol style="margin:6px 0 0 16px;padding:0">
+        <li>Go to <strong>Microsoft Entra ID</strong> → <strong>App registrations</strong> → <strong>New registration</strong></li>
+        <li>Name: <code>AlEnshaiah DC Form</code> (or any name)</li>
+        <li>Supported account types: <strong>Accounts in this organizational directory only</strong></li>
+        <li>Redirect URI: <strong>Single-page application (SPA)</strong> → <code>${redirectUri}</code></li>
+        <li>Click <strong>Register</strong>, then copy the <strong>Application (client) ID</strong></li>
+        <li>Under <strong>API permissions</strong>, add:<br>
+          <code>Sites.ReadWrite.All</code> (Graph, Delegated) ${redirectUri.includes('localhost')?'':'· <code>AllSites.Write</code> (SharePoint, Delegated)'}</li>
+        <li>Grant admin consent for your organization</li>
+      </ol>
+    </div>
+    <div class="hint" style="margin-bottom:12px">This app uses a <strong>popup</strong> for login — no page reload. Ensure popups are allowed for this site.</div>
+    <button class="btn btn-primary" onclick="saveConfig()" style="width:100%;padding:8px;margin-top:8px">Save &amp; Re-authenticate</button>
+    <button class="btn btn-outline" onclick="this.closest('div').parentElement.remove()" style="width:100%;padding:8px;margin-top:8px">Close</button>
+  </div>`;
+  overlay.onclick=e=>{if(e.target===overlay)overlay.remove();};
+  document.body.appendChild(overlay);
+}
+
+function saveConfig(){
+  const t=document.getElementById('cfg-tenant').value.trim();
+  const c=document.getElementById('cfg-client').value.trim();
+  if(t)storage.setItem('dcform-tenant',t);
+  if(c)storage.setItem('dcform-client',c);
+  showToast('Config saved. Re-authenticating...','success');
+  setTimeout(()=>location.reload(),500);
+}
+
+// ======================== INIT ========================
+(function init(){
+  if(storage.getItem('dcform-dark')){document.body.classList.add('dark');document.getElementById('dark-toggle').textContent='☀️';}
+  initDeptSelect();
+  if(location.protocol==='file:'){
+    showSigninError('⚠️ This app cannot run from a local file path. Deploy to GitHub Pages, IIS, or any web server for SSO and SharePoint access.');
+    return;
+  }
+  if(typeof msal==='undefined'){
+    showSigninError('⚠️ Microsoft Authentication Library (MSAL) failed to load. Check your internet connection or ad blocker, then reload the page.');
+    return;
+  }
+  if(!initMsal()){ showSigninError('⚠️ Azure AD initialization failed. Click ⚙️ to check Tenant ID and Client ID in Config.'); return; }
+  // Check for cached account first (survives page refresh)
+  const accounts = msalApp.getAllAccounts();
+  if(accounts.length>0){
+    spUser = accounts[0];
+    msalApp.acquireTokenSilent({ scopes: SP_SCOPES, account: spUser })
+      .then(r=>{ spToken=r.accessToken; hideSigninOverlay(); updateAuthUI(); loadUserPerms().then(()=>{ initDeptSelect(); if(!hasAnyFormAccess()){ setEmpty('🔒','Access Denied','You do not have permission to access any department. Contact your administrator.'); document.getElementById('dept-select').disabled=true; }else{ const d=storage.getItem('dcform-last-dept'); if(d)onDeptChange(); } }); })
+      .catch(()=>{ spToken=null; showSigninProgress(true); ssoSilentAttempt().then(authed=>{ showSigninProgress(false); if(!authed) updateAuthUI(); }).catch(e=>{ showSigninProgress(false); console.error('[SSO]',e); updateAuthUI(); }); });
+  }else{
+    showSigninProgress(true);
+    ssoSilentAttempt().then(authed=>{
+      showSigninProgress(false);
+      if(!authed) updateAuthUI();
+    }).catch(e=>{
+      showSigninProgress(false);
+      console.error('[SSO]',e);
+      updateAuthUI();
+    });
+  }
+})();
+</script>
+</body>
+</html>
