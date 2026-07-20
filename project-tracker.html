@@ -1483,8 +1483,8 @@ function renderDashboard(){
         for(const f of codeFields){const v=x[f];if(v&&String(v).trim()){code=String(v).trim();break;}}
         if(!code){const skip=new Set(['dept','status','priority','proj','id','Title','prog','assigned','remarks','phase','part','eng','checker','appr','subDate','clientReview','apprDate','ifcDate','engDisc','spec','calc','rfi','tq','due','pStart','pFinish','aStart','aFinish','delayDays','desStatus','actId','actName','cat']);for(const k of Object.keys(x)){if(skip.has(k))continue;const v=String(x[k]).trim();if(v.length===1&&/^[A-Z]$/i.test(v)){code=v;break;}}}
         const c=code.toUpperCase();
-        if(!c)return'Not Started';
-        if(c==='A'||c==='B'||c==='E')return'Completed';
+        if(!c||c==='0')return'Not Started';
+        if(c==='A'||c==='B')return'Completed';
         return'In Progress';
       }
       if(d==='Procurement'){
