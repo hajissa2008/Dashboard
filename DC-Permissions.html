@@ -40,6 +40,7 @@ table{width:100%;border-collapse:collapse}
 th{background:var(--gray-light);padding:8px 12px;text-align:left;font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);border-bottom:1px solid var(--gray-border);position:sticky;top:0}
 td{padding:6px 12px;border-bottom:1px solid var(--gray-border);font-size:13px;vertical-align:middle}
 tr:hover{background:var(--primary-light)}
+.group-header:hover{background:var(--gray-light) !important}
 
 .badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600}
 .badge-edit{background:var(--green-light);color:var(--green)}
@@ -348,8 +349,15 @@ function permApi(id){
 
 async function loadPerms(){
   try{
-    const data=await spGet(permApi());
-    permItems=data.d?data.d.results:(data.value||[]);
+    let allItems=[];
+    let nextUrl=permApi()+'?$top=5000&$orderby=ID asc';
+    while(nextUrl){
+      const data=await spGet(nextUrl);
+      const batch=data.d?data.d.results:(data.value||[]);
+      allItems=allItems.concat(batch);
+      nextUrl=(data.d&&data.d.__next)?data.d.__next:(data['@odata.nextLink']||null);
+    }
+    permItems=allItems;
   }catch(e){
     if(e.message.includes('404')){permItems=[];showToast('Permissions list not found. Create it in SharePoint.','error');}
     else{showToast('Failed to load: '+e.message,'error');permItems=[];}
@@ -405,28 +413,96 @@ function renderTable(){
     tbody.innerHTML='<tr><td colspan="6" class="empty-state"><div class="icon">📋</div><h3>No entries found</h3><p style="margin-top:4px;color:var(--text2)">Add user permissions or adjust your filters.</p></td></tr>';
     return;
   }
-  let html='';
+  const groups={};
   items.forEach(item=>{
-    const access=(item.Access||'edit').toLowerCase();
-    const app=item.App||'Both';
-    const dept=DEPTS_BY_ID[item.DeptID];
-    const deptName=dept?dept.title:item.DeptID;
-    const checked=selectedIds.has(item.Id)?'checked':'';
-    html+='<tr>'+
-      '<td><input type="checkbox" '+checked+' onchange="toggleSelect('+item.Id+',this.checked)"></td>'+
-      '<td>'+htmlEscape(item.Title||'')+'</td>'+
-      '<td><span class="badge badge-app">'+htmlEscape(app)+'</span></td>'+
-      '<td>'+htmlEscape(deptName)+'</td>'+
-      '<td><span class="badge badge-'+access+'">'+access.charAt(0).toUpperCase()+access.slice(1)+'</span></td>'+
+    const email=(item.Title||'').toLowerCase();
+    if(!groups[email]) groups[email]={email:item.Title||'',items:[]};
+    groups[email].items.push(item);
+  });
+  let html='';
+  const sortedGroups=Object.values(groups).sort((a,b)=>a.email.localeCompare(b.email));
+  sortedGroups.forEach(g=>{
+    const apps=[...new Set(g.items.map(i=>i.App||'Both'))];
+    const appsStr=apps.map(a=>'<span class="badge badge-app">'+htmlEscape(a)+'</span>').join(' ');
+    const deptCount=g.items.length;
+    const checked=selectedIds.has('grp-'+g.email)?'checked':'';
+    html+='<tr class="group-header" style="cursor:pointer;background:var(--gray-light)" onclick="toggleGroup(this,\''+htmlEscape(g.email.replace(/'/g,"\\'"))+'\')">'+
+      '<td><input type="checkbox" '+checked+' onchange="toggleGroupSelect(\''+htmlEscape(g.email.replace(/'/g,"\\'"))+'\',this.checked)"></td>'+
+      '<td><strong>'+htmlEscape(g.email)+'</strong></td>'+
+      '<td>'+appsStr+'</td>'+
+      '<td colspan="2" style="color:var(--text2)">'+deptCount+' permission(s)</td>'+
       '<td>'+
-        '<button class="btn btn-sm" onclick="openEditModal('+item.Id+')">Edit</button> '+
-        '<button class="btn btn-sm btn-danger" onclick="deletePerm('+item.Id+')">Del</button>'+
+        '<button class="btn btn-sm" onclick="event.stopPropagation();openEditGroupModal(\''+htmlEscape(g.email.replace(/'/g,"\\'"))+'\')">Edit</button> '+
+        '<button class="btn btn-sm btn-danger" onclick="event.stopPropagation();deleteGroup(\''+htmlEscape(g.email.replace(/'/g,"\\'"))+'\')">Del All</button>'+
       '</td>'+
     '</tr>';
+    g.items.forEach(item=>{
+      const access=(item.Access||'edit').toLowerCase();
+      const dept=DEPTS_BY_ID[item.DeptID];
+      const deptName=dept?dept.title:item.DeptID;
+      html+='<tr class="group-row group-'+g.email.replace(/[^a-z0-9]/gi,'')+'" style="display:none">'+
+        '<td></td>'+
+        '<td style="padding-left:28px;color:var(--text2)">'+htmlEscape(g.email)+'</td>'+
+        '<td><span class="badge badge-app">'+htmlEscape(item.App||'Both')+'</span></td>'+
+        '<td>'+htmlEscape(deptName)+'</td>'+
+        '<td><span class="badge badge-'+access+'">'+access.charAt(0).toUpperCase()+access.slice(1)+'</span></td>'+
+        '<td>'+
+          '<button class="btn btn-sm" onclick="openEditModal('+item.Id+')">Edit</button> '+
+          '<button class="btn btn-sm btn-danger" onclick="deletePerm('+item.Id+')">Del</button>'+
+        '</td>'+
+      '</tr>';
+    });
   });
   tbody.innerHTML=html;
   updateBulkBar();
 }
+
+const expandedGroups=new Set();
+function toggleGroup(tr,email){
+  const key=email.replace(/[^a-z0-9]/gi,'');
+  const rows=document.querySelectorAll('.group-'+key);
+  const open=expandedGroups.has(email);
+  rows.forEach(r=>r.style.display=open?'none':'');
+  if(open)expandedGroups.delete(email);else expandedGroups.add(email);
+  tr.style.background=open?'var(--gray-light)':'var(--white)';
+}
+function toggleGroupSelect(email,checked){
+  const group=permItems.filter(i=>(i.Title||'').toLowerCase()===email.toLowerCase());
+  if(checked)group.forEach(i=>selectedIds.add(i.Id));else group.forEach(i=>selectedIds.delete(i));
+  updateBulkBar();
+}
+function deleteGroup(email){
+  const group=permItems.filter(i=>(i.Title||'').toLowerCase()===email.toLowerCase());
+  if(!group.length)return;
+  if(!confirm('Delete all '+group.length+' permission(s) for '+email+'?'))return;
+  deleteGroupItems(group,0);
+}
+async function deleteGroupItems(group,idx){
+  if(idx>=group.length){
+    showToast('All entries deleted','success');
+    selectedIds.clear();
+    await loadPerms();
+    return;
+  }
+  try{await spDelete(permApi(group[idx].Id));}
+  catch(e){}
+  await deleteGroupItems(group,idx+1);
+}
+function openEditGroupModal(email){
+  const group=permItems.filter(i=>(i.Title||'').toLowerCase()===email.toLowerCase());
+  editingId='GROUP';
+  editingGroupEmail=email;
+  document.getElementById('modal-title').textContent='Edit Permissions — '+email;
+  document.getElementById('inp-email').value=email;
+  const apps=[...new Set(group.map(i=>i.App||'Both'))];
+  document.getElementById('inp-app').value=apps.length===1?apps[0]:'Both';
+  const existingPerms={};
+  group.forEach(i=>{ existingPerms[i.DeptID]=(i.Access||'edit').toLowerCase(); });
+  document.getElementById('inp-access').value='edit';
+  document.getElementById('dept-perms-grid').innerHTML=buildDeptGrid('edit',existingPerms);
+  document.getElementById('add-modal').classList.add('show');
+}
+let editingGroupEmail=null;
 
 function toggleSelect(id,checked){
   if(checked)selectedIds.add(id);else selectedIds.delete(id);
@@ -435,9 +511,10 @@ function toggleSelect(id,checked){
 function toggleSelectAll(checked){
   const items=getFiltered();
   if(checked)items.forEach(i=>selectedIds.add(i.Id));else selectedIds.clear();
+  document.querySelectorAll('.group-header input[type=checkbox]').forEach(cb=>cb.checked=checked);
   renderTable();
 }
-function clearSelection(){selectedIds.clear();document.getElementById('select-all').checked=false;renderTable();}
+function clearSelection(){selectedIds.clear();document.getElementById('select-all').checked=false;expandedGroups.clear();renderTable();}
 function updateBulkBar(){
   const bar=document.getElementById('bulk-bar');
   if(selectedIds.size>0){bar.style.display='';document.getElementById('bulk-count').textContent=selectedIds.size+' selected';}
@@ -563,6 +640,21 @@ function bulkEdit(){
 
 const origSave=savePerm;
 savePerm=async function(){
+  if(editingId==='GROUP'){
+    const email=editingGroupEmail;
+    const oldItems=permItems.filter(i=>(i.Title||'').toLowerCase()===email.toLowerCase());
+    const app=document.getElementById('inp-app').value;
+    const deptPerms={};
+    document.querySelectorAll('#dept-perms-grid select').forEach(s=>{ deptPerms[s.dataset.dept]=s.value; });
+    for(const item of oldItems){ try{await spDelete(permApi(item.Id));}catch(e){} }
+    for(const [deptId,access] of Object.entries(deptPerms)){
+      try{await spPost(permApi(),{Title:email,App:app,DeptID:deptId,Access:access});}catch(e){}
+    }
+    closeModal();
+    showToast('Permissions updated for '+email,'success');
+    await loadPerms();
+    return;
+  }
   if(editingId!=='BULK')return origSave.call(this);
   const app=document.getElementById('inp-app').value;
   const access=document.getElementById('inp-access').value;

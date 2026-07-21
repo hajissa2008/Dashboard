@@ -1511,7 +1511,7 @@ function initStatSectionCharts(id){
 }
 
 function computeAggregatesLS(loadedDepts){
-  const aggStatus={}; const discTotals={}; let totalWithStatus=0;
+  const aggStatus={}; const discTotals={}; let totalWithStatus=0; const aggRev={};
   loadedDepts.forEach(d=>{
     const stats=computeListStats(d.id);
     if(!stats) return;
@@ -1519,6 +1519,14 @@ function computeAggregatesLS(loadedDepts){
       stats.statusRows.forEach(r=>{
         if(!aggStatus[r.code]) aggStatus[r.code]={label:r.label,total:0,color:r.color};
         aggStatus[r.code].total+=r.total; totalWithStatus+=r.total;
+      });
+    }
+    if(stats.hasRev){
+      const cache=listCache[d.id];
+      const revCol=detectRevCol(cache.cols);
+      cache.items.forEach(it=>{
+        const rev=padRev(String(it[revCol]||'').trim());
+        if(rev) aggRev[rev]=(aggRev[rev]||0)+1;
       });
     }
     const cache=listCache[d.id];
@@ -1530,7 +1538,7 @@ function computeAggregatesLS(loadedDepts){
       });
     }
   });
-  return {aggStatus, discTotals, totalWithStatus};
+  return {aggStatus, discTotals, totalWithStatus, aggRev};
 }
 
 let _chartAggStatus=null, _chartAggDisc=null;
@@ -1561,12 +1569,15 @@ function renderLogStatistics(){
     return;
   }
 
-  const {aggStatus, discTotals, totalWithStatus}=computeAggregatesLS(loadedDepts);
+  const {aggStatus, discTotals, totalWithStatus, aggRev}=computeAggregatesLS(loadedDepts);
   const approvedLike=(aggStatus['A']?.total||0)+(aggStatus['B']?.total||0);
   const approvalRate=totalWithStatus?Math.round(approvedLike/totalWithStatus*1000)/10:0;
   const underReview=aggStatus['O']?.total||0;
   const resubmit=aggStatus['C']?.total||0;
   const rejected=aggStatus['D']?.total||0;
+  const revColors=['#4C5D71','#00B7C3','#8764B8','#ED7D31','#107C10'];
+  const revLabels=['00','01','02','03','04'];
+  const revIcons=['📄','📝','✏️','🔄','✅'];
 
   let html=`<div class="kpi-grid">
     <div class="kpi-card" onclick="showDetailModal('All Tracked Items',window._logStatCols||[],window._logStatItems||[])"><div class="kpi-accent" style="background:#4C5D71"></div><div class="kpi-icon">📈</div><div class="kpi-label">Tracked Items</div><div class="kpi-value">${totalWithStatus}</div></div>
@@ -1574,6 +1585,9 @@ function renderLogStatistics(){
     <div class="kpi-card" onclick="showStatusModal('O')"><div class="kpi-accent" style="background:#FFB900"></div><div class="kpi-icon">🔍</div><div class="kpi-label">Open / Under Review</div><div class="kpi-value">${underReview}</div></div>
     <div class="kpi-card" onclick="showStatusModal('C')"><div class="kpi-accent" style="background:#ED7D31"></div><div class="kpi-icon">🔄</div><div class="kpi-label">Revise &amp; Resubmit</div><div class="kpi-value">${resubmit}</div></div>
     <div class="kpi-card" onclick="showStatusModal('D')"><div class="kpi-accent" style="background:#D92C2C"></div><div class="kpi-icon">❌</div><div class="kpi-label">Rejected</div><div class="kpi-value">${rejected}</div></div>
+  </div>
+  <div class="kpi-grid" style="margin-bottom:20px">
+    ${revLabels.map((r,i)=>`<div class="kpi-card" onclick="showAggRevModal('${r}')"><div class="kpi-accent" style="background:${revColors[i]}"></div><div class="kpi-icon">${revIcons[i]}</div><div class="kpi-label">Rev. ${r}</div><div class="kpi-value">${aggRev[r]||0}</div></div>`).join('')}
   </div>
   <div class="charts-row">
     <div class="chart-card"><h3>Overall Status Distribution</h3><canvas id="chart-agg-status" height="220"></canvas></div>
@@ -1748,6 +1762,20 @@ function showDisciplineModal(disc){
     });
   });
   showDetailModal(disc+' ('+allItems.length+')', ['_list',...new Set(allItems.flatMap(it=>Object.keys(it).filter(k=>!k.startsWith('_'))))], allItems);
+}
+function showAggRevModal(rev){
+  const depts=visibleDepts().filter(d=>listCache[d.id].loaded);
+  const allItems=[];
+  depts.forEach(d=>{
+    const cache=listCache[d.id];
+    const stats=computeListStats(d.id);
+    if(!stats||!stats.hasRev) return;
+    const revCol=detectRevCol(cache.cols);
+    cache.items.forEach(it=>{
+      if(padRev(String(it[revCol]||'').trim())===rev) allItems.push({...it, _list:d.title});
+    });
+  });
+  showDetailModal('Rev.'+rev+' — All Registers ('+allItems.length+')', ['_list',...new Set(allItems.flatMap(it=>Object.keys(it).filter(k=>!k.startsWith('_'))))], allItems);
 }
 function closeKpiModal(ev){
   if(ev && ev.target!==document.getElementById('kpi-modal-overlay'))return;
