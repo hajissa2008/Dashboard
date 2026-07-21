@@ -987,7 +987,7 @@ async function loadList(id, force){
     cols.forEach(c=>{ if(c.displayName!==c.name) rename[c.name]=c.displayName; });
     const rawItems=await fetchListItems(dept.site,dept.list,rename);
     cache.cols=cols; cache.items=rawItems; cache.loaded=true; cache.loading=false;
-    updateNavDot(id,'online'); updateNavCount(id,items.length);
+    updateNavDot(id,'online'); updateNavCount(id,rawItems.length);
     return cache;
   }catch(e){
     cache.loading=false; cache.error=e.message; cache.loaded=false;
