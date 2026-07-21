@@ -927,7 +927,7 @@ const SP_FIELD_MAP = {
 };
 
 async function fetchColumnDefinitions(siteUrl,listName){
-  const url=spRestListUrl(siteUrl,listName)+'/fields?$filter=Hidden eq false and ReadOnlyField eq false&$select=InternalName,Title,TypeAsString,Description,Required,Choices';
+  const url=spRestListUrl(siteUrl,listName)+'/fields';
   const token=await ensureSpSiteToken(siteUrl);
   const resp=await fetch(url,{headers:{'Authorization':'Bearer '+token,'Accept':'application/json'}});
   if(!resp.ok){const t=await resp.text().catch(()=>'');throw new Error(`HTTP ${resp.status}: ${t.substring(0,200)}`);}
@@ -936,7 +936,7 @@ async function fetchColumnDefinitions(siteUrl,listName){
   const cols=[];const seen=new Set();
   raw.forEach(f=>{
     const n=f.InternalName;
-    if(!n||SKIP_COLS.has(n)||n.startsWith('_')||seen.has(n))return;
+    if(!n||SKIP_COLS.has(n)||n.startsWith('_')||seen.has(n)||f.Hidden||f.ReadOnlyField)return;
     seen.add(n);
     const ts=f.TypeAsString||'Text';
     let type=SP_FIELD_MAP[ts]||'text';
