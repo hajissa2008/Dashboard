@@ -1438,7 +1438,7 @@ function renderStatSectionHtml(id){
   const stats=computeListStats(id);
   const disc=stats.disciplines;
   let html=`<div class="table-wrap" style="margin-bottom:16px">
-    <div class="table-toolbar"><span class="view-label">${dept.icon} ${escapeHtml(dept.title)}</span><span class="view-badge">${stats.total} items</span></div>
+    <div class="table-toolbar"><span class="view-label" style="cursor:pointer" onclick="showListAllModal('${id}')">${dept.icon} ${escapeHtml(dept.title)}</span><span class="view-badge" style="cursor:pointer" onclick="showListAllModal('${id}')">${stats.total} items</span></div>
     <div style="padding:14px">`;
 
   if(stats.hasStatus && stats.statusRows.length){
@@ -1447,11 +1447,11 @@ function renderStatSectionHtml(id){
         <h4 style="font-size:12px;color:var(--text-secondary);margin-bottom:6px;text-transform:uppercase">Status Breakdown${disc.length?' by Discipline':''}</h4>
         <div class="table-scroll"><table style="font-size:12px"><thead><tr><th>Status</th>${disc.map(d=>`<th>${escapeHtml(d)}</th>`).join('')}<th>Total</th><th>%</th></tr></thead><tbody>`;
     stats.statusRows.forEach(r=>{
-      html+=`<tr><td><span class="status-badge" style="background:${r.color}22;color:${r.color}">${escapeHtml(r.code)} — ${escapeHtml(r.label)}</span></td>${disc.map(d=>`<td>${r.byDisc[d]||0}</td>`).join('')}<td><strong>${r.total}</strong></td><td>${r.pct}%</td></tr>`;
+      html+=`<tr style="cursor:pointer" onclick="showListStatusModal('${id}','${r.code}')"><td><span class="status-badge" style="background:${r.color}22;color:${r.color}">${escapeHtml(r.code)} — ${escapeHtml(r.label)}</span></td>${disc.map(d=>`<td>${r.byDisc[d]||0}</td>`).join('')}<td><strong>${r.total}</strong></td><td>${r.pct}%</td></tr>`;
     });
     html+=`</tbody></table></div>
       </div>
-      <div><canvas id="chart-status-${id}" height="180"></canvas></div>
+      <div><canvas id="chart-status-${id}" height="180" style="cursor:pointer"></canvas></div>
     </div>`;
   }
 
@@ -1461,11 +1461,11 @@ function renderStatSectionHtml(id){
         <h4 style="font-size:12px;color:var(--text-secondary);margin-bottom:6px;text-transform:uppercase">Revision Breakdown${disc.length?' by Discipline':''}</h4>
         <div class="table-scroll"><table style="font-size:12px"><thead><tr><th>Revision</th>${disc.map(d=>`<th>${escapeHtml(d)}</th>`).join('')}<th>Total</th><th>%</th></tr></thead><tbody>`;
     stats.revRows.forEach(r=>{
-      html+=`<tr><td>${escapeHtml(r.label)}</td>${disc.map(d=>`<td>${r.byDisc[d]||0}</td>`).join('')}<td><strong>${r.total}</strong></td><td>${r.pct}%</td></tr>`;
+      html+=`<tr style="cursor:pointer" onclick="showListRevModal('${id}','${r.rev}')"><td>${escapeHtml(r.label)}</td>${disc.map(d=>`<td>${r.byDisc[d]||0}</td>`).join('')}<td><strong>${r.total}</strong></td><td>${r.pct}%</td></tr>`;
     });
     html+=`</tbody></table></div>
       </div>
-      <div><canvas id="chart-rev-${id}" height="180"></canvas></div>
+      <div><canvas id="chart-rev-${id}" height="180" style="cursor:pointer"></canvas></div>
     </div>`;
   }
 
@@ -1498,7 +1498,7 @@ function initStatSectionCharts(id){
     window._statCharts['status-'+id]=new Chart(sc.getContext('2d'),{type:'bar',data:{
       labels:stats.statusRows.map(r=>r.code),
       datasets:[{data:stats.statusRows.map(r=>r.total), backgroundColor:stats.statusRows.map(r=>r.color)}]
-    },options:{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{precision:0}}}}});
+    },options:{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{precision:0}}},onClick:function(evt,elements){if(elements.length){showListStatusModal(id,stats.statusRows[elements[0].index].code);}}}});
   }
   const rc=document.getElementById('chart-rev-'+id);
   if(rc && stats.revRows.length){
@@ -1506,7 +1506,7 @@ function initStatSectionCharts(id){
     window._statCharts['rev-'+id]=new Chart(rc.getContext('2d'),{type:'bar',data:{
       labels:stats.revRows.map(r=>r.label),
       datasets:[{data:stats.revRows.map(r=>r.total), backgroundColor:'#4C5D71'}]
-    },options:{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{precision:0}}}}});
+    },options:{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{precision:0}}},onClick:function(evt,elements){if(elements.length){showListRevModal(id,stats.revRows[elements[0].index].rev);}}}});
   }
 }
 
@@ -1693,6 +1693,33 @@ function showStatusModal(code){
   });
   const label=STATUS_LABELS_LS[code]||code;
   showDetailModal(code+' — '+label+' ('+allItems.length+')', ['_list',...new Set(allItems.flatMap(it=>Object.keys(it).filter(k=>!k.startsWith('_'))))], allItems);
+}
+function showListStatusModal(listId, code){
+  const dept=DEPTS_BY_ID[listId];
+  const cache=listCache[listId];
+  if(!dept||!cache||!cache.loaded) return;
+  const stats=computeListStats(listId);
+  if(!stats||!stats.hasStatus) return;
+  const statusCol=detectStatusCol(cache.cols);
+  const items=cache.items.filter(it=>String(it[statusCol]||'').trim()===code);
+  const label=STATUS_LABELS_LS[code]||code;
+  showDetailModal(dept.title+' — '+code+' '+label+' ('+items.length+')', cache.cols.map(c=>c.displayName), items);
+}
+function showListRevModal(listId, rev){
+  const dept=DEPTS_BY_ID[listId];
+  const cache=listCache[listId];
+  if(!dept||!cache||!cache.loaded) return;
+  const stats=computeListStats(listId);
+  if(!stats||!stats.hasRev) return;
+  const revCol=detectRevCol(cache.cols);
+  const items=cache.items.filter(it=>padRev(String(it[revCol]||'').trim())===rev);
+  showDetailModal(dept.title+' — Rev.'+rev+' ('+items.length+')', cache.cols.map(c=>c.displayName), items);
+}
+function showListAllModal(listId){
+  const dept=DEPTS_BY_ID[listId];
+  const cache=listCache[listId];
+  if(!dept||!cache||!cache.loaded) return;
+  showDetailModal(dept.title+' — All Items ('+cache.items.length+')', cache.cols.map(c=>c.displayName), cache.items);
 }
 function showApprovedModal(){
   const depts=visibleDepts().filter(d=>listCache[d.id].loaded);
