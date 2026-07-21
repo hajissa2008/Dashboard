@@ -870,6 +870,10 @@ async function loadUserPerms(){
       }
     });
     console.log('[loadUserPerms] userFound:',userFound,'myPerms keys:',Object.keys(myPerms).length);
+    if(!userFound){
+      const allEmails=[...new Set(items.map(i=>i.Title))];
+      console.log('[loadUserPerms] Available emails in Permissions list:',allEmails);
+    }
     if(!userFound||!Object.keys(myPerms).length) myPerms=null;
   }catch(e){
     console.error('[loadUserPerms] error:',e);
