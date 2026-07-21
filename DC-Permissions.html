@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DC Permissions Manager</title>
+<style>
+:root{--primary:#4C5D71;--primary-dark:#3A4A5E;--primary-light:#E8ECF0;--green:#107C10;--green-light:#E6F7E6;--red:#D92C2C;--red-light:#FDE8E8;--orange:#ED7D31;--gray:#8A8886;--gray-light:#F3F2F1;--gray-border:#EDEBE9;--text:#201E1F;--text2:#605E5C;--white:#FFFFFF;--bg:#F3F2F1;--shadow:0 1px 3px rgba(0,0,0,.08);--radius:6px}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+
+.header{background:var(--white);border-bottom:1px solid var(--gray-border);padding:12px 24px;display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:100}
+.header h1{font-size:18px;font-weight:600;flex:1}
+.header .subtitle{font-size:12px;color:var(--text2)}
+.auth-section{display:flex;align-items:center;gap:12px}
+.user-info{font-size:13px;color:var(--text2)}
+.user-info strong{color:var(--text)}
+.btn{padding:6px 16px;border:1px solid var(--gray-border);border-radius:var(--radius);background:var(--white);cursor:pointer;font-size:13px;font-weight:500;transition:all .15s}
+.btn:hover{background:var(--gray-light)}
+.btn-primary{background:var(--primary);color:var(--white);border-color:var(--primary)}
+.btn-primary:hover{background:var(--primary-dark)}
+.btn-danger{background:var(--red);color:var(--white);border-color:var(--red)}
+.btn-danger:hover{opacity:.9}
+.btn-sm{padding:4px 10px;font-size:12px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+
+.main{max-width:1200px;margin:0 auto;padding:24px}
+
+.toolbar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:20px}
+.toolbar input{padding:6px 12px;border:1px solid var(--gray-border);border-radius:var(--radius);font-size:13px;width:260px}
+.toolbar select{padding:6px 12px;border:1px solid var(--gray-border);border-radius:var(--radius);font-size:13px}
+
+.stats{display:flex;gap:16px;margin-bottom:20px}
+.stat-card{background:var(--white);border:1px solid var(--gray-border);border-radius:var(--radius);padding:12px 20px;flex:1;box-shadow:var(--shadow)}
+.stat-card .label{font-size:11px;text-transform:uppercase;color:var(--text2);letter-spacing:.5px}
+.stat-card .value{font-size:22px;font-weight:700;margin-top:2px}
+
+.table-wrap{background:var(--white);border:1px solid var(--gray-border);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+table{width:100%;border-collapse:collapse}
+th{background:var(--gray-light);padding:8px 12px;text-align:left;font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);border-bottom:1px solid var(--gray-border);position:sticky;top:0}
+td{padding:6px 12px;border-bottom:1px solid var(--gray-border);font-size:13px;vertical-align:middle}
+tr:hover{background:var(--primary-light)}
+
+.badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600}
+.badge-edit{background:var(--green-light);color:var(--green)}
+.badge-read{background:#E3F2FD;color:#1565C0}
+.badge-none{background:var(--red-light);color:var(--red)}
+.badge-app{background:var(--primary-light);color:var(--primary)}
+
+.empty-state{text-align:center;padding:60px 20px;color:var(--text2)}
+.empty-state .icon{font-size:48px;margin-bottom:12px}
+.empty-state h3{font-size:16px;color:var(--text);margin-bottom:4px}
+
+.toast{position:fixed;bottom:20px;right:20px;padding:10px 20px;border-radius:var(--radius);font-size:13px;z-index:999;transform:translateY(80px);opacity:0;transition:all .3s}
+.toast.show{transform:translateY(0);opacity:1}
+.toast.success{background:var(--green);color:white}
+.toast.error{background:var(--red);color:white}
+
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200;align-items:center;justify-content:center}
+.modal-overlay.show{display:flex}
+.modal{background:var(--white);border-radius:8px;width:480px;max-width:95vw;box-shadow:0 8px 32px rgba(0,0,0,.2);max-height:90vh;overflow-y:auto}
+.modal-header{padding:16px 20px;border-bottom:1px solid var(--gray-border);display:flex;align-items:center;justify-content:space-between}
+.modal-header h2{font-size:16px}
+.modal-close{background:none;border:none;font-size:20px;cursor:pointer;color:var(--text2);padding:4px 8px}
+.modal-body{padding:20px}
+.modal-footer{padding:12px 20px;border-top:1px solid var(--gray-border);display:flex;justify-content:flex-end;gap:8px}
+
+.form-group{margin-bottom:14px}
+.form-group label{display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:4px}
+.form-group input,.form-group select{width:100%;padding:8px 12px;border:1px solid var(--gray-border);border-radius:var(--radius);font-size:13px}
+
+.perms-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.perms-grid .perm-row{display:flex;align-items:center;justify-content:space-between;padding:6px 10px;border:1px solid var(--gray-border);border-radius:var(--radius);font-size:12px}
+.perms-grid .perm-row label{margin:0;font-size:12px}
+.perms-grid select{padding:4px 8px;font-size:12px;width:auto}
+
+.checkbox-group{display:flex;gap:16px;align-items:center}
+.checkbox-group label{display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer}
+
+.bulk-bar{background:var(--primary);color:white;padding:10px 20px;border-radius:var(--radius);display:flex;align-items:center;gap:12px;margin-bottom:16px;font-size:13px}
+.bulk-bar span{flex:1}
+</style>
+</head>
+<body>
+<div class="header">
+  <div>
+    <h1>DC Permissions Manager</h1>
+    <div class="subtitle">Manage user access for DC Log &amp; DC Form</div>
+  </div>
+  <div class="auth-section">
+    <span class="user-info" id="user-info" style="display:none"></span>
+    <button class="btn btn-primary" id="login-btn" onclick="login()">Sign In</button>
+    <button class="btn" id="logout-btn" style="display:none" onclick="logout()">Sign Out</button>
+  </div>
+</div>
+
+<div class="main" id="main-content" style="display:none">
+  <div class="stats" id="stats"></div>
+
+  <div class="toolbar">
+    <input type="text" id="search" placeholder="Search by email..." oninput="renderTable()">
+    <select id="filter-app" onchange="renderTable()">
+      <option value="">All Apps</option>
+      <option value="DCLog">DC Log</option>
+      <option value="DCForm">DC Form</option>
+      <option value="Both">Both</option>
+    </select>
+    <select id="filter-dept" onchange="renderTable()">
+      <option value="">All Departments</option>
+    </select>
+    <div style="flex:1"></div>
+    <button class="btn btn-primary" onclick="openAddModal()">+ Add User</button>
+  </div>
+
+  <div id="bulk-bar" class="bulk-bar" style="display:none">
+    <span id="bulk-count">0 selected</span>
+    <button class="btn btn-sm" style="color:white;border-color:rgba(255,255,255,.3)" onclick="bulkEdit()">Bulk Edit</button>
+    <button class="btn btn-sm btn-danger" onclick="bulkDelete()">Delete Selected</button>
+    <button class="btn btn-sm" style="color:white;border-color:rgba(255,255,255,.3)" onclick="clearSelection()">Cancel</button>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th style="width:30px"><input type="checkbox" id="select-all" onchange="toggleSelectAll(this.checked)"></th>
+          <th>Email</th>
+          <th>App</th>
+          <th>Department</th>
+          <th>Access</th>
+          <th style="width:80px">Actions</th>
+        </tr>
+      </thead>
+      <tbody id="table-body"></tbody>
+    </table>
+  </div>
+</div>
+
+<div class="empty-state" id="empty-login">
+  <div class="icon">🔐</div>
+  <h3>Sign in to manage permissions</h3>
+  <p style="margin-top:8px">You need admin access to manage user permissions.</p>
+</div>
+
+<div class="modal-overlay" id="add-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="modal-title">Add User Permission</h2>
+      <button class="modal-close" onclick="closeModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Email Address</label>
+        <input type="email" id="inp-email" placeholder="user@example.com">
+      </div>
+      <div class="form-group">
+        <label>Application</label>
+        <select id="inp-app">
+          <option value="Both">Both (DC Log &amp; DC Form)</option>
+          <option value="DCLog">DC Log only</option>
+          <option value="DCForm">DC Form only</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Default Access Level</label>
+        <select id="inp-access" onchange="onAccessChange()">
+          <option value="edit">Edit (Full Access)</option>
+          <option value="read">Read Only</option>
+          <option value="none">No Access</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Department Access</label>
+        <div id="dept-perms-grid" class="perms-grid"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" id="save-btn" onclick="savePerm()">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
+<script>
+const SITE_URL='https://sascontractingsa.sharepoint.com/sites/Alenshaiah';
+const PERM_LIST='Permissions';
+const ADMIN_EMAIL='m.hajissa@alenshaiah.com';
+const TENANT_ID='684547e2-bb8b-450a-a3e1-3a6bc15e9471';
+const CLIENT_ID='04f83c11-e51c-4a8a-be86-9e3a49f3e952';
+
+let msalApp=null,spToken=null,spUser=null,spSiteToken=null;
+let permItems=[];
+let selectedIds=new Set();
+let editingId=null;
+
+const DEPT_GROUPS=["Correspondence & Registers","Design & Technical","Submittals & Approvals","Reports","HSE","Documents & Records"];
+const DEPTS=[
+  {id:'sor',title:'SOR',group:'Correspondence & Registers'},
+  {id:'incoming',title:'Incoming',group:'Correspondence & Registers'},
+  {id:'outgoing',title:'Outgoing',group:'Correspondence & Registers'},
+  {id:'letters2',title:'Letters (2)',group:'Correspondence & Registers'},
+  {id:'oic-to-acc',title:'OIC to ACC',group:'Correspondence & Registers'},
+  {id:'mom',title:'MOM',group:'Correspondence & Registers'},
+  {id:'sdc-to-acc-ifc',title:'SDC to ACC (IFC)',group:'Correspondence & Registers'},
+  {id:'internal-sor',title:"Internal SOR's",group:'Correspondence & Registers'},
+  {id:'calculations',title:'Calculations',group:'Design & Technical'},
+  {id:'plans',title:'Plans',group:'Design & Technical'},
+  {id:'dw-drawings',title:'Drawings (DW)',group:'Design & Technical'},
+  {id:'mst',title:'Method Statements (MST)',group:'Design & Technical'},
+  {id:'org-chart',title:'Organization Chart',group:'Design & Technical'},
+  {id:'scl',title:'Schedules (SCL)',group:'Design & Technical'},
+  {id:'sna',title:'Start of New Activity (SNA)',group:'Design & Technical'},
+  {id:'ncr',title:'NCR',group:'Submittals & Approvals'},
+  {id:'si',title:'Site Instructions (SI)',group:'Submittals & Approvals'},
+  {id:'ei',title:"Engineer's Instruction (EI)",group:'Submittals & Approvals'},
+  {id:'wir',title:'Work Inspection Request (WIR)',group:'Submittals & Approvals'},
+  {id:'mir',title:'Material Insp. Request (MIR)',group:'Submittals & Approvals'},
+  {id:'ms',title:'Materials Submittal (MS)',group:'Submittals & Approvals'},
+  {id:'pq',title:'Pre-Qualifications (PQ)',group:'Submittals & Approvals'},
+  {id:'rfi',title:'Request for Info (RFI)',group:'Submittals & Approvals'},
+  {id:'sca',title:'Subcon Approval (SCA)',group:'Submittals & Approvals'},
+  {id:'merf',title:'MERF',group:'Submittals & Approvals'},
+  {id:'internal-ncr',title:"Internal NCR's",group:'Submittals & Approvals'},
+  {id:'mqr',title:'Quality Observation Report (MQR)',group:'Reports'},
+  {id:'mpr',title:'Monthly Progress Report (MPR)',group:'Reports'},
+  {id:'wpr',title:'Weekly Progress Report (WPR)',group:'Reports'},
+  {id:'test-reports',title:'Test Reports',group:'Reports'},
+  {id:'dcr',title:'Daily Report (DCR)',group:'Reports'},
+  {id:'hsr',title:'Health & Safety Reports (HSR)',group:'Reports'},
+  {id:'hse-obs',title:'Safety Observations (HSE)',group:'HSE'},
+  {id:'hse-incident',title:'Incident Reports (HSE)',group:'HSE'},
+  {id:'others',title:'Others - General',group:'Documents & Records'},
+  {id:'prc',title:'Procedure (PRC)',group:'Documents & Records'},
+  {id:'omm',title:'Operation & Maintenance (OMM)',group:'Documents & Records'},
+  {id:'tm',title:'Technical Manual (TM)',group:'Documents & Records'},
+  {id:'ds',title:'Data Sheet (DS)',group:'Documents & Records'},
+  {id:'crt',title:'Certificate (CRT)',group:'Documents & Records'},
+  {id:'piv',title:'Photos (PIV)',group:'Documents & Records'},
+  {id:'cp',title:'Contractor Proposal (CP)',group:'Documents & Records'}
+];
+const DEPTS_BY_ID={};
+DEPTS.forEach(d=>{DEPTS_BY_ID[d.id]=d});
+
+function htmlEscape(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+function showToast(msg,type){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.className='toast '+type+' show';
+  setTimeout(()=>t.classList.remove('show'),3000);
+}
+
+function initMsal(){
+  msalApp=new msal.PublicClientApplication({
+    auth:{clientId:CLIENT_ID,authority:'https://login.microsoftonline.com/'+TENANT_ID,redirectUri:location.origin+location.pathname},
+    cache:{cacheLocation:'localStorage'},
+    system:{allowNativeBroker:false}
+  });
+}
+
+async function login(){
+  if(!msalApp)initMsal();
+  try{
+    const resp=await msalApp.loginPopup({scopes:['Sites.ReadWrite.All','User.Read']});
+    handleLogin(resp);
+  }catch(e){
+    if(e.message&&e.message.includes('popup_window_error'))showToast('Popup blocked. Allow popups and retry.','error');
+    else showToast('Login failed: '+e.message,'error');
+  }
+}
+
+async function trySSO(){
+  if(!msalApp)initMsal();
+  try{
+    const accounts=msalApp.getAllAccounts();
+    if(accounts.length){
+      const resp=await msalApp.ssoSilent({scopes:['Sites.ReadWrite.All','User.Read'],account:accounts[0]});
+      handleLogin(resp);
+    }
+  }catch(e){}
+}
+
+function handleLogin(resp){
+  if(resp&&resp.account){
+    spUser=resp.account;spToken=resp.accessToken;
+    document.getElementById('login-btn').style.display='none';
+    document.getElementById('logout-btn').style.display='';
+    const ui=document.getElementById('user-info');
+    ui.style.display='';ui.innerHTML='<strong>'+htmlEscape(spUser.name||spUser.username)+'</strong>';
+    document.getElementById('empty-login').style.display='none';
+    document.getElementById('main-content').style.display='';
+    loadPerms();
+  }
+}
+
+function logout(){
+  spUser=null;spToken=null;spSiteToken=null;
+  if(msalApp)msalApp.logoutPopup();
+  document.getElementById('login-btn').style.display='';
+  document.getElementById('logout-btn').style.display='none';
+  document.getElementById('user-info').style.display='none';
+  document.getElementById('main-content').style.display='none';
+  document.getElementById('empty-login').style.display='';
+}
+
+async function ensureSpToken(){
+  if(!spUser)throw new Error('Not authenticated');
+  try{
+    if(spSiteToken){const r=await fetch(SITE_URL+'/_api/web/currentuser',{headers:{'Authorization':'Bearer '+spSiteToken}});if(r.ok)return spSiteToken;}
+  }catch{}
+  const resp=await msalApp.acquireTokenSilent({scopes:[SITE_URL+'/.default'],account:spUser});
+  spSiteToken=resp.accessToken;
+  return spSiteToken;
+}
+
+async function spGet(url){
+  const token=await ensureSpToken();
+  const resp=await fetch(url,{headers:{'Authorization':'Bearer '+token,'Accept':'application/json'}});
+  if(!resp.ok){const t=await resp.text().catch(()=>'');throw new Error('HTTP '+resp.status+': '+t.substring(0,200));}
+  return await resp.json();
+}
+
+async function spPost(url,body){
+  const token=await ensureSpToken();
+  const resp=await fetch(url,{
+    method:'POST',
+    headers:{'Authorization':'Bearer '+token,'Accept':'application/json','Content-Type':'application/json'},
+    body:JSON.stringify(body)
+  });
+  if(!resp.ok){const t=await resp.text().catch(()=>'');throw new Error('HTTP '+resp.status+': '+t.substring(0,200));}
+  return resp.status===204?null:await resp.json().catch(()=>null);
+}
+
+async function spDelete(url){
+  const token=await ensureSpToken();
+  const resp=await fetch(url,{
+    method:'DELETE',
+    headers:{'Authorization':'Bearer '+token,'Accept':'application/json','X-HTTP-Method':'DELETE'}
+  });
+  if(!resp.ok){const t=await resp.text().catch(()=>'');throw new Error('HTTP '+resp.status+': '+t.substring(0,200));}
+}
+
+function permApi(id){
+  return SITE_URL+"/_api/web/lists/getbytitle('"+PERM_LIST+"')"+(id?'/items('+id+')':'/items');
+}
+
+async function loadPerms(){
+  try{
+    const data=await spGet(permApi());
+    permItems=data.d?data.d.results:(data.value||[]);
+  }catch(e){
+    if(e.message.includes('404')){permItems=[];showToast('Permissions list not found. Create it in SharePoint.','error');}
+    else{showToast('Failed to load: '+e.message,'error');permItems=[];}
+  }
+  populateDeptFilter();
+  renderStats();
+  renderTable();
+}
+
+function populateDeptFilter(){
+  const sel=document.getElementById('filter-dept');
+  const cur=sel.value;
+  sel.innerHTML='<option value="">All Departments</option>';
+  DEPT_GROUPS.forEach(g=>{
+    const group=DEPTS.filter(d=>d.group===g);
+    group.forEach(d=>{
+      sel.innerHTML+='<option value="'+d.id+'">'+htmlEscape(d.title)+'</option>';
+    });
+  });
+  sel.value=cur;
+}
+
+function getFiltered(){
+  const search=document.getElementById('search').value.toLowerCase();
+  const app=document.getElementById('filter-app').value;
+  const dept=document.getElementById('filter-dept').value;
+  return permItems.filter(item=>{
+    const email=(item.Title||'').toLowerCase();
+    const iApp=item.App||'Both';
+    const iDept=item.DeptID||'';
+    if(search&&!email.includes(search))return false;
+    if(app&&iApp!==app)return false;
+    if(dept&&iDept!==dept)return false;
+    return true;
+  });
+}
+
+function renderStats(){
+  const uniqueEmails=new Set(permItems.map(i=>(i.Title||'').toLowerCase()));
+  const el=document.getElementById('stats');
+  el.innerHTML=
+    '<div class="stat-card"><div class="label">Total Entries</div><div class="value">'+permItems.length+'</div></div>'+
+    '<div class="stat-card"><div class="label">Unique Users</div><div class="value">'+uniqueEmails.size+'</div></div>'+
+    '<div class="stat-card"><div class="label">DC Log Entries</div><div class="value">'+permItems.filter(i=>i.App==='DCLog').length+'</div></div>'+
+    '<div class="stat-card"><div class="label">DC Form Entries</div><div class="value">'+permItems.filter(i=>i.App==='DCForm').length+'</div></div>'+
+    '<div class="stat-card"><div class="label">Both Apps</div><div class="value">'+permItems.filter(i=>i.App==='Both').length+'</div></div>';
+}
+
+function renderTable(){
+  const items=getFiltered();
+  const tbody=document.getElementById('table-body');
+  if(!items.length){
+    tbody.innerHTML='<tr><td colspan="6" class="empty-state"><div class="icon">📋</div><h3>No entries found</h3><p style="margin-top:4px;color:var(--text2)">Add user permissions or adjust your filters.</p></td></tr>';
+    return;
+  }
+  let html='';
+  items.forEach(item=>{
+    const access=(item.Access||'edit').toLowerCase();
+    const app=item.App||'Both';
+    const dept=DEPTS_BY_ID[item.DeptID];
+    const deptName=dept?dept.title:item.DeptID;
+    const checked=selectedIds.has(item.Id)?'checked':'';
+    html+='<tr>'+
+      '<td><input type="checkbox" '+checked+' onchange="toggleSelect('+item.Id+',this.checked)"></td>'+
+      '<td>'+htmlEscape(item.Title||'')+'</td>'+
+      '<td><span class="badge badge-app">'+htmlEscape(app)+'</span></td>'+
+      '<td>'+htmlEscape(deptName)+'</td>'+
+      '<td><span class="badge badge-'+access+'">'+access.charAt(0).toUpperCase()+access.slice(1)+'</span></td>'+
+      '<td>'+
+        '<button class="btn btn-sm" onclick="openEditModal('+item.Id+')">Edit</button> '+
+        '<button class="btn btn-sm btn-danger" onclick="deletePerm('+item.Id+')">Del</button>'+
+      '</td>'+
+    '</tr>';
+  });
+  tbody.innerHTML=html;
+  updateBulkBar();
+}
+
+function toggleSelect(id,checked){
+  if(checked)selectedIds.add(id);else selectedIds.delete(id);
+  updateBulkBar();
+}
+function toggleSelectAll(checked){
+  const items=getFiltered();
+  if(checked)items.forEach(i=>selectedIds.add(i.Id));else selectedIds.clear();
+  renderTable();
+}
+function clearSelection(){selectedIds.clear();document.getElementById('select-all').checked=false;renderTable();}
+function updateBulkBar(){
+  const bar=document.getElementById('bulk-bar');
+  if(selectedIds.size>0){bar.style.display='';document.getElementById('bulk-count').textContent=selectedIds.size+' selected';}
+  else{bar.style.display='none';}
+}
+
+function buildDeptGrid(defaultAccess,existingPerms){
+  let html='';
+  DEPT_GROUPS.forEach(g=>{
+    const group=DEPTS.filter(d=>d.group===g);
+    group.forEach(d=>{
+      const val=existingPerms&&existingPerms[d.id]?existingPerms[d.id]:defaultAccess;
+      html+='<div class="perm-row"><label>'+htmlEscape(d.title)+'</label><select data-dept="'+d.id+'">'+
+        '<option value="edit"'+(val==='edit'?' selected':'')+'>Edit</option>'+
+        '<option value="read"'+(val==='read'?' selected':'')+'>Read</option>'+
+        '<option value="none"'+(val==='none'?' selected':'')+'>None</option>'+
+      '</select></div>';
+    });
+  });
+  return html;
+}
+
+function onAccessChange(){
+  const access=document.getElementById('inp-access').value;
+  document.querySelectorAll('#dept-perms-grid select').forEach(s=>{s.value=access;});
+}
+
+function openAddModal(){
+  editingId=null;
+  document.getElementById('modal-title').textContent='Add User Permission';
+  document.getElementById('inp-email').value='';
+  document.getElementById('inp-app').value='Both';
+  document.getElementById('inp-access').value='edit';
+  document.getElementById('dept-perms-grid').innerHTML=buildDeptGrid('edit');
+  document.getElementById('add-modal').classList.add('show');
+}
+
+function openEditModal(id){
+  const item=permItems.find(i=>i.Id===id);
+  if(!item)return;
+  editingId=id;
+  document.getElementById('modal-title').textContent='Edit User Permission';
+  document.getElementById('inp-email').value=item.Title||'';
+  document.getElementById('inp-app').value=item.App||'Both';
+  document.getElementById('inp-access').value=(item.Access||'edit').toLowerCase();
+  document.getElementById('dept-perms-grid').innerHTML=buildDeptGrid((item.Access||'edit').toLowerCase());
+  document.getElementById('add-modal').classList.add('show');
+}
+
+function closeModal(){document.getElementById('add-modal').classList.remove('show');}
+
+async function savePerm(){
+  const email=document.getElementById('inp-email').value.trim();
+  const app=document.getElementById('inp-app').value;
+  if(!email){showToast('Email is required','error');return;}
+
+  const deptPerms={};
+  document.querySelectorAll('#dept-perms-grid select').forEach(s=>{
+    deptPerms[s.dataset.dept]=s.value;
+  });
+
+  const entries=[];
+  Object.entries(deptPerms).forEach(([deptId,access])=>{
+    entries.push({Title:email,App:app,DeptID:deptId,Access:access});
+  });
+
+  if(!entries.length){showToast('No departments selected','error');return;}
+
+  try{
+    if(editingId){
+      await spDelete(permApi(editingId));
+      for(const e of entries){
+        await spPost(permApi(),{__metadata:{type:'SP.Data.PermissionsListItem'},...e});
+      }
+      showToast('Permission updated','success');
+    }else{
+      for(const e of entries){
+        await spPost(permApi(),{__metadata:{type:'SP.Data.PermissionsListItem'},...e});
+      }
+      showToast('Permission added','success');
+    }
+    closeModal();
+    await loadPerms();
+  }catch(e){
+    showToast('Save failed: '+e.message,'error');
+  }
+}
+
+async function deletePerm(id){
+  if(!confirm('Delete this permission entry?'))return;
+  try{
+    await spDelete(permApi(id));
+    showToast('Deleted','success');
+    selectedIds.delete(id);
+    await loadPerms();
+  }catch(e){
+    showToast('Delete failed: '+e.message,'error');
+  }
+}
+
+async function bulkDelete(){
+  if(!confirm('Delete '+selectedIds.size+' entries?'))return;
+  let ok=0,fail=0;
+  for(const id of selectedIds){
+    try{await spDelete(permApi(id));ok++;}
+    catch(e){fail++;}
+  }
+  selectedIds.clear();
+  showToast('Deleted '+ok+(fail?' ('+fail+' failed)':''),'success');
+  await loadPerms();
+}
+
+function bulkEdit(){
+  if(!selectedIds.size)return;
+  document.getElementById('modal-title').textContent='Bulk Edit ('+selectedIds.size+' entries)';
+  document.getElementById('inp-email').value='';
+  document.getElementById('inp-app').value='Both';
+  document.getElementById('inp-access').value='edit';
+  document.getElementById('dept-perms-grid').innerHTML=buildDeptGrid('edit');
+  editingId='BULK';
+  document.getElementById('add-modal').classList.add('show');
+}
+
+const origSave=savePerm;
+savePerm=async function(){
+  if(editingId!=='BULK')return origSave.call(this);
+  const app=document.getElementById('inp-app').value;
+  const access=document.getElementById('inp-access').value;
+  let ok=0,fail=0;
+  for(const id of selectedIds){
+    const item=permItems.find(i=>i.Id===id);
+    if(!item)continue;
+    try{
+      await spDelete(permApi(id));
+      await spPost(permApi(),{__metadata:{type:'SP.Data.PermissionsListItem'},Title:item.Title,App:app,DeptID:item.DeptID,Access:access});
+      ok++;
+    }catch(e){fail++;}
+  }
+  selectedIds.clear();
+  closeModal();
+  showToast('Updated '+ok+(fail?' ('+fail+' failed)':''),'success');
+  await loadPerms();
+};
+
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
+trySSO();
+</script>
+</body>
+</html>
