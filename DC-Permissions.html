@@ -308,7 +308,7 @@ function logout(){
 async function ensureSpToken(){
   if(!spUser)throw new Error('Not authenticated');
   try{
-    if(spSiteToken){const r=await fetch(SITE_URL+'/_api/web/currentuser',{headers:{'Authorization':'Bearer '+spSiteToken}});if(r.ok)return spSiteToken;}
+    if(spSiteToken){const r=await fetch(SITE_URL+'/_api/web/currentuser',{headers:{'Authorization':'Bearer '+spSiteToken,'Accept':'application/json'}});if(r.ok)return spSiteToken;}
   }catch{}
   const resp=await msalApp.acquireTokenSilent({scopes:[new URL(SITE_URL).origin+'/.default'],account:spUser});
   spSiteToken=resp.accessToken;
@@ -510,12 +510,12 @@ async function savePerm(){
     if(editingId){
       await spDelete(permApi(editingId));
       for(const e of entries){
-        await spPost(permApi(),{__metadata:{type:'SP.Data.PermissionsListItem'},...e});
+        await spPost(permApi(),e);
       }
       showToast('Permission updated','success');
     }else{
       for(const e of entries){
-        await spPost(permApi(),{__metadata:{type:'SP.Data.PermissionsListItem'},...e});
+        await spPost(permApi(),e);
       }
       showToast('Permission added','success');
     }
@@ -572,7 +572,7 @@ savePerm=async function(){
     if(!item)continue;
     try{
       await spDelete(permApi(id));
-      await spPost(permApi(),{__metadata:{type:'SP.Data.PermissionsListItem'},Title:item.Title,App:app,DeptID:item.DeptID,Access:access});
+      await spPost(permApi(),{Title:item.Title,App:app,DeptID:item.DeptID,Access:access});
       ok++;
     }catch(e){fail++;}
   }
