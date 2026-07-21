@@ -874,28 +874,12 @@ function toggleDark(){
 }
 
 // ======================== SHAREPOINT API ========================
-function siteToGraphPath(siteUrl){
-  const u=new URL(siteUrl);
-  return u.hostname+':'+u.pathname.replace(/\/+$/,'');
-}
-function graphListUrl(siteUrl,listName){
-  return `https://graph.microsoft.com/v1.0/sites/${siteToGraphPath(siteUrl)}/lists/${encodeURIComponent(listName)}`;
-}
-function graphListColumnsUrl(siteUrl,listName){
-  return graphListUrl(siteUrl,listName)+'/columns';
-}
-function graphListItemsUrl(siteUrl,listName){
-  return graphListUrl(siteUrl,listName)+'/items?$top=5000&expand=fields';
-}
-function graphItemFieldsUrl(siteUrl,listName,itemId){
-  return graphListUrl(siteUrl,listName)+`/items/${itemId}/fields`;
-}
 function spRestListUrl(siteUrl,listName){
   const s=siteUrl.replace(/\/+$/,'');
-  return `${s}/_api/web/lists/getbytitle('${listName.replace(/'/g,"''")}')`;
+  return s+"/_api/web/lists/getbytitle('"+listName.replace(/'/g,"''")+"')";
 }
 function spRestAttachmentsUrl(siteUrl,listName,itemId){
-  return `${spRestListUrl(siteUrl,listName)}/items(${itemId})/AttachmentFiles`;
+  return spRestListUrl(siteUrl,listName)+'/items('+itemId+')/AttachmentFiles';
 }
 
 async function ensureSpSiteToken(siteUrl){
@@ -934,69 +918,83 @@ const SKIP_COLS = new Set([
 ]);
 const EXPORT_SKIP_COLS = SKIP_COLS;
 
-async function ensureGraphToken(){
-  if(!msalApp||!spUser)throw new Error('Not authenticated');
-  try{
-    if(spToken){const r=await fetch('https://graph.microsoft.com/v1.0/me',{headers:{'Authorization':'Bearer '+spToken}});if(r.ok)return spToken;}
-  }catch{}
-  const resp=await msalApp.acquireTokenSilent({scopes:SP_SCOPES,account:spUser});
-  spToken=resp.accessToken;
-  return spToken;
-}
-async function apiCall(url,method,body){
-  const token=await ensureGraphToken();
-  const opts={method:method||'GET',headers:{'Authorization':'Bearer '+token,'Accept':'application/json'}};
-  if(body){opts.headers['Content-Type']='application/json'; opts.body=JSON.stringify(body);}
-  const resp=await fetch(url,opts);
-  if(!resp.ok){
-    let txt; try{txt=await resp.text();}catch{txt='';}
-    throw new Error(`HTTP ${resp.status} ${method||'GET'} ${url.substring(0,120)}: ${txt.substring(0,300)}`);
-  }
-  return await resp.json();
-}
+const SP_FIELD_MAP = {
+  'Text':'text','Note':'note','Choice':'choice','MultiChoice':'multiChoice',
+  'Boolean':'boolean','DateTime':'date','Number':'number','Currency':'currency',
+  'Lookup':'lookup','User':'person','URL':'url','Calculated':'text',
+  'ModStat':'skip','WorkflowStatus':'skip','WorkflowEventType':'skip',
+  'ThreadingInfo':'skip','File':'skip','Attachments':'skip'
+};
 
 async function fetchColumnDefinitions(siteUrl,listName){
-  const json=await apiCall(graphListColumnsUrl(siteUrl,listName));
-  const cols=[];
-  (json.value||[]).forEach(col=>{
-    const n=col.name;
-    if(!n||SKIP_COLS.has(n)||n.startsWith('_'))return;
-    let type='text',choices=null;
-    if(col.text)type='text';
-    else if(col.note)type='note';
-    else if(col.choice){type='choice';choices=col.choice.choices||[];}
-    else if(col.multiChoice){type='multiChoice';choices=col.multiChoice.choices||[];}
-    else if(col.number)type='number';
-    else if(col.currency)type='currency';
-    else if(col.dateTime)type='date';
-    else if(col.boolean)type='boolean';
-    else if(col.lookup)type='lookup';
-    else if(col.personOrGroup)type='person';
-    else if(col.url)type='url';
-    else if(col.taxonomy)type='taxonomy';
-    else type='text';
-    cols.push({name:n,displayName:col.displayName||n,type,choices,required:col.required||false,description:col.description||''});
+  const url=spRestListUrl(siteUrl,listName)+'/fields?$filter=Hidden eq false and ReadOnlyField eq false&$select=InternalName,Title,TypeAsString,Description,Required,Choices';
+  const token=await ensureSpSiteToken(siteUrl);
+  const resp=await fetch(url,{headers:{'Authorization':'Bearer '+token,'Accept':'application/json'}});
+  if(!resp.ok){const t=await resp.text().catch(()=>'');throw new Error(`HTTP ${resp.status}: ${t.substring(0,200)}`);}
+  const json=await resp.json();
+  const raw=json.d?json.d.results:(json.value||[]);
+  const cols=[];const seen=new Set();
+  raw.forEach(f=>{
+    const n=f.InternalName;
+    if(!n||SKIP_COLS.has(n)||n.startsWith('_')||seen.has(n))return;
+    seen.add(n);
+    const ts=f.TypeAsString||'Text';
+    let type=SP_FIELD_MAP[ts]||'text';
+    if(type==='skip')return;
+    let choices=null;
+    if(f.Choices&&f.Choices.results&&f.Choices.results.length)choices=f.Choices.results;
+    cols.push({name:n,displayName:f.Title||n,type,choices,required:f.Required||false,description:f.Description||''});
   });
   return cols;
 }
 
+function spVal(v){
+  if(v==null)return'';
+  if(typeof v!=='object')return v;
+  if(v.LookupValue!==undefined)return v.LookupValue;
+  if(v.results!==undefined)return v.results.join('; ');
+  if(v.UserName!==undefined)return v.UserName||v.Title||'';
+  if(v.Description!==undefined)return v.Description;
+  if(v.Url!==undefined)return v.Url;
+  if(v.DisplayUrl!==undefined)return v.DisplayUrl;
+  if(Array.isArray(v))return v.join(', ');
+  try{return JSON.stringify(v);}catch(e){return'';}
+}
+
 async function fetchSPItems(siteUrl,listName){
-  const json=await apiCall(graphListItemsUrl(siteUrl,listName));
-  return (json.value||[]).map(item=>{
-    const fields={};
-    for(const [k,v] of Object.entries(item.fields||{})){
-      const dn=renameMap[k]||k;
-      fields[dn]=v;
-      if(dn!==k)fields[k]=v;
-    }
-    return {...fields,_id:item.id,_etag:item?.fields?.['@odata.etag']||''};
-  });
+  const base=spRestListUrl(siteUrl,listName)+'/items';
+  let allItems=[];
+  let nextUrl=base+'?$top=5000&$orderby=ID desc';
+  while(nextUrl){
+    const token=await ensureSpSiteToken(siteUrl);
+    const resp=await fetch(nextUrl,{headers:{'Authorization':'Bearer '+token,'Accept':'application/json'}});
+    if(!resp.ok){const t=await resp.text().catch(()=>'');throw new Error(`HTTP ${resp.status}: ${t.substring(0,200)}`);}
+    const json=await resp.json();
+    const items=json.d?json.d.results:(json.value||[]);
+    allItems=allItems.concat(items.map(it=>{
+      const fields={};
+      for(const [k,v] of Object.entries(it)){
+        if(k.startsWith('@odata')||k==='ID'||k==='Id'||k==='odata.type'||k==='odata.id')continue;
+        const dn=renameMap[k]||k;
+        const val=spVal(v);
+        fields[dn]=val;
+        if(dn!==k)fields[k]=val;
+      }
+      return {...fields,_id:it.ID||it.Id,_etag:''};
+    }));
+    nextUrl=(json.d&&json.d.__next)?json.d.__next:(json['@odata.nextLink']||null);
+  }
+  return allItems;
 }
 
 async function createSPItem(siteUrl,listName,itemFields){
-  const body={fields:{}};
-  for(const [k,v] of Object.entries(itemFields)){if(!k.startsWith('_'))body.fields[k]=v;}
-  return await apiCall(graphListUrl(siteUrl,listName)+'/items','POST',body);
+  const body={};
+  for(const [k,v] of Object.entries(itemFields)){if(!k.startsWith('_'))body[k]=v;}
+  const token=await ensureSpSiteToken(siteUrl);
+  const url=spRestListUrl(siteUrl,listName)+'/items';
+  const resp=await fetch(url,{method:'POST',headers:{'Authorization':'Bearer '+token,'Accept':'application/json','Content-Type':'application/json'},body:JSON.stringify(body)});
+  if(!resp.ok){const t=await resp.text().catch(()=>'');throw new Error(`HTTP ${resp.status}: ${t.substring(0,200)}`);}
+  return await resp.json();
 }
 
 async function updateSPItem(siteUrl,listName,itemId,itemFields){

@@ -843,13 +843,6 @@ const PERM_LIST = 'Permissions';
 const ADMIN_EMAIL = 'm.hajissa@alenshaiah.com';
 const currentApp = 'DCLog';
 
-async function ensureSpSiteToken(siteUrl){
-  if(!msalApp||!spUser) throw new Error('Not authenticated');
-  const u=new URL(siteUrl);
-  const resp=await msalApp.acquireTokenSilent({scopes:[u.origin+'/.default'],account:spUser});
-  return resp.accessToken;
-}
-
 async function loadUserPerms(){
   myPerms='ALL';
   if(!spUser||!spToken)return;
@@ -880,85 +873,103 @@ function getMyAccess(deptId){ if(myPerms==='ALL')return 'edit'; return myPerms[d
 function hasAnyAccess(){ if(myPerms==='ALL')return true; return DEPTS.some(d=>getMyAccess(d.id)!=='none'); }
 function visibleDepts(){ return myPerms==='ALL'?DEPTS:DEPTS.filter(d=>getMyAccess(d.id)!=='none'); }
 
-// ======================== GRAPH HELPERS ========================
+// ======================== SHAREPOINT REST API ========================
 const SITE_URL = 'https://sascontractingsa.sharepoint.com/sites/Alenshaiah';
-function siteToGraphPath(siteUrl){
-  const u=new URL(siteUrl);
-  return u.hostname+':'+u.pathname.replace(/\/+$/,'');
-}
-function graphListUrl(siteUrl,listName){
-  return `https://graph.microsoft.com/v1.0/sites/${siteToGraphPath(siteUrl)}/lists/${encodeURIComponent(listName)}`;
-}
-function graphListItemsUrl(siteUrl,listName,top){
-  return graphListUrl(siteUrl,listName)+`/items?$top=${top||500}&expand=fields`;
-}
-function graphListColumnsUrl(siteUrl,listName){
-  return graphListUrl(siteUrl,listName)+'/columns';
-}
-const SKIP_COLS = new Set([
-  'ID','ContentType','Modified','Created','AuthorLookupId','EditorLookupId','_UIVersionString','Attachments','Edit',
-  'LinkTitleNoMenu','LinkTitle','ItemChildCount','FolderChildCount','_ComplianceFlags','_ComplianceTag','_ComplianceTagWrittenTime',
-  '_ComplianceTagUserId','AppAuthorLookupId','AppEditorLookupId','FileSystemObjectType','ServerUrl','EncodedAbsUrl','BaseName',
-  'FileRef','FileLeafRef','UniqueId','ProgId','CheckoutUserId','CheckoutUser','CheckedOutUserId','CheckedOutUser',
-  'HasCopyDestinations','CopySource','OData__UIVersionString','UIVersion','Order','GUID','WorkflowInstanceId','WorkflowVersion',
-  'WorkflowName','File_x0020_Type','DocIcon','XMLTZone','_HasCopyDestinations','_CopySource','ScopeId','LinkFilename',
-  'LinkFilenameNoMenu','FSObjType','SortBehavior','PermMask','FileDirRef','Last_x0020_Modified','Created_x0020_Date','Editor','Author'
-]);
+let spSiteToken=null;
 
-async function apiGet(url){
-  const token=await getTokenSP();
-  const resp=await fetch(url,{headers:{'Authorization':'Bearer '+token,'Accept':'application/json'}});
-  if(!resp.ok){
-    let txt=''; try{txt=await resp.text();}catch(e){}
-    throw new Error(`HTTP ${resp.status}: ${txt.substring(0,200)}`);
-  }
+async function ensureSpSiteToken(siteUrl){
+  if(!msalApp||!spUser)throw new Error('Not authenticated');
+  try{
+    if(spSiteToken){const u=new URL(siteUrl);const r=await fetch(u.origin+'/_api/web/currentuser',{headers:{'Authorization':'Bearer '+spSiteToken}});if(r.ok)return spSiteToken;}
+  }catch{}
+  const u=new URL(siteUrl);
+  const resp=await msalApp.acquireTokenSilent({scopes:[u.origin+'/.default'],account:spUser});
+  spSiteToken=resp.accessToken;
+  return spSiteToken;
+}
+
+async function spRestGet(siteUrl,url){
+  const token=await ensureSpSiteToken(siteUrl);
+  const resp=await fetch(url,{headers:{'Authorization':'Bearer '+token,'Accept':'application/json','Content-Type':'application/json'}});
+  if(!resp.ok){let txt='';try{txt=await resp.text();}catch(e){}throw new Error(`HTTP ${resp.status}: ${txt.substring(0,200)}`);}
   return await resp.json();
 }
 
+function spRestListUrl(siteUrl,listName){
+  const s=siteUrl.replace(/\/+$/,'');
+  return s+"/_api/web/lists/getbytitle('"+listName.replace(/'/g,"''")+"')";
+}
+
+const SKIP_COLS = new Set([
+  'ID','ContentType','Modified','Created','Author','Editor','AuthorLookupId','EditorLookupId',
+  '_UIVersionString','Attachments','Edit','LinkTitleNoMenu','LinkTitle','ItemChildCount','FolderChildCount',
+  '_ComplianceFlags','_ComplianceTag','_ComplianceTagWrittenTime','_ComplianceTagUserId',
+  'AppAuthorLookupId','AppEditorLookupId','FileSystemObjectType','ServerUrl','EncodedAbsUrl','BaseName',
+  'FileRef','FileLeafRef','UniqueId','ProgId','CheckoutUserId','CheckoutUser','CheckedOutUserId','CheckedOutUser',
+  'HasCopyDestinations','CopySource','OData__UIVersionString','UIVersion','Order','GUID','WorkflowInstanceId','WorkflowVersion',
+  'WorkflowName','File_x0020_Type','DocIcon','XMLTZone','_HasCopyDestinations','_CopySource','ScopeId','LinkFilename',
+  'LinkFilenameNoMenu','FSObjType','SortBehavior','PermMask','FileDirRef','Last_x0020_Modified','Created_x0020_Date'
+]);
+
+const SP_TYPE_MAP = {
+  'Text':'text','Note':'note','Choice':'choice','MultiChoice':'multiChoice',
+  'Boolean':'boolean','DateTime':'date','Number':'number','Currency':'currency',
+  'Lookup':'lookup','User':'person','URL':'url','Calculated':'text',
+  'ModStat':'skip','WorkflowStatus':'skip','WorkflowEventType':'skip',
+  'ThreadingInfo':'skip','File':'skip','Attachments':'skip'
+};
+
 async function fetchColumnDefinitions(siteUrl,listName){
-  const json=await apiGet(graphListColumnsUrl(siteUrl,listName));
-  const cols=[];
-  (json.value||[]).forEach(col=>{
-    const n=col.name;
-    if(!n||SKIP_COLS.has(n)||n.startsWith('_'))return;
-    let type='text',choices=null;
-    if(col.choice){type='choice';choices=col.choice.choices||[];}
-    else if(col.multiChoice){type='multiChoice';choices=col.multiChoice.choices||[];}
-    else if(col.boolean)type='boolean';
-    else if(col.dateTime)type='date';
-    else if(col.number)type='number';
-    else if(col.currency)type='currency';
-    else if(col.note)type='note';
-    else if(col.lookup)type='lookup';
-    else if(col.personOrGroup)type='person';
-    else if(col.url)type='url';
-    cols.push({name:n, displayName:col.displayName||n, type, choices});
+  const url=spRestListUrl(siteUrl,listName)+'/fields?$filter=Hidden eq false and ReadOnlyField eq false&$select=InternalName,Title,TypeAsString,Description,Required,Choices';
+  const json=await spRestGet(siteUrl,url);
+  const raw=json.d?json.d.results:(json.value||[]);
+  const cols=[];const seen=new Set();
+  raw.forEach(f=>{
+    const n=f.InternalName;
+    if(!n||SKIP_COLS.has(n)||n.startsWith('_')||seen.has(n))return;
+    seen.add(n);
+    const ts=f.TypeAsString||'Text';
+    let type=SP_TYPE_MAP[ts]||'text';
+    if(type==='skip')return;
+    let choices=null;
+    if(f.Choices&&f.Choices.results&&f.Choices.results.length)choices=f.Choices.results;
+    cols.push({name:n,displayName:f.Title||n,type,choices,required:f.Required||false,description:f.Description||''});
   });
   return cols;
 }
 
-async function fetchListItems(siteUrl,listName){
-  let allItems=[], nextUrl=graphListItemsUrl(siteUrl,listName);
-  while(nextUrl){
-    const token=await getTokenSP();
-    const resp=await fetch(nextUrl,{headers:{'Authorization':'Bearer '+token,'Accept':'application/json'}});
-    if(!resp.ok){ let txt=''; try{txt=await resp.text();}catch(e){} throw new Error(`HTTP ${resp.status}: ${txt.substring(0,200)}`); }
-    const json=await resp.json();
-    if(json.value) allItems=allItems.concat(json.value);
-    nextUrl=json['@odata.nextLink']||null;
-  }
-  return allItems;
+function spVal(v){
+  if(v==null)return'';
+  if(typeof v!=='object')return v;
+  if(v.LookupValue!==undefined)return v.LookupValue;
+  if(v.results!==undefined)return v.results.join('; ');
+  if(v.UserName!==undefined)return v.UserName||v.Title||'';
+  if(v.Description!==undefined)return v.Description;
+  if(v.Url!==undefined)return v.Url;
+  if(v.DisplayUrl!==undefined)return v.DisplayUrl;
+  if(Array.isArray(v))return v.join(', ');
+  try{return JSON.stringify(v);}catch(e){return'';}
 }
 
-function fieldsToDisplay(rawItem, rename){
-  const out={};
-  for(const [k,v] of Object.entries(rawItem.fields||{})){
-    let val=v;
-    if(val && typeof val==='object'){ val = val.Title || val.LookupValue || val.Email || JSON.stringify(val); }
-    out[rename[k]||k]=val;
+async function fetchListItems(siteUrl,listName,rename){
+  const base=spRestListUrl(siteUrl,listName)+'/items';
+  let allItems=[];
+  let nextUrl=base+'?$top=500&$orderby=ID desc';
+  while(nextUrl){
+    const json=await spRestGet(siteUrl,nextUrl);
+    const items=json.d?json.d.results:(json.value||[]);
+    allItems=allItems.concat(items.map(it=>{
+      const out={};
+      for(const [k,v] of Object.entries(it)){
+        if(k.startsWith('@odata')||k==='ID'||k==='Id'||k==='odata.type'||k==='odata.id')continue;
+        out[rename[k]||k]=spVal(v);
+      }
+      out._id=it.ID||it.Id;
+      return out;
+    }));
+    nextUrl=(json.d&&json.d.__next)?json.d.__next:(json['@odata.nextLink']||null);
   }
-  out._id=rawItem.id;
-  return out;
+  return allItems;
 }
 
 // ======================== LOAD LIST DATA ========================
@@ -974,9 +985,8 @@ async function loadList(id, force){
     const cols=await fetchColumnDefinitions(dept.site,dept.list);
     const rename={};
     cols.forEach(c=>{ if(c.displayName!==c.name) rename[c.name]=c.displayName; });
-    const rawItems=await fetchListItems(dept.site,dept.list);
-    const items=rawItems.map(it=>fieldsToDisplay(it,rename));
-    cache.cols=cols; cache.items=items; cache.loaded=true; cache.loading=false;
+    const rawItems=await fetchListItems(dept.site,dept.list,rename);
+    cache.cols=cols; cache.items=rawItems; cache.loaded=true; cache.loading=false;
     updateNavDot(id,'online'); updateNavCount(id,items.length);
     return cache;
   }catch(e){
