@@ -1002,27 +1002,68 @@ async function loadList(id, force){
 }
 
 let _bulkLoadRunning=false;
+let _showProcessingOverlay=false;
 async function loadAllLists(){
   if(_bulkLoadRunning) return;
   _bulkLoadRunning=true;
   const depts=visibleDepts();
   let done=0;
   updateRefreshStatus(`Loading 0/${depts.length}...`);
+  if(_showProcessingOverlay) showProcessingBar(depts.length);
   for(const d of depts){
     await loadList(d.id, false);
     done++;
     updateRefreshStatus(`Loading ${done}/${depts.length}...`);
-    if(currentView==='dashboard') renderDashboard();
-    else if(currentView===d.id) renderListView(d.id);
+    if(_showProcessingOverlay) updateProcessingBar(done,depts.length);
+    if(!_showProcessingOverlay){
+      if(currentView==='dashboard') renderDashboard();
+      else if(currentView===d.id) renderListView(d.id);
+    }
   }
   updateRefreshStatus('');
   _bulkLoadRunning=false;
+  if(_showProcessingOverlay) hideProcessingBar();
   if(currentView==='dashboard') renderDashboard();
+  else if(currentView==='logstats') renderLogStatistics();
+  buildSidebar();
+}
+
+function showProcessingBar(total){
+  let bar=document.getElementById('processing-bar');
+  if(!bar){
+    bar=document.createElement('div');
+    bar.id='processing-bar';
+    bar.style.cssText='position:fixed;top:0;left:0;right:0;z-index:500;background:var(--primary);color:white;padding:10px 20px;display:flex;align-items:center;gap:12px;font-size:13px;box-shadow:0 2px 8px rgba(0,0,0,.2)';
+    bar.innerHTML='<div class="spinner" style="width:16px;height:16px;border:2px solid rgba(255,255,255,.3);border-top-color:white;border-radius:50%;animation:spin .6s linear infinite"></div><span id="processing-msg">Loading...</span><div style="flex:1;height:4px;background:rgba(255,255,255,.2);border-radius:2px;overflow:hidden"><div id="processing-fill" style="height:100%;background:white;border-radius:2px;transition:width .3s;width:0%"></div></div><span id="processing-count" style="min-width:60px;text-align:right"></span>';
+    document.body.appendChild(bar);
+  }
+  bar.style.display='flex';
+  document.getElementById('processing-fill').style.width='0%';
+  document.getElementById('processing-count').textContent='0/'+total;
+  document.getElementById('processing-msg').textContent='Loading registers...';
+}
+function updateProcessingBar(done,total){
+  const pct=Math.round(done/total*100);
+  const fill=document.getElementById('processing-fill');
+  const count=document.getElementById('processing-count');
+  if(fill)fill.style.width=pct+'%';
+  if(count)count.textContent=done+'/'+total;
+}
+function hideProcessingBar(){
+  const bar=document.getElementById('processing-bar');
+  if(bar)bar.style.display='none';
 }
 
 async function refreshAll(){
   DEPTS.forEach(d=>listCache[d.id].loaded=false);
+  _showProcessingOverlay=true;
+  currentView='dashboard';
+  buildSidebar();
+  document.getElementById('view-title').textContent='DC Log Dashboard';
+  document.getElementById('content').innerHTML='<div class="loading-state"><div class="spinner"></div><p>Refreshing all registers...</p></div>';
   await loadAllLists();
+  _showProcessingOverlay=false;
+  renderDashboard();
 }
 
 function updateRefreshStatus(msg){
@@ -1846,6 +1887,7 @@ function finishSetup(){
     document.getElementById('content').innerHTML='<div class="empty-state"><div class="empty-icon">🔒</div><h3>Access Denied</h3><p>You do not have permission to view any DC Log registers. Contact your administrator.</p></div>';
     return;
   }
+  _showProcessingOverlay=true;
   switchView('dashboard');
 }
 
