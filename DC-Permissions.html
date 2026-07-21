@@ -310,7 +310,7 @@ async function ensureSpToken(){
   try{
     if(spSiteToken){const r=await fetch(SITE_URL+'/_api/web/currentuser',{headers:{'Authorization':'Bearer '+spSiteToken}});if(r.ok)return spSiteToken;}
   }catch{}
-  const resp=await msalApp.acquireTokenSilent({scopes:[SITE_URL+'/.default'],account:spUser});
+  const resp=await msalApp.acquireTokenSilent({scopes:[new URL(SITE_URL).origin+'/.default'],account:spUser});
   spSiteToken=resp.accessToken;
   return spSiteToken;
 }
