@@ -958,7 +958,7 @@ function spVal(v){
 async function fetchListItems(siteUrl,listName,rename){
   const base=spRestListUrl(siteUrl,listName)+'/items';
   let allItems=[];
-  let nextUrl=base+'?$top=500&$orderby=ID desc';
+  let nextUrl=base+'?$top=5000&$orderby=ID desc';
   while(nextUrl){
     const json=await spRestGet(siteUrl,nextUrl);
     const items=json.d?json.d.results:(json.value||[]);
