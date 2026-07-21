@@ -848,6 +848,7 @@ async function loadUserPerms(){
   if(!spUser||!spToken)return;
   const email=spUser.username||'';
   if(!email)return;
+  if(email.toLowerCase()===ADMIN_EMAIL.toLowerCase())return;
   try{
     const token=await ensureSpSiteToken(SITE_URL);
     const url=SITE_URL+'/_api/web/lists/getbytitle(\''+PERM_LIST+'\')/items';
@@ -857,13 +858,16 @@ async function loadUserPerms(){
     const items=data.d?data.d.results:data.value||[];
     if(!items.length){myPerms='ALL';return}
     myPerms={};
+    let userFound=false;
     const userLower=email.toLowerCase();
     items.forEach(item=>{
       if((item.Title||'').toLowerCase()===userLower){
+        userFound=true;
         const app=item.App||'Both';
         if(app===currentApp||app==='Both'){ myPerms[item.DeptID]=item.Access.toLowerCase(); }
       }
     });
+    if(!userFound) myPerms='ALL';
   }catch(e){
     if(e.message&&!e.message.includes('404'))console.error('Perm load:',e);
     myPerms='ALL';

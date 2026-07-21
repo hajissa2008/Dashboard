@@ -771,6 +771,7 @@ async function loadUserPerms(){
   if(!spUser||!spToken)return;
   const email=spUser.username||'';
   if(!email)return;
+  if(email.toLowerCase()===ADMIN_EMAIL.toLowerCase())return;
   const siteUrl='https://sascontractingsa.sharepoint.com/sites/Alenshaiah';
   try{
     const token=await ensureSpSiteToken(siteUrl);
@@ -781,16 +782,19 @@ async function loadUserPerms(){
     const items=data.d?data.d.results:data.value||[];
     if(!items.length){myPerms='ALL';return}
     myPerms={};
+    let userFound=false;
     const userLower=email.toLowerCase();
     const currentApp='DCForm';
     items.forEach(item=>{
       if((item.Title||'').toLowerCase()===userLower){
+        userFound=true;
         const app=item.App||'Both';
         if(app===currentApp||app==='Both'){
           myPerms[item.DeptID]=item.Access.toLowerCase();
         }
       }
     });
+    if(!userFound) myPerms='ALL';
   }catch(e){
     if(e.message&&!e.message.includes('404'))console.error('Perm load:',e);
     myPerms='ALL';
