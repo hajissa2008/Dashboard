@@ -1623,16 +1623,27 @@ function onStatsListChange(){
 
 
 // ======================== KPI MODAL ========================
+const HIDE_MODAL_COLS=new Set(['_id','_list','_status','Id','ID','ContentType','Modified','Created','Author','Editor','AuthorLookupId','EditorLookupId','_UIVersionString','Attachments','Edit','LinkTitleNoMenu','LinkTitle','ItemChildCount','FolderChildCount','_ComplianceFlags','_ComplianceTag','_ComplianceTagWrittenTime','_ComplianceTagUserId','AppAuthorLookupId','AppEditorLookupId','FileSystemObjectType','ServerUrl','EncodedAbsUrl','BaseName','FileRef','FileLeafRef','UniqueId','ProgId','CheckoutUserId','CheckoutUser','CheckedOutUserId','CheckedOutUser','HasCopyDestinations','CopySource','OData__UIVersionString','UIVersion','Order','GUID','WorkflowInstanceId','WorkflowVersion','WorkflowName','File_x0020_Type','DocIcon','XMLTZone','_HasCopyDestinations','_CopySource','ScopeId','LinkFilename','LinkFilenameNoMenu','FSObjType','SortBehavior','PermMask','FileDirRef','Last_x0020_Modified','Created_x0020_Date']);
+function filterModalCols(cols,items){
+  return cols.filter(c=>{
+    if(HIDE_MODAL_COLS.has(c))return false;
+    if(c.startsWith('_'))return false;
+    if(c.startsWith('odata.'))return false;
+    if(items.some(it=>it[c]!=null&&String(it[c]).trim()!==''))return true;
+    return false;
+  });
+}
 function showDetailModal(title, cols, items){
   document.getElementById('kpi-modal-title').textContent=title;
   document.getElementById('kpi-modal-count').textContent=items.length+' item(s)';
   const body=document.getElementById('kpi-modal-body');
   if(!items.length){ body.innerHTML='<p style="color:var(--text-secondary)">No items match this filter.</p>'; document.getElementById('kpi-modal-overlay').classList.add('show'); return; }
-  let html='<div style="margin-bottom:10px"><button class="btn btn-sm" onclick="closeKpiModal()" style="font-size:11px">✕ Close</button></div><table><thead><tr>'+cols.map(c=>`<th>${escapeHtml(c)}</th>`).join('')+'</tr></thead><tbody>';
+  const showCols=filterModalCols(cols,items);
+  let html='<div style="margin-bottom:10px"><button class="btn btn-sm" onclick="closeKpiModal()" style="font-size:11px">✕ Close</button></div><div class="table-scroll"><table><thead><tr>'+showCols.map(c=>`<th>${escapeHtml(c)}</th>`).join('')+'</tr></thead><tbody>';
   items.forEach(it=>{
-    html+='<tr>'+cols.map(c=>`<td>${escapeHtml(it[c])}</td>`).join('')+'</tr>';
+    html+='<tr>'+showCols.map(c=>`<td>${escapeHtml(it[c])}</td>`).join('')+'</tr>';
   });
-  html+='</tbody></table>';
+  html+='</tbody></table></div>';
   body.innerHTML=html;
   document.getElementById('kpi-modal-overlay').classList.add('show');
 }
