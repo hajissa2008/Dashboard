@@ -1007,6 +1007,7 @@ async function loadList(id, force){
 
 let _bulkLoadRunning=false;
 let _showProcessingOverlay=false;
+const PARALLEL_LIMIT=6;
 async function loadAllLists(){
   if(_bulkLoadRunning) return;
   _bulkLoadRunning=true;
@@ -1014,16 +1015,23 @@ async function loadAllLists(){
   let done=0;
   updateRefreshStatus(`Loading 0/${depts.length}...`);
   if(_showProcessingOverlay) showProcessingBar(depts.length);
-  for(const d of depts){
-    await loadList(d.id, false);
-    done++;
-    updateRefreshStatus(`Loading ${done}/${depts.length}...`);
-    if(_showProcessingOverlay) updateProcessingBar(done,depts.length);
-    if(!_showProcessingOverlay){
-      if(currentView==='dashboard') renderDashboard();
-      else if(currentView===d.id) renderListView(d.id);
+  let idx=0;
+  async function worker(){
+    while(idx<depts.length){
+      const i=idx++;
+      await loadList(depts[i].id,false);
+      done++;
+      updateRefreshStatus(`Loading ${done}/${depts.length}...`);
+      if(_showProcessingOverlay) updateProcessingBar(done,depts.length);
+      if(!_showProcessingOverlay){
+        if(currentView==='dashboard') renderDashboard();
+        else if(currentView===depts[i].id) renderListView(depts[i].id);
+      }
     }
   }
+  const workers=[];
+  for(let i=0;i<Math.min(PARALLEL_LIMIT,depts.length);i++) workers.push(worker());
+  await Promise.all(workers);
   updateRefreshStatus('');
   _bulkLoadRunning=false;
   if(_showProcessingOverlay) hideProcessingBar();
