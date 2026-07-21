@@ -852,28 +852,25 @@ async function loadUserPerms(){
   if(email.toLowerCase()===ADMIN_EMAIL.toLowerCase()){myPerms='ALL';return;}
   try{
     const token=await ensureSpSiteToken(SITE_URL);
-    const url=SITE_URL+'/_api/web/lists/getbytitle(\''+PERM_LIST+'\')/items';
+    const url=SITE_URL+"/_api/web/lists/getbytitle('"+PERM_LIST+"')/items?$filter=Title eq '"+email.replace(/'/g,"''")+"'&$top=5000";
     const resp=await fetch(url,{headers:{'Authorization':'Bearer '+token,'Accept':'application/json'}});
     if(!resp.ok){ console.error('[loadUserPerms] HTTP',resp.status); myPerms=null; return; }
     const data=await resp.json();
     const items=data.d?data.d.results:data.value||[];
+    console.log('[loadUserPerms] items returned for',email,':',items.length);
     if(!items.length){myPerms=null;return}
     myPerms={};
     let userFound=false;
-    const userLower=email.toLowerCase();
+    const userLower=(spUser.username||'').toLowerCase().trim();
     items.forEach(item=>{
-      if((item.Title||'').toLowerCase()===userLower){
+      const app=(item.App||'Both').trim();
+      console.log('[loadUserPerms] entry App:',app,'DeptID:',item.DeptID,'Access:',item.Access);
+      if(app.toLowerCase()===currentApp.toLowerCase()||app.toLowerCase()==='both'){
         userFound=true;
-        const app=(item.App||'Both').trim();
-        console.log('[loadUserPerms] matched entry:',item.Title,'App:',app,'DeptID:',item.DeptID,'Access:',item.Access);
-        if(app.toLowerCase()===currentApp.toLowerCase()||app.toLowerCase()==='both'){ myPerms[item.DeptID]=item.Access.toLowerCase(); }
+        myPerms[item.DeptID]=item.Access.toLowerCase();
       }
     });
     console.log('[loadUserPerms] userFound:',userFound,'myPerms keys:',Object.keys(myPerms).length);
-    if(!userFound){
-      const allEmails=[...new Set(items.map(i=>i.Title))];
-      console.log('[loadUserPerms] Available emails in Permissions list:',allEmails);
-    }
     if(!userFound||!Object.keys(myPerms).length) myPerms=null;
   }catch(e){
     console.error('[loadUserPerms] error:',e);

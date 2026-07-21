@@ -776,7 +776,7 @@ async function loadUserPerms(){
   const siteUrl='https://sascontractingsa.sharepoint.com/sites/Alenshaiah';
   try{
     const token=await ensureSpSiteToken(siteUrl);
-    const url=siteUrl+'/_api/web/lists/getbytitle(\''+PERM_LIST+'\')/items';
+    const url=siteUrl+"/_api/web/lists/getbytitle('"+PERM_LIST+"')/items?$filter=Title eq '"+email.replace(/'/g,"''")+"'&$top=5000";
     const resp=await fetch(url,{headers:{'Authorization':'Bearer '+token,'Accept':'application/json'}});
     if(!resp.ok){myPerms=null;return;}
     const data=await resp.json();
@@ -784,15 +784,12 @@ async function loadUserPerms(){
     if(!items.length){myPerms=null;return}
     myPerms={};
     let userFound=false;
-    const userLower=email.toLowerCase();
     const currentApp='DCForm';
     items.forEach(item=>{
-      if((item.Title||'').toLowerCase()===userLower){
+      const app=(item.App||'Both').trim();
+      if(app.toLowerCase()===currentApp.toLowerCase()||app.toLowerCase()==='both'){
         userFound=true;
-        const app=item.App||'Both';
-        if(app===currentApp||app==='Both'){
-          myPerms[item.DeptID]=item.Access.toLowerCase();
-        }
+        myPerms[item.DeptID]=item.Access.toLowerCase();
       }
     });
     if(!userFound||!Object.keys(myPerms).length) myPerms=null;
