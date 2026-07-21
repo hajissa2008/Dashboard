@@ -854,7 +854,7 @@ async function loadUserPerms(){
     const token=await ensureSpSiteToken(SITE_URL);
     const url=SITE_URL+'/_api/web/lists/getbytitle(\''+PERM_LIST+'\')/items';
     const resp=await fetch(url,{headers:{'Authorization':'Bearer '+token,'Accept':'application/json'}});
-    if(!resp.ok){ myPerms=null; return; }
+    if(!resp.ok){ console.error('[loadUserPerms] HTTP',resp.status); myPerms=null; return; }
     const data=await resp.json();
     const items=data.d?data.d.results:data.value||[];
     if(!items.length){myPerms=null;return}
@@ -864,13 +864,15 @@ async function loadUserPerms(){
     items.forEach(item=>{
       if((item.Title||'').toLowerCase()===userLower){
         userFound=true;
-        const app=item.App||'Both';
-        if(app===currentApp||app==='Both'){ myPerms[item.DeptID]=item.Access.toLowerCase(); }
+        const app=(item.App||'Both').trim();
+        console.log('[loadUserPerms] matched entry:',item.Title,'App:',app,'DeptID:',item.DeptID,'Access:',item.Access);
+        if(app.toLowerCase()===currentApp.toLowerCase()||app.toLowerCase()==='both'){ myPerms[item.DeptID]=item.Access.toLowerCase(); }
       }
     });
+    console.log('[loadUserPerms] userFound:',userFound,'myPerms keys:',Object.keys(myPerms).length);
     if(!userFound||!Object.keys(myPerms).length) myPerms=null;
   }catch(e){
-    if(e.message&&!e.message.includes('404'))console.error('Perm load:',e);
+    console.error('[loadUserPerms] error:',e);
     myPerms=null;
   }
 }
