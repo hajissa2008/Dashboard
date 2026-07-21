@@ -188,7 +188,7 @@ tr:hover{background:var(--primary-light)}
 <script>
 const SITE_URL='https://sascontractingsa.sharepoint.com/sites/Alenshaiah';
 const PERM_LIST='Permissions';
-const ADMIN_EMAIL='m.hajissa@alenshaiah.com';
+const ADMIN_EMAIL='m.alhajissa@alenshaiah.com';
 const TENANT_ID='684547e2-bb8b-450a-a3e1-3a6bc15e9471';
 const CLIENT_ID='04f83c11-e51c-4a8a-be86-9e3a49f3e952';
 
@@ -289,6 +289,13 @@ function handleLogin(resp){
     document.getElementById('login-btn').style.display='none';
     document.getElementById('logout-btn').style.display='';
     const ui=document.getElementById('user-info');
+    if((spUser.username||'').toLowerCase()!==ADMIN_EMAIL.toLowerCase()){
+      ui.style.display='';ui.innerHTML='<strong>'+htmlEscape(spUser.name||spUser.username)+'</strong> <span style="color:var(--red);font-size:12px">(Not authorized)</span>';
+      document.getElementById('empty-login').innerHTML='<div class="icon">🔒</div><h3>Access Denied</h3><p>Only the administrator can manage permissions. If you think you must have access to this portal, please refer to System admin for access request.</p>';
+      document.getElementById('empty-login').style.display='';
+      document.getElementById('main-content').style.display='none';
+      return;
+    }
     ui.style.display='';ui.innerHTML='<strong>'+htmlEscape(spUser.name||spUser.username)+'</strong>';
     document.getElementById('empty-login').style.display='none';
     document.getElementById('main-content').style.display='';
