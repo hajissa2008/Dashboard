@@ -838,25 +838,26 @@ function updateAuthUI(){
 }
 
 // ======================== PERMISSIONS ========================
-let myPerms = 'ALL';
+let myPerms = null;
 const PERM_LIST = 'Permissions';
 const ADMIN_EMAIL = 'm.hajissa@alenshaiah.com';
 const currentApp = 'DCLog';
+const ACCESS_DENIED_MSG = "You don't have permission to access this portal. If you think you must have access to this portal, please refer to System admin for access request.";
 
 async function loadUserPerms(){
-  myPerms='ALL';
+  myPerms=null;
   if(!spUser||!spToken)return;
   const email=spUser.username||'';
   if(!email)return;
-  if(email.toLowerCase()===ADMIN_EMAIL.toLowerCase())return;
+  if(email.toLowerCase()===ADMIN_EMAIL.toLowerCase()){myPerms='ALL';return;}
   try{
     const token=await ensureSpSiteToken(SITE_URL);
     const url=SITE_URL+'/_api/web/lists/getbytitle(\''+PERM_LIST+'\')/items';
     const resp=await fetch(url,{headers:{'Authorization':'Bearer '+token,'Accept':'application/json'}});
-    if(!resp.ok){ if(resp.status===404){myPerms='ALL';return} throw new Error(await resp.text()) }
+    if(!resp.ok){ myPerms=null; return; }
     const data=await resp.json();
     const items=data.d?data.d.results:data.value||[];
-    if(!items.length){myPerms='ALL';return}
+    if(!items.length){myPerms=null;return}
     myPerms={};
     let userFound=false;
     const userLower=email.toLowerCase();
@@ -867,15 +868,15 @@ async function loadUserPerms(){
         if(app===currentApp||app==='Both'){ myPerms[item.DeptID]=item.Access.toLowerCase(); }
       }
     });
-    if(!userFound) myPerms='ALL';
+    if(!userFound||!Object.keys(myPerms).length) myPerms=null;
   }catch(e){
     if(e.message&&!e.message.includes('404'))console.error('Perm load:',e);
-    myPerms='ALL';
+    myPerms=null;
   }
 }
-function getMyAccess(deptId){ if(myPerms==='ALL')return 'edit'; return myPerms[deptId]||'none'; }
-function hasAnyAccess(){ if(myPerms==='ALL')return true; return DEPTS.some(d=>getMyAccess(d.id)!=='none'); }
-function visibleDepts(){ return myPerms==='ALL'?DEPTS:DEPTS.filter(d=>getMyAccess(d.id)!=='none'); }
+function getMyAccess(deptId){ if(myPerms==='ALL')return 'edit'; if(!myPerms)return 'none'; return myPerms[deptId]||'none'; }
+function hasAnyAccess(){ if(myPerms==='ALL')return true; if(!myPerms)return false; return DEPTS.some(d=>getMyAccess(d.id)!=='none'); }
+function visibleDepts(){ if(!myPerms)return[]; return myPerms==='ALL'?DEPTS:DEPTS.filter(d=>getMyAccess(d.id)!=='none'); }
 
 // ======================== SHAREPOINT REST API ========================
 const SITE_URL = 'https://sascontractingsa.sharepoint.com/sites/Alenshaiah';
@@ -1884,7 +1885,7 @@ function finishSetup(){
   buildSidebar();
   updateAuthUI();
   if(!hasAnyAccess()){
-    document.getElementById('content').innerHTML='<div class="empty-state"><div class="empty-icon">🔒</div><h3>Access Denied</h3><p>You do not have permission to view any DC Log registers. Contact your administrator.</p></div>';
+    document.getElementById('content').innerHTML='<div class="empty-state"><div class="empty-icon">🔒</div><h3>Access Denied</h3><p>'+escapeHtml(ACCESS_DENIED_MSG)+'</p></div>';
     return;
   }
   _showProcessingOverlay=true;

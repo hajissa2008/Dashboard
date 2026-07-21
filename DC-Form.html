@@ -669,9 +669,10 @@ let editingId = null;
 let columnDefs = [];
 let renameMap = {};
 let attachmentCounts = {};
-let myPerms = 'ALL'; // 'ALL' = legacy (no list), or { deptId: 'read'|'edit' }
+let myPerms = null;
 const PERM_LIST = 'Permissions';
 const ADMIN_EMAIL = 'm.hajissa@alenshaiah.com';
+const ACCESS_DENIED_MSG = "You don't have permission to access this portal. If you think you must have access to this portal, please refer to System admin for access request.";
 
 // MSAL
 const SP_SCOPES = ['Sites.ReadWrite.All','User.Read'];
@@ -767,20 +768,20 @@ async function getTokenSP(){
 }
 
 async function loadUserPerms(){
-  myPerms='ALL';
+  myPerms=null;
   if(!spUser||!spToken)return;
   const email=spUser.username||'';
   if(!email)return;
-  if(email.toLowerCase()===ADMIN_EMAIL.toLowerCase())return;
+  if(email.toLowerCase()===ADMIN_EMAIL.toLowerCase()){myPerms='ALL';return;}
   const siteUrl='https://sascontractingsa.sharepoint.com/sites/Alenshaiah';
   try{
     const token=await ensureSpSiteToken(siteUrl);
     const url=siteUrl+'/_api/web/lists/getbytitle(\''+PERM_LIST+'\')/items';
     const resp=await fetch(url,{headers:{'Authorization':'Bearer '+token,'Accept':'application/json'}});
-    if(!resp.ok){if(resp.status===404){myPerms='ALL';return}throw new Error(await resp.text())}
+    if(!resp.ok){myPerms=null;return;}
     const data=await resp.json();
     const items=data.d?data.d.results:data.value||[];
-    if(!items.length){myPerms='ALL';return}
+    if(!items.length){myPerms=null;return}
     myPerms={};
     let userFound=false;
     const userLower=email.toLowerCase();
@@ -794,20 +795,22 @@ async function loadUserPerms(){
         }
       }
     });
-    if(!userFound) myPerms='ALL';
+    if(!userFound||!Object.keys(myPerms).length) myPerms=null;
   }catch(e){
     if(e.message&&!e.message.includes('404'))console.error('Perm load:',e);
-    myPerms='ALL';
+    myPerms=null;
   }
 }
 
 function getMyAccess(deptId){
   if(myPerms==='ALL')return 'edit';
+  if(!myPerms)return 'none';
   return myPerms[deptId]||'none';
 }
 
 function hasAnyFormAccess(){
   if(myPerms==='ALL') return true;
+  if(!myPerms) return false;
   return DEPTS.some(d=>getMyAccess(d.id)!=='none');
 }
 
@@ -818,7 +821,7 @@ function handleAuthResponse(resp){
     loadUserPerms().then(()=>{
       initDeptSelect();
       if(!hasAnyFormAccess()){
-        setEmpty('🔒','Access Denied','You do not have permission to access any department. Contact your administrator.');
+        setEmpty('🔒','Access Denied',ACCESS_DENIED_MSG);
         document.getElementById('dept-select').disabled=true;
         return;
       }
@@ -2234,7 +2237,7 @@ function saveConfig(){
   if(accounts.length>0){
     spUser = accounts[0];
     msalApp.acquireTokenSilent({ scopes: SP_SCOPES, account: spUser })
-      .then(r=>{ spToken=r.accessToken; hideSigninOverlay(); updateAuthUI(); loadUserPerms().then(()=>{ initDeptSelect(); if(!hasAnyFormAccess()){ setEmpty('🔒','Access Denied','You do not have permission to access any department. Contact your administrator.'); document.getElementById('dept-select').disabled=true; }else{ const d=storage.getItem('dcform-last-dept'); if(d)onDeptChange(); } }); })
+      .then(r=>{ spToken=r.accessToken; hideSigninOverlay(); updateAuthUI(); loadUserPerms().then(()=>{ initDeptSelect();           if(!hasAnyFormAccess()){ setEmpty('🔒','Access Denied',ACCESS_DENIED_MSG); document.getElementById('dept-select').disabled=true; }else{ const d=storage.getItem('dcform-last-dept'); if(d)onDeptChange(); } }); })
       .catch(()=>{ spToken=null; showSigninProgress(true); ssoSilentAttempt().then(authed=>{ showSigninProgress(false); if(!authed) updateAuthUI(); }).catch(e=>{ showSigninProgress(false); console.error('[SSO]',e); updateAuthUI(); }); });
   }else{
     showSigninProgress(true);
