@@ -1256,10 +1256,10 @@ function renderDashboard(){
   loadedDepts.forEach(d=>{ groupTotals[d.group]=(groupTotals[d.group]||0)+listCache[d.id].items.length; });
 
   let html=`<div class="kpi-grid">
-    <div class="kpi-card" style="cursor:default"><div class="kpi-accent" style="background:#4C5D71"></div><div class="kpi-icon">🗄️</div><div class="kpi-label">Total Lists</div><div class="kpi-value">${depts.length}</div></div>
-    <div class="kpi-card" style="cursor:default"><div class="kpi-accent" style="background:#00B7C3"></div><div class="kpi-icon">📄</div><div class="kpi-label">Total Records</div><div class="kpi-value">${totalRecords}</div></div>
-    <div class="kpi-card" style="cursor:default"><div class="kpi-accent" style="background:#107C10"></div><div class="kpi-icon">✅</div><div class="kpi-label">Lists Loaded</div><div class="kpi-value">${loadedDepts.length} / ${depts.length}</div></div>
-    <div class="kpi-card" style="cursor:default"><div class="kpi-accent" style="background:#8764B8"></div><div class="kpi-icon">🏷️</div><div class="kpi-label">Categories</div><div class="kpi-value">${DEPT_GROUPS.length}</div></div>
+    <div class="kpi-card" onclick="showAllRecordsModal()"><div class="kpi-accent" style="background:#4C5D71"></div><div class="kpi-icon">🗄️</div><div class="kpi-label">Total Lists</div><div class="kpi-value">${depts.length}</div></div>
+    <div class="kpi-card" onclick="showAllRecordsModal()"><div class="kpi-accent" style="background:#00B7C3"></div><div class="kpi-icon">📄</div><div class="kpi-label">Total Records</div><div class="kpi-value">${totalRecords}</div></div>
+    <div class="kpi-card" onclick="showAllRecordsModal()"><div class="kpi-accent" style="background:#107C10"></div><div class="kpi-icon">✅</div><div class="kpi-label">Lists Loaded</div><div class="kpi-value">${loadedDepts.length} / ${depts.length}</div></div>
+    <div class="kpi-card" onclick="showAllRecordsModal()"><div class="kpi-accent" style="background:#8764B8"></div><div class="kpi-icon">🏷️</div><div class="kpi-label">Categories</div><div class="kpi-value">${DEPT_GROUPS.length}</div></div>
   </div>
   <div class="charts-row">
     <div class="chart-card"><h3>Records by Category</h3><canvas id="chart-groups" height="220"></canvas></div>
@@ -1289,12 +1289,12 @@ function renderDashboardCharts(groupTotals, loadedDepts){
   const groupColors=['#4C5D71','#00B7C3','#8764B8','#ED7D31','#107C10','#D92C2C'];
   _chartGroups=new Chart(gc.getContext('2d'),{type:'doughnut',data:{
     labels:groupLabels, datasets:[{data:groupLabels.map(g=>groupTotals[g]), backgroundColor:groupColors}]
-  },options:{plugins:{legend:{position:'bottom',labels:{boxWidth:10,font:{size:10}}}}}});
+  },options:{plugins:{legend:{position:'bottom',labels:{boxWidth:10,font:{size:10}}},tooltip:{callbacks:{label:function(ctx){return ctx.label+': '+ctx.raw+' records';}}}},onClick:function(evt,elements){if(elements.length){const idx=elements[0].index;showCategoryModal(groupLabels[idx]);}}}});
 
   const top=[...loadedDepts].sort((a,b)=>listCache[b.id].items.length-listCache[a.id].items.length).slice(0,10);
   _chartTop=new Chart(tc.getContext('2d'),{type:'bar',data:{
     labels:top.map(d=>d.title), datasets:[{data:top.map(d=>listCache[d.id].items.length), backgroundColor:'#4C5D71'}]
-  },options:{indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{beginAtZero:true}}}});
+  },options:{indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{beginAtZero:true}},onClick:function(evt,elements){if(elements.length){const idx=elements[0].index;showListModal(top[idx].id);}}}});
 }
 
 
@@ -1543,11 +1543,11 @@ function renderAggChartsLS(aggStatus, discTotals){
   const codes=Object.keys(aggStatus).sort((a,b)=>STATUS_ORDER_LS.indexOf(a)-STATUS_ORDER_LS.indexOf(b));
   _chartAggStatus=new Chart(sc.getContext('2d'),{type:'doughnut',data:{
     labels:codes.map(c=>c+' — '+aggStatus[c].label), datasets:[{data:codes.map(c=>aggStatus[c].total), backgroundColor:codes.map(c=>aggStatus[c].color)}]
-  },options:{plugins:{legend:{position:'bottom',labels:{boxWidth:10,font:{size:10}}}}}});
+  },options:{plugins:{legend:{position:'bottom',labels:{boxWidth:10,font:{size:10}}}},onClick:function(evt,elements){if(elements.length){const idx=elements[0].index;showStatusModal(codes[idx]);}}}});
   const discs=Object.keys(discTotals).sort((a,b)=>discTotals[b]-discTotals[a]).slice(0,12);
   _chartAggDisc=new Chart(dc.getContext('2d'),{type:'bar',data:{
     labels:discs, datasets:[{data:discs.map(d=>discTotals[d]), backgroundColor:'#00B7C3'}]
-  },options:{indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{beginAtZero:true,ticks:{precision:0}}}}});
+  },options:{indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{beginAtZero:true,ticks:{precision:0}}},onClick:function(evt,elements){if(elements.length){const idx=elements[0].index;showDisciplineModal(discs[idx]);}}}});
 }
 
 function renderLogStatistics(){
@@ -1569,11 +1569,11 @@ function renderLogStatistics(){
   const rejected=aggStatus['D']?.total||0;
 
   let html=`<div class="kpi-grid">
-    <div class="kpi-card" style="cursor:default"><div class="kpi-accent" style="background:#4C5D71"></div><div class="kpi-icon">📈</div><div class="kpi-label">Tracked Items</div><div class="kpi-value">${totalWithStatus}</div></div>
-    <div class="kpi-card" style="cursor:default"><div class="kpi-accent" style="background:#107C10"></div><div class="kpi-icon">✅</div><div class="kpi-label">Approval Rate</div><div class="kpi-value">${approvalRate}%</div></div>
-    <div class="kpi-card" style="cursor:default"><div class="kpi-accent" style="background:#FFB900"></div><div class="kpi-icon">🔍</div><div class="kpi-label">Open / Under Review</div><div class="kpi-value">${underReview}</div></div>
-    <div class="kpi-card" style="cursor:default"><div class="kpi-accent" style="background:#ED7D31"></div><div class="kpi-icon">🔄</div><div class="kpi-label">Revise &amp; Resubmit</div><div class="kpi-value">${resubmit}</div></div>
-    <div class="kpi-card" style="cursor:default"><div class="kpi-accent" style="background:#D92C2C"></div><div class="kpi-icon">❌</div><div class="kpi-label">Rejected</div><div class="kpi-value">${rejected}</div></div>
+    <div class="kpi-card" onclick="showDetailModal('All Tracked Items',window._logStatCols||[],window._logStatItems||[])"><div class="kpi-accent" style="background:#4C5D71"></div><div class="kpi-icon">📈</div><div class="kpi-label">Tracked Items</div><div class="kpi-value">${totalWithStatus}</div></div>
+    <div class="kpi-card" onclick="showApprovedModal()"><div class="kpi-accent" style="background:#107C10"></div><div class="kpi-icon">✅</div><div class="kpi-label">Approval Rate</div><div class="kpi-value">${approvalRate}%</div></div>
+    <div class="kpi-card" onclick="showStatusModal('O')"><div class="kpi-accent" style="background:#FFB900"></div><div class="kpi-icon">🔍</div><div class="kpi-label">Open / Under Review</div><div class="kpi-value">${underReview}</div></div>
+    <div class="kpi-card" onclick="showStatusModal('C')"><div class="kpi-accent" style="background:#ED7D31"></div><div class="kpi-icon">🔄</div><div class="kpi-label">Revise &amp; Resubmit</div><div class="kpi-value">${resubmit}</div></div>
+    <div class="kpi-card" onclick="showStatusModal('D')"><div class="kpi-accent" style="background:#D92C2C"></div><div class="kpi-icon">❌</div><div class="kpi-label">Rejected</div><div class="kpi-value">${rejected}</div></div>
   </div>
   <div class="charts-row">
     <div class="chart-card"><h3>Overall Status Distribution</h3><canvas id="chart-agg-status" height="220"></canvas></div>
@@ -1623,21 +1623,97 @@ function onStatsListChange(){
 
 
 // ======================== KPI MODAL ========================
-function showKpiModalFromCache(idx){
-  const d=window._kpiCache[idx];
-  if(!d)return;
-  document.getElementById('kpi-modal-title').textContent=d.title;
-  document.getElementById('kpi-modal-count').textContent=d.items.length+' item(s)';
+function showDetailModal(title, cols, items){
+  document.getElementById('kpi-modal-title').textContent=title;
+  document.getElementById('kpi-modal-count').textContent=items.length+' item(s)';
   const body=document.getElementById('kpi-modal-body');
-  if(!d.items.length){ body.innerHTML='<p style="color:var(--text-secondary)">No items.</p>'; document.getElementById('kpi-modal-overlay').classList.add('show'); return; }
-  const cols=d.cols;
-  let html='<table><thead><tr>'+cols.map(c=>`<th>${escapeHtml(c.displayName)}</th>`).join('')+'</tr></thead><tbody>';
-  d.items.forEach(it=>{
-    html+='<tr>'+cols.map(c=>`<td>${escapeHtml(it[c.displayName])}</td>`).join('')+'</tr>';
+  if(!items.length){ body.innerHTML='<p style="color:var(--text-secondary)">No items match this filter.</p>'; document.getElementById('kpi-modal-overlay').classList.add('show'); return; }
+  let html='<div style="margin-bottom:10px"><button class="btn btn-sm" onclick="closeKpiModal()" style="font-size:11px">✕ Close</button></div><table><thead><tr>'+cols.map(c=>`<th>${escapeHtml(c)}</th>`).join('')+'</tr></thead><tbody>';
+  items.forEach(it=>{
+    html+='<tr>'+cols.map(c=>`<td>${escapeHtml(it[c])}</td>`).join('')+'</tr>';
   });
   html+='</tbody></table>';
   body.innerHTML=html;
   document.getElementById('kpi-modal-overlay').classList.add('show');
+}
+function showKpiModalFromCache(idx){
+  const d=window._kpiCache[idx];
+  if(!d)return;
+  showDetailModal(d.title, d.cols, d.items);
+}
+function showAllRecordsModal(){
+  const depts=visibleDepts();
+  const loadedDepts=depts.filter(d=>listCache[d.id].loaded);
+  const allItems=[];
+  loadedDepts.forEach(d=>{
+    listCache[d.id].items.forEach(it=>{
+      allItems.push({...it, _list:d.title});
+    });
+  });
+  showDetailModal('All Records ('+allItems.length+')', ['_list',...new Set(allItems.flatMap(it=>Object.keys(it).filter(k=>!k.startsWith('_'))))], allItems);
+}
+function showCategoryModal(group){
+  const depts=visibleDepts().filter(d=>d.group===group);
+  const allItems=[];
+  depts.forEach(d=>{
+    const cache=listCache[d.id];
+    if(cache.loaded) cache.items.forEach(it=>allItems.push({...it, _list:d.title}));
+  });
+  showDetailModal(group+' ('+allItems.length+')', ['_list',...new Set(allItems.flatMap(it=>Object.keys(it).filter(k=>!k.startsWith('_'))))], allItems);
+}
+function showListModal(id){
+  const dept=DEPTS_BY_ID[id];
+  const cache=listCache[id];
+  if(!dept||!cache||!cache.loaded) return;
+  showDetailModal(dept.title+' ('+cache.items.length+')', cache.cols.map(c=>c.displayName), cache.items);
+}
+function showStatusModal(code){
+  const depts=visibleDepts().filter(d=>listCache[d.id].loaded);
+  const allItems=[];
+  depts.forEach(d=>{
+    const cache=listCache[d.id];
+    const stats=computeListStats(d.id);
+    if(!stats||!stats.hasStatus) return;
+    const statusCol=detectStatusCol(cache.cols);
+    cache.items.forEach(it=>{
+      const val=String(it[statusCol]||'').trim();
+      if(val===code) allItems.push({...it, _list:d.title});
+    });
+  });
+  const label=STATUS_LABELS_LS[code]||code;
+  showDetailModal(code+' — '+label+' ('+allItems.length+')', ['_list',...new Set(allItems.flatMap(it=>Object.keys(it).filter(k=>!k.startsWith('_'))))], allItems);
+}
+function showApprovedModal(){
+  const depts=visibleDepts().filter(d=>listCache[d.id].loaded);
+  const allItems=[];
+  depts.forEach(d=>{
+    const cache=listCache[d.id];
+    const stats=computeListStats(d.id);
+    if(!stats||!stats.hasStatus) return;
+    const statusCol=detectStatusCol(cache.cols);
+    cache.items.forEach(it=>{
+      const val=String(it[statusCol]||'').trim();
+      if(val==='A'||val==='B') allItems.push({...it, _list:d.title, _status:val==='A'?'Approved As Submitted':'Approved As Noted'});
+    });
+  });
+  showDetailModal('Approved Items ('+allItems.length+')', ['_list','_status',...new Set(allItems.flatMap(it=>Object.keys(it).filter(k=>!k.startsWith('_'))))], allItems);
+}
+function showDisciplineModal(disc){
+  const depts=visibleDepts().filter(d=>listCache[d.id].loaded);
+  const allItems=[];
+  depts.forEach(d=>{
+    const cache=listCache[d.id];
+    const discCol=detectDisciplineCol(cache.cols);
+    if(!discCol) return;
+    cache.items.forEach(it=>{
+      if(String(it[discCol]||'').trim()===disc) allItems.push({...it, _list:d.title});
+    });
+  });
+  showDetailModal(disc+' ('+allItems.length+')', ['_list',...new Set(allItems.flatMap(it=>Object.keys(it).filter(k=>!k.startsWith('_'))))], allItems);
+}
+function closeKpiModal(ev){
+  if(ev && ev.target!==document.getElementById('kpi-modal-overlay'))return;
+  document.getElementById('kpi-modal-overlay').classList.remove('show');
 }
 function closeKpiModal(ev){
   if(ev && ev.target!==document.getElementById('kpi-modal-overlay'))return;
