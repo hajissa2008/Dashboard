@@ -1038,6 +1038,9 @@ function buildSidebar(){
   <a class="nav-item${currentView==='dashboard'?' active':''}" data-view="dashboard" onclick="switchView('dashboard')">
     <span class="icon">📊</span> DC Log Dashboard
   </a>
+  <a class="nav-item${currentView==='logstats'?' active':''}" data-view="logstats" onclick="switchView('logstats')">
+    <span class="icon">📈</span> Log Statistics
+  </a>
   <div class="nav-section">DC Log Registers</div>`;
   DEPT_GROUPS.forEach(g=>{
     const inGroup=depts.filter(d=>d.group===g);
@@ -1094,6 +1097,12 @@ function switchView(id){
   if(id==='dashboard'){
     document.getElementById('view-title').textContent='DC Log Dashboard';
     renderDashboard();
+    if(!_bulkLoadRunning) loadAllLists();
+    return;
+  }
+  if(id==='logstats'){
+    document.getElementById('view-title').textContent='Log Statistics';
+    renderLogStatistics();
     if(!_bulkLoadRunning) loadAllLists();
     return;
   }
@@ -1287,6 +1296,331 @@ function renderDashboardCharts(groupTotals, loadedDepts){
     labels:top.map(d=>d.title), datasets:[{data:top.map(d=>listCache[d.id].items.length), backgroundColor:'#4C5D71'}]
   },options:{indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{beginAtZero:true}}}});
 }
+
+
+// ======================== LOG STATISTICS ========================
+const STATUS_LABELS_LS = {
+  A:'Approved As Submitted', B:'Approved As Noted', C:'Revise & Resubmit',
+  D:'Disapproved / Rejected', E:'For Information', O:'Open / Under Review'
+};
+const STATUS_COLORS_LS = { A:'#107C10', B:'#00B7C3', C:'#ED7D31', D:'#D92C2C', E:'#8764B8', O:'#FFB900' };
+const STATUS_ORDER_LS = ['A','B','C','D','E','O'];
+const FEATURED_STAT_IDS = ['dw-drawings','pq','rfi','wir'];
+window._statCharts = window._statCharts || {};
+
+function detectStatusCol(cols){
+  const c=cols.find(c=>/^final code$/i.test(c.displayName.trim()));
+  return c?c.displayName:null;
+}
+function detectRevCol(cols){
+  const c=cols.find(c=>/^final rev\.?$/i.test(c.displayName.trim()));
+  return c?c.displayName:null;
+}
+function detectDisciplineCol(cols){
+  const c=cols.find(c=>{
+    const n=c.displayName.toLowerCase().replace(/[^a-z]/g,'');
+    return n.includes('cipline') || n==='disc';
+  });
+  return c?c.displayName:null;
+}
+function padRev(n){ const s=String(n).trim(); return /^\d$/.test(s)?('0'+s):s; }
+function parseDateSafeLS(v){
+  if(!v) return null;
+  const d=new Date(v);
+  return isNaN(d)?null:d;
+}
+function detectRevDatePairs(cols){
+  const names=cols.map(c=>c.displayName);
+  const subs={}, resps={};
+  let flatSub=null, flatResp=null;
+  names.forEach(n=>{
+    let m;
+    if(m=n.match(/^date of submission\s*\(?rev\.?\s*(\d{1,2})\)?$/i)){ subs[padRev(m[1])]=n; return; }
+    if(m=n.match(/^date of response\s*\(?rev\.?\s*(\d{1,2})\)?$/i)){ resps[padRev(m[1])]=n; return; }
+    if(m=n.match(/^submission rev\.?\s*(\d{1,2})\s*-\s*date of submission$/i)){ subs[padRev(m[1])]=n; return; }
+    if(m=n.match(/^submission rev\.?\s*(\d{1,2})\s*-\s*date received$/i)){ subs[padRev(m[1])]=n; return; }
+    if(m=n.match(/^submission rev\.?\s*(\d{1,2})\s*-\s*date of response$/i)){ resps[padRev(m[1])]=n; return; }
+    if(m=n.match(/^submission rev\.?\s*(\d{1,2})\s*-\s*(?:acc'?s response|sdc'?s respo?se)$/i)){ resps[padRev(m[1])]=n; return; }
+    if(/^submission date$/i.test(n)) flatSub=flatSub||n;
+    if(/^response date$/i.test(n)) flatResp=flatResp||n;
+    if(/^issuance date$/i.test(n)) flatSub=flatSub||n;
+    if(/^receive date$/i.test(n)) flatResp=flatResp||n;
+    if(/^date reply by (acc|sdc)$/i.test(n)) flatResp=flatResp||n;
+  });
+  const pairs=[];
+  Object.keys(subs).sort().forEach(rev=>{ if(resps[rev]) pairs.push({rev, subCol:subs[rev], respCol:resps[rev]}); });
+  return {pairs, flatSub, flatResp};
+}
+
+function computeListStats(id){
+  const cache=listCache[id];
+  const dept=DEPTS_BY_ID[id];
+  if(!cache||!cache.loaded) return null;
+  const items=cache.items, cols=cache.cols;
+  const statusCol=detectStatusCol(cols);
+  const revCol=detectRevCol(cols);
+  const discCol=detectDisciplineCol(cols);
+  const {pairs, flatSub, flatResp}=detectRevDatePairs(cols);
+  const disciplines=discCol?[...new Set(items.map(it=>String(it[discCol]||'').trim()).filter(Boolean))].sort():[];
+
+  let statusRows=[];
+  if(statusCol){
+    const counts={};
+    items.forEach(it=>{
+      const code=String(it[statusCol]||'').trim();
+      if(!code) return;
+      if(!counts[code]) counts[code]={total:0, byDisc:{}};
+      counts[code].total++;
+      if(discCol){ const d=String(it[discCol]||'').trim()||'—'; counts[code].byDisc[d]=(counts[code].byDisc[d]||0)+1; }
+    });
+    const codes=Object.keys(counts).sort((a,b)=>{
+      const ai=STATUS_ORDER_LS.indexOf(a), bi=STATUS_ORDER_LS.indexOf(b);
+      if(ai!==-1&&bi!==-1) return ai-bi;
+      if(ai!==-1) return -1; if(bi!==-1) return 1;
+      return a.localeCompare(b);
+    });
+    const totalAll=Object.values(counts).reduce((s,c)=>s+c.total,0);
+    statusRows=codes.map(code=>({
+      code, label:STATUS_LABELS_LS[code]||code, total:counts[code].total,
+      pct: totalAll?Math.round(counts[code].total/totalAll*1000)/10:0,
+      byDisc:counts[code].byDisc, color:STATUS_COLORS_LS[code]||colorForValue(code,codes.indexOf(code))
+    }));
+  }
+
+  let revRows=[];
+  if(revCol){
+    const counts={};
+    items.forEach(it=>{
+      let rev=String(it[revCol]||'').trim();
+      if(!rev) return;
+      rev=padRev(rev);
+      if(!counts[rev]) counts[rev]={total:0, byDisc:{}};
+      counts[rev].total++;
+      if(discCol){ const d=String(it[discCol]||'').trim()||'—'; counts[rev].byDisc[d]=(counts[rev].byDisc[d]||0)+1; }
+    });
+    const revs=Object.keys(counts).sort();
+    const totalAll=Object.values(counts).reduce((s,c)=>s+c.total,0);
+    revRows=revs.map(rev=>({
+      rev, label:'Rev.'+rev, total:counts[rev].total,
+      pct: totalAll?Math.round(counts[rev].total/totalAll*1000)/10:0,
+      byDisc:counts[rev].byDisc
+    }));
+  }
+
+  let avgRows=[];
+  if(pairs.length){
+    pairs.forEach(p=>{
+      let sum=0, n=0;
+      items.forEach(it=>{
+        const sd=parseDateSafeLS(it[p.subCol]), rd=parseDateSafeLS(it[p.respCol]);
+        if(sd&&rd&&rd>=sd){ sum+=Math.round((rd-sd)/86400000); n++; }
+      });
+      avgRows.push({rev:p.rev, label:'Rev.'+p.rev, avg:n?Math.round(sum/n*10)/10:null, n});
+    });
+  }else if(flatSub&&flatResp){
+    let sum=0, n=0;
+    items.forEach(it=>{
+      const sd=parseDateSafeLS(it[flatSub]), rd=parseDateSafeLS(it[flatResp]);
+      if(sd&&rd&&rd>=sd){ sum+=Math.round((rd-sd)/86400000); n++; }
+    });
+    if(n) avgRows.push({rev:null, label:'Overall', avg:Math.round(sum/n*10)/10, n});
+  }
+
+  return {dept, total:items.length, disciplines, statusRows, revRows, avgRows, hasStatus:!!statusCol, hasRev:!!revCol};
+}
+
+function renderStatSectionHtml(id){
+  const dept=DEPTS_BY_ID[id];
+  const cache=listCache[id];
+  if(!cache||!cache.loaded){
+    return `<div class="table-wrap" style="margin-bottom:16px"><div class="table-toolbar"><span class="view-label">${dept.icon} ${escapeHtml(dept.title)}</span></div><div class="empty-state" style="padding:20px"><p>Not loaded yet — open this register once to load its data.</p></div></div>`;
+  }
+  const stats=computeListStats(id);
+  const disc=stats.disciplines;
+  let html=`<div class="table-wrap" style="margin-bottom:16px">
+    <div class="table-toolbar"><span class="view-label">${dept.icon} ${escapeHtml(dept.title)}</span><span class="view-badge">${stats.total} items</span></div>
+    <div style="padding:14px">`;
+
+  if(stats.hasStatus && stats.statusRows.length){
+    html+=`<div style="display:grid;grid-template-columns:1.3fr 1fr;gap:16px;margin-bottom:14px;align-items:start">
+      <div>
+        <h4 style="font-size:12px;color:var(--text-secondary);margin-bottom:6px;text-transform:uppercase">Status Breakdown${disc.length?' by Discipline':''}</h4>
+        <div class="table-scroll"><table style="font-size:12px"><thead><tr><th>Status</th>${disc.map(d=>`<th>${escapeHtml(d)}</th>`).join('')}<th>Total</th><th>%</th></tr></thead><tbody>`;
+    stats.statusRows.forEach(r=>{
+      html+=`<tr><td><span class="status-badge" style="background:${r.color}22;color:${r.color}">${escapeHtml(r.code)} — ${escapeHtml(r.label)}</span></td>${disc.map(d=>`<td>${r.byDisc[d]||0}</td>`).join('')}<td><strong>${r.total}</strong></td><td>${r.pct}%</td></tr>`;
+    });
+    html+=`</tbody></table></div>
+      </div>
+      <div><canvas id="chart-status-${id}" height="180"></canvas></div>
+    </div>`;
+  }
+
+  if(stats.hasRev && stats.revRows.length){
+    html+=`<div style="display:grid;grid-template-columns:1.3fr 1fr;gap:16px;margin-bottom:14px;align-items:start">
+      <div>
+        <h4 style="font-size:12px;color:var(--text-secondary);margin-bottom:6px;text-transform:uppercase">Revision Breakdown${disc.length?' by Discipline':''}</h4>
+        <div class="table-scroll"><table style="font-size:12px"><thead><tr><th>Revision</th>${disc.map(d=>`<th>${escapeHtml(d)}</th>`).join('')}<th>Total</th><th>%</th></tr></thead><tbody>`;
+    stats.revRows.forEach(r=>{
+      html+=`<tr><td>${escapeHtml(r.label)}</td>${disc.map(d=>`<td>${r.byDisc[d]||0}</td>`).join('')}<td><strong>${r.total}</strong></td><td>${r.pct}%</td></tr>`;
+    });
+    html+=`</tbody></table></div>
+      </div>
+      <div><canvas id="chart-rev-${id}" height="180"></canvas></div>
+    </div>`;
+  }
+
+  if(stats.avgRows.length){
+    html+=`<div>
+      <h4 style="font-size:12px;color:var(--text-secondary);margin-bottom:6px;text-transform:uppercase">Average Response Time (days)</h4>
+      <table style="font-size:12px;max-width:420px"><thead><tr><th>Revision</th><th>Avg Days</th><th>Sample</th></tr></thead><tbody>`;
+    stats.avgRows.forEach(r=>{
+      html+=`<tr><td>${escapeHtml(r.label)}</td><td>${r.avg==null?'–':r.avg}</td><td>${r.n}</td></tr>`;
+    });
+    html+=`</tbody></table></div>`;
+  }
+
+  if(!stats.hasStatus && !stats.hasRev && !stats.avgRows.length){
+    html+=`<p style="color:var(--text-secondary);font-size:12px">No "Final Code" / "Final Rev." / submission-response date fields detected on this list.</p>`;
+  }
+
+  html+=`</div></div>`;
+  return html;
+}
+
+function initStatSectionCharts(id){
+  const cache=listCache[id];
+  if(!cache||!cache.loaded||typeof Chart==='undefined') return;
+  const stats=computeListStats(id);
+  if(!stats) return;
+  const sc=document.getElementById('chart-status-'+id);
+  if(sc && stats.statusRows.length){
+    if(window._statCharts['status-'+id]) window._statCharts['status-'+id].destroy();
+    window._statCharts['status-'+id]=new Chart(sc.getContext('2d'),{type:'bar',data:{
+      labels:stats.statusRows.map(r=>r.code),
+      datasets:[{data:stats.statusRows.map(r=>r.total), backgroundColor:stats.statusRows.map(r=>r.color)}]
+    },options:{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{precision:0}}}}});
+  }
+  const rc=document.getElementById('chart-rev-'+id);
+  if(rc && stats.revRows.length){
+    if(window._statCharts['rev-'+id]) window._statCharts['rev-'+id].destroy();
+    window._statCharts['rev-'+id]=new Chart(rc.getContext('2d'),{type:'bar',data:{
+      labels:stats.revRows.map(r=>r.label),
+      datasets:[{data:stats.revRows.map(r=>r.total), backgroundColor:'#4C5D71'}]
+    },options:{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{precision:0}}}}});
+  }
+}
+
+function computeAggregatesLS(loadedDepts){
+  const aggStatus={}; const discTotals={}; let totalWithStatus=0;
+  loadedDepts.forEach(d=>{
+    const stats=computeListStats(d.id);
+    if(!stats) return;
+    if(stats.hasStatus){
+      stats.statusRows.forEach(r=>{
+        if(!aggStatus[r.code]) aggStatus[r.code]={label:r.label,total:0,color:r.color};
+        aggStatus[r.code].total+=r.total; totalWithStatus+=r.total;
+      });
+    }
+    const cache=listCache[d.id];
+    const discCol=detectDisciplineCol(cache.cols);
+    if(discCol){
+      cache.items.forEach(it=>{
+        const disc=String(it[discCol]||'').trim();
+        if(disc) discTotals[disc]=(discTotals[disc]||0)+1;
+      });
+    }
+  });
+  return {aggStatus, discTotals, totalWithStatus};
+}
+
+let _chartAggStatus=null, _chartAggDisc=null;
+function renderAggChartsLS(aggStatus, discTotals){
+  const sc=document.getElementById('chart-agg-status');
+  const dc=document.getElementById('chart-agg-disc');
+  if(!sc||!dc||typeof Chart==='undefined') return;
+  if(_chartAggStatus) _chartAggStatus.destroy();
+  if(_chartAggDisc) _chartAggDisc.destroy();
+  const codes=Object.keys(aggStatus).sort((a,b)=>STATUS_ORDER_LS.indexOf(a)-STATUS_ORDER_LS.indexOf(b));
+  _chartAggStatus=new Chart(sc.getContext('2d'),{type:'doughnut',data:{
+    labels:codes.map(c=>c+' — '+aggStatus[c].label), datasets:[{data:codes.map(c=>aggStatus[c].total), backgroundColor:codes.map(c=>aggStatus[c].color)}]
+  },options:{plugins:{legend:{position:'bottom',labels:{boxWidth:10,font:{size:10}}}}}});
+  const discs=Object.keys(discTotals).sort((a,b)=>discTotals[b]-discTotals[a]).slice(0,12);
+  _chartAggDisc=new Chart(dc.getContext('2d'),{type:'bar',data:{
+    labels:discs, datasets:[{data:discs.map(d=>discTotals[d]), backgroundColor:'#00B7C3'}]
+  },options:{indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{beginAtZero:true,ticks:{precision:0}}}}});
+}
+
+function renderLogStatistics(){
+  const content=document.getElementById('content');
+  const depts=visibleDepts();
+  const loadedDepts=depts.filter(d=>listCache[d.id].loaded);
+
+  if(!loadedDepts.length){
+    content.innerHTML='<div class="loading-state"><div class="spinner"></div><p>Loading registers for statistics…</p></div>';
+    if(!_bulkLoadRunning) loadAllLists().then(()=>{ if(currentView==='logstats') renderLogStatistics(); });
+    return;
+  }
+
+  const {aggStatus, discTotals, totalWithStatus}=computeAggregatesLS(loadedDepts);
+  const approvedLike=(aggStatus['A']?.total||0)+(aggStatus['B']?.total||0);
+  const approvalRate=totalWithStatus?Math.round(approvedLike/totalWithStatus*1000)/10:0;
+  const underReview=aggStatus['O']?.total||0;
+  const resubmit=aggStatus['C']?.total||0;
+  const rejected=aggStatus['D']?.total||0;
+
+  let html=`<div class="kpi-grid">
+    <div class="kpi-card" style="cursor:default"><div class="kpi-accent" style="background:#4C5D71"></div><div class="kpi-icon">📈</div><div class="kpi-label">Tracked Items</div><div class="kpi-value">${totalWithStatus}</div></div>
+    <div class="kpi-card" style="cursor:default"><div class="kpi-accent" style="background:#107C10"></div><div class="kpi-icon">✅</div><div class="kpi-label">Approval Rate</div><div class="kpi-value">${approvalRate}%</div></div>
+    <div class="kpi-card" style="cursor:default"><div class="kpi-accent" style="background:#FFB900"></div><div class="kpi-icon">🔍</div><div class="kpi-label">Open / Under Review</div><div class="kpi-value">${underReview}</div></div>
+    <div class="kpi-card" style="cursor:default"><div class="kpi-accent" style="background:#ED7D31"></div><div class="kpi-icon">🔄</div><div class="kpi-label">Revise &amp; Resubmit</div><div class="kpi-value">${resubmit}</div></div>
+    <div class="kpi-card" style="cursor:default"><div class="kpi-accent" style="background:#D92C2C"></div><div class="kpi-icon">❌</div><div class="kpi-label">Rejected</div><div class="kpi-value">${rejected}</div></div>
+  </div>
+  <div class="charts-row">
+    <div class="chart-card"><h3>Overall Status Distribution</h3><canvas id="chart-agg-status" height="220"></canvas></div>
+    <div class="chart-card"><h3>Items by Discipline (Top 12)</h3><canvas id="chart-agg-disc" height="220"></canvas></div>
+  </div>
+  <h3 style="margin:6px 2px 10px;font-size:14px;color:var(--text-secondary)">Featured Registers — Shopdrawings, Pre-Qualifications, RFI, Work Inspection Requests</h3>`;
+
+  FEATURED_STAT_IDS.forEach(id=>{ html+=renderStatSectionHtml(id); });
+
+  const otherDepts=depts.filter(d=>!FEATURED_STAT_IDS.includes(d.id));
+  html+=`<div class="table-wrap" style="margin-top:8px">
+    <div class="table-toolbar">
+      <span class="view-label">Browse statistics for another register</span>
+      <select id="stats-list-select" onchange="onStatsListChange()" style="padding:4px 8px;border:1px solid var(--gray-border);border-radius:4px;font-size:12px">
+        <option value="">— Select a list —</option>
+        ${otherDepts.map(d=>`<option value="${d.id}">${d.icon} ${escapeHtml(d.title)}</option>`).join('')}
+      </select>
+    </div>
+    <div id="stats-other-container" style="padding:14px"></div>
+  </div>`;
+
+  content.innerHTML=html;
+  renderAggChartsLS(aggStatus, discTotals);
+  FEATURED_STAT_IDS.forEach(id=>initStatSectionCharts(id));
+  if(!_bulkLoadRunning && loadedDepts.length<depts.length) loadAllLists().then(()=>{ if(currentView==='logstats') renderLogStatistics(); });
+}
+
+function onStatsListChange(){
+  const sel=document.getElementById('stats-list-select');
+  const id=sel.value;
+  const container=document.getElementById('stats-other-container');
+  if(!id){ container.innerHTML=''; return; }
+  const cache=listCache[id];
+  if(!cache.loaded && !cache.loading){
+    container.innerHTML='<div class="loading-state"><div class="spinner"></div><p>Loading…</p></div>';
+    loadList(id).then(()=>{
+      if(document.getElementById('stats-list-select')?.value===id){
+        container.innerHTML=renderStatSectionHtml(id);
+        initStatSectionCharts(id);
+      }
+    });
+  }else{
+    container.innerHTML=renderStatSectionHtml(id);
+    initStatSectionCharts(id);
+  }
+}
+
 
 // ======================== KPI MODAL ========================
 function showKpiModalFromCache(idx){
