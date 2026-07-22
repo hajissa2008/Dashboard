@@ -647,16 +647,21 @@ async function fetchColumnDefinitions(siteUrl,listName){
 }
 
 async function fetchSPItems(siteUrl,listName){
-  const json=await apiCall(graphListItemsUrl(siteUrl,listName));
-  return (json.value||[]).map(item=>{
-    const fields={};
-    for(const [k,v] of Object.entries(item.fields||{})){
-      const dn=renameMap[k]||k;
-      fields[dn]=v;
-      if(dn!==k)fields[k]=v;
-    }
-    return {...fields,_id:item.id,_etag:item?.fields?.['@odata.etag']||''};
-  });
+  let allItems=[],nextUrl=graphListItemsUrl(siteUrl,listName);
+  while(nextUrl){
+    const json=await apiCall(nextUrl);
+    if(json.value)allItems=allItems.concat(json.value.map(item=>{
+      const fields={};
+      for(const [k,v] of Object.entries(item.fields||{})){
+        const dn=renameMap[k]||k;
+        fields[dn]=v;
+        if(dn!==k)fields[k]=v;
+      }
+      return {...fields,_id:item.id,_etag:item?.fields?.['@odata.etag']||''};
+    }));
+    nextUrl=json['@odata.nextLink']||null;
+  }
+  return allItems;
 }
 
 async function createSPItem(siteUrl,listName,itemFields){
@@ -974,6 +979,7 @@ function renderTable(){
         let v=item[lookup]!==undefined?item[lookup]:'';
         if(v&&typeof v==='object'){v=v.LookupValue||v.Title||v.Email||JSON.stringify(v).substring(0,50);}
         if(c.type==='boolean')v=v?'✓':'';
+        if((c.type==='date'||c.type==='DateTime')&&typeof v==='string')v=v.slice(0,10);
         const s=htmlEscape(stripHtml(v));
         return `<td title="${s}">${s.substring(0,80)}</td>`;
       }).join('')}
@@ -1316,32 +1322,48 @@ async function importBulkItems(){
   btn.disabled=true;statusEl.className='save-status saving';statusEl.textContent='Importing...';
   const validCols=bulkData.mapping.filter(m=>m.col).map(m=>m.col.name);
   const total=bulkData.rows.length;
-  let success=0,fail=0;
-  for(let i=0;i<total;i++){
-    const row=bulkData.rows[i];
-    const fields={};
-    bulkData.mapping.forEach((m,ci)=>{
-      if(m.col&&row[ci]!==undefined&&row[ci].trim()!==''){
-        let val=row[ci].trim();
-        if(m.col.type==='number'||m.col.type==='currency'){const n=Number(val);if(!isNaN(n))val=n;}
-        else if(m.col.type==='boolean'){val=val.toLowerCase()==='true'||val==='1'||val==='yes';}
-        fields[m.col.name]=val;
+  let success=0,fail=0,updated=0,created=0;
+  const matchKeys=['Title','DRAWINGS NO.','DRAWING NO.','Drawing_x0020_Number','DrawingNumber','Drawing No.','S.No','S_x002e_No_x002e_'];
+  function findMatch(fields,existing){
+    for(const ek of matchKeys){
+      const fv=fields[ek];
+      if(fv===undefined||fv===null||String(fv).trim()==='')continue;
+      const v=String(fv).trim();
+      for(const item of existing){
+        for(const ik of matchKeys){
+          const iv=item[ik];
+          if(iv!==undefined&&iv!==null&&String(iv).trim()!==''&&String(iv).trim()===v)return item;
+        }
       }
-    });
-    try{
-      await createSPItem(currentDept.site,currentDept.list,fields);
-      success++;
-    }catch(e){
-      fail++;
-      console.error('Bulk import row '+i+':',e.message);
     }
-    if(i%5===0||i===total-1){
-      statusEl.textContent='Importing... '+Math.round((i+1)/total*100)+'% ('+success+' ok, '+fail+' failed)';
-    }
+    return null;
   }
+  const BATCH=10;
+  for(let b=0;b<total;b+=BATCH){
+    const batch=bulkData.rows.slice(b,b+BATCH);
+    const tasks=batch.map((row,bi)=>{
+      const fields={};
+      bulkData.mapping.forEach((m,ci)=>{
+        if(m.col&&row[ci]!==undefined&&row[ci].trim()!==''){
+          let val=row[ci].trim();
+          if(m.col.type==='number'||m.col.type==='currency'){const n=Number(val);if(!isNaN(n))val=n;}
+          else if(m.col.type==='boolean'){val=val.toLowerCase()==='true'||val==='1'||val==='yes';}
+          fields[m.col.name]=val;
+        }
+      });
+      return (async()=>{
+        const matched=findMatch(fields,allItems);
+        if(matched){await updateSPItem(currentDept.site,currentDept.list,matched._id,fields);return{type:'updated'};}
+        else{await createSPItem(currentDept.site,currentDept.list,fields);return{type:'created'};}
+      })().then(r=>{success++;if(r.type==='created')created++;else if(r.type==='updated')updated++;return r;}).catch(e=>{fail++;console.error('Bulk import row '+(b+bi)+':',e.message);return{type:'failed'};});
+    });
+    await Promise.allSettled(tasks);
+    statusEl.textContent='Importing... '+Math.round(Math.min(b+BATCH,total)/total*100)+'% ('+success+' ok, '+fail+' failed)';
+  }
+  const msg=created>0&&updated>0?(created+' created, '+updated+' updated'):created>0?(created+' created'):(updated+' updated');
   statusEl.className='save-status '+(fail===0?'saved':'error');
-  statusEl.textContent=fail===0?'✓ '+success+' items created':'✓ '+success+' created, ✗ '+fail+' failed';
-  showToast(fail===0?'All '+success+' items created':success+' created, '+fail+' failed','success');
+  statusEl.textContent=fail===0?'✓ '+msg:'✓ '+msg+', ✗ '+fail+' failed';
+  showToast(fail===0?msg:msg+', '+fail+' failed','success');
   await refreshItems();
   btn.disabled=false;
   if(fail===0)setTimeout(()=>closeBulkUpload(),1500);

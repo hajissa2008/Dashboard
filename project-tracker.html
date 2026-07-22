@@ -1218,13 +1218,12 @@ async function connectAllViews(){
         const dot=document.getElementById('dot-cfg-'+v);
         if(dot)dot.className='status-dot loading';
     });
-    let count=0;
-    for(const v of VIEW_KEYS){
-        const ok=await connectSingleView(v);
-        if(ok)count++;
+    const results=await Promise.all(VIEW_KEYS.map(v=>connectSingleView(v).then(ok=>{
         _viewsLoaded++;
         showLoadOverlay(_viewsLoaded/_viewsTotal*100,_viewsLoaded+' of '+total+' lists refreshed');
-    }
+        return ok;
+    })));
+    const count=results.filter(Boolean).length;
     updateCounts();
     _viewsLoading=false;
     hideLoadOverlay();
@@ -1555,14 +1554,17 @@ function renderDashboard(){
       if(c==='A'||c==='B'||c==='E')return'Completed';
       return'In Progress';
     };
-    const notStarted=d.filter(x=>codeStatus(x)==='Not Started').length;
-    const inProg=d.filter(x=>codeStatus(x)==='In Progress').length;
-    const completed=d.filter(x=>codeStatus(x)==='Completed').length;
-    const avgProg=total?Math.round(d.reduce((s,x)=>s+(Number(x.prog||x['CompletionPct']||0)),0)/total):0;
+    let notStarted=0,inProg=0,completed=0,avgProg=0,avgDelay=0,totalBudget=0,totalActual=0;
+    for(const x of d){
+      const st=codeStatus(x);
+      if(st==='Not Started')notStarted++;else if(st==='In Progress')inProg++;else if(st==='Completed')completed++;
+      avgProg+=Number(x.prog||x['CompletionPct']||0);
+      avgDelay+=Math.max(0,calcDelay(x));
+      totalBudget+=Number(x.budget||x['Budget']||0);
+      totalActual+=Number(x.actual||x['ActualCost']||x['Actual Cost']||0);
+    }
+    if(total){avgProg=Math.round(avgProg/total);avgDelay=Math.round(avgDelay/total);}
     const compRate=total?Math.round(completed/total*100):0;
-    const avgDelay=Math.round(d.reduce((s,x)=>s+Math.max(0,calcDelay(x)),0)/Math.max(1,total));
-    const totalBudget=d.reduce((s,x)=>s+(Number(x.budget||x['Budget']||0)),0);
-    const totalActual=d.reduce((s,x)=>s+(Number(x.actual||x['ActualCost']||x['Actual Cost']||0)),0);
     const variance=totalBudget-totalActual;
     const ciTotal=pushKpi('All Items',d,null,true);
     const ciNotStarted=pushKpi('Not Started',d.filter(x=>codeStatus(x)==='Not Started'),null,true);
