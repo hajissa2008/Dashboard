@@ -1728,7 +1728,7 @@ function showDetailModal(title, cols, items){
   document.getElementById('kpi-modal-count').textContent=items.length+' item(s)';
   const body=document.getElementById('kpi-modal-body');
   if(!items.length){ body.innerHTML='<p style="color:var(--text-secondary)">No items match this filter.</p>'; document.getElementById('kpi-modal-overlay').classList.add('show'); return; }
-  const showCols=filterModalCols(cols,items);
+  const showCols=[...new Set(filterModalCols(cols,items))];
   let html='<div style="margin-bottom:10px"><button class="btn btn-sm" onclick="closeKpiModal()" style="font-size:11px">✕ Close</button></div><div class="table-scroll"><table><thead><tr>'+showCols.map(c=>`<th>${escapeHtml(c)}</th>`).join('')+'</tr></thead><tbody>';
   items.forEach(it=>{
     html+='<tr>'+showCols.map(c=>`<td>${escapeHtml(stripTime(it[c]))}</td>`).join('')+'</tr>';
