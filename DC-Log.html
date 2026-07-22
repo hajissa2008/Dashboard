@@ -1883,7 +1883,7 @@ function showOpenAgeModal(){
       }
       if(!subDate&&flatSub) subDate=parseDateSafeLS(it[flatSub]);
       const days=subDate?Math.floor((now-subDate)/(1000*60*60*24)):null;
-      const row={...it,_list:d.title,_ageDays:days};
+      const row={...it,_list:d.title,_ageDays:days,_lastRevSubDate:subDate?subDate.toISOString():null};
       if(days===null) buckets.week.push(row);
       else if(days<=7) buckets.week.push(row);
       else if(days<=14) buckets.fortnight.push(row);
@@ -1934,7 +1934,6 @@ function _openAgeRow(it){
   const docType=_findCol(it,['doctype','documenttype']);
   const disc=_findCol(it,['discipline','disc']);
   const rev=_findCol(it,['finalrev']);
-  const revDate=_findCol(it,['finalrevsubmissiondate']);
   const code=_findCol(it,['finalcode']);
   return {
     'REF #':it[ref]||'',
@@ -1942,8 +1941,8 @@ function _openAgeRow(it){
     'To':it[to]||'',
     'Doc Type':it[docType]||'',
     'Discipline':it[disc]||'',
-    'Final REV':it[rev]||'',
-    'Final REV Submission Date':stripTime(it[revDate]||''),
+    'REV #':it[rev]?'REV '+padRev(it[rev]):'',
+    'Last Revision Submission Date':it._lastRevSubDate?stripTime(it._lastRevSubDate):'',
     'Final Code':it[code]||''
   };
 }
@@ -1962,7 +1961,7 @@ function exportOpenAgeExcel(){
     rows.push({});
   });
   const ws=XLSX.utils.json_to_sheet(rows);
-  ws['!cols']=[{wch:18},{wch:16},{wch:16},{wch:20},{wch:16},{wch:10},{wch:22},{wch:14}];
+  ws['!cols']=[{wch:18},{wch:16},{wch:16},{wch:20},{wch:16},{wch:12},{wch:26},{wch:14}];
   XLSX.utils.book_append_sheet(wb,ws,'Open Items');
   XLSX.writeFile(wb,'Open_UnderReview_AgeBreakdown.xlsx');
 }
@@ -1975,7 +1974,7 @@ function exportOpenAgePdf(){
   doc.text('Open / Under Review — Age Breakdown',14,15);
   doc.setFontSize(10);
   doc.text('Total: '+d.all.length+' item(s) | Generated: '+new Date().toLocaleString(),14,22);
-  const headers=['REF #','From','To','Doc Type','Discipline','Final REV','Final REV Submission Date','Final Code'];
+  const headers=['REF #','From','To','Doc Type','Discipline','REV #','Last Revision Submission Date','Final Code'];
   const rows=[];
   const keys=['week','fortnight','old'];
   const labels={week:'0-7 Days',fortnight:'7-14 Days',old:'> 14 Days'};
