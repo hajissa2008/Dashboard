@@ -2,613 +2,650 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>AlEnshaiah - Permissions Manager</title>
-<script src="https://alcdn.msauth.net/browser/2.32.2/js/msal-browser.min.js"></script>
 <style>
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{--primary:#4C5D71;--primary-dark:#3A4A5E;--primary-light:#E8ECF0;--green:#107C10;--green-light:#E6F7E6;--red:#D92C2C;--red-light:#FDE8E8;--orange:#ED7D31;--orange-light:#FFF0E0;--yellow:#FFB900;--blue:#0078D4;--gray:#8A8886;--gray-light:#F3F2F1;--gray-border:#EDEBE9;--text-primary:#201E1F;--text-secondary:#605E5C;--white:#FFFFFF;--bg:#F3F2F1;--shadow:0 1px 3px rgba(0,0,0,.08);--radius:6px;--header-h:52px}
-body.dark{--primary:#7A8FA5;--primary-dark:#8DA3B9;--primary-light:#2A3540;--green:#4CAF50;--green-light:#1B3A1B;--red:#F44336;--red-light:#3D1A1A;--orange:#FF9800;--orange-light:#3D2A0A;--yellow:#FFC107;--gray:#A09E9C;--gray-light:#2D2D2D;--gray-border:#3D3D3D;--text-primary:#E0E0E0;--text-secondary:#B0B0B0;--white:#1E1E1E;--bg:#121212;--shadow:0 1px 3px rgba(0,0,0,.3);--blue:#4FC3F7}
-html,body{height:100%;font-family:'Segoe UI',-apple-system,system-ui,sans-serif;font-size:14px;color:var(--text-primary);background:var(--bg)}
-.app{display:flex;flex-direction:column;height:100vh;overflow:hidden}
-.header{height:var(--header-h);background:var(--white);border-bottom:1px solid var(--gray-border);display:flex;align-items:center;padding:0 20px;gap:12px;flex-shrink:0;z-index:100}
-.header .logo{width:28px;height:28px;background:var(--primary);border-radius:4px;display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:14px;flex-shrink:0}
-.header h1{font-size:15px;font-weight:600;flex-shrink:0}
-.header .spacer{flex:1}
-.auth-area{display:flex;align-items:center;gap:8px;flex-shrink:0}
-.auth-area .user-name{font-size:12px;color:var(--text-secondary);white-space:nowrap}
-.auth-btn{padding:5px 14px;border-radius:4px;font-size:12px;font-weight:600;cursor:pointer;border:none;transition:all .15s}
-.auth-btn.login{background:var(--primary);color:white}
-.auth-btn.login:hover{background:var(--primary-dark)}
-.auth-btn.logout{background:var(--red-light);color:var(--red);border:1px solid var(--red)}
-.auth-btn.logout:hover{background:var(--red);color:white}
-.toolbar{display:flex;align-items:center;gap:10px;padding:12px 20px;background:var(--white);border-bottom:1px solid var(--gray-border);flex-wrap:wrap;flex-shrink:0}
-.toolbar .btn{padding:7px 16px;border-radius:4px;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:all .15s;display:inline-flex;align-items:center;gap:5px}
-.toolbar .btn-primary{background:var(--primary);color:white}
-.toolbar .btn-primary:hover{background:var(--primary-dark)}
-.toolbar .btn-primary:disabled{opacity:.5;cursor:not-allowed}
-.toolbar .btn-danger{background:var(--red);color:white}
-.toolbar .btn-danger:hover{background:#b71c1c}
-.toolbar .btn-outline{background:transparent;border:1px solid var(--gray-border);color:var(--text-primary)}
-.toolbar .btn-outline:hover{background:var(--gray-light)}
-.main{flex:1;overflow:auto;padding:20px}
-.panel{background:var(--white);border-radius:8px;box-shadow:var(--shadow);margin-bottom:20px;overflow:hidden}
-.panel-head{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid var(--gray-border)}
-.panel-head h3{font-size:14px;font-weight:600}
-.panel-body{padding:16px 20px}
-.perm-table{width:100%;border-collapse:collapse;font-size:13px}
-.perm-table th{background:var(--gray-light);padding:8px 10px;text-align:left;font-weight:600;border-bottom:2px solid var(--gray-border);white-space:nowrap;font-size:11px;text-transform:uppercase;letter-spacing:.3px;color:var(--text-secondary)}
-.perm-table th:first-child{border-radius:4px 0 0 0}
-.perm-table th:last-child{border-radius:0 4px 0 0}
-.perm-table td{padding:7px 10px;border-bottom:1px solid var(--gray-border);vertical-align:middle}
-.perm-table tr:last-child td{border-bottom:none}
-.perm-table .user-cell{font-weight:600;color:var(--text-primary)}
-.perm-table .user-email{font-size:11px;color:var(--text-secondary);font-weight:400}
-.perm-table select{padding:4px 8px;border:1px solid var(--gray-border);border-radius:4px;font-size:12px;background:var(--white);color:var(--text-primary);outline:none;cursor:pointer;min-width:80px}
-.perm-table select:focus{border-color:var(--primary)}
-.perm-table select.access-read{background:var(--yellow-light);border-color:var(--yellow)}
-.perm-table select.access-edit{background:var(--green-light);border-color:var(--green)}
-.perm-table select.access-none{background:var(--red-light);border-color:var(--red)}
-.perm-table .btn-remove{background:none;border:none;color:var(--red);cursor:pointer;font-size:16px;padding:2px 6px;border-radius:4px}
-.perm-table .btn-remove:hover{background:var(--red-light)}
-.add-user-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:12px 20px;background:var(--gray-light);border-top:1px solid var(--gray-border)}
-.add-user-row input{flex:1;min-width:200px;padding:8px 12px;border:1px solid var(--gray-border);border-radius:4px;font-size:13px;outline:none;background:var(--white);color:var(--text-primary)}
-.add-user-row input:focus{border-color:var(--primary)}
-.site-select{display:flex;align-items:center;gap:6px}
-.site-select label{font-size:12px;font-weight:600;color:var(--text-secondary);white-space:nowrap}
-.site-select select{padding:5px 10px;border:1px solid var(--gray-border);border-radius:4px;font-size:13px;background:var(--white);color:var(--text-primary);outline:none;cursor:pointer}
-.site-select select:focus{border-color:var(--primary)}
-.empty-state{text-align:center;padding:40px 20px;color:var(--text-secondary)}
+:root{--primary:#4C5D71;--primary-dark:#3A4A5E;--primary-light:#E8ECF0;--green:#107C10;--green-light:#E6F7E6;--red:#D92C2C;--red-light:#FDE8E8;--orange:#ED7D31;--gray:#8A8886;--gray-light:#F3F2F1;--gray-border:#EDEBE9;--text:#201E1F;--text2:#605E5C;--white:#FFFFFF;--bg:#F3F2F1;--shadow:0 1px 3px rgba(0,0,0,.08);--radius:6px}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+.header{background:var(--white);border-bottom:1px solid var(--gray-border);padding:12px 24px;display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:100}
+.header h1{font-size:18px;font-weight:600;flex:1}
+.header .subtitle{font-size:12px;color:var(--text2)}
+.auth-section{display:flex;align-items:center;gap:12px}
+.user-info{font-size:13px;color:var(--text2)}
+.user-info strong{color:var(--text)}
+.btn{padding:6px 16px;border:1px solid var(--gray-border);border-radius:var(--radius);background:var(--white);cursor:pointer;font-size:13px;font-weight:500;transition:all .15s}
+.btn:hover{background:var(--gray-light)}
+.btn-primary{background:var(--primary);color:var(--white);border-color:var(--primary)}
+.btn-primary:hover{background:var(--primary-dark)}
+.btn-danger{background:var(--red);color:var(--white);border-color:var(--red)}
+.btn-danger:hover{opacity:.9}
+.btn-sm{padding:4px 10px;font-size:12px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.main{max-width:1400px;margin:0 auto;padding:24px}
+.toolbar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:20px}
+.toolbar input{padding:6px 12px;border:1px solid var(--gray-border);border-radius:var(--radius);font-size:13px;width:260px}
+.toolbar select{padding:6px 12px;border:1px solid var(--gray-border);border-radius:var(--radius);font-size:13px}
+.stats{display:flex;gap:16px;margin-bottom:20px;flex-wrap:wrap}
+.stat-card{background:var(--white);border:1px solid var(--gray-border);border-radius:var(--radius);padding:12px 20px;flex:1;min-width:120px;box-shadow:var(--shadow)}
+.stat-card .label{font-size:11px;text-transform:uppercase;color:var(--text2);letter-spacing:.5px}
+.stat-card .value{font-size:22px;font-weight:700;margin-top:2px}
+.table-wrap{background:var(--white);border:1px solid var(--gray-border);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+table{width:100%;border-collapse:collapse}
+th{background:var(--gray-light);padding:8px 12px;text-align:left;font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);border-bottom:1px solid var(--gray-border);position:sticky;top:0}
+td{padding:6px 12px;border-bottom:1px solid var(--gray-border);font-size:13px;vertical-align:middle}
+tr:hover{background:var(--primary-light)}
+.group-header:hover{background:var(--gray-light) !important}
+.badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600}
+.badge-edit{background:var(--green-light);color:var(--green)}
+.badge-read{background:#E3F2FD;color:#1565C0}
+.badge-none{background:var(--red-light);color:var(--red)}
+.badge-app{background:var(--primary-light);color:var(--primary)}
+.empty-state{text-align:center;padding:60px 20px;color:var(--text2)}
 .empty-state .icon{font-size:48px;margin-bottom:12px}
-.empty-state h3{font-size:16px;font-weight:600;margin-bottom:4px;color:var(--text-primary)}
-.empty-state p{font-size:13px}
-.status-msg{font-size:12px;color:var(--text-secondary);padding:4px 12px;border-radius:10px;display:none}
-.status-msg.saving{display:inline;background:var(--yellow-light);color:var(--orange)}
-.status-msg.saved{display:inline;background:var(--green-light);color:var(--green)}
-.status-msg.error{display:inline;background:var(--red-light);color:var(--red)}
-.signin-overlay{position:fixed;inset:0;background:var(--bg);z-index:1000;display:flex;align-items:center;justify-content:center}
-.signin-overlay.hidden{display:none}
-.signin-card{background:var(--white);border-radius:12px;padding:40px;text-align:center;box-shadow:0 8px 40px rgba(0,0,0,.12);max-width:380px;width:90vw;animation:fadeIn .4s ease}
-@keyframes fadeIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
-.signin-logo{margin-bottom:8px}
-.signin-logo-img{width:64px;height:64px;border-radius:12px}
-.signin-badge{display:inline-block;background:var(--primary-light);color:var(--primary);padding:3px 12px;border-radius:10px;font-size:11px;font-weight:600;margin-bottom:8px}
-.signin-card h1{font-size:22px;font-weight:700;margin-bottom:2px}
-.signin-card .signin-subtitle{font-size:14px;color:var(--text-secondary);margin-bottom:20px}
-.signin-error{background:var(--red-light);color:var(--red);padding:8px 12px;border-radius:6px;font-size:12px;margin-bottom:12px;display:none}
-.signin-error.show{display:block}
-.signin-progress{display:none;align-items:center;justify-content:center;gap:8px;font-size:13px;color:var(--text-secondary);margin-bottom:12px}
-.signin-progress.show{display:flex}
-.signin-btn{display:inline-flex;align-items:center;gap:8px;padding:10px 28px;border-radius:6px;font-size:14px;font-weight:600;cursor:pointer;border:1px solid var(--gray-border);background:var(--white);color:var(--text-primary);transition:all .15s}
-.signin-btn:hover{background:var(--gray-light);border-color:var(--primary)}
-.signin-btn:disabled{opacity:.5;cursor:not-allowed}
-.signin-footer{font-size:12px;color:var(--text-secondary);margin-top:16px}
-.form-group{margin-bottom:12px}
-.form-group label{display:block;font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:4px}
-.form-group label.required::after{content:' *';color:var(--red)}
-.form-group input[type=text],.form-group input[type=password]{width:100%;padding:8px 12px;border:1px solid var(--gray-border);border-radius:4px;font-size:13px;outline:none;background:var(--white);color:var(--text-primary)}
-.form-group input:focus{border-color:var(--primary)}
-.hint{font-size:11px;color:var(--text-secondary);line-height:1.5}
-.user-search-wrap{position:relative;flex:1;min-width:200px}
-.user-search-wrap input{width:100%;padding:8px 12px;border:1px solid var(--gray-border);border-radius:4px;font-size:13px;outline:none;background:var(--white);color:var(--text-primary)}
-.user-search-wrap input:focus{border-color:var(--primary)}
-.user-search-wrap input:disabled{opacity:.5;cursor:not-allowed}
-.user-search-dropdown{position:absolute;top:100%;left:0;right:0;background:var(--white);border:1px solid var(--gray-border);border-radius:0 0 4px 4px;box-shadow:0 4px 12px rgba(0,0,0,.1);z-index:100;max-height:200px;overflow-y:auto;display:none}
-.user-search-dropdown.show{display:block}
-.user-search-dropdown .user-item{padding:8px 12px;cursor:pointer;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--gray-light);transition:background .1s}
-.user-search-dropdown .user-item:last-child{border-bottom:none}
-.user-search-dropdown .user-item:hover,.user-search-dropdown .user-item.highlighted{background:var(--primary-light)}
-.user-search-dropdown .user-item .user-item-name{font-size:13px;font-weight:600;color:var(--text-primary)}
-.user-search-dropdown .user-item .user-item-email{font-size:11px;color:var(--text-secondary)}
-.user-search-dropdown .user-item .user-item-avatar{width:28px;height:28px;border-radius:50%;background:var(--primary);color:white;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;flex-shrink:0}
-.user-search-dropdown .search-status{padding:10px 12px;text-align:center;font-size:12px;color:var(--text-secondary)}
-.toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%);z-index:2000;background:#323130;color:white;padding:10px 24px;border-radius:6px;font-size:13px;box-shadow:0 4px 12px rgba(0,0,0,.25);opacity:0;transition:opacity .3s;pointer-events:none}
-.toast.show{opacity:1;pointer-events:auto}
+.empty-state h3{font-size:16px;color:var(--text);margin-bottom:4px}
+.toast{position:fixed;bottom:20px;right:20px;padding:10px 20px;border-radius:var(--radius);font-size:13px;z-index:999;transform:translateY(80px);opacity:0;transition:all .3s}
+.toast.show{transform:translateY(0);opacity:1}
+.toast.success{background:var(--green);color:white}
+.toast.error{background:var(--red);color:white}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200;align-items:center;justify-content:center}
+.modal-overlay.show{display:flex}
+.modal{background:var(--white);border-radius:8px;width:560px;max-width:95vw;box-shadow:0 8px 32px rgba(0,0,0,.2);max-height:90vh;overflow-y:auto}
+.modal-header{padding:16px 20px;border-bottom:1px solid var(--gray-border);display:flex;align-items:center;justify-content:space-between}
+.modal-header h2{font-size:16px}
+.modal-close{background:none;border:none;font-size:20px;cursor:pointer;color:var(--text2);padding:4px 8px}
+.modal-body{padding:20px}
+.modal-footer{padding:12px 20px;border-top:1px solid var(--gray-border);display:flex;justify-content:flex-end;gap:8px}
+.form-group{margin-bottom:14px}
+.form-group label{display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:4px}
+.form-group input,.form-group select{width:100%;padding:8px 12px;border:1px solid var(--gray-border);border-radius:var(--radius);font-size:13px}
+.perms-section{margin-top:12px}
+.perms-section h4{font-size:12px;color:var(--text2);margin:12px 0 6px;text-transform:uppercase;letter-spacing:.3px;border-bottom:1px solid var(--gray-border);padding-bottom:4px}
+.perms-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.perms-grid .perm-row{display:flex;align-items:center;justify-content:space-between;padding:6px 10px;border:1px solid var(--gray-border);border-radius:var(--radius);font-size:12px}
+.perms-grid .perm-row label{margin:0;font-size:12px}
+.perms-grid select{padding:4px 8px;font-size:12px;width:auto}
+.checkbox-group{display:flex;gap:16px;align-items:center}
+.checkbox-group label{display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer}
+.bulk-bar{background:var(--primary);color:white;padding:10px 20px;border-radius:var(--radius);display:flex;align-items:center;gap:12px;margin-bottom:16px;font-size:13px}
+.bulk-bar span{flex:1}
 .loading-overlay{position:fixed;inset:0;background:rgba(255,255,255,.6);z-index:999;display:none;align-items:center;justify-content:center}
-body.dark .loading-overlay{background:rgba(0,0,0,.6)}
 .loading-overlay.show{display:flex}
 .spinner{width:32px;height:32px;border:3px solid var(--gray-border);border-top-color:var(--primary);border-radius:50%;animation:spin .7s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
-.dark-toggle{background:none;border:none;font-size:18px;cursor:pointer;padding:4px;border-radius:50%;color:var(--text-primary);transition:background .15s;line-height:1}
-.dark-toggle:hover{background:var(--gray-light)}
-@media(max-width:768px){.perm-table{font-size:12px}.perm-table select{min-width:60px;font-size:11px}.panel-body{padding:12px 14px}.toolbar{padding:10px 12px}}
+.user-search-wrap{position:relative}
+.user-search-wrap input{width:100%}
+.user-search-dropdown{position:absolute;top:100%;left:0;right:0;background:var(--white);border:1px solid var(--gray-border);border-radius:0 0 var(--radius) var(--radius);box-shadow:0 4px 12px rgba(0,0,0,.1);z-index:100;max-height:200px;overflow-y:auto;display:none}
+.user-search-dropdown.show{display:block}
+.user-search-dropdown .user-item{padding:8px 12px;cursor:pointer;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--gray-light);transition:background .1s}
+.user-search-dropdown .user-item:last-child{border-bottom:none}
+.user-search-dropdown .user-item:hover{background:var(--primary-light)}
+.user-search-dropdown .user-item .ui-name{font-size:13px;font-weight:600}
+.user-search-dropdown .user-item .ui-email{font-size:11px;color:var(--text2)}
+.user-search-dropdown .user-item .ui-avatar{width:28px;height:28px;border-radius:50%;background:var(--primary);color:white;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;flex-shrink:0}
+.user-search-dropdown .search-status{padding:10px 12px;text-align:center;font-size:12px;color:var(--text2)}
+@media(max-width:768px){.stats{gap:8px}.stat-card{min-width:80px;padding:8px 12px}.stat-card .value{font-size:16px}.perms-grid{grid-template-columns:1fr}.toolbar{gap:8px}}
 </style>
 </head>
 <body>
-<div class="signin-overlay" id="signin-overlay">
-  <div class="signin-card">
-    <div class="signin-logo"><img src="logo.png" alt="AlEnshaiah" class="signin-logo-img" onerror="this.style.display='none'"></div>
-    <div class="signin-badge">Permissions Manager</div>
-    <h1>AlEnshaiah</h1>
-    <p class="signin-subtitle">Project Management System</p>
-    <div class="signin-error" id="signin-error"></div>
-    <div class="signin-progress" id="signin-progress"><div class="spinner"></div><span>Authenticating...</span></div>
-    <button class="signin-btn" id="signin-btn" onclick="loginSP()">
-      <svg width="18" height="18" viewBox="0 0 21 21" fill="none"><rect x="1" y="1" width="9" height="9" fill="#F25022"/><rect x="11" y="1" width="9" height="9" fill="#7FBA00"/><rect x="1" y="11" width="9" height="9" fill="#00A4EF"/><rect x="11" y="11" width="9" height="9" fill="#FFB900"/></svg>
-      Sign in with Microsoft
-    </button>
-    <p class="signin-footer">Manage permissions · Secure SSO · <a href="#" onclick="showConfig();return false" style="color:var(--primary);text-decoration:none;font-weight:600">⚙️ Config</a></p>
+<div class="header">
+  <div>
+    <h1>AlEnshaiah Permissions Manager</h1>
+    <div class="subtitle">Manage user access for Tracker, Forms, DC Log &amp; DC Form</div>
+  </div>
+  <div class="auth-section">
+    <span class="user-info" id="user-info" style="display:none"></span>
+    <button class="btn btn-primary" id="login-btn" onclick="login()">Sign In</button>
+    <button class="btn" id="logout-btn" style="display:none" onclick="logout()">Sign Out</button>
   </div>
 </div>
-<div class="app" id="app-root">
-  <header class="header">
-    <div class="logo">AE</div>
-    <h1>Permissions Manager</h1>
-    <div class="site-select">
-      <label>Permissions List</label>
-      <select id="site-select" onchange="onSiteChange()"></select>
-    </div>
-    <div class="spacer"></div>
-    <button class="dark-toggle" id="dark-toggle" onclick="toggleDark()" title="Toggle dark mode">🌙</button>
-    <div class="auth-area">
-      <span class="user-name" id="user-name"></span>
-      <button class="auth-btn login" id="login-btn" onclick="loginSP()">Sign In</button>
-      <button class="auth-btn logout" id="logout-btn" onclick="logoutSP()" style="display:none">Sign Out</button>
-    </div>
-  </header>
+
+<div class="main" id="main-content" style="display:none">
+  <div class="stats" id="stats"></div>
   <div class="toolbar">
-    <strong style="font-size:13px">👥 User Permissions</strong>
-    <span class="status-msg" id="status-msg"></span>
-    <span class="spacer" style="flex:1"></span>
-    <button class="btn btn-outline" onclick="refreshPerms()">🔄 Refresh</button>
-    <button class="btn btn-primary" onclick="saveAllPerms()" id="save-btn" style="display:none">💾 Save All</button>
-    <button class="btn btn-outline" onclick="showConfig()">⚙️ Config</button>
+    <input type="text" id="search" placeholder="Search by email..." oninput="renderTable()">
+    <select id="filter-app" onchange="renderTable()">
+      <option value="">All Apps</option>
+      <option value="ProjectTracker">Project Tracker</option>
+      <option value="Forms">Data Entry (Forms)</option>
+      <option value="DCLog">DC Log</option>
+      <option value="DCForm">DC Form</option>
+      <option value="Both">All Apps (Both)</option>
+    </select>
+    <select id="filter-dept" onchange="renderTable()"></select>
+    <div style="flex:1"></div>
+    <button class="btn" onclick="loadPerms()">🔄 Refresh</button>
+    <button class="btn btn-primary" onclick="openAddModal()">+ Add User</button>
   </div>
-  <div class="main" id="main-area">
-    <div class="empty-state" id="empty-state">
-      <div class="icon">🔐</div>
-      <h3>Ready</h3>
-      <p>Sign in and select the site containing your Permissions list to begin.</p>
+
+  <div id="bulk-bar" class="bulk-bar" style="display:none">
+    <span id="bulk-count">0 selected</span>
+    <button class="btn btn-sm" style="color:white;border-color:rgba(255,255,255,.3)" onclick="bulkEdit()">Bulk Edit</button>
+    <button class="btn btn-sm btn-danger" onclick="bulkDelete()">Delete Selected</button>
+    <button class="btn btn-sm" style="color:white;border-color:rgba(255,255,255,.3)" onclick="clearSelection()">Cancel</button>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr>
+        <th style="width:30px"><input type="checkbox" id="select-all" onchange="toggleSelectAll(this.checked)"></th>
+        <th>Email</th>
+        <th>App</th>
+        <th>Department</th>
+        <th>Access</th>
+        <th style="width:80px">Actions</th>
+      </tr></thead>
+      <tbody id="table-body"></tbody>
+    </table>
+  </div>
+</div>
+
+<div class="empty-state" id="empty-login">
+  <div class="icon">🔐</div>
+  <h3>Sign in to manage permissions</h3>
+  <p style="margin-top:8px">You need admin access to manage user permissions.</p>
+</div>
+
+<div class="loading-overlay" id="loading"><div class="spinner"></div></div>
+
+<div class="modal-overlay" id="add-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="modal-title">Add User Permission</h2>
+      <button class="modal-close" onclick="closeModal()">&times;</button>
     </div>
-    <div id="perm-content" style="display:none;width:100%">
-      <div class="panel">
-        <div class="panel-head"><h3>Permissions Matrix</h3><span style="font-size:11px;color:var(--text-secondary)">Set Read / Edit / None per department and app</span></div>
-        <div id="matrix-wrap" class="panel-body" style="overflow-x:auto;padding:0">
-          <table class="perm-table" id="perm-table">
-            <thead><tr id="matrix-head"></tr></thead>
-            <tbody id="matrix-body"></tbody>
-          </table>
-        </div>
-        <div class="add-user-row">
-          <div class="user-search-wrap">
-            <input type="text" id="new-user-email" placeholder="Search by name or email..." autocomplete="off" oninput="onUserSearchInput()" onkeydown="onUserSearchKeydown(event)">
-            <div class="user-search-dropdown" id="user-search-dropdown"></div>
-          </div>
-          <select id="new-user-app"><option value="Both">Both Apps</option><option value="ProjectTracker">Project Tracker</option><option value="Forms">Data Entry</option></select>
-          <button class="btn btn-primary" onclick="addUser()">➕ Add User</button>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Email Address</label>
+        <div class="user-search-wrap">
+          <input type="email" id="inp-email" placeholder="Search or type email..." autocomplete="off" oninput="onUserSearchInput()" onkeydown="onUserSearchKeydown(event)">
+          <div class="user-search-dropdown" id="user-search-dropdown"></div>
         </div>
       </div>
+      <div class="form-group">
+        <label>Application</label>
+        <select id="inp-app">
+          <option value="Both">All Apps</option>
+          <option value="ProjectTracker">Project Tracker</option>
+          <option value="Forms">Data Entry (Forms)</option>
+          <option value="DCLog">DC Log</option>
+          <option value="DCForm">DC Form</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Default Access Level</label>
+        <select id="inp-access" onchange="onAccessChange()">
+          <option value="edit">Edit (Full Access)</option>
+          <option value="read">Read Only</option>
+          <option value="none">No Access</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Department Access</label>
+        <div id="dept-perms-grid" class="perms-grid"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="savePerm()">Save</button>
     </div>
   </div>
 </div>
-<div class="loading-overlay" id="loading"><div class="spinner"></div></div>
-<div class="toast" id="toast"></div>
-<script>
-// ======================== STORAGE ========================
-const storage={getItem(k){try{return localStorage.getItem(k)}catch{return null}},setItem(k,v){try{localStorage.setItem(k,v)}catch{}},removeItem(k){try{localStorage.removeItem(k)}catch{}}};
 
-// ======================== CONFIG ========================
-const SP_SCOPES=['Sites.ReadWrite.All','User.Read','User.Read.All'];
-let userSearchAbort=null;
-let userSearchSelected=null;
-function getDisplayNameCache(){try{return JSON.parse(storage.getItem('pmt-display-names')||'{}')}catch(e){return{}}}
-function setDisplayNameCache(email,name){
-  const cache=getDisplayNameCache();cache[email.toLowerCase()]=name;
-  storage.setItem('pmt-display-names',JSON.stringify(cache));
-}
-const ADMIN_KEY='pmt-admin-email';
+<div class="toast" id="toast"></div>
+
+<script src="https://alcdn.msauth.net/browser/2.32.2/js/msal-browser.min.js"></script>
+<script>
+const SITE_URL='https://sascontractingsa.sharepoint.com/sites/Alenshaiah';
+const PERM_LIST='Permissions';
+const ADMIN_EMAIL='m.hajissa@alenshaiah.com';
 
 let msalApp=null,spToken=null,spUser=null,spSiteToken=null;
+let permItems=[];
+let selectedIds=new Set();
+let editingId=null;
+let editingGroupEmail=null;
 
-function getDefaultAdmin(){
-  const stored=storage.getItem(ADMIN_KEY);
-  if(stored&&stored!=='hajissa2008@gmail.com')return stored;
-  return 'm.hajissa@alenshaiah.com';
-}
+const APP_GROUPS={
+  'Project Tracker':{color:'#4C5D71'},
+  'Data Entry':{color:'#0078D4'},
+  'DC Log':{color:'#ED7D31'},
+  'DC Form':{color:'#8764B8'}
+};
 
-async function searchAzureADUsers(query){
-  if(!query||query.length<2){document.getElementById('user-search-dropdown').classList.remove('show');return;}
-  if(userSearchAbort){userSearchAbort.abort();}
-  userSearchAbort=new AbortController();
-  try{
-    await getTokenSP();
-    if(!spToken)return;
-    const url='https://graph.microsoft.com/v1.0/users?$filter=startswith(displayName,\''+encodeURIComponent(query.replace(/'/g,"''"))+'\') or startswith(mail,\''+encodeURIComponent(query.replace(/'/g,"''"))+'\') or startswith(userPrincipalName,\''+encodeURIComponent(query.replace(/'/g,"''"))+'\')&$top=10&$select=displayName,mail,userPrincipalName&$orderby=displayName';
-    const resp=await fetch(url,{headers:{'Authorization':'Bearer '+spToken},signal:userSearchAbort.signal});
-    if(!resp.ok)throw new Error('Graph users search failed');
-    const data=await resp.json();
-    const users=data.value||[];
-    const dd=document.getElementById('user-search-dropdown');
-    if(!users.length){
-      dd.innerHTML='<div class="search-status">No users found. Type a full email to add manually.</div>';
-      dd.classList.add('show');
-      return;
-    }
-    dd.innerHTML=users.map((u,i)=>'<div class="user-item" data-index="'+i+'" onclick="selectUser(\''+u.mail.replace(/'/g,"\\'")+'\',\''+u.displayName.replace(/'/g,"\\'")+'\')" onmouseenter="highlightUserItem('+i+')">'+
-      '<div class="user-item-avatar">'+(u.displayName?u.displayName.charAt(0).toUpperCase():'?')+'</div>'+
-      '<div><div class="user-item-name">'+escapeHtml(u.displayName||'')+'</div><div class="user-item-email">'+escapeHtml(u.mail||u.userPrincipalName||'')+'</div></div>'+
-      '</div>').join('');
-    dd.classList.add('show');
-    userSearchSelected=null;
-  }catch(e){
-    if(e.name==='AbortError')return;
-    console.warn('Azure AD search failed (User.Read.All may not be granted):',e.message);
-  }
-}
-function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
-let userSearchDebounce=null;
-function onUserSearchInput(){
-  const input=document.getElementById('new-user-email');
-  userSearchSelected=null;
-  if(userSearchDebounce)clearTimeout(userSearchDebounce);
-  userSearchDebounce=setTimeout(()=>searchAzureADUsers(input.value.trim()),300);
-}
-function highlightUserItem(idx){
-  document.querySelectorAll('.user-search-dropdown .user-item').forEach((el,i)=>el.classList.toggle('highlighted',i===idx));
-}
-let userSearchHighlightIdx=-1;
-function onUserSearchKeydown(e){
-  const dd=document.getElementById('user-search-dropdown');
-  const items=dd.querySelectorAll('.user-item');
-  if(e.key==='ArrowDown'){e.preventDefault();userSearchHighlightIdx=Math.min(userSearchHighlightIdx+1,items.length-1);highlightUserItem(userSearchHighlightIdx);items[userSearchHighlightIdx]&&items[userSearchHighlightIdx].scrollIntoView({block:'nearest'});}
-  else if(e.key==='ArrowUp'){e.preventDefault();userSearchHighlightIdx=Math.max(userSearchHighlightIdx-1,0);highlightUserItem(userSearchHighlightIdx);items[userSearchHighlightIdx]&&items[userSearchHighlightIdx].scrollIntoView({block:'nearest'});}
-  else if(e.key==='Enter'&&userSearchHighlightIdx>=0&&items[userSearchHighlightIdx]){e.preventDefault();items[userSearchHighlightIdx].click();}
-  else if(e.key==='Escape'){dd.classList.remove('show');userSearchHighlightIdx=-1;}
-  else{userSearchHighlightIdx=-1;}
-}
-function selectUser(email,displayName){
-  document.getElementById('new-user-email').value=email;
-  userSearchSelected=email;
-  document.getElementById('user-search-dropdown').classList.remove('show');
-  userSearchHighlightIdx=-1;
-  addUser(displayName);
-}
+const DEPT_GROUPS=[
+  'Project Tracker','Data Entry',
+  'Correspondence & Registers','Design & Technical','Submittals & Approvals',
+  'Reports','HSE','Documents & Records'
+];
+
+const DEPTS=[
+  {id:'substructure',title:'Substructure',group:'Project Tracker'},
+  {id:'superstructure',title:'Superstructure',group:'Project Tracker'},
+  {id:'calculations',title:'Calculations (Tracker)',group:'Project Tracker'},
+  {id:'methodstatement',title:'Method Statement',group:'Project Tracker'},
+  {id:'procurement',title:'Procurement',group:'Project Tracker'},
+  {id:'pt-calculations',title:'Calculations (Forms)',group:'Data Entry'},
+  {id:'sor',title:'SOR',group:'Correspondence & Registers'},
+  {id:'incoming',title:'Incoming',group:'Correspondence & Registers'},
+  {id:'outgoing',title:'Outgoing',group:'Correspondence & Registers'},
+  {id:'letters2',title:'Letters (2)',group:'Correspondence & Registers'},
+  {id:'oic-to-acc',title:'OIC to ACC',group:'Correspondence & Registers'},
+  {id:'mom',title:'MOM',group:'Correspondence & Registers'},
+  {id:'sdc-to-acc-ifc',title:'SDC to ACC (IFC)',group:'Correspondence & Registers'},
+  {id:'internal-sor',title:"Internal SOR's",group:'Correspondence & Registers'},
+  {id:'dc-calculations',title:'Calculations',group:'Design & Technical'},
+  {id:'plans',title:'Plans',group:'Design & Technical'},
+  {id:'dw-drawings',title:'Drawings (DW)',group:'Design & Technical'},
+  {id:'mst',title:'Method Statements (MST)',group:'Design & Technical'},
+  {id:'org-chart',title:'Organization Chart',group:'Design & Technical'},
+  {id:'scl',title:'Schedules (SCL)',group:'Design & Technical'},
+  {id:'sna',title:'Start of New Activity (SNA)',group:'Design & Technical'},
+  {id:'ncr',title:'NCR',group:'Submittals & Approvals'},
+  {id:'si',title:'Site Instructions (SI)',group:'Submittals & Approvals'},
+  {id:'ei',title:"Engineer's Instruction (EI)",group:'Submittals & Approvals'},
+  {id:'wir',title:'Work Inspection Request (WIR)',group:'Submittals & Approvals'},
+  {id:'mir',title:'Material Insp. Request (MIR)',group:'Submittals & Approvals'},
+  {id:'ms',title:'Materials Submittal (MS)',group:'Submittals & Approvals'},
+  {id:'pq',title:'Pre-Qualifications (PQ)',group:'Submittals & Approvals'},
+  {id:'rfi',title:'Request for Info (RFI)',group:'Submittals & Approvals'},
+  {id:'sca',title:'Subcon Approval (SCA)',group:'Submittals & Approvals'},
+  {id:'merf',title:'MERF',group:'Submittals & Approvals'},
+  {id:'internal-ncr',title:"Internal NCR's",group:'Submittals & Approvals'},
+  {id:'mqr',title:'Quality Observation Report (MQR)',group:'Reports'},
+  {id:'mpr',title:'Monthly Progress Report (MPR)',group:'Reports'},
+  {id:'wpr',title:'Weekly Progress Report (WPR)',group:'Reports'},
+  {id:'test-reports',title:'Test Reports',group:'Reports'},
+  {id:'dcr',title:'Daily Report (DCR)',group:'Reports'},
+  {id:'hsr',title:'Health & Safety Reports (HSR)',group:'Reports'},
+  {id:'hse-obs',title:'Safety Observations (HSE)',group:'HSE'},
+  {id:'hse-incident',title:'Incident Reports (HSE)',group:'HSE'},
+  {id:'others',title:'Others - General',group:'Documents & Records'},
+  {id:'prc',title:'Procedure (PRC)',group:'Documents & Records'},
+  {id:'omm',title:'Operation & Maintenance (OMM)',group:'Documents & Records'},
+  {id:'tm',title:'Technical Manual (TM)',group:'Documents & Records'},
+  {id:'ds',title:'Data Sheet (DS)',group:'Documents & Records'},
+  {id:'crt',title:'Certificate (CRT)',group:'Documents & Records'},
+  {id:'piv',title:'Photos (PIV)',group:'Documents & Records'},
+  {id:'cp',title:'Contractor Proposal (CP)',group:'Documents & Records'}
+];
+const DEPTS_BY_ID={};DEPTS.forEach(d=>{DEPTS_BY_ID[d.id]=d});
+
+function htmlEscape(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function showToast(msg,type){const t=document.getElementById('toast');t.textContent=msg;t.className='toast '+(type||'')+' show';setTimeout(()=>t.classList.remove('show'),3000);}
+function showLoading(show){document.getElementById('loading').classList.toggle('show',show);}
 
 function initMsal(){
-  const tenant=storage.getItem('pmt-tenant')||'684547e2-bb8b-450a-a3e1-3a6bc15e9471';
-  const client=storage.getItem('pmt-client')||'84b1fcd2-8c12-4f1b-8fa4-b0e6d99bf534';
-  if(!tenant||!client)return false;
+  const tenant='684547e2-bb8b-450a-a3e1-3a6bc15e9471';
+  const client='84b1fcd2-8c12-4f1b-8fa4-b0e6d99bf534';
   msalApp=new msal.PublicClientApplication({
     auth:{clientId:client,authority:'https://login.microsoftonline.com/'+tenant,redirectUri:location.origin+location.pathname},
     cache:{cacheLocation:'localStorage'},system:{allowNativeBroker:false}
   });
-  return true;
 }
 
-async function loginSP(){
-  if(location.protocol==='file:'){showSigninError('⚠️ Cannot sign in from a local file.');return}
-  if(typeof msal==='undefined'){showSigninError('⚠️ MSAL failed to load.');return}
-  if(!initMsal()){showSigninError('⚠️ Azure AD not configured.');return}
-  showSigninProgress(true);
-  try{
-    const resp=await msalApp.loginPopup({scopes:SP_SCOPES});
-    handleAuthResponse(resp);
-  }catch(e){
-    showSigninProgress(false);
-    if(e.message&&e.message.includes('popup_window_error'))showSigninError('⚠️ Popup blocked.');
-    else showSigninError('Login failed: '+e.message);
+async function login(){
+  if(!msalApp)initMsal();
+  try{const resp=await msalApp.loginPopup({scopes:['Sites.ReadWrite.All','User.Read']});handleLogin(resp);}
+  catch(e){
+    try{await msalApp.loginRedirect({scopes:['Sites.ReadWrite.All','User.Read']);}catch(e2){showToast('Login failed: '+e2.message,'error');}
   }
 }
 
-async function ssoSilentAttempt(){
-  if(!msalApp)return false;
-  try{const resp=await msalApp.ssoSilent({scopes:SP_SCOPES});handleAuthResponse(resp);return true}catch{return false}
+async function trySSO(){
+  if(!msalApp)initMsal();
+  try{
+    await msalApp.handleRedirectPromise().then(r=>{if(r)handleLogin(r);});
+    if(!spUser){
+      const accounts=msalApp.getAllAccounts();
+      if(accounts.length){const resp=await msalApp.ssoSilent({scopes:['Sites.ReadWrite.All','User.Read'],account:accounts[0]});handleLogin(resp);}
+    }
+  }catch(e){}
 }
 
-async function getTokenSP(){
-  if(!msalApp||!spUser)return null;
-  try{const resp=await msalApp.acquireTokenSilent({scopes:SP_SCOPES,account:spUser});spToken=resp.accessToken;return spToken}catch{if(spToken)return spToken;return null}
-}
-
-function handleAuthResponse(resp){
+function handleLogin(resp){
   if(resp&&resp.account){
     spUser=resp.account;spToken=resp.accessToken;
-    showSigninProgress(false);hideSigninOverlay();updateAuthUI();
-    initApp();
-  }else{showSigninProgress(false);updateAuthUI()}
-}
-
-function logoutSP(){
-  spToken=null;spUser=null;spSiteToken=null;
-  if(msalApp)msalApp.logoutPopup();
-  updateAuthUI();
-}
-
-function showSigninError(msg){const el=document.getElementById('signin-error');if(el){el.textContent=msg;el.classList.add('show')}}
-function showSigninProgress(show){const el=document.getElementById('signin-progress');const btn=document.getElementById('signin-btn');if(el)el.classList.toggle('show',show);if(btn)btn.disabled=show}
-function hideSigninOverlay(){document.getElementById('signin-overlay').classList.add('hidden')}
-function showSigninOverlay(){document.getElementById('signin-overlay').classList.remove('hidden')}
-function showLoading(show){document.getElementById('loading').classList.toggle('show',show)}
-function showToast(msg,type){const t=document.getElementById('toast');t.textContent=msg;t.className='toast show';t.style.background=type==='error'?'var(--red)':'#323130';setTimeout(()=>t.classList.remove('show'),3000)}
-
-function updateAuthUI(){
-  const un=document.getElementById('user-name');const li=document.getElementById('login-btn');const lo=document.getElementById('logout-btn');
-  if(spUser){
-    if(un){un.style.display='';un.textContent='👤 '+(spUser.name||spUser.username)}
-    if(li)li.style.display='none';if(lo)lo.style.display=''
-  }else{
-    if(un){un.style.display='none';un.textContent=''}
-    if(li)li.style.display='';if(lo)lo.style.display='none'
-  }
-}
-
-// ======================== DEPARTMENTS & SITES ========================
-const DEPTS=[
-  {id:'substructure',    title:'Substructure',    site:'https://sascontractingsa.sharepoint.com/sites/Alenshaiah', list:'SUBSTRUCTURE'},
-  {id:'superstructure',  title:'Superstructure',  site:'https://sascontractingsa.sharepoint.com/sites/Alenshaiah', list:'superstructure'},
-  {id:'calculations',    title:'Calculations',    site:'https://sascontractingsa.sharepoint.com/sites/Alenshaiah', list:'calculations'},
-  {id:'methodstatement', title:'Method Statement',site:'https://sascontractingsa.sharepoint.com/sites/Alenshaiah', list:'method statement'},
-  {id:'procurement',     title:'Procurement',     site:'https://sascontractingsa.sharepoint.com/sites/Alenshaiah', list:'procurement'}
-];
-
-const PERM_LIST_NAME='Permissions';
-
-// Build unique sites from all depts
-function getUniqueSites(){
-  const map={};
-  DEPTS.forEach(d=>{if(d.site&&!map[d.site])map[d.site]={url:d.site,title:d.site.split('/').pop()||d.site}});
-  return Object.values(map);
-}
-
-function initSiteSelect(){
-  const sel=document.getElementById('site-select');
-  const sites=getUniqueSites();
-  sel.innerHTML=sites.map(s=>`<option value="${s.url}">${s.title}</option>`).join('');
-}
-
-function onSiteChange(){
-  if(spUser&&spToken)loadPermissions();
-}
-
-// ======================== PERMISSIONS ========================
-let permEntries=[]; // Array of {Id,Title,DeptID,Access,App}
-let cachedSiteId=null,cachedListId=null;
-
-function siteToGraphPath(siteUrl){
-  const u=new URL(siteUrl);
-  return u.hostname+':'+u.pathname.replace(/\/+$/,'');
-}
-
-function graphListUrl(siteUrl,listName){
-  return 'https://graph.microsoft.com/v1.0/sites/'+siteToGraphPath(siteUrl)+':/lists/'+encodeURIComponent(listName);
-}
-
-async function graphApi(url,method,body){
-  await getTokenSP();
-  if(!spToken)throw new Error('No token');
-  const opts={method:method||'GET',headers:{'Authorization':'Bearer '+spToken,'Content-Type':'application/json'}};
-  if(body)opts.body=JSON.stringify(body);
-  const resp=await fetch(url,opts);
-  if(!resp.ok){const t=await resp.text();throw new Error('HTTP '+resp.status+': '+t.substring(0,300))}
-  return resp.json();
-}
-
-async function ensurePermList(siteUrl){
-  if(cachedListId)return cachedListId;
-  const siteData=await graphApi('https://graph.microsoft.com/v1.0/sites/'+siteToGraphPath(siteUrl)+'?$select=id');
-  cachedSiteId=siteData.id;
-  const listData=await graphApi('https://graph.microsoft.com/v1.0/sites/'+cachedSiteId+'/lists/'+encodeURIComponent(PERM_LIST_NAME)+'?$select=id');
-  cachedListId=listData.id;
-  return cachedListId;
-}
-function permListItemsUrl(){
-  return 'https://graph.microsoft.com/v1.0/sites/'+cachedSiteId+'/lists/'+cachedListId+'/items';
-}
-
-async function loadPermissions(){
-  const siteUrl=document.getElementById('site-select').value;
-  if(!siteUrl||!spUser||!spToken)return;
-  showLoading(true);
-  cachedSiteId=null;cachedListId=null;
-  try{
-    await ensurePermList(siteUrl);
-    const data=await graphApi(permListItemsUrl()+'?$top=500&expand=fields');
-    permEntries=(data.value||[]).map(i=>({
-      Id:i.id,
-      Title:(i.fields&&i.fields.Title)||'',
-      DeptID:(i.fields&&i.fields.DeptID)||'',
-      Access:(i.fields&&i.fields.Access)||'None',
-      App:(i.fields&&i.fields.App)||'Both'
-    }));
-    if(!permEntries.length)showToast('Permissions list is empty. Add users below.','');
-    renderMatrix();
-    document.getElementById('empty-state').style.display='none';
-    document.getElementById('perm-content').style.display='block';
-  }catch(e){
-    console.error('Load perms:',e);
-    const is404=e.message&&(e.message.includes('404')||e.message.includes('itemNotFound'));
-    document.getElementById('empty-state').style.display='block';
-    document.getElementById('perm-content').style.display='none';
-    const es=document.getElementById('empty-state');
-    if(is404){
-      es.innerHTML='<div class="icon">📋</div><h3>Permissions List Not Found</h3><p style="max-width:500px;margin:0 auto;line-height:1.6">Create a SharePoint list named <b>"Permissions"</b> on the AlEnshaiah site with these columns:<br><br>• <b>DeptID</b> (Single line of text)<br>• <b>Access</b> (Choice: Read, Edit, None)<br>• <b>App</b> (Choice: Both, ProjectTracker, Forms)<br><br>Then refresh this page.</p>';
-    }else{
-      es.innerHTML='<div class="icon">⚠️</div><h3>Error</h3><p>'+(e.message||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</p>';
-    }
-  }finally{showLoading(false)}
-}
-
-function refreshPerms(){loadPermissions()}
-
-// ======================== MATRIX RENDERING ========================
-function renderMatrix(){
-  const head=document.getElementById('matrix-head');
-  const body=document.getElementById('matrix-body');
-  const depts=DEPTS;
-  // Collect unique users sorted
-  const userSet=new Set(permEntries.map(e=>e.Title).filter(Boolean));
-  const users=Array.from(userSet).sort((a,b)=>a.toLowerCase().localeCompare(b.toLowerCase()));
-
-  // Header
-  let hHtml='<th style="min-width:180px">User</th>';
-  depts.forEach(d=>{
-    hHtml+=`<th style="text-align:center" colspan="2">${d.title}</th>`;
-  });
-  hHtml+='<th style="width:60px;text-align:center">Actions</th>';
-  head.innerHTML=hHtml;
-
-  // Body
-  if(!users.length){
-    body.innerHTML='<tr><td colspan="'+(depts.length*2+2)+'" style="text-align:center;padding:20px;color:var(--text-secondary)">No users. Add one below.</td></tr>';
-    return;
-  }
-
-  const nameCache=getDisplayNameCache();
-  let bHtml='';
-  users.forEach(email=>{
-    const dn=nameCache[email.toLowerCase()]||email.split('@')[0];
-    bHtml+=`<tr><td><div class="user-cell">${dn}<div class="user-email">${email}</div></div></td>`;
-    depts.forEach(d=>{
-      const entry=permEntries.find(e=>e.Title.toLowerCase()===email.toLowerCase()&&e.DeptID===d.id);
-      const access=entry?entry.Access:'None';
-      const apps=entry?entry.App:'Both';
-      bHtml+=`<td style="text-align:center;padding:4px">
-        <select class="access-${access.toLowerCase()}" data-email="${email}" data-dept="${d.id}" onchange="onCellChange(this,'access')">
-          <option value="None" ${access==='None'?'selected':''}>None</option>
-          <option value="Read" ${access==='Read'?'selected':''}>Read</option>
-          <option value="Edit" ${access==='Edit'?'selected':''}>Edit</option>
-        </select>
-      </td>`;
-      bHtml+=`<td style="text-align:center;padding:4px;font-size:11px">
-        <select data-email="${email}" data-dept="${d.id}" onchange="onCellChange(this,'app')">
-          <option value="Both" ${apps==='Both'?'selected':''}>All</option>
-          <option value="ProjectTracker" ${apps==='ProjectTracker'?'selected':''}>Tracker</option>
-          <option value="Forms" ${apps==='Forms'?'selected':''}>Forms</option>
-        </select>
-      </td>`;
-    });
-    bHtml+=`<td style="text-align:center"><button class="btn-remove" onclick="removeUser('${email.replace(/'/g,"\\'")}')" title="Remove user">✕</button></td></tr>`;
-  });
-  body.innerHTML=bHtml;
-}
-
-function onCellChange(el,field){
-  const email=el.dataset.email;
-  const deptId=el.dataset.dept;
-  const value=el.value;
-  const existing=permEntries.find(e=>e.Title.toLowerCase()===email.toLowerCase()&&e.DeptID===deptId);
-  if(existing){
-    existing[field==='access'?'Access':'App']=value;
-    if(existing.Id){showStatus('Saving...','saving');graphApi(permListItemsUrl()+'/'+existing.Id+'/fields','PATCH',{Access:existing.Access,App:existing.App}).then(()=>{showStatus('Saved','saved');}).catch(e=>{showStatus('Error: '+e.message,'error');console.error('Auto-save:',e);});}
-  }else{
-    permEntries.push({Title:email,DeptID:deptId,Access:field==='access'?value:'None',App:field==='app'?value:'Both'});
-  }
-  if(field==='access')el.className='access-'+value.toLowerCase();
-}
-
-function addUser(displayName){
-  const input=document.getElementById('new-user-email');
-  const email=input.value.trim().toLowerCase();
-  const app=document.getElementById('new-user-app').value;
-  if(!email||!email.includes('@')){showToast('Enter a valid email address','error');return}
-  const existing=permEntries.some(e=>e.Title.toLowerCase()===email);
-  if(existing){showToast('User already exists','error');return}
-  if(displayName)setDisplayNameCache(email,displayName);
-  input.value='';
-  showStatus('Adding user...','saving');
-  const itemsBase=permListItemsUrl();
-  const toCreate=DEPTS.map(d=>({Title:email,DeptID:d.id,Access:'None',App:app}));
-  let ok=0,fail=0;
-  const tasks=toCreate.map(f=>graphApi(itemsBase,'POST',{fields:f}).then(r=>{
-    permEntries.push({Id:r.id||'',Title:email,DeptID:f.DeptID,Access:'None',App:app});
-    ok++;
-  }).catch(e=>{fail++;console.error('Add perm',f.DeptID,e.message);}));
-  Promise.allSettled(tasks).then(()=>{
-    renderMatrix();
-    showStatus(fail===0?'✓ '+email+' added ('+ok+')':'✓ '+ok+' added, ✗ '+fail+' failed',fail===0?'saved':'error');
-    showToast(fail===0?'User added':'Added with '+fail+' errors','');
-  });
-}
-
-function removeUser(email){
-  if(!confirm('Remove all permissions for '+email+'?'))return;
-  const toRemove=permEntries.filter(e=>e.Title.toLowerCase()===email.toLowerCase()&&e.Id);
-  permEntries=permEntries.filter(e=>e.Title.toLowerCase()!==email.toLowerCase());
-  renderMatrix();
-  if(!toRemove.length)return;
-  showStatus('Removing...','saving');
-  const tasks=toRemove.map(e=>graphApi(permListItemsUrl()+'/'+e.Id,'DELETE').catch(ex=>console.error('Delete perm:',ex.message)));
-  Promise.allSettled(tasks).then(()=>{
-    showStatus('✓ Removed','saved');
-    showToast('User removed','');
-  });
-}
-
-function showStatus(msg,type){const s=document.getElementById('status-msg');s.className='status-msg '+(type||'');s.textContent=msg;s.style.display=msg?'inline':'none';}
-
-async function saveAllPerms(){} // Legacy no-op
-
-// ======================== CONFIG ========================
-function showConfig(){
-  const redirectUri=location.origin+location.pathname;
-  const storedAdmin=storage.getItem(ADMIN_KEY);
-  const savedAdmin=(storedAdmin&&storedAdmin!=='hajissa2008@gmail.com')?storedAdmin:'m.hajissa@alenshaiah.com';
-  const savedTenant=storage.getItem('pmt-tenant')||'684547e2-bb8b-450a-a3e1-3a6bc15e9471';
-  const savedClient=storage.getItem('pmt-client')||'84b1fcd2-8c12-4f1b-8fa4-b0e6d99bf534';
-  const overlay=document.createElement('div');
-  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:1100;display:flex;align-items:center;justify-content:center';
-  overlay.innerHTML=`<div style="background:var(--white);border-radius:8px;box-shadow:0 8px 30px rgba(0,0,0,.25);width:90vw;max-width:500px;padding:20px;max-height:90vh;overflow-y:auto">
-    <h3 style="margin-bottom:16px;font-size:16px">⚙️ Configuration</h3>
-    <div class="form-group"><label class="required">Tenant ID</label><input type="text" id="cfg-tenant" value="${savedTenant}"></div>
-    <div class="form-group"><label class="required">Client ID</label><input type="text" id="cfg-client" value="${savedClient}"></div>
-    <div class="form-group"><label>Admin Email</label><input type="text" id="cfg-admin" value="${savedAdmin}"></div>
-    <div class="hint">Only this email can manage permissions.</div>
-    <button class="btn btn-primary" onclick="saveConfig()" style="width:100%;padding:8px;margin-top:8px">Save &amp; Re-authenticate</button>
-    <button class="btn btn-outline" onclick="this.closest('div').parentElement.remove()" style="width:100%;padding:8px;margin-top:8px">Close</button>
-  </div>`;
-  overlay.onclick=e=>{if(e.target===overlay)overlay.remove()};
-  document.body.appendChild(overlay);
-}
-
-function saveConfig(){
-  const t=document.getElementById('cfg-tenant').value.trim();
-  const c=document.getElementById('cfg-client').value.trim();
-  const a=document.getElementById('cfg-admin').value.trim();
-  if(t)storage.setItem('pmt-tenant',t);
-  if(c)storage.setItem('pmt-client',c);
-  if(a)storage.setItem(ADMIN_KEY,a);
-  showToast('Config saved. Re-authenticating...','success');
-  setTimeout(()=>location.reload(),500);
-}
-
-// ======================== DARK MODE ========================
-function toggleDark(){
-  document.body.classList.toggle('dark');
-  storage.setItem('perm-dark',document.body.classList.contains('dark')?'1':'');
-  document.getElementById('dark-toggle').textContent=document.body.classList.contains('dark')?'☀️':'🌙';
-}
-
-// ======================== INIT ========================
-function initApp(){
-  if(spUser&&spToken){
-    const adminEmail=getDefaultAdmin();
-    if((spUser.username||'').toLowerCase()!==adminEmail.toLowerCase()&&(spUser.name||'').toLowerCase()!==adminEmail.toLowerCase()){
-      showToast('⚠️ Only the admin can manage permissions.','error');
-      document.getElementById('perm-content').style.display='none';
-      document.getElementById('empty-state').querySelector('h3').textContent='Restricted';
-      document.getElementById('empty-state').querySelector('p').textContent='Only the configured admin ('+adminEmail+') can access this page.';
-      document.getElementById('empty-state').style.display='block';
+    document.getElementById('login-btn').style.display='none';
+    document.getElementById('logout-btn').style.display='';
+    const ui=document.getElementById('user-info');
+    if((spUser.username||'').toLowerCase()!==ADMIN_EMAIL.toLowerCase()){
+      ui.style.display='';ui.innerHTML='<strong>'+htmlEscape(spUser.name||spUser.username)+'</strong> <span style="color:var(--red);font-size:12px">(Not authorized)</span>';
+      document.getElementById('empty-login').innerHTML='<div class="icon">🔒</div><h3>Access Denied</h3><p style="margin-top:8px">Only the administrator can manage permissions.</p>';
+      document.getElementById('empty-login').style.display='';
+      document.getElementById('main-content').style.display='none';
       return;
     }
-    initSiteSelect();
-    const lastSite=storage.getItem('perm-last-site');
-    if(lastSite){document.getElementById('site-select').value=lastSite}
-    loadPermissions();
+    ui.style.display='';ui.innerHTML='<strong>'+htmlEscape(spUser.name||spUser.username)+'</strong>';
+    document.getElementById('empty-login').style.display='none';
+    document.getElementById('main-content').style.display='';
+    loadPerms();
   }
 }
 
-(function init(){
-  if(storage.getItem('perm-dark')){document.body.classList.add('dark');document.getElementById('dark-toggle').textContent='☀️'}
-  if(location.protocol==='file:'){showSigninError('⚠️ Cannot run from local file.');return}
-  if(typeof msal==='undefined'){showSigninError('⚠️ MSAL failed to load.');return}
-  if(!initMsal()){showSigninError('⚠️ Azure AD not configured.');return}
-  showSigninProgress(true);
-  ssoSilentAttempt().then(authed=>{showSigninProgress(false);if(!authed)updateAuthUI()}).catch(()=>{showSigninProgress(false);updateAuthUI()});
-})();
+function logout(){
+  spUser=null;spToken=null;spSiteToken=null;
+  if(msalApp)msalApp.logoutPopup();
+  document.getElementById('login-btn').style.display='';
+  document.getElementById('logout-btn').style.display='none';
+  document.getElementById('user-info').style.display='none';
+  document.getElementById('main-content').style.display='none';
+  document.getElementById('empty-login').style.display='';
+}
+
+async function ensureSpToken(){
+  if(!spUser)throw new Error('Not authenticated');
+  try{
+    if(spSiteToken){const r=await fetch(SITE_URL+'/_api/web/currentuser',{headers:{'Authorization':'Bearer '+spSiteToken,'Accept':'application/json'}});if(r.ok)return spSiteToken;}
+  }catch{}
+  const resp=await msalApp.acquireTokenSilent({scopes:[new URL(SITE_URL).origin+'/.default'],account:spUser});
+  spSiteToken=resp.accessToken;return spSiteToken;
+}
+
+async function spGet(url){
+  const token=await ensureSpToken();
+  const resp=await fetch(url,{headers:{'Authorization':'Bearer '+token,'Accept':'application/json'}});
+  if(!resp.ok){const t=await resp.text().catch(()=>'');throw new Error('HTTP '+resp.status+': '+t.substring(0,200));}
+  return await resp.json();
+}
+async function spPost(url,body){
+  const token=await ensureSpToken();
+  const resp=await fetch(url,{method:'POST',headers:{'Authorization':'Bearer '+token,'Accept':'application/json','Content-Type':'application/json'},body:JSON.stringify(body)});
+  if(!resp.ok){const t=await resp.text().catch(()=>'');throw new Error('HTTP '+resp.status+': '+t.substring(0,200));}
+  return resp.status===204?null:await resp.json().catch(()=>null);
+}
+async function spPatch(url,body){
+  const token=await ensureSpToken();
+  const resp=await fetch(url,{method:'POST',headers:{'Authorization':'Bearer '+token,'Accept':'application/json','Content-Type':'application/json','IF-MATCH':'*','X-HTTP-Method':'MERGE'},body:JSON.stringify(body)});
+  if(!resp.ok){const t=await resp.text().catch(()=>'');throw new Error('HTTP '+resp.status+': '+t.substring(0,200));}
+}
+async function spDelete(url){
+  const token=await ensureSpToken();
+  const resp=await fetch(url,{method:'DELETE',headers:{'Authorization':'Bearer '+token,'Accept':'application/json','X-HTTP-Method':'DELETE','If-Match':'*'}});
+  if(!resp.ok){const t=await resp.text().catch(()=>'');throw new Error('HTTP '+resp.status+': '+t.substring(0,200));}
+}
+
+function permApi(id){
+  return SITE_URL+"/_api/web/lists/getbytitle('"+PERM_LIST+"')"+(id?'/items('+id+')':'/items');
+}
+
+async function loadPerms(){
+  showLoading(true);
+  try{
+    let allItems=[];
+    let nextUrl=permApi()+'?$top=5000&$orderby=ID asc';
+    while(nextUrl){
+      const data=await spGet(nextUrl);
+      const batch=data.d?data.d.results:(data.value||[]);
+      allItems=allItems.concat(batch);
+      nextUrl=(data.d&&data.d.__next)?data.d.__next:(data['@odata.nextLink']||null);
+    }
+    permItems=allItems;
+  }catch(e){
+    if(e.message.includes('404')){permItems=[];showToast('Permissions list not found.','error');}
+    else{showToast('Failed to load: '+e.message,'error');permItems=[];}
+  }
+  showLoading(false);
+  populateDeptFilter();renderStats();renderTable();
+}
+
+function populateDeptFilter(){
+  const sel=document.getElementById('filter-dept');
+  const cur=sel.value;
+  sel.innerHTML='<option value="">All Departments</option>';
+  DEPT_GROUPS.forEach(g=>{
+    const group=DEPTS.filter(d=>d.group===g);
+    if(!group.length)return;
+    const og=document.createElement('optgroup');og.label=g;
+    group.forEach(d=>{const o=document.createElement('option');o.value=d.id;o.textContent=d.title;og.appendChild(o);});
+    sel.appendChild(og);
+  });
+  sel.value=cur;
+}
+
+function renderStats(){
+  const uniqueEmails=new Set(permItems.map(i=>(i.Title||'').toLowerCase()));
+  document.getElementById('stats').innerHTML=
+    '<div class="stat-card"><div class="label">Total Entries</div><div class="value">'+permItems.length+'</div></div>'+
+    '<div class="stat-card"><div class="label">Unique Users</div><div class="value">'+uniqueEmails.size+'</div></div>'+
+    '<div class="stat-card"><div class="label">Tracker</div><div class="value">'+permItems.filter(i=>i.App==='ProjectTracker').length+'</div></div>'+
+    '<div class="stat-card"><div class="label">Forms</div><div class="value">'+permItems.filter(i=>i.App==='Forms').length+'</div></div>'+
+    '<div class="stat-card"><div class="label">DC Log</div><div class="value">'+permItems.filter(i=>i.App==='DCLog').length+'</div></div>'+
+    '<div class="stat-card"><div class="label">DC Form</div><div class="value">'+permItems.filter(i=>i.App==='DCForm').length+'</div></div>'+
+    '<div class="stat-card"><div class="label">All Apps</div><div class="value">'+permItems.filter(i=>i.App==='Both').length+'</div></div>';
+}
+
+function getFiltered(){
+  const search=document.getElementById('search').value.toLowerCase();
+  const app=document.getElementById('filter-app').value;
+  const dept=document.getElementById('filter-dept').value;
+  return permItems.filter(item=>{
+    const email=(item.Title||'').toLowerCase();
+    if(search&&!email.includes(search))return false;
+    if(app&&(item.App||'Both')!==app)return false;
+    if(dept&&(item.DeptID||'')!==dept)return false;
+    return true;
+  });
+}
+
+function renderTable(){
+  const items=getFiltered();
+  const tbody=document.getElementById('table-body');
+  if(!items.length){
+    tbody.innerHTML='<tr><td colspan="6" class="empty-state"><div class="icon">📋</div><h3>No entries found</h3><p style="margin-top:4px;color:var(--text2)">Add user permissions or adjust your filters.</p></td></tr>';
+    return;
+  }
+  const groups={};
+  items.forEach(item=>{
+    const email=(item.Title||'').toLowerCase();
+    if(!groups[email])groups[email]={email:item.Title||'',items:[]};
+    groups[email].items.push(item);
+  });
+  let html='';
+  Object.values(groups).sort((a,b)=>a.email.localeCompare(b.email)).forEach(g=>{
+    const apps=[...new Set(g.items.map(i=>i.App||'Both'))];
+    const appsStr=apps.map(a=>'<span class="badge badge-app">'+htmlEscape(a)+'</span>').join(' ');
+    const deptCount=g.items.length;
+    html+='<tr class="group-header" style="cursor:pointer;background:var(--gray-light)" onclick="toggleGroup(this,\''+htmlEscape(g.email.replace(/'/g,"\\'"))+'\')">'+
+      '<td><input type="checkbox" onchange="toggleGroupSelect(\''+htmlEscape(g.email.replace(/'/g,"\\'"))+'\',this.checked)"></td>'+
+      '<td><strong>'+htmlEscape(g.email)+'</strong></td>'+
+      '<td>'+appsStr+'</td>'+
+      '<td colspan="2" style="color:var(--text2)">'+deptCount+' permission(s)</td>'+
+      '<td><button class="btn btn-sm" onclick="event.stopPropagation();openEditGroupModal(\''+htmlEscape(g.email.replace(/'/g,"\\'"))+'\')">Edit</button> '+
+        '<button class="btn btn-sm btn-danger" onclick="event.stopPropagation();deleteGroup(\''+htmlEscape(g.email.replace(/'/g,"\\'"))+'\')">Del All</button></td></tr>';
+    g.items.forEach(item=>{
+      const access=(item.Access||'edit').toLowerCase();
+      const dept=DEPTS_BY_ID[item.DeptID];
+      const deptName=dept?dept.title:item.DeptID;
+      const safeEmail=htmlEscape(g.email.replace(/'/g,"\\'"));
+      html+='<tr class="group-row group-'+safeEmail.replace(/[^a-z0-9]/gi,'')+'" style="display:none">'+
+        '<td></td><td style="padding-left:28px;color:var(--text2)">'+htmlEscape(g.email)+'</td>'+
+        '<td><span class="badge badge-app">'+htmlEscape(item.App||'Both')+'</span></td>'+
+        '<td>'+htmlEscape(deptName)+'</td>'+
+        '<td><span class="badge badge-'+access+'">'+access.charAt(0).toUpperCase()+access.slice(1)+'</span></td>'+
+        '<td><button class="btn btn-sm" onclick="openEditModal('+item.Id+')">Edit</button> '+
+          '<button class="btn btn-sm btn-danger" onclick="deletePerm('+item.Id+')">Del</button></td></tr>';
+    });
+  });
+  tbody.innerHTML=html;
+  updateBulkBar();
+}
+
+const expandedGroups=new Set();
+function toggleGroup(tr,email){
+  const key=email.replace(/[^a-z0-9]/gi,'');
+  document.querySelectorAll('.group-'+key).forEach(r=>r.style.display=expandedGroups.has(email)?'none':'');
+  if(expandedGroups.has(email))expandedGroups.delete(email);else expandedGroups.add(email);
+  tr.style.background=expandedGroups.has(email)?'var(--gray-light)':'var(--white)';
+}
+function toggleGroupSelect(email,checked){
+  permItems.filter(i=>(i.Title||'').toLowerCase()===email.toLowerCase()).forEach(i=>{if(checked)selectedIds.add(i.Id);else selectedIds.delete(i.Id);});
+  updateBulkBar();
+}
+function deleteGroup(email){
+  const group=permItems.filter(i=>(i.Title||'').toLowerCase()===email.toLowerCase());
+  if(!group.length||!confirm('Delete all '+group.length+' permission(s) for '+email+'?'))return;
+  (async()=>{for(const item of group){try{await spDelete(permApi(item.Id));}catch{}}showToast('Deleted','success');selectedIds.clear();await loadPerms();})();
+}
+function openEditGroupModal(email){
+  const group=permItems.filter(i=>(i.Title||'').toLowerCase()===email.toLowerCase());
+  editingId='GROUP';editingGroupEmail=email;
+  document.getElementById('modal-title').textContent='Edit Permissions — '+email;
+  document.getElementById('inp-email').value=email;
+  const apps=[...new Set(group.map(i=>i.App||'Both'))];
+  document.getElementById('inp-app').value=apps.length===1?apps[0]:'Both';
+  const existingPerms={};group.forEach(i=>{existingPerms[i.DeptID]=(i.Access||'edit').toLowerCase();});
+  document.getElementById('inp-access').value='edit';
+  document.getElementById('dept-perms-grid').innerHTML=buildDeptGrid('edit',existingPerms);
+  document.getElementById('add-modal').classList.add('show');
+}
+function toggleSelectAll(checked){
+  getFiltered().forEach(i=>{if(checked)selectedIds.add(i.Id);else selectedIds.delete(i.Id);});
+  document.querySelectorAll('.group-header input[type=checkbox]').forEach(cb=>cb.checked=checked);
+  renderTable();
+}
+function clearSelection(){selectedIds.clear();expandedGroups.clear();renderTable();}
+function updateBulkBar(){
+  const bar=document.getElementById('bulk-bar');
+  if(selectedIds.size>0){bar.style.display='';document.getElementById('bulk-count').textContent=selectedIds.size+' selected';}
+  else{bar.style.display='none';}
+}
+
+function buildDeptGrid(defaultAccess,existingPerms){
+  let html='';
+  DEPT_GROUPS.forEach(g=>{
+    const group=DEPTS.filter(d=>d.group===g);
+    if(!group.length)return;
+    html+='<div class="perms-section"><h4>'+htmlEscape(g)+'</h4><div class="perms-grid">';
+    group.forEach(d=>{
+      const val=existingPerms&&existingPerms[d.id]?existingPerms[d.id]:defaultAccess;
+      html+='<div class="perm-row"><label>'+htmlEscape(d.title)+'</label><select data-dept="'+d.id+'">'+
+        '<option value="edit"'+(val==='edit'?' selected':'')+'>Edit</option>'+
+        '<option value="read"'+(val==='read'?' selected':'')+'>Read</option>'+
+        '<option value="none"'+(val==='none'?' selected':'')+'>None</option></select></div>';
+    });
+    html+='</div></div>';
+  });
+  return html;
+}
+
+function onAccessChange(){
+  document.querySelectorAll('#dept-perms-grid select').forEach(s=>{s.value=document.getElementById('inp-access').value;});
+}
+
+function openAddModal(){
+  editingId=null;
+  document.getElementById('modal-title').textContent='Add User Permission';
+  document.getElementById('inp-email').value='';
+  document.getElementById('inp-app').value='Both';
+  document.getElementById('inp-access').value='edit';
+  document.getElementById('dept-perms-grid').innerHTML=buildDeptGrid('edit');
+  document.getElementById('add-modal').classList.add('show');
+}
+function openEditModal(id){
+  const item=permItems.find(i=>i.Id===id);if(!item)return;
+  editingId=id;
+  document.getElementById('modal-title').textContent='Edit User Permission';
+  document.getElementById('inp-email').value=item.Title||'';
+  document.getElementById('inp-app').value=item.App||'Both';
+  document.getElementById('inp-access').value=(item.Access||'edit').toLowerCase();
+  document.getElementById('dept-perms-grid').innerHTML=buildDeptGrid((item.Access||'edit').toLowerCase());
+  document.getElementById('add-modal').classList.add('show');
+}
+function closeModal(){document.getElementById('add-modal').classList.remove('show');}
+
+async function savePerm(){
+  const email=document.getElementById('inp-email').value.trim();
+  const app=document.getElementById('inp-app').value;
+  if(!email){showToast('Email is required','error');return;}
+  const deptPerms={};document.querySelectorAll('#dept-perms-grid select').forEach(s=>{deptPerms[s.dataset.dept]=s.value;});
+  const entries=Object.entries(deptPerms).map(([deptId,access])=>({Title:email,App:app,DeptID:deptId,Access:access}));
+  if(!entries.length){showToast('No departments selected','error');return;}
+  try{
+    if(editingId==='GROUP'){
+      const oldItems=permItems.filter(i=>(i.Title||'').toLowerCase()===email.toLowerCase());
+      for(const item of oldItems){try{await spDelete(permApi(item.Id));}catch{}}
+      for(const e of entries){try{await spPost(permApi(),e);}catch{}}
+    }else if(editingId){
+      await spDelete(permApi(editingId));
+      for(const e of entries){try{await spPost(permApi(),e);}catch{}}
+    }else{
+      for(const e of entries){try{await spPost(permApi(),e);}catch{}}
+    }
+    closeModal();showToast('Permission saved','success');await loadPerms();
+  }catch(e){showToast('Save failed: '+e.message,'error');}
+}
+
+async function deletePerm(id){
+  if(!confirm('Delete this permission entry?'))return;
+  try{await spDelete(permApi(id));showToast('Deleted','success');selectedIds.delete(id);await loadPerms();}
+  catch(e){showToast('Delete failed: '+e.message,'error');}
+}
+
+async function bulkDelete(){
+  if(!selectedIds.size||!confirm('Delete '+selectedIds.size+' entries?'))return;
+  let ok=0,fail=0;
+  for(const id of selectedIds){try{await spDelete(permApi(id));ok++;}catch{fail++;}}
+  selectedIds.clear();showToast('Deleted '+ok+(fail?' ('+fail+' failed)':''),'success');await loadPerms();
+}
+
+function bulkEdit(){
+  if(!selectedIds.size)return;
+  document.getElementById('modal-title').textContent='Bulk Edit ('+selectedIds.size+' entries)';
+  document.getElementById('inp-email').value='';document.getElementById('inp-app').value='Both';document.getElementById('inp-access').value='edit';
+  document.getElementById('dept-perms-grid').innerHTML=buildDeptGrid('edit');
+  editingId='BULK';document.getElementById('add-modal').classList.add('show');
+}
+
+async function saveBulkEdit(){
+  const app=document.getElementById('inp-app').value;const access=document.getElementById('inp-access').value;
+  let ok=0,fail=0;
+  for(const id of selectedIds){
+    const item=permItems.find(i=>i.Id===id);if(!item)continue;
+    try{await spDelete(permApi(id));await spPost(permApi(),{Title:item.Title,App:app,DeptID:item.DeptID,Access:access});ok++;}
+    catch{fail++;}
+  }
+  selectedIds.clear();closeModal();showToast('Updated '+ok+(fail?' ('+fail+' failed)':''),'success');await loadPerms();
+}
+
+const origSave=savePerm;
+document.getElementById('add-modal').addEventListener('click',function(e){if(e.target===this)closeModal();});
+
+// ===================== USER SEARCH =====================
+let userSearchAbort=null;
+async function onUserSearchInput(){
+  const q=document.getElementById('inp-email').value.trim();
+  if(q.length<2){document.getElementById('user-search-dropdown').classList.remove('show');return;}
+  if(userSearchAbort)userSearchAbort.abort();
+  userSearchAbort=new AbortController();
+  try{
+    const token=await ensureSpToken();
+    const url='https://graph.microsoft.com/v1.0/users?$filter=startswith(displayName,\''+encodeURIComponent(q.replace(/'/g,"''"))+'\') or startswith(mail,\''+encodeURIComponent(q.replace(/'/g,"''"))+'\') or startswith(userPrincipalName,\''+encodeURIComponent(q.replace(/'/g,"''"))+'\')&$top=10&$select=displayName,mail,userPrincipalName&$orderby=displayName';
+    const resp=await fetch(url,{headers:{'Authorization':'Bearer '+token},signal:userSearchAbort.signal});
+    if(!resp.ok)return;
+    const data=await resp.json();const users=data.value||[];
+    const dd=document.getElementById('user-search-dropdown');
+    if(!users.length){dd.innerHTML='<div class="search-status">No users found. Type full email to add manually.</div>';dd.classList.add('show');return;}
+    dd.innerHTML=users.map(u=>'<div class="user-item" onclick="selectSearchUser(\''+htmlEscape((u.mail||'').replace(/'/g,"\\'"))+'\',\''+htmlEscape((u.displayName||'').replace(/'/g,"\\'"))+'\')">'+
+      '<div class="ui-avatar">'+(u.displayName?u.displayName.charAt(0).toUpperCase():'?')+'</div>'+
+      '<div><div class="ui-name">'+htmlEscape(u.displayName||'')+'</div><div class="ui-email">'+htmlEscape(u.mail||u.userPrincipalName||'')+'</div></div></div>').join('');
+    dd.classList.add('show');
+  }catch(e){if(e.name!=='AbortError')console.warn('Search failed:',e.message);}
+}
+function selectSearchUser(email,name){
+  document.getElementById('inp-email').value=email;
+  document.getElementById('user-search-dropdown').classList.remove('show');
+}
+function onUserSearchKeydown(e){
+  if(e.key==='Escape')document.getElementById('user-search-dropdown').classList.remove('show');
+}
 document.addEventListener('click',function(e){
-  const wrap=document.querySelector('.user-search-wrap');
-  if(wrap&&!wrap.contains(e.target))document.getElementById('user-search-dropdown').classList.remove('show');
+  const w=document.querySelector('.user-search-wrap');
+  if(w&&!w.contains(e.target))document.getElementById('user-search-dropdown').classList.remove('show');
 });
+
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
+trySSO();
 </script>
 </body>
 </html>
