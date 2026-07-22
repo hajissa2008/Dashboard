@@ -931,6 +931,11 @@ const SP_TYPE_MAP = {
 };
 
 async function fetchColumnDefinitions(siteUrl,listName){
+  const cacheKey='coldefs_'+listName;
+  const cached=sessionStorage.getItem(cacheKey);
+  if(cached){
+    try{const parsed=JSON.parse(cached);if(Date.now()-parsed.ts<3600000)return parsed.cols;}catch(e){}
+  }
   const url=spRestListUrl(siteUrl,listName)+'/fields';
   const json=await spRestGet(siteUrl,url);
   const raw=json.d?json.d.results:(json.value||[]);
@@ -946,6 +951,7 @@ async function fetchColumnDefinitions(siteUrl,listName){
     if(f.Choices&&f.Choices.results&&f.Choices.results.length)choices=f.Choices.results;
     cols.push({name:n,displayName:f.Title||n,type,choices,required:f.Required||false,description:f.Description||''});
   });
+  try{sessionStorage.setItem(cacheKey,JSON.stringify({ts:Date.now(),cols}));}catch(e){}
   return cols;
 }
 
@@ -1010,7 +1016,7 @@ async function loadList(id, force){
 
 let _bulkLoadRunning=false;
 let _showProcessingOverlay=false;
-const PARALLEL_LIMIT=6;
+const PARALLEL_LIMIT=8;
 async function loadAllLists(){
   if(_bulkLoadRunning) return;
   _bulkLoadRunning=true;

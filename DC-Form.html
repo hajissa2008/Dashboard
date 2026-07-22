@@ -932,6 +932,11 @@ const SP_FIELD_MAP = {
 };
 
 async function fetchColumnDefinitions(siteUrl,listName){
+  const cacheKey='coldefs_'+listName;
+  const cached=sessionStorage.getItem(cacheKey);
+  if(cached){
+    try{const parsed=JSON.parse(cached);if(Date.now()-parsed.ts<3600000)return parsed.cols;}catch(e){}
+  }
   const url=spRestListUrl(siteUrl,listName)+'/fields';
   const token=await ensureSpSiteToken(siteUrl);
   const resp=await fetch(url,{headers:{'Authorization':'Bearer '+token,'Accept':'application/json'}});
@@ -950,6 +955,7 @@ async function fetchColumnDefinitions(siteUrl,listName){
     if(f.Choices&&f.Choices.results&&f.Choices.results.length)choices=f.Choices.results;
     cols.push({name:n,displayName:f.Title||n,type,choices,required:f.Required||false,description:f.Description||''});
   });
+  try{sessionStorage.setItem(cacheKey,JSON.stringify({ts:Date.now(),cols}));}catch(e){}
   return cols;
 }
 
@@ -1210,7 +1216,6 @@ async function loadDeptData(){
     setEmpty('❌','Failed to load data',e.message);
   }
   setLoading(false);
-  if(allItems.length)fetchAllAttachmentCounts();
 }
 
 async function refreshItems(){
@@ -1225,7 +1230,6 @@ async function refreshItems(){
     showToast('Refreshed: '+allItems.length+' items','success');
   }catch(e){console.error('REFRESH FAIL:',e);showToast('Refresh failed: '+e.message,'error');}
   setLoading(false);
-  if(allItems.length)fetchAllAttachmentCounts();
 }
 
 // ======================== SEARCH ========================
@@ -1362,16 +1366,16 @@ function openDetail(idx){
     html+=`<div class="form-group"><label>${htmlEscape(c.displayName||c.name)}</label>${desc}<div style="padding:6px 0;font-size:13px;color:var(--text-primary);word-break:break-word;border-bottom:1px solid var(--gray-border)">${vDisplay?htmlEscape(vDisplay):'<span style="color:var(--text-secondary);font-style:italic">Not set</span>'}</div></div>`;
   });
   const aN=attachmentCounts[item._id];
-  html+=`<div class="form-group"><label>Attachments</label><div id="attachment-list-view" style="padding:6px 0;font-size:13px">${aN>0?'<div class="attachment-loading">Loading...</div>':'<span style="color:var(--text-secondary);font-style:italic">None</span>'}</div></div>`;
+  html+=`<div class="form-group"><label>Attachments</label><div id="attachment-list-view" style="padding:6px 0;font-size:13px"><div class="attachment-loading">Loading...</div></div></div>`;
   body.innerHTML=html;
   document.getElementById('save-status').className='save-status';
   document.getElementById('save-status').textContent='';
-  // Footer: only Close button
-  // Load attachment files with download buttons in view mode
-  if(aN>0&&item._id){
+  if(item._id){
     fetchAttachments(currentDept.site,currentDept.list,item._id).then(atts=>{
+      attachmentCounts[item._id]=atts.length;
       const el=document.getElementById('attachment-list-view');
       if(!el)return;
+      if(!atts.length){el.innerHTML='<span style="color:var(--text-secondary);font-style:italic">None</span>';return;}
       el.innerHTML=atts.map(a=>{
         const name=htmlEscape(a.name);
         const size=a.size?` <span class="size">${fmtSize(a.size)}</span>`:'';
@@ -1528,10 +1532,21 @@ async function saveItem(){
     if(!currentDept)throw new Error('No department selected');
     console.log('SAVE:',{editingId,fields,dept:currentDept.id,list:currentDept.list});
     if(Object.keys(fields).length===0)throw new Error('No fields to save - form fields may be empty');
-    if(editingId){await updateSPItem(currentDept.site,currentDept.list,editingId,fields); statusEl.textContent='✓ Updated'; showToast('Item updated','success');}
-    else{await createSPItem(currentDept.site,currentDept.list,fields); statusEl.textContent='✓ Created'; showToast('Item created','success');}
+    if(editingId){
+      await updateSPItem(currentDept.site,currentDept.list,editingId,fields);
+      const idx=allItems.findIndex(it=>it._id===editingId);
+      if(idx>=0){const keys=Object.keys(fields);keys.forEach(k=>{allItems[idx][k]=fields[k]!==null?fields[k]:'';});}
+      statusEl.textContent='✓ Updated'; showToast('Item updated','success');
+    }else{
+      const resp=await createSPItem(currentDept.site,currentDept.list,fields);
+      const newId=resp.d?resp.d.ID:resp.id;
+      const newItem={...fields,_id:newId,_etag:''};
+      Object.keys(newItem).forEach(k=>{if(newItem[k]===null)newItem[k]='';});
+      allItems.unshift(newItem);
+      statusEl.textContent='✓ Created'; showToast('Item created','success');
+    }
     statusEl.className='save-status saved';
-    await refreshItems();
+    filteredItems=[...allItems]; onSearch();
     setTimeout(()=>closeForm(),600);
   }catch(e){
     console.error('Save:',e);
