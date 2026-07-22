@@ -443,21 +443,29 @@ async function loadUserPerms(){
   try{
     const json=await apiCall(graphListItemsUrl(siteUrl,PERM_LIST));
     const items=json.value||[];
+    console.log('[Perms] Total items in Permissions list:',items.length);
     if(!items.length){myPerms='ALL';return}
     myPerms={};
     const userLower=email.toLowerCase();
     const currentApp=location.pathname.includes('project-tracker')?'ProjectTracker':'Forms';
+    console.log('[Perms] Current user:',userLower,'App:',currentApp);
     items.forEach(item=>{
       const f=item.fields||item;
-      if((f.Title||'').toLowerCase()===userLower){
+      const entryEmail=(f.Title||'').toLowerCase();
+      console.log('[Perms] Entry:',entryEmail,'DeptID:',f.DeptID,'Access:',f.Access,'App:',f.App);
+      if(entryEmail===userLower){
         const app=f.App||'Both';
         if(app===currentApp||app==='Both'){
           myPerms[f.DeptID]=f.Access.toLowerCase();
+          console.log('[Perms] ✓ Matched:',f.DeptID,'=',f.Access);
+        }else{
+          console.log('[Perms] ✗ Skipped (App mismatch):',f.DeptID,'App:',app);
         }
       }
     });
+    console.log('[Perms] Final myPerms:',JSON.stringify(myPerms));
   }catch(e){
-    if(e.message&&!e.message.includes('404'))console.error('Perm load:',e);
+    console.error('[Perms] Load failed:',e);
     myPerms='ALL';
   }
 }
