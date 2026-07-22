@@ -151,7 +151,7 @@ body.dark .loading-overlay{background:rgba(0,0,0,.6)}
     <span class="status-msg" id="status-msg"></span>
     <span class="spacer" style="flex:1"></span>
     <button class="btn btn-outline" onclick="refreshPerms()">🔄 Refresh</button>
-    <button class="btn btn-primary" onclick="saveAllPerms()" id="save-btn" disabled>💾 Save All</button>
+    <button class="btn btn-primary" onclick="saveAllPerms()" id="save-btn" style="display:none">💾 Save All</button>
     <button class="btn btn-outline" onclick="showConfig()">⚙️ Config</button>
   </div>
   <div class="main" id="main-area">
@@ -362,7 +362,6 @@ function onSiteChange(){
 
 // ======================== PERMISSIONS ========================
 let permEntries=[]; // Array of {Id,Title,DeptID,Access,App}
-let permDirty=false;
 let cachedSiteId=null,cachedListId=null;
 
 function siteToGraphPath(siteUrl){
@@ -411,7 +410,6 @@ async function loadPermissions(){
       Access:(i.fields&&i.fields.Access)||'None',
       App:(i.fields&&i.fields.App)||'Both'
     }));
-    permDirty=false;
     if(!permEntries.length)showToast('Permissions list is empty. Add users below.','');
     renderMatrix();
     document.getElementById('empty-state').style.display='none';
@@ -482,7 +480,6 @@ function renderMatrix(){
     bHtml+=`<td style="text-align:center"><button class="btn-remove" onclick="removeUser('${email.replace(/'/g,"\\'")}')" title="Remove user">✕</button></td></tr>`;
   });
   body.innerHTML=bHtml;
-  document.getElementById('save-btn').disabled=!permDirty;
 }
 
 function onCellChange(el,field){
@@ -492,12 +489,10 @@ function onCellChange(el,field){
   const existing=permEntries.find(e=>e.Title.toLowerCase()===email.toLowerCase()&&e.DeptID===deptId);
   if(existing){
     existing[field==='access'?'Access':'App']=value;
+    if(existing.Id){showStatus('Saving...','saving');graphApi(permListItemsUrl()+'/'+existing.Id+'/fields','PATCH',{Access:existing.Access,App:existing.App}).then(()=>{showStatus('Saved','saved');}).catch(e=>{showStatus('Error: '+e.message,'error');console.error('Auto-save:',e);});}
   }else{
     permEntries.push({Title:email,DeptID:deptId,Access:field==='access'?value:'None',App:field==='app'?value:'Both'});
   }
-  permDirty=true;
-  document.getElementById('save-btn').disabled=false;
-  // Update dropdown color
   if(field==='access')el.className='access-'+value.toLowerCase();
 }
 
@@ -509,70 +504,39 @@ function addUser(displayName){
   const existing=permEntries.some(e=>e.Title.toLowerCase()===email);
   if(existing){showToast('User already exists','error');return}
   if(displayName)setDisplayNameCache(email,displayName);
-  DEPTS.forEach(d=>{
-    permEntries.push({Title:email,DeptID:d.id,Access:'None',App:app});
-  });
-  permDirty=true;
   input.value='';
-  renderMatrix();
-  showToast('User added. Click Save to persist.','');
+  showStatus('Adding user...','saving');
+  const itemsBase=permListItemsUrl();
+  const toCreate=DEPTS.map(d=>({Title:email,DeptID:d.id,Access:'None',App:app}));
+  let ok=0,fail=0;
+  const tasks=toCreate.map(f=>graphApi(itemsBase,'POST',{fields:f}).then(r=>{
+    permEntries.push({Id:r.id||'',Title:email,DeptID:f.DeptID,Access:'None',App:app});
+    ok++;
+  }).catch(e=>{fail++;console.error('Add perm',f.DeptID,e.message);}));
+  Promise.allSettled(tasks).then(()=>{
+    renderMatrix();
+    showStatus(fail===0?'✓ '+email+' added ('+ok+')':'✓ '+ok+' added, ✗ '+fail+' failed',fail===0?'saved':'error');
+    showToast(fail===0?'User added':'Added with '+fail+' errors','');
+  });
 }
 
 function removeUser(email){
   if(!confirm('Remove all permissions for '+email+'?'))return;
+  const toRemove=permEntries.filter(e=>e.Title.toLowerCase()===email.toLowerCase()&&e.Id);
   permEntries=permEntries.filter(e=>e.Title.toLowerCase()!==email.toLowerCase());
-  permDirty=true;
   renderMatrix();
-  showToast('User removed. Click Save to persist.','');
+  if(!toRemove.length)return;
+  showStatus('Removing...','saving');
+  const tasks=toRemove.map(e=>graphApi(permListItemsUrl()+'/'+e.Id,'DELETE').catch(ex=>console.error('Delete perm:',ex.message)));
+  Promise.allSettled(tasks).then(()=>{
+    showStatus('✓ Removed','saved');
+    showToast('User removed','');
+  });
 }
 
-// ======================== SAVE ========================
-async function saveAllPerms(){
-  if(!permDirty){showToast('No changes to save','');return}
-  const btn=document.getElementById('save-btn');
-  const status=document.getElementById('status-msg');
-  btn.disabled=true;status.className='status-msg saving';status.textContent='Saving...';
-  const siteUrl=document.getElementById('site-select').value;
-  let ok=0,fail=0;
-  try{
-    await ensurePermList(siteUrl);
-    const itemsBase=permListItemsUrl();
-    const existingData=await graphApi(itemsBase+'?$top=500&expand=fields');
-    const existingItems=existingData.value||[];
-    const idMap={};
-    existingItems.forEach(i=>{
-      const f=i.fields||{};
-      const key=(f.Title||'').toLowerCase()+'|'+(f.DeptID||'');
-      if(key!=='|')idMap[key]=i.id;
-    });
-    for(let i=0;i<permEntries.length;i++){
-      const e=permEntries[i];
-      if(!e.Title||!e.DeptID)continue;
-      const key=e.Title.toLowerCase()+'|'+e.DeptID;
-      const fields={Title:e.Title,DeptID:e.DeptID,Access:e.Access,App:e.App};
-      try{
-        if(idMap[key]){await graphApi(itemsBase+'/'+idMap[key]+'/fields','PATCH',fields);}
-        else{await graphApi(itemsBase,'POST',{fields:fields});}
-        ok++;
-      }catch(e2){fail++;console.error('Save perm',e.Title,e.DeptID,e2.message);}
-      status.textContent='Saving... '+Math.round((i+1)/permEntries.length*100)+'% ('+ok+' ok, '+fail+' failed)';
-    }
-    const currentKeys=new Set(permEntries.filter(e=>e.Title&&e.DeptID).map(e=>e.Title.toLowerCase()+'|'+e.DeptID));
-    for(let i=0;i<existingItems.length;i++){
-      const item=existingItems[i];const f=item.fields||{};
-      const key=(f.Title||'').toLowerCase()+'|'+(f.DeptID||'');
-      if(key!=='|'&&!currentKeys.has(key)){try{await graphApi(itemsBase+'/'+item.id,'DELETE')}catch{}}
-    }
-    status.className='status-msg '+(fail===0?'saved':'error');
-    status.textContent=fail===0?'\u2713 Saved all ('+ok+' entries)':'\u2713 '+ok+' saved, \u2717 '+fail+' failed';
-    permDirty=false;btn.disabled=true;
-    showToast(fail===0?'All permissions saved':'Saved with '+fail+' errors','');
-    await loadPermissions();
-  }catch(e){
-    console.error('Save error:',e);status.className='status-msg error';
-    status.textContent='Error: '+e.message;btn.disabled=false;
-  }
-}
+function showStatus(msg,type){const s=document.getElementById('status-msg');s.className='status-msg '+(type||'');s.textContent=msg;s.style.display=msg?'inline':'none';}
+
+async function saveAllPerms(){} // Legacy no-op
 
 // ======================== CONFIG ========================
 function showConfig(){
