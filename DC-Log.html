@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AlEnshaiah - DC Log</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://alcdn.msauth.net/browser/2.32.2/js/msal-browser.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -1890,7 +1893,9 @@ function showOpenAgeModal(){
   const body=document.getElementById('kpi-modal-body');
   document.getElementById('kpi-modal-title').textContent='Open / Under Review — Age Breakdown';
   document.getElementById('kpi-modal-count').textContent=(buckets.week.length+buckets.fortnight.length+buckets.old.length)+' item(s)';
-  let html='<div style="margin-bottom:10px"><button class="btn btn-sm" onclick="closeKpiModal()" style="font-size:11px">✕ Close</button></div>';
+  let html='<div style="margin-bottom:10px;display:flex;gap:6px;align-items:center"><button class="btn btn-sm" onclick="closeKpiModal()" style="font-size:11px">✕ Close</button>';
+  html+='<button class="btn btn-sm" onclick="exportOpenAgeExcel()" style="font-size:11px;background:#107C10;color:white;border:none;padding:4px 10px;border-radius:4px;cursor:pointer">📥 Excel</button>';
+  html+='<button class="btn btn-sm" onclick="exportOpenAgePdf()" style="font-size:11px;background:#D92C2C;color:white;border:none;padding:4px 10px;border-radius:4px;cursor:pointer">📥 PDF</button></div>';
   html+='<div class="kpi-grid" style="margin-bottom:14px">';
   html+=`<div class="kpi-card" onclick="showOpenAgeBucket('week')"><div class="kpi-accent" style="background:#107C10"></div><div class="kpi-icon">🟢</div><div class="kpi-label">0 – 7 Days</div><div class="kpi-value">${buckets.week.length}</div></div>`;
   html+=`<div class="kpi-card" onclick="showOpenAgeBucket('fortnight')"><div class="kpi-accent" style="background:#FFB900"></div><div class="kpi-icon">🟡</div><div class="kpi-label">7 – 14 Days</div><div class="kpi-value">${buckets.fortnight.length}</div></div>`;
@@ -1907,6 +1912,43 @@ function showOpenAgeBucket(key){
   if(!buckets||!buckets[key]) return;
   const labels={week:'0 – 7 Days',fortnight:'7 – 14 Days',old:'> 14 Days'};
   showDetailModal('Open — '+labels[key]+' ('+buckets[key].length+')', cols, buckets[key]);
+}
+function _openAgeExportData(){
+  const b=window._openAgeBuckets;
+  const c=window._openAgeCols;
+  if(!b||!c) return null;
+  const showCols=filterModalCols(c,[...b.week,...b.fortnight,...b.old]);
+  const all=[...b.week.map(it=>({...it,_age:'0-7 Days'})),...b.fortnight.map(it=>({...it,_age:'7-14 Days'})),...b.old.map(it=>({...it,_age:'> 14 Days'}))];
+  return {showCols,all};
+}
+function exportOpenAgeExcel(){
+  const d=_openAgeExportData();
+  if(!d||!d.all.length) return;
+  const rows=d.all.map(it=>{
+    const row={'Age Bracket':it._age};
+    d.showCols.forEach(c=>{ row[c]=it[c]||''; });
+    return row;
+  });
+  const ws=XLSX.utils.json_to_sheet(rows);
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Open Items');
+  XLSX.writeFile(wb,'Open_UnderReview_AgeBreakdown.xlsx');
+}
+function exportOpenAgePdf(){
+  const d=_openAgeExportData();
+  if(!d||!d.all.length) return;
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF('l','mm','a3');
+  doc.setFontSize(16);
+  doc.text('Open / Under Review — Age Breakdown',14,15);
+  doc.setFontSize(10);
+  doc.text('Total: '+d.all.length+' item(s) | Generated: '+new Date().toLocaleString(),14,22);
+  const headers=['Age Bracket',...d.showCols];
+  const rows=d.all.map(it=>{
+    return [it._age,...d.showCols.map(c=>String(it[c]||''))];
+  });
+  doc.autoTable({head:[headers],body:rows,startY:28,styles:{fontSize:8,cellPadding:2},headStyles:{fillColor:[76,93,113]},alternateRowStyles:{fillColor:[243,242,241]}});
+  doc.save('Open_UnderReview_AgeBreakdown.pdf');
 }
 
 // ======================== SETTINGS PANEL ========================
