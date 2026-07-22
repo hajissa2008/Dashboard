@@ -1915,22 +1915,54 @@ function showOpenAgeBucket(key){
 }
 function _openAgeExportData(){
   const b=window._openAgeBuckets;
-  const c=window._openAgeCols;
-  if(!b||!c) return null;
-  const showCols=filterModalCols(c,[...b.week,...b.fortnight,...b.old]);
+  if(!b) return null;
   const all=[...b.week.map(it=>({...it,_age:'0-7 Days'})),...b.fortnight.map(it=>({...it,_age:'7-14 Days'})),...b.old.map(it=>({...it,_age:'> 14 Days'}))];
-  return {showCols,all};
+  return {all};
+}
+function _findCol(item, patterns){
+  for(const p of patterns){
+    for(const k of Object.keys(item)){
+      if(k.toLowerCase().replace(/[^a-z0-9]/g,'')===p) return k;
+    }
+  }
+  return null;
+}
+function _openAgeRow(it){
+  const ref=_findCol(it,['refno','ref','referenceno']);
+  const from=_findCol(it,['from']);
+  const to=_findCol(it,['to']);
+  const docType=_findCol(it,['doctype','documenttype']);
+  const disc=_findCol(it,['discipline','disc']);
+  const rev=_findCol(it,['finalrev']);
+  const revDate=_findCol(it,['finalrevsubmissiondate']);
+  const code=_findCol(it,['finalcode']);
+  return {
+    'REF #':it[ref]||'',
+    'From':it[from]||'',
+    'To':it[to]||'',
+    'Doc Type':it[docType]||'',
+    'Discipline':it[disc]||'',
+    'Final REV':it[rev]||'',
+    'Final REV Submission Date':stripTime(it[revDate]||''),
+    'Final Code':it[code]||''
+  };
 }
 function exportOpenAgeExcel(){
   const d=_openAgeExportData();
   if(!d||!d.all.length) return;
-  const rows=d.all.map(it=>{
-    const row={'Age Bracket':it._age};
-    d.showCols.forEach(c=>{ row[c]=it[c]||''; });
-    return row;
+  const keys=['week','fortnight','old'];
+  const labels={week:'0-7 Days',fortnight:'7-14 Days',old:'> 14 Days'};
+  const wb=XLSX.utils.book_new();
+  const rows=[];
+  keys.forEach(k=>{
+    if(!d.all.some(it=>it._age===labels[k])) return;
+    const items=d.all.filter(it=>it._age===labels[k]);
+    rows.push({'REF #':'--- '+labels[k]+' ('+items.length+') ---','From':'','To':'','Doc Type':'','Discipline':'','Final REV':'','Final REV Submission Date':'','Final Code':''});
+    items.forEach(it=>rows.push(_openAgeRow(it)));
+    rows.push({});
   });
   const ws=XLSX.utils.json_to_sheet(rows);
-  const wb=XLSX.utils.book_new();
+  ws['!cols']=[{wch:18},{wch:16},{wch:16},{wch:20},{wch:16},{wch:10},{wch:22},{wch:14}];
   XLSX.utils.book_append_sheet(wb,ws,'Open Items');
   XLSX.writeFile(wb,'Open_UnderReview_AgeBreakdown.xlsx');
 }
@@ -1943,11 +1975,17 @@ function exportOpenAgePdf(){
   doc.text('Open / Under Review — Age Breakdown',14,15);
   doc.setFontSize(10);
   doc.text('Total: '+d.all.length+' item(s) | Generated: '+new Date().toLocaleString(),14,22);
-  const headers=['Age Bracket',...d.showCols];
-  const rows=d.all.map(it=>{
-    return [it._age,...d.showCols.map(c=>String(it[c]||''))];
+  const headers=['REF #','From','To','Doc Type','Discipline','Final REV','Final REV Submission Date','Final Code'];
+  const rows=[];
+  const keys=['week','fortnight','old'];
+  const labels={week:'0-7 Days',fortnight:'7-14 Days',old:'> 14 Days'};
+  keys.forEach(k=>{
+    const items=d.all.filter(it=>it._age===labels[k]);
+    if(!items.length) return;
+    rows.push([labels[k]+' ('+items.length+')','','','','','','','']);
+    items.forEach(it=>{ const r=_openAgeRow(it); rows.push(headers.map(h=>String(r[h]||''))); });
   });
-  doc.autoTable({head:[headers],body:rows,startY:28,styles:{fontSize:8,cellPadding:2},headStyles:{fillColor:[76,93,113]},alternateRowStyles:{fillColor:[243,242,241]}});
+  doc.autoTable({head:[headers],body:rows,startY:28,styles:{fontSize:7,cellPadding:2},headStyles:{fillColor:[76,93,113]},alternateRowStyles:{fillColor:[243,242,241]},columnStyles:{0:{cellWidth:20},6:{cellWidth:30}}});
   doc.save('Open_UnderReview_AgeBreakdown.pdf');
 }
 
