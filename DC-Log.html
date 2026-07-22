@@ -1868,11 +1868,19 @@ function showOpenAgeModal(){
     const stats=computeListStats(d.id);
     if(!stats||!stats.hasStatus) return;
     const statusCol=detectStatusCol(cache.cols);
+    const revCol=detectRevCol(cache.cols);
+    const {pairs,flatSub}=detectRevDatePairs(cache.cols);
     cache.items.forEach(it=>{
       if(String(it[statusCol]||'').trim()!=='O') return;
-      const mod=it['Modified']?new Date(it['Modified']):null;
-      const days=mod?Math.floor((now-mod)/(1000*60*60*24)):null;
-      const row={...it,_list:d.title};
+      const curRev=revCol?padRev(String(it[revCol]||'').trim()):null;
+      let subDate=null;
+      if(curRev){
+        const matchPair=pairs.find(p=>p.rev===curRev);
+        if(matchPair) subDate=parseDateSafeLS(it[matchPair.subCol]);
+      }
+      if(!subDate&&flatSub) subDate=parseDateSafeLS(it[flatSub]);
+      const days=subDate?Math.floor((now-subDate)/(1000*60*60*24)):null;
+      const row={...it,_list:d.title,_ageDays:days};
       if(days===null) buckets.week.push(row);
       else if(days<=7) buckets.week.push(row);
       else if(days<=14) buckets.fortnight.push(row);
