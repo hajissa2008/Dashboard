@@ -217,6 +217,13 @@ tr:hover td{background:var(--blue-light)}
 .loading-state{padding:60px;text-align:center;color:var(--text-secondary)}
 .spinner{width:32px;height:32px;border:3px solid var(--gray-border);border-top-color:var(--blue);border-radius:50%;animation:spin .6s linear infinite;margin:0 auto 12px}
 @keyframes spin{to{transform:rotate(360deg)}}
+.load-overlay{position:fixed;top:0;left:0;right:0;bottom:0;z-index:999;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--bg);transition:opacity .3s}
+.load-overlay.hidden{opacity:0;pointer-events:none}
+.load-bar-wrap{width:320px;margin-top:16px}
+.load-bar-track{width:100%;height:8px;background:var(--gray-border);border-radius:4px;overflow:hidden}
+.load-bar-fill{height:100%;background:var(--primary);border-radius:4px;transition:width .4s ease}
+.load-bar-pct{font-size:24px;font-weight:700;color:var(--text-primary);margin-bottom:4px}
+.load-bar-label{font-size:13px;color:var(--text-secondary);margin-top:8px}
 
 body.dark .sidebar,body.dark .header,body.dark .kpi-card,body.dark .chart-card,body.dark .table-wrap,body.dark .settings-panel{background:var(--white)}
 body.dark .kpi-card:hover{box-shadow:0 4px 12px rgba(255,255,255,.05),0 8px 24px rgba(255,255,255,.03)}
@@ -246,6 +253,14 @@ body.dark th .sort-arrow{color:var(--text-secondary)}
 </style>
 </head>
 <body>
+<div class="load-overlay hidden" id="load-overlay">
+  <div class="spinner" style="width:40px;height:40px"></div>
+  <div class="load-bar-pct" id="load-pct">0%</div>
+  <div class="load-bar-wrap">
+    <div class="load-bar-track"><div class="load-bar-fill" id="load-fill" style="width:0%"></div></div>
+    <div class="load-bar-label" id="load-label">Connecting to SharePoint lists...</div>
+  </div>
+</div>
 <div class="signin-overlay" id="signin-overlay">
   <div class="signin-card" id="signin-card">
     <div class="signin-logo" id="signin-logo">
@@ -1196,6 +1211,9 @@ async function connectSingleView(view){
 }
 
 async function connectAllViews(){
+    const total=VIEW_KEYS.length;
+    _viewsLoading=true;_viewsLoaded=0;_viewsTotal=total;
+    showLoadOverlay(0,'Refreshing '+total+' list(s)...');
     VIEW_KEYS.forEach(v=>{
         const dot=document.getElementById('dot-cfg-'+v);
         if(dot)dot.className='status-dot loading';
@@ -1204,10 +1222,14 @@ async function connectAllViews(){
     for(const v of VIEW_KEYS){
         const ok=await connectSingleView(v);
         if(ok)count++;
+        _viewsLoaded++;
+        showLoadOverlay(_viewsLoaded/_viewsTotal*100,_viewsLoaded+' of '+total+' lists refreshed');
     }
     updateCounts();
+    _viewsLoading=false;
+    hideLoadOverlay();
     renderCurrent();
-    updateRefreshStatus(count+'/'+VIEW_KEYS.length+' connected');
+    updateRefreshStatus(count+'/'+total+' connected');
     setTimeout(()=>{if(document.getElementById('refresh-status'))updateRefreshStatus();},3000);
 }
 
@@ -1244,16 +1266,47 @@ function stopAutoRefresh(){
     if(refreshTimer){clearInterval(refreshTimer);refreshTimer=null;}
 }
 
+let _viewsLoading=false,_viewsLoaded=0,_viewsTotal=0;
+function showLoadOverlay(pct,label){
+    const ol=document.getElementById('load-overlay');
+    const pctEl=document.getElementById('load-pct');
+    const fill=document.getElementById('load-fill');
+    const lbl=document.getElementById('load-label');
+    if(ol)ol.classList.remove('hidden');
+    if(pctEl)pctEl.textContent=Math.round(pct)+'%';
+    if(fill)fill.style.width=pct+'%';
+    if(lbl)lbl.textContent=label||'Connecting to SharePoint lists...';
+}
+function hideLoadOverlay(){
+    const ol=document.getElementById('load-overlay');
+    if(ol)ol.classList.add('hidden');
+}
 function autoConnectConfiguredViews(){
     lastRefreshTime=Date.now();
-    VIEW_KEYS.forEach(v=>{
-        const vd=viewData[v];
-        if(!vd||!vd.site||!vd.list||vd.connected)return;
+    const toLoad=VIEW_KEYS.filter(v=>{const vd=viewData[v];return vd&&vd.site&&vd.list&&!vd.connected;});
+    _viewsTotal=toLoad.length;_viewsLoaded=0;
+    if(!_viewsTotal){hideLoadOverlay();return;}
+    _viewsLoading=true;
+    showLoadOverlay(0,'Connecting to '+toLoad.length+' SharePoint list(s)...');
+    toLoad.forEach(v=>{
         connectSingleView(v).then(()=>{
+            _viewsLoaded++;
             updateCounts();
             updateViewNavDot(v);
-            if(currentView==='dashboard')renderDashboard();
-        }).catch(()=>{});
+            showLoadOverlay(_viewsLoaded/_viewsTotal*100,_viewsLoaded+' of '+_viewsTotal+' lists connected');
+            if(_viewsLoaded>=_viewsTotal){
+                _viewsLoading=false;
+                hideLoadOverlay();
+                renderCurrent();
+            }
+        }).catch(()=>{
+            _viewsLoaded++;
+            if(_viewsLoaded>=_viewsTotal){
+                _viewsLoading=false;
+                hideLoadOverlay();
+                renderCurrent();
+            }
+        });
     });
 }
 
@@ -2475,7 +2528,13 @@ function finishSetup(){
     updateBadge();
     VIEW_KEYS.forEach(v=>updateViewNavDot(v));
     startAutoRefresh();
-    renderDashboard();
+    if(_viewsLoading){
+        const total=_viewsTotal||VIEW_KEYS.length;
+        showLoadOverlay(_viewsLoaded/_viewsTotal*100,'Loading data from SharePoint...');
+    }else{
+        hideLoadOverlay();
+        renderDashboard();
+    }
 }
 
 // ======================== INIT ========================
