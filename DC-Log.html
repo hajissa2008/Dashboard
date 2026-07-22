@@ -1706,10 +1706,11 @@ function getOrderedCols(depts){
     const cache=listCache[d.id];
     if(!cache||!cache.cols)return;
     cache.cols.forEach(c=>{
-      if(seen.has(c.displayName))return;
+      const norm=c.displayName.trim().toLowerCase();
+      if(seen.has(norm))return;
       if(HIDE_MODAL_COLS.has(c.displayName))return;
-      seen.add(c.displayName);
-      cols.push(c.displayName);
+      seen.add(norm);
+      cols.push(c.displayName.trim());
     });
   });
   return cols;
@@ -1719,7 +1720,14 @@ function filterModalCols(cols,items){
     if(HIDE_MODAL_COLS.has(c))return false;
     if(c.startsWith('_'))return false;
     if(c.startsWith('odata.'))return false;
-    if(items.some(it=>it[c]!=null&&String(it[c]).trim()!==''))return true;
+    const target=c.toLowerCase().trim();
+    if(items.some(it=>{
+      if(it[c]!=null&&String(it[c]).trim()!=='')return true;
+      for(const k of Object.keys(it)){
+        if(k.toLowerCase().trim()===target&&it[k]!=null&&String(it[k]).trim()!=='')return true;
+      }
+      return false;
+    }))return true;
     return false;
   });
 }
@@ -1729,9 +1737,19 @@ function showDetailModal(title, cols, items){
   const body=document.getElementById('kpi-modal-body');
   if(!items.length){ body.innerHTML='<p style="color:var(--text-secondary)">No items match this filter.</p>'; document.getElementById('kpi-modal-overlay').classList.add('show'); return; }
   const showCols=[...new Set(filterModalCols(cols,items))];
+  const normMap={};
+  showCols.forEach(c=>{ normMap[c.toLowerCase().trim()]=c; });
+  function getItemVal(it,c){
+    if(it[c]!==undefined) return it[c];
+    const target=c.toLowerCase().trim();
+    for(const k of Object.keys(it)){
+      if(k.toLowerCase().trim()===target) return it[k];
+    }
+    return'';
+  }
   let html='<div style="margin-bottom:10px"><button class="btn btn-sm" onclick="closeKpiModal()" style="font-size:11px">✕ Close</button></div><div class="table-scroll"><table><thead><tr>'+showCols.map(c=>`<th>${escapeHtml(c)}</th>`).join('')+'</tr></thead><tbody>';
   items.forEach(it=>{
-    html+='<tr>'+showCols.map(c=>`<td>${escapeHtml(stripTime(it[c]))}</td>`).join('')+'</tr>';
+    html+='<tr>'+showCols.map(c=>`<td>${escapeHtml(stripTime(getItemVal(it,c)))}</td>`).join('')+'</tr>';
   });
   html+='</tbody></table></div>';
   body.innerHTML=html;
