@@ -1640,7 +1640,7 @@ function renderLogStatistics(){
   let html=`<div class="kpi-grid">
     <div class="kpi-card" onclick="showDetailModal('All Tracked Items',window._logStatCols||[],window._logStatItems||[])"><div class="kpi-accent" style="background:#4C5D71"></div><div class="kpi-icon">📈</div><div class="kpi-label">Tracked Items</div><div class="kpi-value">${totalWithStatus}</div></div>
     <div class="kpi-card" onclick="showApprovedModal()"><div class="kpi-accent" style="background:#107C10"></div><div class="kpi-icon">✅</div><div class="kpi-label">Approval Rate</div><div class="kpi-value">${approvalRate}%</div></div>
-    <div class="kpi-card" onclick="showStatusModal('O')"><div class="kpi-accent" style="background:#FFB900"></div><div class="kpi-icon">🔍</div><div class="kpi-label">Open / Under Review</div><div class="kpi-value">${underReview}</div></div>
+    <div class="kpi-card" onclick="showOpenAgeModal()"><div class="kpi-accent" style="background:#FFB900"></div><div class="kpi-icon">🔍</div><div class="kpi-label">Open / Under Review</div><div class="kpi-value">${underReview}</div></div>
     <div class="kpi-card" onclick="showStatusModal('C')"><div class="kpi-accent" style="background:#ED7D31"></div><div class="kpi-icon">🔄</div><div class="kpi-label">Revise &amp; Resubmit</div><div class="kpi-value">${resubmit}</div></div>
     <div class="kpi-card" onclick="showStatusModal('D')"><div class="kpi-accent" style="background:#D92C2C"></div><div class="kpi-icon">❌</div><div class="kpi-label">Rejected</div><div class="kpi-value">${rejected}</div></div>
   </div>
@@ -1857,6 +1857,48 @@ function closeKpiModal(ev){
 function closeKpiModal(ev){
   if(ev && ev.target!==document.getElementById('kpi-modal-overlay'))return;
   document.getElementById('kpi-modal-overlay').classList.remove('show');
+}
+function showOpenAgeModal(){
+  const depts=visibleDepts().filter(d=>listCache[d.id].loaded);
+  const now=new Date();
+  const buckets={week:[],fortnight:[],old:[]};
+  const ageCols=getOrderedCols(depts);
+  depts.forEach(d=>{
+    const cache=listCache[d.id];
+    const stats=computeListStats(d.id);
+    if(!stats||!stats.hasStatus) return;
+    const statusCol=detectStatusCol(cache.cols);
+    cache.items.forEach(it=>{
+      if(String(it[statusCol]||'').trim()!=='O') return;
+      const mod=it['Modified']?new Date(it['Modified']):null;
+      const days=mod?Math.floor((now-mod)/(1000*60*60*24)):null;
+      const row={...it,_list:d.title};
+      if(days===null) buckets.week.push(row);
+      else if(days<=7) buckets.week.push(row);
+      else if(days<=14) buckets.fortnight.push(row);
+      else buckets.old.push(row);
+    });
+  });
+  const body=document.getElementById('kpi-modal-body');
+  document.getElementById('kpi-modal-title').textContent='Open / Under Review — Age Breakdown';
+  document.getElementById('kpi-modal-count').textContent=(buckets.week.length+buckets.fortnight.length+buckets.old.length)+' item(s)';
+  let html='<div style="margin-bottom:10px"><button class="btn btn-sm" onclick="closeKpiModal()" style="font-size:11px">✕ Close</button></div>';
+  html+='<div class="kpi-grid" style="margin-bottom:14px">';
+  html+=`<div class="kpi-card" onclick="showOpenAgeBucket('week')"><div class="kpi-accent" style="background:#107C10"></div><div class="kpi-icon">🟢</div><div class="kpi-label">0 – 7 Days</div><div class="kpi-value">${buckets.week.length}</div></div>`;
+  html+=`<div class="kpi-card" onclick="showOpenAgeBucket('fortnight')"><div class="kpi-accent" style="background:#FFB900"></div><div class="kpi-icon">🟡</div><div class="kpi-label">7 – 14 Days</div><div class="kpi-value">${buckets.fortnight.length}</div></div>`;
+  html+=`<div class="kpi-card" onclick="showOpenAgeBucket('old')"><div class="kpi-accent" style="background:#D92C2C"></div><div class="kpi-icon">🔴</div><div class="kpi-label">&gt; 14 Days</div><div class="kpi-value">${buckets.old.length}</div></div>`;
+  html+='</div>';
+  window._openAgeBuckets=buckets;
+  window._openAgeCols=ageCols;
+  body.innerHTML=html;
+  document.getElementById('kpi-modal-overlay').classList.add('show');
+}
+function showOpenAgeBucket(key){
+  const buckets=window._openAgeBuckets;
+  const cols=window._openAgeCols;
+  if(!buckets||!buckets[key]) return;
+  const labels={week:'0 – 7 Days',fortnight:'7 – 14 Days',old:'> 14 Days'};
+  showDetailModal('Open — '+labels[key]+' ('+buckets[key].length+')', cols, buckets[key]);
 }
 
 // ======================== SETTINGS PANEL ========================
