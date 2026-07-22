@@ -684,6 +684,7 @@ let spSiteToken = null;
 // ======================== HELPERS ========================
 function htmlEscape(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function stripHtml(s){const d=document.createElement('div');d.innerHTML=String(s);return d.textContent||d.innerText||'';}
+function stripTime(v){if(!v||typeof v!=='string')return v;const m=v.match(/^(\d{4}-\d{2}-\d{2})T\d{2}:\d{2}/);return m?m[1]:v;}
 
 function showToast(msg,type){
   const t=document.getElementById('toast');
@@ -1316,6 +1317,7 @@ function renderTable(){
         let v=item[lookup]!==undefined?item[lookup]:'';
         if(v&&typeof v==='object'){v=v.LookupValue||v.Title||v.Email||JSON.stringify(v).substring(0,50);}
         if(c.type==='boolean')v=v?'✓':'';
+        v=stripTime(v);
         const s=htmlEscape(stripHtml(v));
         return `<td title="${s}">${s.substring(0,80)}</td>`;
       }).join('')}
@@ -1354,6 +1356,7 @@ function openDetail(idx){
     if(c.name==='ID'&&!raw&&item._id!==undefined)raw=item._id;
     let vDisplay=raw;
     if(raw&&typeof raw==='object'){vDisplay=raw.LookupValue||raw.Title||raw.Email||JSON.stringify(raw);}
+    vDisplay=stripTime(vDisplay);
     vDisplay=stripHtml(vDisplay);
     const desc=c.description?`<div class="hint">${htmlEscape(stripHtml(c.description))}</div>`:'';
     html+=`<div class="form-group"><label>${htmlEscape(c.displayName||c.name)}</label>${desc}<div style="padding:6px 0;font-size:13px;color:var(--text-primary);word-break:break-word;border-bottom:1px solid var(--gray-border)">${vDisplay?htmlEscape(vDisplay):'<span style="color:var(--text-secondary);font-style:italic">Not set</span>'}</div></div>`;

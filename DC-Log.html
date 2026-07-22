@@ -1242,6 +1242,11 @@ function buildKpiCardsHtml(dept, items, cols){
 function escapeHtml(s){
   return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
+function stripTime(v){
+  if(!v||typeof v!=='string')return v;
+  const m=v.match(/^(\d{4}-\d{2}-\d{2})T\d{2}:\d{2}/);
+  return m?m[1]:v;
+}
 
 // ======================== LIST VIEW (KPI + TABLE) ========================
 let sortState={col:null,dir:1};
@@ -1691,6 +1696,21 @@ function onStatsListChange(){
 
 // ======================== KPI MODAL ========================
 const HIDE_MODAL_COLS=new Set(['_id','_list','_status','Id','ID','ContentType','Modified','Created','Author','Editor','AuthorLookupId','EditorLookupId','_UIVersionString','Attachments','Edit','LinkTitleNoMenu','LinkTitle','ItemChildCount','FolderChildCount','_ComplianceFlags','_ComplianceTag','_ComplianceTagWrittenTime','_ComplianceTagUserId','AppAuthorLookupId','AppEditorLookupId','FileSystemObjectType','ServerUrl','EncodedAbsUrl','BaseName','FileRef','FileLeafRef','UniqueId','ProgId','CheckoutUserId','CheckoutUser','CheckedOutUserId','CheckedOutUser','HasCopyDestinations','CopySource','OData__UIVersionString','UIVersion','Order','GUID','WorkflowInstanceId','WorkflowVersion','WorkflowName','File_x0020_Type','DocIcon','XMLTZone','_HasCopyDestinations','_CopySource','ScopeId','LinkFilename','LinkFilenameNoMenu','FSObjType','SortBehavior','PermMask','FileDirRef','Last_x0020_Modified','Created_x0020_Date']);
+function getOrderedCols(depts){
+  const seen=new Set();
+  const cols=[];
+  depts.forEach(d=>{
+    const cache=listCache[d.id];
+    if(!cache||!cache.cols)return;
+    cache.cols.forEach(c=>{
+      if(seen.has(c.displayName))return;
+      if(HIDE_MODAL_COLS.has(c.displayName))return;
+      seen.add(c.displayName);
+      cols.push(c.displayName);
+    });
+  });
+  return cols;
+}
 function filterModalCols(cols,items){
   return cols.filter(c=>{
     if(HIDE_MODAL_COLS.has(c))return false;
@@ -1708,7 +1728,7 @@ function showDetailModal(title, cols, items){
   const showCols=filterModalCols(cols,items);
   let html='<div style="margin-bottom:10px"><button class="btn btn-sm" onclick="closeKpiModal()" style="font-size:11px">✕ Close</button></div><div class="table-scroll"><table><thead><tr>'+showCols.map(c=>`<th>${escapeHtml(c)}</th>`).join('')+'</tr></thead><tbody>';
   items.forEach(it=>{
-    html+='<tr>'+showCols.map(c=>`<td>${escapeHtml(it[c])}</td>`).join('')+'</tr>';
+    html+='<tr>'+showCols.map(c=>`<td>${escapeHtml(stripTime(it[c]))}</td>`).join('')+'</tr>';
   });
   html+='</tbody></table></div>';
   body.innerHTML=html;
@@ -1728,7 +1748,7 @@ function showAllRecordsModal(){
       allItems.push({...it, _list:d.title});
     });
   });
-  showDetailModal('All Records ('+allItems.length+')', ['_list',...new Set(allItems.flatMap(it=>Object.keys(it).filter(k=>!k.startsWith('_'))))], allItems);
+  showDetailModal('All Records ('+allItems.length+')', getOrderedCols(loadedDepts), allItems);
 }
 function showCategoryModal(group){
   const depts=visibleDepts().filter(d=>d.group===group);
@@ -1737,7 +1757,7 @@ function showCategoryModal(group){
     const cache=listCache[d.id];
     if(cache.loaded) cache.items.forEach(it=>allItems.push({...it, _list:d.title}));
   });
-  showDetailModal(group+' ('+allItems.length+')', ['_list',...new Set(allItems.flatMap(it=>Object.keys(it).filter(k=>!k.startsWith('_'))))], allItems);
+  showDetailModal(group+' ('+allItems.length+')', getOrderedCols(depts), allItems);
 }
 function showListModal(id){
   const dept=DEPTS_BY_ID[id];
@@ -1759,7 +1779,7 @@ function showStatusModal(code){
     });
   });
   const label=STATUS_LABELS_LS[code]||code;
-  showDetailModal(code+' — '+label+' ('+allItems.length+')', ['_list',...new Set(allItems.flatMap(it=>Object.keys(it).filter(k=>!k.startsWith('_'))))], allItems);
+  showDetailModal(code+' — '+label+' ('+allItems.length+')', getOrderedCols(depts), allItems);
 }
 function showListStatusModal(listId, code){
   const dept=DEPTS_BY_ID[listId];
@@ -1801,7 +1821,7 @@ function showApprovedModal(){
       if(val==='A'||val==='B') allItems.push({...it, _list:d.title, _status:val==='A'?'Approved As Submitted':'Approved As Noted'});
     });
   });
-  showDetailModal('Approved Items ('+allItems.length+')', ['_list','_status',...new Set(allItems.flatMap(it=>Object.keys(it).filter(k=>!k.startsWith('_'))))], allItems);
+  showDetailModal('Approved Items ('+allItems.length+')', getOrderedCols(depts), allItems);
 }
 function showDisciplineModal(disc){
   const depts=visibleDepts().filter(d=>listCache[d.id].loaded);
@@ -1814,7 +1834,7 @@ function showDisciplineModal(disc){
       if(String(it[discCol]||'').trim()===disc) allItems.push({...it, _list:d.title});
     });
   });
-  showDetailModal(disc+' ('+allItems.length+')', ['_list',...new Set(allItems.flatMap(it=>Object.keys(it).filter(k=>!k.startsWith('_'))))], allItems);
+  showDetailModal(disc+' ('+allItems.length+')', getOrderedCols(depts), allItems);
 }
 function showAggRevModal(rev){
   const depts=visibleDepts().filter(d=>listCache[d.id].loaded);
@@ -1828,7 +1848,7 @@ function showAggRevModal(rev){
       if(padRev(String(it[revCol]||'').trim())===rev) allItems.push({...it, _list:d.title});
     });
   });
-  showDetailModal('Rev.'+rev+' — All Registers ('+allItems.length+')', ['_list',...new Set(allItems.flatMap(it=>Object.keys(it).filter(k=>!k.startsWith('_'))))], allItems);
+  showDetailModal('Rev.'+rev+' — All Registers ('+allItems.length+')', getOrderedCols(depts), allItems);
 }
 function closeKpiModal(ev){
   if(ev && ev.target!==document.getElementById('kpi-modal-overlay'))return;
