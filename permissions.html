@@ -288,7 +288,7 @@ async function login(){
   if(!msalApp)initMsal();
   try{const resp=await msalApp.loginPopup({scopes:['Sites.ReadWrite.All','User.Read']});handleLogin(resp);}
   catch(e){
-    try{await msalApp.loginRedirect({scopes:['Sites.ReadWrite.All','User.Read']);}catch(e2){showToast('Login failed: '+e2.message,'error');}
+    try{await msalApp.loginRedirect({scopes:['Sites.ReadWrite.All','User.Read']});}catch(e2){showToast('Login failed: '+e2.message,'error');}
   }
 }
 
