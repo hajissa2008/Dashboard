@@ -277,7 +277,7 @@ function showLoading(show){document.getElementById('loading').classList.toggle('
 
 function initMsal(){
   const tenant='684547e2-bb8b-450a-a3e1-3a6bc15e9471';
-  const client='84b1fcd2-8c12-4f1b-8fa4-b0e6d99bf534';
+  const client='04f83c11-e51c-4a8a-be86-9e3a49f3e952';
   msalApp=new msal.PublicClientApplication({
     auth:{clientId:client,authority:'https://login.microsoftonline.com/'+tenant,redirectUri:location.origin+location.pathname},
     cache:{cacheLocation:'localStorage'},system:{allowNativeBroker:false}
