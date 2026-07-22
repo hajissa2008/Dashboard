@@ -441,31 +441,30 @@ async function loadUserPerms(){
   if(!email)return;
   const siteUrl='https://sascontractingsa.sharepoint.com/sites/Alenshaiah';
   try{
-    const json=await apiCall(graphListItemsUrl(siteUrl,PERM_LIST));
-    const items=json.value||[];
-    console.log('[Perms] Total items in Permissions list:',items.length);
+    const token=await ensureSpSiteToken(siteUrl);
+    const listEnc=PERM_LIST.replace(/'/g,"''");
+    const url=siteUrl+'/_api/web/lists/getbytitle(\''+listEnc+'\')/items';
+    const resp=await fetch(url,{headers:{'Authorization':'Bearer '+token,'Accept':'application/json'}});
+    if(!resp.ok){if(resp.status===404){myPerms='ALL';return}throw new Error('HTTP '+resp.status)}
+    const data=await resp.json();
+    const items=data.d?data.d.results:data.value||[];
     if(!items.length){myPerms='ALL';return}
     myPerms={};
     const userLower=email.toLowerCase();
     const currentApp=location.pathname.includes('project-tracker')?'ProjectTracker':'Forms';
-    console.log('[Perms] Current user:',userLower,'App:',currentApp);
+    console.log('[Perms] User:',userLower,'App:',currentApp,'Total entries:',items.length);
     items.forEach(item=>{
-      const f=item.fields||item;
-      const entryEmail=(f.Title||'').toLowerCase();
-      console.log('[Perms] Entry:',entryEmail,'DeptID:',f.DeptID,'Access:',f.Access,'App:',f.App);
-      if(entryEmail===userLower){
-        const app=f.App||'Both';
+      if((item.Title||'').toLowerCase()===userLower){
+        const app=item.App||'Both';
+        console.log('[Perms] Match:',item.DeptID,item.Access,'App:',app);
         if(app===currentApp||app==='Both'){
-          myPerms[f.DeptID]=f.Access.toLowerCase();
-          console.log('[Perms] ✓ Matched:',f.DeptID,'=',f.Access);
-        }else{
-          console.log('[Perms] ✗ Skipped (App mismatch):',f.DeptID,'App:',app);
+          myPerms[item.DeptID]=item.Access.toLowerCase();
         }
       }
     });
-    console.log('[Perms] Final myPerms:',JSON.stringify(myPerms));
+    console.log('[Perms] Result:',JSON.stringify(myPerms));
   }catch(e){
-    console.error('[Perms] Load failed:',e);
+    console.error('[Perms] Error:',e.message);
     myPerms='ALL';
   }
 }

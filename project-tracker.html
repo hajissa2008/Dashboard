@@ -2424,21 +2424,22 @@ async function loadUserPerms(){
   if(!email)return;
   const siteUrl='https://sascontractingsa.sharepoint.com/sites/Alenshaiah';
   try{
-    const url=graphListItemsUrl(siteUrl,PERM_LIST);
-    const resp=await fetch(url,{headers:{'Authorization':'Bearer '+spToken,'Accept':'application/json'}});
+    const token=await ensureSpSiteToken(siteUrl);
+    const listEnc=PERM_LIST.replace(/'/g,"''");
+    const url=siteUrl+'/_api/web/lists/getbytitle(\''+listEnc+'\')/items';
+    const resp=await fetch(url,{headers:{'Authorization':'Bearer '+token,'Accept':'application/json'}});
     if(!resp.ok){if(resp.status===404){myPerms='ALL';return}throw new Error('HTTP '+resp.status)}
-    const json=await resp.json();
-    const items=json.value||[];
+    const data=await resp.json();
+    const items=data.d?data.d.results:data.value||[];
     if(!items.length){myPerms='ALL';return}
     myPerms={};
     const userLower=email.toLowerCase();
     const currentApp='ProjectTracker';
     items.forEach(item=>{
-      const f=item.fields||item;
-      if((f.Title||'').toLowerCase()===userLower){
-        const app=f.App||'Both';
+      if((item.Title||'').toLowerCase()===userLower){
+        const app=item.App||'Both';
         if(app===currentApp||app==='Both'){
-          myPerms[f.DeptID]=f.Access.toLowerCase();
+          myPerms[item.DeptID]=item.Access.toLowerCase();
         }
       }
     });
