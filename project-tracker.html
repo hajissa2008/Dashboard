@@ -1627,14 +1627,6 @@ function renderDashboard(){
           const sdRow=statRow(sdItems);
           const subRow=sub?statRow(sub.items):'';
           const supRow=sup?statRow(sup.items):'';
-          let debugHtml='';
-          if(sub?.items?.[0]&&!window._sdDebugged){
-            window._sdDebugged=true;
-            const f=sub.items[0];
-            const cs=codeStatus(f);
-            const pairs=Object.keys(f).sort().filter(k=>{const v=String(f[k]).trim();return v.length>0&&!k.startsWith('@')&&!/^(Modified|Created|Editor|Author|ID|id|Title|FileRef|FileLeafRef|UniqueId|GUID|OData|odata|_UIVersion)/.test(k);}).map(k=>k+': '+JSON.stringify(String(f[k]).substring(0,40))).join('<br>');
-            debugHtml='<div style="font-size:9px;margin-bottom:6px;padding:4px;background:#fff3cd;border-radius:4px;max-height:120px;overflow:auto"><b>🔍 Sub 1st item · codeStatus='+cs+'</b><br>'+pairs+'</div>';
-          }
           html+=`<div class="kpi-card" style="cursor:default;grid-column:span 2">
             <div class="kpi-accent" style="background:linear-gradient(90deg,#4C5D71,#00B7C3)"></div>
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
@@ -1643,7 +1635,6 @@ function renderDashboard(){
               <span style="margin-left:auto;font-size:22px;font-weight:700">${sdTotal}</span>
             </div>
             <div style="font-size:11px;margin-bottom:6px">${sdRow}</div>
-            ${debugHtml}
             <div style="display:flex;gap:8px">
               ${sub&&sub.t>0?`<div onclick="showKpiModalFromCache(${sub.ci})" style="flex:1;padding:10px;cursor:pointer;background:var(--gray-light);border-radius:8px;border:1px solid var(--gray-border)">
                 <div style="font-size:11px;font-weight:600;color:#4C5D71;margin-bottom:4px">🏗️ Substructure · ${sub.t}</div>
