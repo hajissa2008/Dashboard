@@ -537,8 +537,9 @@ function renderTable(){
       var deptMeta=DEPTS_BY_ID[item.DeptID];
       var deptName=deptMeta?deptMeta.title:(item.DeptID||'—');
       var cssKey=safeEmailJS.replace(/[^a-z0-9]/gi,'');
+      var checked=selectedIds.has(item.Id)?' checked':'';
       html+='<tr class="group-row group-'+cssKey+'" style="display:none">'+
-        '<td></td><td style="padding-left:28px;color:var(--text2)">'+htmlEscape(g.email)+'</td>'+
+        '<td><input type="checkbox" value="'+item.Id+'"'+checked+' onchange="toggleItemSelect('+item.Id+',this.checked,\''+safeEmailJS+'\')"></td><td style="padding-left:28px;color:var(--text2)">'+htmlEscape(g.email)+'</td>'+
         '<td><span class="badge badge-app">'+htmlEscape(item.App||'Both')+'</span></td>'+
         '<td>'+htmlEscape(deptName)+'</td>'+
         '<td><span class="badge badge-'+access+'">'+access.charAt(0).toUpperCase()+access.slice(1)+'</span></td>'+
@@ -563,6 +564,27 @@ function toggleGroupSelect(email,checked){
   permItems.filter(function(i){return (i.Title||'').toLowerCase()===email.toLowerCase();}).forEach(function(i){
     if(checked)selectedIds.add(i.Id);else selectedIds.delete(i.Id);
   });
+  var cssKey=email.replace(/[^a-z0-9]/gi,'');
+  document.querySelectorAll('.group-'+cssKey+' input[type=checkbox]').forEach(function(cb){cb.checked=checked;});
+  updateBulkBar();
+}
+function toggleItemSelect(id,checked,email){
+  if(checked)selectedIds.add(id);else selectedIds.delete(id);
+  var cssKey=email.replace(/[^a-z0-9]/gi,'');
+  var allCb=document.querySelectorAll('.group-'+cssKey+' input[type=checkbox]');
+  var groupCb=document.querySelector('.group-header input[type=checkbox][onchange*="'+email.replace(/'/g,"\\'")+'"]');
+  if(!groupCb){
+    var hdrs=document.querySelectorAll('.group-header');
+    hdrs.forEach(function(h){
+      var inp=h.querySelector('input[type=checkbox]');
+      if(inp&&inp.getAttribute('onchange')&&inp.getAttribute('onchange').indexOf(email)>=0)groupCb=inp;
+    });
+  }
+  if(groupCb){
+    var allChecked=true;
+    allCb.forEach(function(cb){if(!cb.checked)allChecked=false;});
+    groupCb.checked=allChecked;
+  }
   updateBulkBar();
 }
 function deleteGroup(email){
@@ -592,8 +614,8 @@ function openEditGroupModal(email){
 }
 function toggleSelectAll(checked){
   getFiltered().forEach(function(i){if(checked)selectedIds.add(i.Id);else selectedIds.delete(i.Id);});
-  document.querySelectorAll('.group-header input[type=checkbox]').forEach(function(cb){cb.checked=checked;});
-  renderTable();
+  document.querySelectorAll('#table-body input[type=checkbox]').forEach(function(cb){cb.checked=checked;});
+  updateBulkBar();
 }
 function clearSelection(){selectedIds.clear();expandedGroups.clear();renderTable();}
 function updateBulkBar(){
@@ -676,9 +698,9 @@ async function savePerm(){
       for(var j=0;j<entries.length;j++){try{await spPost(permApi(),entries[j]);}catch(e){}}
     }else if(editingId){
       await spDelete(permApi(editingId));
-      for(var k=0;k<entries.length;k++){try{await spPost(permApi(),entries[k]));}catch(e){}}
+      for(var k=0;k<entries.length;k++){try{await spPost(permApi(),entries[k]);}catch(e){}}
     }else{
-      for(var m=0;m<entries.length;m++){try{await spPost(permApi(),entries[m]));}catch(e){}}
+      for(var m=0;m<entries.length;m++){try{await spPost(permApi(),entries[m]);}catch(e){}}
     }
     closeModal();showToast('Permission saved','success');await loadPerms();
   }catch(e){showToast('Save failed: '+e.message,'error');}
