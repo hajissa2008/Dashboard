@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>AlEnshaiah - Permissions Manager</title>
 <style>
-:root{--primary:#4C5D71;--primary-dark:#3A4A5E;--primary-light:#E8ECF0;--green:#107C10;--green-light:#E6F7E6;--red:#D92C2C;--red-light:#FDE8E8;--orange:#ED7D31;--gray:#8A8886;--gray-light:#F3F2F1;--gray-border:#EDEBE9;--text:#201E1F;--text2:#605E5C;--white:#FFFFFF;--bg:#F3F2F1;--shadow:0 1px 3px rgba(0,0,0,.08);--radius:6px}
+:root{--primary:#4C5D71;--primary-dark:#3A4A5E;--primary-light:#E8ECF0;--green:#107C10;--green-light:#E6F7E6;--red:#D92C2C;--red-light:#FDE8E8;--orange:#ED7D31;--orange-light:#FFF0E0;--gray:#8A8886;--gray-light:#F3F2F1;--gray-border:#EDEBE9;--text:#201E1F;--text2:#605E5C;--white:#FFFFFF;--bg:#F3F2F1;--shadow:0 1px 3px rgba(0,0,0,.08);--radius:6px;--blue:#0078D4;--blue-light:#E3F2FD}
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
 .header{background:var(--white);border-bottom:1px solid var(--gray-border);padding:12px 24px;display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:100}
@@ -23,6 +23,17 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(
 .btn-sm{padding:4px 10px;font-size:12px}
 .btn:disabled{opacity:.5;cursor:not-allowed}
 .main{max-width:1400px;margin:0 auto;padding:24px}
+
+.group-tabs{display:flex;gap:0;margin-bottom:24px;background:var(--white);border:1px solid var(--gray-border);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow)}
+.group-tab{flex:1;padding:16px 24px;cursor:pointer;text-align:center;transition:all .2s;border:none;background:var(--white);font-size:14px;font-weight:600;color:var(--text2);position:relative;border-right:1px solid var(--gray-border)}
+.group-tab:last-child{border-right:none}
+.group-tab:hover{background:var(--gray-light)}
+.group-tab.active{color:var(--primary);background:var(--primary-light)}
+.group-tab.active::after{content:'';position:absolute;bottom:0;left:0;right:0;height:3px;background:var(--primary)}
+.group-tab .tab-count{display:inline-block;margin-left:8px;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;background:var(--gray-light);color:var(--text2)}
+.group-tab.active .tab-count{background:var(--primary);color:white}
+.group-tab .tab-icon{margin-right:6px}
+
 .toolbar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:20px}
 .toolbar input{padding:6px 12px;border:1px solid var(--gray-border);border-radius:var(--radius);font-size:13px;width:260px}
 .toolbar select{padding:6px 12px;border:1px solid var(--gray-border);border-radius:var(--radius);font-size:13px}
@@ -38,9 +49,11 @@ tr:hover{background:var(--primary-light)}
 .group-header:hover{background:var(--gray-light) !important}
 .badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600}
 .badge-edit{background:var(--green-light);color:var(--green)}
-.badge-read{background:#E3F2FD;color:#1565C0}
+.badge-read{background:var(--blue-light);color:var(--blue)}
 .badge-none{background:var(--red-light);color:var(--red)}
 .badge-app{background:var(--primary-light);color:var(--primary)}
+.badge-tracker{background:#E8ECF0;color:var(--primary)}
+.badge-dc{background:var(--orange-light);color:var(--orange)}
 .empty-state{text-align:center;padding:60px 20px;color:var(--text2)}
 .empty-state .icon{font-size:48px;margin-bottom:12px}
 .empty-state h3{font-size:16px;color:var(--text);margin-bottom:4px}
@@ -50,7 +63,7 @@ tr:hover{background:var(--primary-light)}
 .toast.error{background:var(--red);color:white}
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200;align-items:center;justify-content:center}
 .modal-overlay.show{display:flex}
-.modal{background:var(--white);border-radius:8px;width:560px;max-width:95vw;box-shadow:0 8px 32px rgba(0,0,0,.2);max-height:90vh;overflow-y:auto}
+.modal{background:var(--white);border-radius:8px;width:620px;max-width:95vw;box-shadow:0 8px 32px rgba(0,0,0,.2);max-height:90vh;overflow-y:auto}
 .modal-header{padding:16px 20px;border-bottom:1px solid var(--gray-border);display:flex;align-items:center;justify-content:space-between}
 .modal-header h2{font-size:16px}
 .modal-close{background:none;border:none;font-size:20px;cursor:pointer;color:var(--text2);padding:4px 8px}
@@ -65,8 +78,6 @@ tr:hover{background:var(--primary-light)}
 .perms-grid .perm-row{display:flex;align-items:center;justify-content:space-between;padding:6px 10px;border:1px solid var(--gray-border);border-radius:var(--radius);font-size:12px}
 .perms-grid .perm-row label{margin:0;font-size:12px}
 .perms-grid select{padding:4px 8px;font-size:12px;width:auto}
-.checkbox-group{display:flex;gap:16px;align-items:center}
-.checkbox-group label{display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer}
 .bulk-bar{background:var(--primary);color:white;padding:10px 20px;border-radius:var(--radius);display:flex;align-items:center;gap:12px;margin-bottom:16px;font-size:13px}
 .bulk-bar span{flex:1}
 .loading-overlay{position:fixed;inset:0;background:rgba(255,255,255,.6);z-index:999;display:none;align-items:center;justify-content:center}
@@ -84,14 +95,14 @@ tr:hover{background:var(--primary-light)}
 .user-search-dropdown .user-item .ui-email{font-size:11px;color:var(--text2)}
 .user-search-dropdown .user-item .ui-avatar{width:28px;height:28px;border-radius:50%;background:var(--primary);color:white;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;flex-shrink:0}
 .user-search-dropdown .search-status{padding:10px 12px;text-align:center;font-size:12px;color:var(--text2)}
-@media(max-width:768px){.stats{gap:8px}.stat-card{min-width:80px;padding:8px 12px}.stat-card .value{font-size:16px}.perms-grid{grid-template-columns:1fr}.toolbar{gap:8px}}
+@media(max-width:768px){.stats{gap:8px}.stat-card{min-width:80px;padding:8px 12px}.stat-card .value{font-size:16px}.perms-grid{grid-template-columns:1fr}.toolbar{gap:8px}.group-tabs{flex-direction:column}.group-tab{border-right:none;border-bottom:1px solid var(--gray-border)}}
 </style>
 </head>
 <body>
 <div class="header">
   <div>
     <h1>AlEnshaiah Permissions Manager</h1>
-    <div class="subtitle">Manage user access for Tracker, Forms, DC Log &amp; DC Form</div>
+    <div class="subtitle">Manage user access for Tracker, DC Log &amp; DC Form</div>
   </div>
   <div class="auth-section">
     <span class="user-info" id="user-info" style="display:none"></span>
@@ -101,17 +112,19 @@ tr:hover{background:var(--primary-light)}
 </div>
 
 <div class="main" id="main-content" style="display:none">
+  <div class="group-tabs" id="group-tabs">
+    <button class="group-tab active" data-group="tracker" onclick="switchGroup('tracker')">
+      <span class="tab-icon">📐</span>Tracker Permissions <span class="tab-count" id="tab-count-tracker">0</span>
+    </button>
+    <button class="group-tab" data-group="dc" onclick="switchGroup('dc')">
+      <span class="tab-icon">📄</span>DC Permissions <span class="tab-count" id="tab-count-dc">0</span>
+    </button>
+  </div>
+
   <div class="stats" id="stats"></div>
   <div class="toolbar">
     <input type="text" id="search" placeholder="Search by email..." oninput="renderTable()">
-    <select id="filter-app" onchange="renderTable()">
-      <option value="">All Apps</option>
-      <option value="ProjectTracker">Project Tracker</option>
-      <option value="Forms">Data Entry (Forms)</option>
-      <option value="DCLog">DC Log</option>
-      <option value="DCForm">DC Form</option>
-      <option value="Both">All Apps (Both)</option>
-    </select>
+    <select id="filter-app" onchange="renderTable()"></select>
     <select id="filter-dept" onchange="renderTable()"></select>
     <div style="flex:1"></div>
     <button class="btn" onclick="loadPerms()">🔄 Refresh</button>
@@ -131,7 +144,7 @@ tr:hover{background:var(--primary-light)}
         <th style="width:30px"><input type="checkbox" id="select-all" onchange="toggleSelectAll(this.checked)"></th>
         <th>Email</th>
         <th>App</th>
-        <th>Department</th>
+        <th>Document Type</th>
         <th>Access</th>
         <th style="width:80px">Actions</th>
       </tr></thead>
@@ -163,14 +176,15 @@ tr:hover{background:var(--primary-light)}
         </div>
       </div>
       <div class="form-group">
-        <label>Application</label>
-        <select id="inp-app">
-          <option value="Both">All Apps</option>
-          <option value="ProjectTracker">Project Tracker</option>
-          <option value="Forms">Data Entry (Forms)</option>
-          <option value="DCLog">DC Log</option>
-          <option value="DCForm">DC Form</option>
+        <label>Permission Group</label>
+        <select id="inp-group" onchange="onModalGroupChange()">
+          <option value="tracker">Tracker Permissions</option>
+          <option value="dc">DC Permissions</option>
         </select>
+      </div>
+      <div class="form-group">
+        <label>Application</label>
+        <select id="inp-app"></select>
       </div>
       <div class="form-group">
         <label>Default Access Level</label>
@@ -181,7 +195,7 @@ tr:hover{background:var(--primary-light)}
         </select>
       </div>
       <div class="form-group">
-        <label>Department Access</label>
+        <label>Document Type Access</label>
         <div id="dept-perms-grid" class="perms-grid"></div>
       </div>
     </div>
@@ -205,71 +219,72 @@ let permItems=[];
 let selectedIds=new Set();
 let editingId=null;
 let editingGroupEmail=null;
+let currentGroup='tracker';
 
-const APP_GROUPS={
-  'Project Tracker':{color:'#4C5D71'},
-  'Data Entry':{color:'#0078D4'},
-  'DC Log':{color:'#ED7D31'},
-  'DC Form':{color:'#8764B8'}
+const GROUP_CONFIG={
+  tracker:{
+    apps:[{value:'ProjectTracker',label:'Project Tracker'},{value:'Forms',label:'Data Entry (Forms)'},{value:'Both',label:'Both'}],
+    docTypes:[
+      {id:'substructure',title:'Substructure',group:'Shop Drawing'},
+      {id:'superstructure',title:'Superstructure',group:'Shop Drawing'},
+      {id:'calculations',title:'Calculations (Tracker)',group:'Tracker Lists'},
+      {id:'methodstatement',title:'Method Statement',group:'Tracker Lists'},
+      {id:'procurement',title:'Procurement',group:'Tracker Lists'},
+      {id:'pt-calculations',title:'Calculations (Forms)',group:'Forms Lists'}
+    ]
+  },
+  dc:{
+    apps:[{value:'DCLog',label:'DC Log'},{value:'DCForm',label:'DC Form'},{value:'Both',label:'Both'}],
+    docTypes:[
+      {id:'sor',title:'SOR',group:'Correspondence & Registers'},
+      {id:'incoming',title:'Incoming',group:'Correspondence & Registers'},
+      {id:'outgoing',title:'Outgoing',group:'Correspondence & Registers'},
+      {id:'letters2',title:'Letters (2)',group:'Correspondence & Registers'},
+      {id:'oic-to-acc',title:'OIC to ACC',group:'Correspondence & Registers'},
+      {id:'mom',title:'MOM',group:'Correspondence & Registers'},
+      {id:'sdc-to-acc-ifc',title:'SDC to ACC (IFC)',group:'Correspondence & Registers'},
+      {id:'internal-sor',title:"Internal SOR's",group:'Correspondence & Registers'},
+      {id:'dc-calculations',title:'Calculations',group:'Design & Technical'},
+      {id:'plans',title:'Plans',group:'Design & Technical'},
+      {id:'dw-drawings',title:'Drawings (DW)',group:'Design & Technical'},
+      {id:'mst',title:'Method Statements (MST)',group:'Design & Technical'},
+      {id:'org-chart',title:'Organization Chart',group:'Design & Technical'},
+      {id:'scl',title:'Schedules (SCL)',group:'Design & Technical'},
+      {id:'sna',title:'Start of New Activity (SNA)',group:'Design & Technical'},
+      {id:'ncr',title:'NCR',group:'Submittals & Approvals'},
+      {id:'si',title:'Site Instructions (SI)',group:'Submittals & Approvals'},
+      {id:'ei',title:"Engineer's Instruction (EI)",group:'Submittals & Approvals'},
+      {id:'wir',title:'Work Inspection Request (WIR)',group:'Submittals & Approvals'},
+      {id:'mir',title:'Material Insp. Request (MIR)',group:'Submittals & Approvals'},
+      {id:'ms',title:'Materials Submittal (MS)',group:'Submittals & Approvals'},
+      {id:'pq',title:'Pre-Qualifications (PQ)',group:'Submittals & Approvals'},
+      {id:'rfi',title:'Request for Info (RFI)',group:'Submittals & Approvals'},
+      {id:'sca',title:'Subcon Approval (SCA)',group:'Submittals & Approvals'},
+      {id:'merf',title:'MERF',group:'Submittals & Approvals'},
+      {id:'internal-ncr',title:"Internal NCR's",group:'Submittals & Approvals'},
+      {id:'mqr',title:'Quality Observation Report (MQR)',group:'Reports'},
+      {id:'mpr',title:'Monthly Progress Report (MPR)',group:'Reports'},
+      {id:'wpr',title:'Weekly Progress Report (WPR)',group:'Reports'},
+      {id:'test-reports',title:'Test Reports',group:'Reports'},
+      {id:'dcr',title:'Daily Report (DCR)',group:'Reports'},
+      {id:'hsr',title:'Health & Safety Reports (HSR)',group:'Reports'},
+      {id:'hse-obs',title:'Safety Observations (HSE)',group:'HSE'},
+      {id:'hse-incident',title:'Incident Reports (HSE)',group:'HSE'},
+      {id:'others',title:'Others - General',group:'Documents & Records'},
+      {id:'prc',title:'Procedure (PRC)',group:'Documents & Records'},
+      {id:'omm',title:'Operation & Maintenance (OMM)',group:'Documents & Records'},
+      {id:'tm',title:'Technical Manual (TM)',group:'Documents & Records'},
+      {id:'ds',title:'Data Sheet (DS)',group:'Documents & Records'},
+      {id:'crt',title:'Certificate (CRT)',group:'Documents & Records'},
+      {id:'piv',title:'Photos (PIV)',group:'Documents & Records'},
+      {id:'cp',title:'Contractor Proposal (CP)',group:'Documents & Records'}
+    ]
+  }
 };
 
-const DEPT_GROUPS=[
-  'Project Tracker','Data Entry',
-  'Correspondence & Registers','Design & Technical','Submittals & Approvals',
-  'Reports','HSE','Documents & Records'
-];
-
-const DEPTS=[
-  {id:'substructure',title:'Substructure',group:'Project Tracker'},
-  {id:'superstructure',title:'Superstructure',group:'Project Tracker'},
-  {id:'calculations',title:'Calculations (Tracker)',group:'Project Tracker'},
-  {id:'methodstatement',title:'Method Statement',group:'Project Tracker'},
-  {id:'procurement',title:'Procurement',group:'Project Tracker'},
-  {id:'pt-calculations',title:'Calculations (Forms)',group:'Data Entry'},
-  {id:'sor',title:'SOR',group:'Correspondence & Registers'},
-  {id:'incoming',title:'Incoming',group:'Correspondence & Registers'},
-  {id:'outgoing',title:'Outgoing',group:'Correspondence & Registers'},
-  {id:'letters2',title:'Letters (2)',group:'Correspondence & Registers'},
-  {id:'oic-to-acc',title:'OIC to ACC',group:'Correspondence & Registers'},
-  {id:'mom',title:'MOM',group:'Correspondence & Registers'},
-  {id:'sdc-to-acc-ifc',title:'SDC to ACC (IFC)',group:'Correspondence & Registers'},
-  {id:'internal-sor',title:"Internal SOR's",group:'Correspondence & Registers'},
-  {id:'dc-calculations',title:'Calculations',group:'Design & Technical'},
-  {id:'plans',title:'Plans',group:'Design & Technical'},
-  {id:'dw-drawings',title:'Drawings (DW)',group:'Design & Technical'},
-  {id:'mst',title:'Method Statements (MST)',group:'Design & Technical'},
-  {id:'org-chart',title:'Organization Chart',group:'Design & Technical'},
-  {id:'scl',title:'Schedules (SCL)',group:'Design & Technical'},
-  {id:'sna',title:'Start of New Activity (SNA)',group:'Design & Technical'},
-  {id:'ncr',title:'NCR',group:'Submittals & Approvals'},
-  {id:'si',title:'Site Instructions (SI)',group:'Submittals & Approvals'},
-  {id:'ei',title:"Engineer's Instruction (EI)",group:'Submittals & Approvals'},
-  {id:'wir',title:'Work Inspection Request (WIR)',group:'Submittals & Approvals'},
-  {id:'mir',title:'Material Insp. Request (MIR)',group:'Submittals & Approvals'},
-  {id:'ms',title:'Materials Submittal (MS)',group:'Submittals & Approvals'},
-  {id:'pq',title:'Pre-Qualifications (PQ)',group:'Submittals & Approvals'},
-  {id:'rfi',title:'Request for Info (RFI)',group:'Submittals & Approvals'},
-  {id:'sca',title:'Subcon Approval (SCA)',group:'Submittals & Approvals'},
-  {id:'merf',title:'MERF',group:'Submittals & Approvals'},
-  {id:'internal-ncr',title:"Internal NCR's",group:'Submittals & Approvals'},
-  {id:'mqr',title:'Quality Observation Report (MQR)',group:'Reports'},
-  {id:'mpr',title:'Monthly Progress Report (MPR)',group:'Reports'},
-  {id:'wpr',title:'Weekly Progress Report (WPR)',group:'Reports'},
-  {id:'test-reports',title:'Test Reports',group:'Reports'},
-  {id:'dcr',title:'Daily Report (DCR)',group:'Reports'},
-  {id:'hsr',title:'Health & Safety Reports (HSR)',group:'Reports'},
-  {id:'hse-obs',title:'Safety Observations (HSE)',group:'HSE'},
-  {id:'hse-incident',title:'Incident Reports (HSE)',group:'HSE'},
-  {id:'others',title:'Others - General',group:'Documents & Records'},
-  {id:'prc',title:'Procedure (PRC)',group:'Documents & Records'},
-  {id:'omm',title:'Operation & Maintenance (OMM)',group:'Documents & Records'},
-  {id:'tm',title:'Technical Manual (TM)',group:'Documents & Records'},
-  {id:'ds',title:'Data Sheet (DS)',group:'Documents & Records'},
-  {id:'crt',title:'Certificate (CRT)',group:'Documents & Records'},
-  {id:'piv',title:'Photos (PIV)',group:'Documents & Records'},
-  {id:'cp',title:'Contractor Proposal (CP)',group:'Documents & Records'}
-];
-const DEPTS_BY_ID={};DEPTS.forEach(d=>{DEPTS_BY_ID[d.id]=d});
+const ALL_DEPTS=[];
+Object.entries(GROUP_CONFIG).forEach(([gid,g])=>{g.docTypes.forEach(d=>{ALL_DEPTS.push({...d,groupKey:gid})});});
+const DEPTS_BY_ID={};ALL_DEPTS.forEach(d=>{DEPTS_BY_ID[d.id]=d});
 
 function htmlEscape(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function showToast(msg,type){const t=document.getElementById('toast');t.textContent=msg;t.className='toast '+(type||'')+' show';setTimeout(()=>t.classList.remove('show'),3000);}
@@ -354,11 +369,6 @@ async function spPost(url,body){
   if(!resp.ok){const t=await resp.text().catch(()=>'');throw new Error('HTTP '+resp.status+': '+t.substring(0,200));}
   return resp.status===204?null:await resp.json().catch(()=>null);
 }
-async function spPatch(url,body){
-  const token=await ensureSpToken();
-  const resp=await fetch(url,{method:'POST',headers:{'Authorization':'Bearer '+token,'Accept':'application/json','Content-Type':'application/json','IF-MATCH':'*','X-HTTP-Method':'MERGE'},body:JSON.stringify(body)});
-  if(!resp.ok){const t=await resp.text().catch(()=>'');throw new Error('HTTP '+resp.status+': '+t.substring(0,200));}
-}
 async function spDelete(url){
   const token=await ensureSpToken();
   const resp=await fetch(url,{method:'DELETE',headers:{'Authorization':'Bearer '+token,'Accept':'application/json','X-HTTP-Method':'DELETE','If-Match':'*'}});
@@ -386,40 +396,69 @@ async function loadPerms(){
     else{showToast('Failed to load: '+e.message,'error');permItems=[];}
   }
   showLoading(false);
-  populateDeptFilter();renderStats();renderTable();
+  updateTabCounts();populateFilters();renderStats();renderTable();
 }
 
-function populateDeptFilter(){
-  const sel=document.getElementById('filter-dept');
-  const cur=sel.value;
-  sel.innerHTML='<option value="">All Departments</option>';
-  DEPT_GROUPS.forEach(g=>{
-    const group=DEPTS.filter(d=>d.group===g);
-    if(!group.length)return;
+function switchGroup(group){
+  currentGroup=group;
+  document.querySelectorAll('.group-tab').forEach(t=>t.classList.toggle('active',t.dataset.group===group));
+  selectedIds.clear();
+  populateFilters();renderStats();renderTable();
+}
+
+function updateTabCounts(){
+  const trackerIds=GROUP_CONFIG.tracker.docTypes.map(d=>d.id);
+  const dcIds=GROUP_CONFIG.dc.docTypes.map(d=>d.id);
+  const trackerCount=permItems.filter(i=>trackerIds.includes(i.DeptID)).length;
+  const dcCount=permItems.filter(i=>dcIds.includes(i.DeptID)).length;
+  document.getElementById('tab-count-tracker').textContent=trackerCount;
+  document.getElementById('tab-count-dc').textContent=dcCount;
+}
+
+function populateFilters(){
+  const cfg=GROUP_CONFIG[currentGroup];
+  const appSel=document.getElementById('filter-app');
+  const curApp=appSel.value;
+  appSel.innerHTML='<option value="">All Apps</option>'+cfg.apps.map(a=>'<option value="'+a.value+'">'+a.label+'</option>').join('');
+  if(curApp&&cfg.apps.find(a=>a.value===curApp))appSel.value=curApp;
+
+  const deptSel=document.getElementById('filter-dept');
+  const curDept=deptSel.value;
+  deptSel.innerHTML='<option value="">All Document Types</option>';
+  const groups=[...new Set(cfg.docTypes.map(d=>d.group))];
+  groups.forEach(g=>{
+    const items=cfg.docTypes.filter(d=>d.group===g);
     const og=document.createElement('optgroup');og.label=g;
-    group.forEach(d=>{const o=document.createElement('option');o.value=d.id;o.textContent=d.title;og.appendChild(o);});
-    sel.appendChild(og);
+    items.forEach(d=>{const o=document.createElement('option');o.value=d.id;o.textContent=d.title;og.appendChild(o);});
+    deptSel.appendChild(og);
   });
-  sel.value=cur;
+  deptSel.value=curDept;
 }
 
 function renderStats(){
-  const uniqueEmails=new Set(permItems.map(i=>(i.Title||'').toLowerCase()));
-  document.getElementById('stats').innerHTML=
-    '<div class="stat-card"><div class="label">Total Entries</div><div class="value">'+permItems.length+'</div></div>'+
-    '<div class="stat-card"><div class="label">Unique Users</div><div class="value">'+uniqueEmails.size+'</div></div>'+
-    '<div class="stat-card"><div class="label">Tracker</div><div class="value">'+permItems.filter(i=>i.App==='ProjectTracker').length+'</div></div>'+
-    '<div class="stat-card"><div class="label">Forms</div><div class="value">'+permItems.filter(i=>i.App==='Forms').length+'</div></div>'+
-    '<div class="stat-card"><div class="label">DC Log</div><div class="value">'+permItems.filter(i=>i.App==='DCLog').length+'</div></div>'+
-    '<div class="stat-card"><div class="label">DC Form</div><div class="value">'+permItems.filter(i=>i.App==='DCForm').length+'</div></div>'+
-    '<div class="stat-card"><div class="label">All Apps</div><div class="value">'+permItems.filter(i=>i.App==='Both').length+'</div></div>';
+  const cfg=GROUP_CONFIG[currentGroup];
+  const docIds=cfg.docTypes.map(d=>d.id);
+  const groupItems=permItems.filter(i=>docIds.includes(i.DeptID));
+  const uniqueEmails=new Set(groupItems.map(i=>(i.Title||'').toLowerCase()));
+  const appCounts={};
+  cfg.apps.forEach(a=>{appCounts[a.value]=0;});
+  groupItems.forEach(i=>{const k=i.App||'Both';if(appCounts[k]!==undefined)appCounts[k]++;else if(appCounts['Both']!==undefined)appCounts['Both']++;});
+  let html='<div class="stat-card"><div class="label">Total Entries</div><div class="value">'+groupItems.length+'</div></div>'+
+    '<div class="stat-card"><div class="label">Unique Users</div><div class="value">'+uniqueEmails.size+'</div></div>';
+  cfg.apps.forEach(a=>{
+    html+='<div class="stat-card"><div class="label">'+htmlEscape(a.label)+'</div><div class="value">'+appCounts[a.value]+'</div></div>';
+  });
+  document.getElementById('stats').innerHTML=html;
 }
 
 function getFiltered(){
   const search=document.getElementById('search').value.toLowerCase();
   const app=document.getElementById('filter-app').value;
   const dept=document.getElementById('filter-dept').value;
+  const cfg=GROUP_CONFIG[currentGroup];
+  const validDocIds=new Set(cfg.docTypes.map(d=>d.id));
   return permItems.filter(item=>{
+    if(!validDocIds.has(item.DeptID))return false;
     const email=(item.Title||'').toLowerCase();
     if(search&&!email.includes(search))return false;
     if(app&&(item.App||'Both')!==app)return false;
@@ -446,19 +485,19 @@ function renderTable(){
     const apps=[...new Set(g.items.map(i=>i.App||'Both'))];
     const appsStr=apps.map(a=>'<span class="badge badge-app">'+htmlEscape(a)+'</span>').join(' ');
     const deptCount=g.items.length;
-    html+='<tr class="group-header" style="cursor:pointer;background:var(--gray-light)" onclick="toggleGroup(this,\''+htmlEscape(g.email.replace(/'/g,"\\'"))+'\')">'+
-      '<td><input type="checkbox" onchange="toggleGroupSelect(\''+htmlEscape(g.email.replace(/'/g,"\\'"))+'\',this.checked)"></td>'+
+    const safeEmailJS=htmlEscape(g.email).replace(/'/g,"\\'");
+    html+='<tr class="group-header" style="cursor:pointer;background:var(--gray-light)" onclick="toggleGroup(this,\''+safeEmailJS+'\')">'+
+      '<td><input type="checkbox" onchange="toggleGroupSelect(\''+safeEmailJS+'\',this.checked)"></td>'+
       '<td><strong>'+htmlEscape(g.email)+'</strong></td>'+
       '<td>'+appsStr+'</td>'+
       '<td colspan="2" style="color:var(--text2)">'+deptCount+' permission(s)</td>'+
-      '<td><button class="btn btn-sm" onclick="event.stopPropagation();openEditGroupModal(\''+htmlEscape(g.email.replace(/'/g,"\\'"))+'\')">Edit</button> '+
-        '<button class="btn btn-sm btn-danger" onclick="event.stopPropagation();deleteGroup(\''+htmlEscape(g.email.replace(/'/g,"\\'"))+'\')">Del All</button></td></tr>';
+      '<td><button class="btn btn-sm" onclick="event.stopPropagation();openEditGroupModal(\''+safeEmailJS+'\')">Edit</button> '+
+        '<button class="btn btn-sm btn-danger" onclick="event.stopPropagation();deleteGroup(\''+safeEmailJS+'\')">Del All</button></td></tr>';
     g.items.forEach(item=>{
       const access=(item.Access||'edit').toLowerCase();
-      const dept=DEPTS_BY_ID[item.DeptID];
-      const deptName=dept?dept.title:item.DeptID;
-      const safeEmail=htmlEscape(g.email.replace(/'/g,"\\'"));
-      html+='<tr class="group-row group-'+safeEmail.replace(/[^a-z0-9]/gi,'')+'" style="display:none">'+
+      const deptMeta=DEPTS_BY_ID[item.DeptID];
+      const deptName=deptMeta?deptMeta.title:item.DeptID;
+      html+='<tr class="group-row group-'+safeEmailJS.replace(/[^a-z0-9]/gi,'')+'" style="display:none">'+
         '<td></td><td style="padding-left:28px;color:var(--text2)">'+htmlEscape(g.email)+'</td>'+
         '<td><span class="badge badge-app">'+htmlEscape(item.App||'Both')+'</span></td>'+
         '<td>'+htmlEscape(deptName)+'</td>'+
@@ -492,9 +531,12 @@ function openEditGroupModal(email){
   editingId='GROUP';editingGroupEmail=email;
   document.getElementById('modal-title').textContent='Edit Permissions — '+email;
   document.getElementById('inp-email').value=email;
-  const apps=[...new Set(group.map(i=>i.App||'Both'))];
-  document.getElementById('inp-app').value=apps.length===1?apps[0]:'Both';
   const existingPerms={};group.forEach(i=>{existingPerms[i.DeptID]=(i.Access||'edit').toLowerCase();});
+  const firstApp=group[0]?group[0].App:'Both';
+  const groupKey=firstApp==='ProjectTracker'||firstApp==='Forms'?'tracker':'dc';
+  document.getElementById('inp-group').value=groupKey;
+  onModalGroupChange();
+  document.getElementById('inp-app').value=firstApp;
   document.getElementById('inp-access').value='edit';
   document.getElementById('dept-perms-grid').innerHTML=buildDeptGrid('edit',existingPerms);
   document.getElementById('add-modal').classList.add('show');
@@ -511,13 +553,21 @@ function updateBulkBar(){
   else{bar.style.display='none';}
 }
 
+function onModalGroupChange(){
+  const g=document.getElementById('inp-group').value;
+  const cfg=GROUP_CONFIG[g];
+  const appSel=document.getElementById('inp-app');
+  appSel.innerHTML=cfg.apps.map(a=>'<option value="'+a.value+'">'+a.label+'</option>').join('');
+}
+
 function buildDeptGrid(defaultAccess,existingPerms){
+  const cfg=GROUP_CONFIG[document.getElementById('inp-group')?document.getElementById('inp-group').value:currentGroup];
   let html='';
-  DEPT_GROUPS.forEach(g=>{
-    const group=DEPTS.filter(d=>d.group===g);
-    if(!group.length)return;
+  const groups=[...new Set(cfg.docTypes.map(d=>d.group))];
+  groups.forEach(g=>{
+    const items=cfg.docTypes.filter(d=>d.group===g);
     html+='<div class="perms-section"><h4>'+htmlEscape(g)+'</h4><div class="perms-grid">';
-    group.forEach(d=>{
+    items.forEach(d=>{
       const val=existingPerms&&existingPerms[d.id]?existingPerms[d.id]:defaultAccess;
       html+='<div class="perm-row"><label>'+htmlEscape(d.title)+'</label><select data-dept="'+d.id+'">'+
         '<option value="edit"'+(val==='edit'?' selected':'')+'>Edit</option>'+
@@ -537,7 +587,8 @@ function openAddModal(){
   editingId=null;
   document.getElementById('modal-title').textContent='Add User Permission';
   document.getElementById('inp-email').value='';
-  document.getElementById('inp-app').value='Both';
+  document.getElementById('inp-group').value=currentGroup;
+  onModalGroupChange();
   document.getElementById('inp-access').value='edit';
   document.getElementById('dept-perms-grid').innerHTML=buildDeptGrid('edit');
   document.getElementById('add-modal').classList.add('show');
@@ -547,6 +598,9 @@ function openEditModal(id){
   editingId=id;
   document.getElementById('modal-title').textContent='Edit User Permission';
   document.getElementById('inp-email').value=item.Title||'';
+  const groupKey=(item.App==='ProjectTracker'||item.App==='Forms')?'tracker':'dc';
+  document.getElementById('inp-group').value=groupKey;
+  onModalGroupChange();
   document.getElementById('inp-app').value=item.App||'Both';
   document.getElementById('inp-access').value=(item.Access||'edit').toLowerCase();
   document.getElementById('dept-perms-grid').innerHTML=buildDeptGrid((item.Access||'edit').toLowerCase());
@@ -560,7 +614,7 @@ async function savePerm(){
   if(!email){showToast('Email is required','error');return;}
   const deptPerms={};document.querySelectorAll('#dept-perms-grid select').forEach(s=>{deptPerms[s.dataset.dept]=s.value;});
   const entries=Object.entries(deptPerms).map(([deptId,access])=>({Title:email,App:app,DeptID:deptId,Access:access}));
-  if(!entries.length){showToast('No departments selected','error');return;}
+  if(!entries.length){showToast('No document types selected','error');return;}
   try{
     if(editingId==='GROUP'){
       const oldItems=permItems.filter(i=>(i.Title||'').toLowerCase()===email.toLowerCase());
@@ -592,26 +646,16 @@ async function bulkDelete(){
 function bulkEdit(){
   if(!selectedIds.size)return;
   document.getElementById('modal-title').textContent='Bulk Edit ('+selectedIds.size+' entries)';
-  document.getElementById('inp-email').value='';document.getElementById('inp-app').value='Both';document.getElementById('inp-access').value='edit';
+  document.getElementById('inp-email').value='';
+  document.getElementById('inp-group').value=currentGroup;
+  onModalGroupChange();
+  document.getElementById('inp-access').value='edit';
   document.getElementById('dept-perms-grid').innerHTML=buildDeptGrid('edit');
   editingId='BULK';document.getElementById('add-modal').classList.add('show');
 }
 
-async function saveBulkEdit(){
-  const app=document.getElementById('inp-app').value;const access=document.getElementById('inp-access').value;
-  let ok=0,fail=0;
-  for(const id of selectedIds){
-    const item=permItems.find(i=>i.Id===id);if(!item)continue;
-    try{await spDelete(permApi(id));await spPost(permApi(),{Title:item.Title,App:app,DeptID:item.DeptID,Access:access});ok++;}
-    catch{fail++;}
-  }
-  selectedIds.clear();closeModal();showToast('Updated '+ok+(fail?' ('+fail+' failed)':''),'success');await loadPerms();
-}
-
-const origSave=savePerm;
 document.getElementById('add-modal').addEventListener('click',function(e){if(e.target===this)closeModal();});
 
-// ===================== USER SEARCH =====================
 let userSearchAbort=null;
 async function onUserSearchInput(){
   const q=document.getElementById('inp-email').value.trim();
