@@ -24,13 +24,13 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(
 .btn:disabled{opacity:.5;cursor:not-allowed}
 .main{max-width:1400px;margin:0 auto;padding:24px}
 .group-tabs{display:flex;gap:0;margin-bottom:24px;background:var(--white);border:1px solid var(--gray-border);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow)}
-.group-tab{flex:1;padding:16px 24px;cursor:pointer;text-align:center;transition:all .2s;border:none;background:var(--white);font-size:14px;font-weight:600;color:var(--text2);position:relative;border-right:1px solid var(--gray-border)}
+.group-tab{flex:1;padding:16px 20px;cursor:pointer;text-align:center;transition:all .2s;border:none;background:var(--white);font-size:13px;font-weight:600;color:var(--text2);position:relative;border-right:1px solid var(--gray-border)}
 .group-tab:last-child{border-right:none}
 .group-tab:hover{background:var(--gray-light)}
-.group-tab.active{color:var(--primary);background:var(--primary-light)}
-.group-tab.active::after{content:'';position:absolute;bottom:0;left:0;right:0;height:3px;background:var(--primary)}
-.group-tab .tab-count{display:inline-block;margin-left:8px;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;background:var(--gray-light);color:var(--text2)}
-.group-tab.active .tab-count{background:var(--primary);color:white}
+.group-tab.active{color:var(--white);background:var(--primary)}
+.group-tab.active::after{display:none}
+.group-tab .tab-count{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:10px;font-size:10px;font-weight:700;background:rgba(0,0,0,.08)}
+.group-tab:not(.active) .tab-count{background:var(--gray-light);color:var(--text2)}
 .toolbar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:20px}
 .toolbar input{padding:6px 12px;border:1px solid var(--gray-border);border-radius:var(--radius);font-size:13px;width:260px}
 .toolbar select{padding:6px 12px;border:1px solid var(--gray-border);border-radius:var(--radius);font-size:13px}
@@ -90,6 +90,7 @@ tr:hover td{background:var(--primary-light)}
 .user-search-dropdown .user-item .ui-email{font-size:11px;color:var(--text2)}
 .user-search-dropdown .user-item .ui-avatar{width:28px;height:28px;border-radius:50%;background:var(--primary);color:white;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;flex-shrink:0}
 .user-search-dropdown .search-status{padding:10px 12px;text-align:center;font-size:12px;color:var(--text2)}
+.debug-bar{background:var(--white);border:1px solid var(--gray-border);border-radius:var(--radius);padding:8px 14px;margin-bottom:16px;font-size:11px;color:var(--text2);font-family:monospace;display:none;word-break:break-all}
 @media(max-width:768px){.stats{gap:8px}.stat-card{min-width:80px;padding:8px 12px}.stat-card .value{font-size:16px}.perms-grid{grid-template-columns:1fr}.toolbar{gap:8px}.group-tabs{flex-direction:column}.group-tab{border-right:none;border-bottom:1px solid var(--gray-border)}}
 </style>
 </head>
@@ -97,7 +98,7 @@ tr:hover td{background:var(--primary-light)}
 <div class="header">
   <div>
     <h1>AlEnshaiah Permissions Manager</h1>
-    <div class="subtitle">Manage user access across Project Tracker and DC systems</div>
+    <div class="subtitle">Manage user access — Project Tracker, Forms &amp; DC Log</div>
   </div>
   <div class="auth-section">
     <span class="user-info" id="user-info" style="display:none"></span>
@@ -111,11 +112,15 @@ tr:hover td{background:var(--primary-light)}
     <button class="group-tab active" data-group="tracker" onclick="switchGroup('tracker')">
       📐 Project Tracker <span class="tab-count" id="tab-count-tracker">0</span>
     </button>
+    <button class="group-tab" data-group="forms" onclick="switchGroup('forms')">
+      📝 Forms <span class="tab-count" id="tab-count-forms">0</span>
+    </button>
     <button class="group-tab" data-group="dc" onclick="switchGroup('dc')">
       📄 DC Log <span class="tab-count" id="tab-count-dc">0</span>
     </button>
   </div>
   <div class="stats" id="stats"></div>
+  <div id="debug-bar" class="debug-bar"></div>
   <div class="toolbar">
     <input type="text" id="search" placeholder="Search by email..." oninput="renderTable()">
     <select id="filter-app" onchange="renderTable()"></select>
@@ -171,6 +176,7 @@ tr:hover td{background:var(--primary-light)}
         <label>Permission Group</label>
         <select id="inp-group" onchange="onModalGroupChange()">
           <option value="tracker">Project Tracker</option>
+          <option value="forms">Forms</option>
           <option value="dc">DC Log</option>
         </select>
       </div>
@@ -202,81 +208,99 @@ tr:hover td{background:var(--primary-light)}
 
 <script src="https://alcdn.msauth.net/browser/2.32.2/js/msal-browser.min.js"></script>
 <script>
-const SITE_URL='https://sascontractingsa.sharepoint.com/sites/Alenshaiah';
-const PERM_LIST='Permissions';
-const ADMIN_EMAIL='m.hajissa@alenshaiah.com';
-let msalApp=null,spToken=null,spUser=null,spSiteToken=null;
-let permItems=[];
-let selectedIds=new Set();
-let editingId=null;
-let editingGroupEmail=null;
-let currentGroup='tracker';
+var SITE_URL='https://sascontractingsa.sharepoint.com/sites/Alenshaiah';
+var PERM_LIST='Permissions';
+var ADMIN_EMAIL='m.hajissa@alenshaiah.com';
+var msalApp=null,spToken=null,spUser=null,spSiteToken=null;
+var permItems=[];
+var selectedIds=new Set();
+var editingId=null;
+var editingGroupEmail=null;
+var currentGroup='tracker';
 
-const GROUP_CONFIG={
+var TRACKER_DOCTYPES=[
+  {id:'substructure',title:'Substructure',group:'Shop Drawing'},
+  {id:'superstructure',title:'Superstructure',group:'Shop Drawing'},
+  {id:'calculations',title:'Calculations',group:'Tracker'},
+  {id:'methodstatement',title:'Method Statement',group:'Tracker'},
+  {id:'procurement',title:'Procurement',group:'Tracker'}
+];
+var DC_DOCTYPES=[
+  {id:'sor',title:'SOR',group:'Correspondence & Registers'},
+  {id:'incoming',title:'Incoming',group:'Correspondence & Registers'},
+  {id:'outgoing',title:'Outgoing',group:'Correspondence & Registers'},
+  {id:'letters2',title:'Letters (2)',group:'Correspondence & Registers'},
+  {id:'oic-to-acc',title:'OIC to ACC',group:'Correspondence & Registers'},
+  {id:'mom',title:'MOM',group:'Correspondence & Registers'},
+  {id:'sdc-to-acc-ifc',title:'SDC to ACC (IFC)',group:'Correspondence & Registers'},
+  {id:'internal-sor',title:"Internal SOR's",group:'Correspondence & Registers'},
+  {id:'dc-calculations',title:'Calculations',group:'Design & Technical'},
+  {id:'plans',title:'Plans',group:'Design & Technical'},
+  {id:'dw-drawings',title:'Drawings (DW)',group:'Design & Technical'},
+  {id:'mst',title:'Method Statements (MST)',group:'Design & Technical'},
+  {id:'org-chart',title:'Organization Chart',group:'Design & Technical'},
+  {id:'scl',title:'Schedules (SCL)',group:'Design & Technical'},
+  {id:'sna',title:'Start of New Activity (SNA)',group:'Design & Technical'},
+  {id:'ncr',title:'NCR',group:'Submittals & Approvals'},
+  {id:'si',title:'Site Instructions (SI)',group:'Submittals & Approvals'},
+  {id:'ei',title:"Engineer's Instruction (EI)",group:'Submittals & Approvals'},
+  {id:'wir',title:'Work Inspection Request (WIR)',group:'Submittals & Approvals'},
+  {id:'mir',title:'Material Insp. Request (MIR)',group:'Submittals & Approvals'},
+  {id:'ms',title:'Materials Submittal (MS)',group:'Submittals & Approvals'},
+  {id:'pq',title:'Pre-Qualifications (PQ)',group:'Submittals & Approvals'},
+  {id:'rfi',title:'Request for Info (RFI)',group:'Submittals & Approvals'},
+  {id:'sca',title:'Subcon Approval (SCA)',group:'Submittals & Approvals'},
+  {id:'merf',title:'MERF',group:'Submittals & Approvals'},
+  {id:'internal-ncr',title:"Internal NCR's",group:'Submittals & Approvals'},
+  {id:'mqr',title:'Quality Observation Report (MQR)',group:'Reports'},
+  {id:'mpr',title:'Monthly Progress Report (MPR)',group:'Reports'},
+  {id:'wpr',title:'Weekly Progress Report (WPR)',group:'Reports'},
+  {id:'test-reports',title:'Test Reports',group:'Reports'},
+  {id:'dcr',title:'Daily Report (DCR)',group:'Reports'},
+  {id:'hsr',title:'Health & Safety Reports (HSR)',group:'Reports'},
+  {id:'hse-obs',title:'Safety Observations (HSE)',group:'HSE'},
+  {id:'hse-incident',title:'Incident Reports (HSE)',group:'HSE'},
+  {id:'others',title:'Others - General',group:'Documents & Records'},
+  {id:'prc',title:'Procedure (PRC)',group:'Documents & Records'},
+  {id:'omm',title:'Operation & Maintenance (OMM)',group:'Documents & Records'},
+  {id:'tm',title:'Technical Manual (TM)',group:'Documents & Records'},
+  {id:'ds',title:'Data Sheet (DS)',group:'Documents & Records'},
+  {id:'crt',title:'Certificate (CRT)',group:'Documents & Records'},
+  {id:'piv',title:'Photos (PIV)',group:'Documents & Records'},
+  {id:'cp',title:'Contractor Proposal (CP)',group:'Documents & Records'}
+];
+var FORMS_DOCTYPES=TRACKER_DOCTYPES.concat(DC_DOCTYPES);
+
+var GROUP_CONFIG={
   tracker:{
     label:'Project Tracker',
-    apps:[{value:'ProjectTracker',label:'Project Tracker'},{value:'Forms',label:'Data Entry (Forms)'},{value:'Both',label:'Both'}],
-    docTypes:[
-      {id:'substructure',title:'Substructure',group:'Shop Drawing'},
-      {id:'superstructure',title:'Superstructure',group:'Shop Drawing'},
-      {id:'calculations',title:'Calculations',group:'Tracker'},
-      {id:'methodstatement',title:'Method Statement',group:'Tracker'},
-      {id:'procurement',title:'Procurement',group:'Tracker'}
-    ]
+    appValues:['projecttracker','both'],
+    apps:[{value:'ProjectTracker',label:'Project Tracker'},{value:'Both',label:'Both'}],
+    docTypes:TRACKER_DOCTYPES
+  },
+  forms:{
+    label:'Forms',
+    appValues:['forms','both'],
+    apps:[{value:'Forms',label:'Data Entry (Forms)'},{value:'Both',label:'Both'}],
+    docTypes:FORMS_DOCTYPES
   },
   dc:{
     label:'DC Log',
+    appValues:['dclog','dcform','both'],
     apps:[{value:'DCLog',label:'DC Log'},{value:'DCForm',label:'DC Form'},{value:'Both',label:'Both'}],
-    docTypes:[
-      {id:'sor',title:'SOR',group:'Correspondence & Registers'},
-      {id:'incoming',title:'Incoming',group:'Correspondence & Registers'},
-      {id:'outgoing',title:'Outgoing',group:'Correspondence & Registers'},
-      {id:'letters2',title:'Letters (2)',group:'Correspondence & Registers'},
-      {id:'oic-to-acc',title:'OIC to ACC',group:'Correspondence & Registers'},
-      {id:'mom',title:'MOM',group:'Correspondence & Registers'},
-      {id:'sdc-to-acc-ifc',title:'SDC to ACC (IFC)',group:'Correspondence & Registers'},
-      {id:'internal-sor',title:"Internal SOR's",group:'Correspondence & Registers'},
-      {id:'dc-calculations',title:'Calculations',group:'Design & Technical'},
-      {id:'plans',title:'Plans',group:'Design & Technical'},
-      {id:'dw-drawings',title:'Drawings (DW)',group:'Design & Technical'},
-      {id:'mst',title:'Method Statements (MST)',group:'Design & Technical'},
-      {id:'org-chart',title:'Organization Chart',group:'Design & Technical'},
-      {id:'scl',title:'Schedules (SCL)',group:'Design & Technical'},
-      {id:'sna',title:'Start of New Activity (SNA)',group:'Design & Technical'},
-      {id:'ncr',title:'NCR',group:'Submittals & Approvals'},
-      {id:'si',title:'Site Instructions (SI)',group:'Submittals & Approvals'},
-      {id:'ei',title:"Engineer's Instruction (EI)",group:'Submittals & Approvals'},
-      {id:'wir',title:'Work Inspection Request (WIR)',group:'Submittals & Approvals'},
-      {id:'mir',title:'Material Insp. Request (MIR)',group:'Submittals & Approvals'},
-      {id:'ms',title:'Materials Submittal (MS)',group:'Submittals & Approvals'},
-      {id:'pq',title:'Pre-Qualifications (PQ)',group:'Submittals & Approvals'},
-      {id:'rfi',title:'Request for Info (RFI)',group:'Submittals & Approvals'},
-      {id:'sca',title:'Subcon Approval (SCA)',group:'Submittals & Approvals'},
-      {id:'merf',title:'MERF',group:'Submittals & Approvals'},
-      {id:'internal-ncr',title:"Internal NCR's",group:'Submittals & Approvals'},
-      {id:'mqr',title:'Quality Observation Report (MQR)',group:'Reports'},
-      {id:'mpr',title:'Monthly Progress Report (MPR)',group:'Reports'},
-      {id:'wpr',title:'Weekly Progress Report (WPR)',group:'Reports'},
-      {id:'test-reports',title:'Test Reports',group:'Reports'},
-      {id:'dcr',title:'Daily Report (DCR)',group:'Reports'},
-      {id:'hsr',title:'Health & Safety Reports (HSR)',group:'Reports'},
-      {id:'hse-obs',title:'Safety Observations (HSE)',group:'HSE'},
-      {id:'hse-incident',title:'Incident Reports (HSE)',group:'HSE'},
-      {id:'others',title:'Others - General',group:'Documents & Records'},
-      {id:'prc',title:'Procedure (PRC)',group:'Documents & Records'},
-      {id:'omm',title:'Operation & Maintenance (OMM)',group:'Documents & Records'},
-      {id:'tm',title:'Technical Manual (TM)',group:'Documents & Records'},
-      {id:'ds',title:'Data Sheet (DS)',group:'Documents & Records'},
-      {id:'crt',title:'Certificate (CRT)',group:'Documents & Records'},
-      {id:'piv',title:'Photos (PIV)',group:'Documents & Records'},
-      {id:'cp',title:'Contractor Proposal (CP)',group:'Documents & Records'}
-    ]
+    docTypes:DC_DOCTYPES
   }
 };
 
-const ALL_DEPTS=[];
-Object.entries(GROUP_CONFIG).forEach(([gid,g])=>{g.docTypes.forEach(d=>{ALL_DEPTS.push({...d,groupKey:gid});});});
-const DEPTS_BY_ID={};ALL_DEPTS.forEach(d=>{DEPTS_BY_ID[d.id]=d;});
+var ALL_DEPTS=[];
+Object.keys(GROUP_CONFIG).forEach(function(gid){
+  GROUP_CONFIG[gid].docTypes.forEach(function(d){
+    if(!ALL_DEPTS.find(function(x){return x.id===d.id;})){
+      ALL_DEPTS.push(d);
+    }
+  });
+});
+var DEPTS_BY_ID={};ALL_DEPTS.forEach(function(d){DEPTS_BY_ID[d.id]=d;});
 
 function htmlEscape(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function showToast(msg,type){var t=document.getElementById('toast');t.textContent=msg;t.className='toast '+(type||'')+' show';setTimeout(function(){t.classList.remove('show');},3000);}
@@ -298,11 +322,8 @@ async function login(){
     var resp=await msalApp.loginPopup({scopes:['Sites.ReadWrite.All','User.Read']});
     handleLogin(resp);
   }catch(e){
-    try{
-      await msalApp.loginRedirect({scopes:['Sites.ReadWrite.All','User.Read']});
-    }catch(e2){
-      showToast('Login failed: '+e2.message,'error');
-    }
+    try{await msalApp.loginRedirect({scopes:['Sites.ReadWrite.All','User.Read']});}
+    catch(e2){showToast('Login failed: '+e2.message,'error');}
   }
 }
 
@@ -316,10 +337,7 @@ async function trySSO(){
     if(!spUser){
       var accounts=msalApp.getAllAccounts();
       if(accounts.length){
-        try{
-          var r=await msalApp.ssoSilent({scopes:['Sites.ReadWrite.All','User.Read'],account:accounts[0]});
-          handleLogin(r);
-        }catch(e2){}
+        try{var r=await msalApp.ssoSilent({scopes:['Sites.ReadWrite.All','User.Read'],account:accounts[0]});handleLogin(r);}catch(e2){}
       }
     }
   }catch(e){}
@@ -357,12 +375,7 @@ function doLogout(){
 
 async function ensureSpToken(){
   if(!spUser)throw new Error('Not authenticated');
-  try{
-    if(spSiteToken){
-      var r=await fetch(SITE_URL+'/_api/web/currentuser',{headers:{'Authorization':'Bearer '+spSiteToken,'Accept':'application/json'}});
-      if(r.ok)return spSiteToken;
-    }
-  }catch(e){}
+  try{if(spSiteToken){var r=await fetch(SITE_URL+'/_api/web/currentuser',{headers:{'Authorization':'Bearer '+spSiteToken,'Accept':'application/json'}});if(r.ok)return spSiteToken;}}catch(e){}
   var resp=await msalApp.acquireTokenSilent({scopes:[new URL(SITE_URL).origin+'/.default'],account:spUser});
   spSiteToken=resp.accessToken;return spSiteToken;
 }
@@ -391,13 +404,10 @@ function permApi(id){
 
 function itemBelongsToGroup(item,groupKey){
   var cfg=GROUP_CONFIG[groupKey];
-  var docIds=cfg.docTypes.map(function(d){return d.id;});
   var appLower=(item.App||'').toLowerCase();
-  var trackerApps=['projecttracker','forms','both'];
-  var dcApps=['dclog','dcform','both'];
+  if(cfg.appValues.indexOf(appLower)>=0)return true;
+  var docIds=cfg.docTypes.map(function(d){return d.id;});
   if(docIds.indexOf(item.DeptID)>=0)return true;
-  if(groupKey==='tracker'&&trackerApps.indexOf(appLower)>=0)return true;
-  if(groupKey==='dc'&&dcApps.indexOf(appLower)>=0)return true;
   return false;
 }
 
@@ -413,14 +423,21 @@ async function loadPerms(){
       nextUrl=(data.d&&data.d.__next)?data.d.__next:(data['@odata.nextLink']||null);
     }
     permItems=allItems;
-    console.log('[Perms] Loaded '+permItems.length+' items');
-    console.log('[Perms] DeptIDs:',[...new Set(permItems.map(function(i){return i.DeptID;}))]);
-    console.log('[Perms] Apps:',[...new Set(permItems.map(function(i){return i.App;}))]);
   }catch(e){
     if(e.message.indexOf('404')>=0){permItems=[];showToast('Permissions list not found.','error');}
     else{showToast('Failed to load: '+e.message,'error');permItems=[];}
   }
   showLoading(false);
+  var db=document.getElementById('debug-bar');
+  if(permItems.length){
+    var tc=permItems.filter(function(i){return itemBelongsToGroup(i,'tracker');}).length;
+    var fc=permItems.filter(function(i){return itemBelongsToGroup(i,'forms');}).length;
+    var dc=permItems.filter(function(i){return itemBelongsToGroup(i,'dc');}).length;
+    db.style.display='';db.innerHTML='Loaded <b>'+permItems.length+'</b> entries | Tracker: <b>'+tc+'</b> | Forms: <b>'+fc+'</b> | DC: <b>'+dc+'</b> | DeptIDs: ['+[...new Set(permItems.map(function(i){return i.DeptID||'?';}))].join(', ')+'] | Apps: ['+[...new Set(permItems.map(function(i){return i.App||'?';}))].join(', ')+']';
+    console.log('[Perms] Total:',permItems.length,'Tracker:',tc,'Forms:',fc,'DC:',dc);
+    console.log('[Perms] DeptIDs:',[...new Set(permItems.map(function(i){return i.DeptID;}))]);
+    console.log('[Perms] Apps:',[...new Set(permItems.map(function(i){return i.App;}))]);
+  }else{db.style.display='none';}
   updateTabCounts();populateFilters();renderStats();renderTable();
 }
 
@@ -432,10 +449,9 @@ function switchGroup(group){
 }
 
 function updateTabCounts(){
-  var tc=permItems.filter(function(i){return itemBelongsToGroup(i,'tracker');}).length;
-  var dc=permItems.filter(function(i){return itemBelongsToGroup(i,'dc');}).length;
-  document.getElementById('tab-count-tracker').textContent=tc;
-  document.getElementById('tab-count-dc').textContent=dc;
+  document.getElementById('tab-count-tracker').textContent=permItems.filter(function(i){return itemBelongsToGroup(i,'tracker');}).length;
+  document.getElementById('tab-count-forms').textContent=permItems.filter(function(i){return itemBelongsToGroup(i,'forms');}).length;
+  document.getElementById('tab-count-dc').textContent=permItems.filter(function(i){return itemBelongsToGroup(i,'dc');}).length;
 }
 
 function populateFilters(){
@@ -504,19 +520,16 @@ function renderTable(){
     groups[email].items.push(item);
   });
   var html='';
-  var sortedEmails=Object.keys(groups).sort();
-  sortedEmails.forEach(function(email){
+  Object.keys(groups).sort().forEach(function(email){
     var g=groups[email];
-    var apps=[];
-    g.items.forEach(function(i){var a=i.App||'Both';if(apps.indexOf(a)<0)apps.push(a);});
+    var apps=[];g.items.forEach(function(i){var a=i.App||'Both';if(apps.indexOf(a)<0)apps.push(a);});
     var appsStr=apps.map(function(a){return '<span class="badge badge-app">'+htmlEscape(a)+'</span>';}).join(' ');
     var safeEmailJS=htmlEscape(g.email).replace(/'/g,"\\'");
-    var deptCount=g.items.length;
     html+='<tr class="group-header" style="cursor:pointer;background:var(--gray-light)" onclick="toggleGroup(this,\''+safeEmailJS+'\')">'+
       '<td><input type="checkbox" onchange="toggleGroupSelect(\''+safeEmailJS+'\',this.checked)"></td>'+
       '<td><strong>'+htmlEscape(g.email)+'</strong></td>'+
       '<td>'+appsStr+'</td>'+
-      '<td colspan="2" style="color:var(--text2)">'+deptCount+' permission(s)</td>'+
+      '<td colspan="2" style="color:var(--text2)">'+g.items.length+' permission(s)</td>'+
       '<td><button class="btn btn-sm" onclick="event.stopPropagation();openEditGroupModal(\''+safeEmailJS+'\')">Edit</button> '+
         '<button class="btn btn-sm btn-danger" onclick="event.stopPropagation();deleteGroup(\''+safeEmailJS+'\')">Del All</button></td></tr>';
     g.items.forEach(function(item){
@@ -564,12 +577,11 @@ function openEditGroupModal(email){
   document.getElementById('inp-email').value=email;
   var existingPerms={};
   group.forEach(function(i){existingPerms[i.DeptID]=(i.Access||'edit').toLowerCase();});
-  var apps=[];
-  group.forEach(function(i){var a=i.App||'Both';if(apps.indexOf(a)<0)apps.push(a);});
-  var groupKey='dc';
-  apps.forEach(function(a){
-    var al=a.toLowerCase();
-    if(al==='projecttracker'||al==='forms')groupKey='tracker';
+  var apps=[];group.forEach(function(i){var a=i.App||'Both';if(apps.indexOf(a)<0)apps.push(a);});
+  var groupKey='tracker';
+  apps.forEach(function(a){var al=a.toLowerCase();
+    if(al==='dclog'||al==='dcform')groupKey='dc';
+    else if(al==='forms')groupKey='forms';
   });
   document.getElementById('inp-group').value=groupKey;
   onModalGroupChange();
@@ -593,8 +605,7 @@ function updateBulkBar(){
 function onModalGroupChange(){
   var g=document.getElementById('inp-group').value;
   var cfg=GROUP_CONFIG[g];
-  var appSel=document.getElementById('inp-app');
-  appSel.innerHTML=cfg.apps.map(function(a){return '<option value="'+a.value+'">'+a.label+'</option>';}).join('');
+  document.getElementById('inp-app').innerHTML=cfg.apps.map(function(a){return '<option value="'+a.value+'">'+a.label+'</option>';}).join('');
 }
 
 function buildDeptGrid(defaultAccess,existingPerms){
@@ -638,7 +649,9 @@ function openEditModal(id){
   document.getElementById('modal-title').textContent='Edit User Permission';
   document.getElementById('inp-email').value=item.Title||'';
   var al=(item.App||'').toLowerCase();
-  var groupKey=(al==='projecttracker'||al==='forms')?'tracker':'dc';
+  var groupKey='tracker';
+  if(al==='dclog'||al==='dcform')groupKey='dc';
+  else if(al==='forms')groupKey='forms';
   document.getElementById('inp-group').value=groupKey;
   onModalGroupChange();
   document.getElementById('inp-app').value=item.App||'Both';
@@ -663,9 +676,9 @@ async function savePerm(){
       for(var j=0;j<entries.length;j++){try{await spPost(permApi(),entries[j]);}catch(e){}}
     }else if(editingId){
       await spDelete(permApi(editingId));
-      for(var k=0;k<entries.length;k++){try{await spPost(permApi(),entries[k]);}catch(e){}}
+      for(var k=0;k<entries.length;k++){try{await spPost(permApi(),entries[k]));}catch(e){}}
     }else{
-      for(var m=0;m<entries.length;m++){try{await spPost(permApi(),entries[m]);}catch(e){}}
+      for(var m=0;m<entries.length;m++){try{await spPost(permApi(),entries[m]));}catch(e){}}
     }
     closeModal();showToast('Permission saved','success');await loadPerms();
   }catch(e){showToast('Save failed: '+e.message,'error');}
@@ -679,8 +692,7 @@ async function deletePerm(id){
 
 async function bulkDelete(){
   if(!selectedIds.size||!confirm('Delete '+selectedIds.size+' entries?'))return;
-  var ok=0,fail=0;
-  var ids=Array.from(selectedIds);
+  var ok=0,fail=0;var ids=Array.from(selectedIds);
   for(var i=0;i<ids.length;i++){try{await spDelete(permApi(ids[i]));ok++;}catch(e){fail++;}}
   selectedIds.clear();showToast('Deleted '+ok+(fail?' ('+fail+' failed)':''),'success');await loadPerms();
 }

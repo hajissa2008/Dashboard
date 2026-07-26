@@ -693,10 +693,10 @@ const COL_LABELS = {
   poRef:'PO/LOA Ref',actualPoDate:'Actual PO',shipMethod:'Shipping',
   eta:'ETA',deliveryStatus:'Delivery Status',plannedPoDate:'Planned PO',
   // Raw REV column labels for SharePoint Shop Drawing Status
-  'REV 00 (OUT MDH)':'REV 00 OUT MDH','REV 00  IN':'REV 00 IN',
-  'REV 01 OUT(MDH)':'REV 01 OUT','REV 01  IN':'REV 01 IN',
-  'REV 02 OUT(MDH)':'REV 02 OUT','REV 02 IN':'REV 02 IN',
-  'REV 03 (OUT MDH)':'REV 03 OUT',
+  'REV 00 (PREP)':'REV 00 PREP','REV 00  IN':'REV 00 IN',
+  'REV 01 (PREP)':'REV 01 PREP','REV 01  IN':'REV 01 IN',
+  'REV 02 (PREP)':'REV 02 PREP','REV 02 IN':'REV 02 IN',
+  'REV 03 (PREP)':'REV 03 PREP',
   part:'Part',phase:'Phase',
   // Engineering Shop Drawing Status columns
   dwgNo:'Drawing #',dwgTitle:'Drawing Title',dwgType:'Drawing Type',engDisc:'Eng Discipline',
@@ -1109,17 +1109,17 @@ async function connectSingleView(view){
                 'ProjectID':['id'],'ProjectName':['proj'],'Project_x0020_Name':['proj'],
                 'DueDate':['due','Due_x0020_Date'],'ResponsibleEngineer':['eng'],'DisciplineLead':['discLead'],
                 'REV00':['rev00'],'REV 00':['rev00'],'REV_00':['rev00'],'REV_x0020_00':['rev00'],
-                'REV 00 (OUT MDH)':['rev00'],'REV 00  IN':['rev00'],
+                'REV 00 (PREP)':['rev00'],'REV 00  IN':['rev00'],
                 'REV01':['rev01'],'REV 01':['rev01'],'REV_01':['rev01'],'REV_x0020_01':['rev01'],
-                'REV 01 OUT(MDH)':['rev01'],'REV 01  IN':['rev01'],
+                'REV 01 (PREP)':['rev01'],'REV 01  IN':['rev01'],
                 'REV02':['rev02'],'REV 02':['rev02'],'REV_02':['rev02'],'REV_x0020_02':['rev02'],
-                'REV 02 OUT(MDH)':['rev02'],'REV 02 IN':['rev02'],
+                'REV 02 (PREP)':['rev02'],'REV 02 IN':['rev02'],
                 'REV03':['rev03'],'REV 03':['rev03'],'REV_03':['rev03'],'REV_x0020_03':['rev03'],
-                'REV 03 (OUT MDH)':['rev03'],
+                'REV 03 (PREP)':['rev03'],
                 'REV 03 Status':['rev03'],'REV 03 STATUS':['rev03'],'REV03 STATUS':['rev03'],
                 'REV_x0020_03_x0020_Status':['rev03'],'REV_x0020_03_x0020_STATUS':['rev03'],
                 'REV04':['rev04'],'REV 04':['rev04'],'REV_04':['rev04'],'REV_x0020_04':['rev04'],
-                'REV 04 (OUT MDH)':['rev04'],
+                'REV 04 (PREP)':['rev04'],
                 'REV 04 Status':['rev04'],'REV 04 STATUS':['rev04'],'REV04 STATUS':['rev04'],
                 'REV_x0020_04_x0020_Status':['rev04'],'REV_x0020_04_x0020_STATUS':['rev04'],
                 'REV 02 Status':['rev02'],'REV 02 STATUS':['rev02'],'REV02 STATUS':['rev02'],
@@ -1705,7 +1705,7 @@ function renderDashboard(){
             function dtr(g,tot){if(!tot)return'';const r=g/tot;return r>=0.7?'ON TRACK':r>=0.4?'FAIR':'BEHIND';}
             let kpis='';
             if(vk==='substructure'||vk==='superstructure'){
-                const revFields=[{key:'rev04',cols:['REV 04 (OUT MDH)','REV 04']},{key:'rev03',cols:['REV 03 (OUT MDH)']},{key:'rev02',cols:['REV 02 OUT(MDH)','REV 02 IN']},{key:'rev01',cols:['REV 01 OUT(MDH)','REV 01  IN']},{key:'rev00',cols:['REV 00 (OUT MDH)','REV 00  IN']}];
+                const revFields=[{key:'rev04',cols:['REV 04 (PREP)','REV 04']},{key:'rev03',cols:['REV 03 (PREP)']},{key:'rev02',cols:['REV 02 (PREP)','REV 02 IN']},{key:'rev01',cols:['REV 01 (PREP)','REV 01  IN']},{key:'rev00',cols:['REV 00 (PREP)','REV 00  IN']}];
                 const revCounts={rev04:0,rev03:0,rev02:0,rev01:0,rev00:0};
                 items.forEach(item=>{for(const rf of revFields){const colName=rf.cols.find(c=>item[c]!==undefined&&item[c]!==null&&item[c]!=='');const value=colName?item[colName]:item[rf.key];if(value!==undefined&&value!==null&&value!==''){revCounts[rf.key]++;break;}}});
                 const disciplines=new Set(items.map(x=>x.engDisc||x['Discipline']||x['DISCIPLINE']||'')).size;
@@ -2048,11 +2048,11 @@ function renderDeptView(view){
     let kpis='';
     if(view==='substructure'||view==='superstructure'){
         // Determine each document's current revision level by checking raw column names
-        const revFields=[{key:'rev04',cols:['REV 04 (OUT MDH)','REV 04']},
-                         {key:'rev03',cols:['REV 03 (OUT MDH)']},
-                         {key:'rev02',cols:['REV 02 OUT(MDH)','REV 02 IN']},
-                         {key:'rev01',cols:['REV 01 OUT(MDH)','REV 01  IN']},
-                         {key:'rev00',cols:['REV 00 (OUT MDH)','REV 00  IN']}];
+        const revFields=[{key:'rev04',cols:['REV 04 (PREP)','REV 04']},
+                         {key:'rev03',cols:['REV 03 (PREP)']},
+                         {key:'rev02',cols:['REV 02 (PREP)','REV 02 IN']},
+                         {key:'rev01',cols:['REV 01 (PREP)','REV 01  IN']},
+                         {key:'rev00',cols:['REV 00 (PREP)','REV 00  IN']}];
         const revGroups={rev04:[],rev03:[],rev02:[],rev01:[],rev00:[]};
         const revStatuses={rev04:{},rev03:{},rev02:{},rev01:{},rev00:{}};
         items.forEach(item=>{
@@ -2061,7 +2061,7 @@ function renderDeptView(view){
                 const value=colName?item[colName]:item[rf.key];
                 if(value!==undefined&&value!==null&&value!==''){
                     revGroups[rf.key].push(item);
-                    const status=colName?colName.includes('OUT')?'OUT MDH':'IN':String(value).trim();
+                    const status=colName?colName.includes('PREP')?'PREP':'IN':String(value).trim();
                     revStatuses[rf.key][status]=(revStatuses[rf.key][status]||0)+1;
                     break;
                 }
