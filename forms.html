@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='16' fill='%234C5D71'/><text x='50' y='68' font-size='50' font-weight='bold' text-anchor='middle' fill='white'>AE</text></svg>">
 <title>AlEnshaiah - Data Entry Forms</title>
 <script src="https://alcdn.msauth.net/browser/2.32.2/js/msal-browser.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -437,11 +438,13 @@ async function getTokenSP(){
   }
 }
 
+window._permDebug='';
 async function loadUserPerms(){
   myPerms={};
-  if(!spUser||!spToken)return;
+  _permDebug='';
+  if(!spUser||!spToken){_permDebug='No spUser or spToken';return;}
   const email=spUser.username||'';
-  if(!email)return;
+  if(!email){_permDebug='No email';return;}
   const siteUrl='https://sascontractingsa.sharepoint.com/sites/Alenshaiah';
   const isAdmin=(email.toLowerCase()===ADMIN_EMAIL.toLowerCase());
   try{
@@ -449,27 +452,29 @@ async function loadUserPerms(){
     const listEnc=PERM_LIST.replace(/'/g,"''");
     const url=siteUrl+'/_api/web/lists/getbytitle(\''+listEnc+'\')/items';
     const resp=await fetch(url,{headers:{'Authorization':'Bearer '+token,'Accept':'application/json'}});
-    if(!resp.ok){if(resp.status===404){myPerms=isAdmin?'ALL':{};return}throw new Error('HTTP '+resp.status)}
+    if(!resp.ok){_permDebug='Permissions API HTTP '+resp.status;myPerms=isAdmin?'ALL':{};return}
     const data=await resp.json();
     const items=data.d?data.d.results:data.value||[];
-    if(!items.length){myPerms=isAdmin?'ALL':{};return}
-    if(isAdmin){myPerms='ALL';return}
+    if(!items.length){_permDebug='Permissions list empty';myPerms=isAdmin?'ALL':{};return}
+    if(isAdmin){myPerms='ALL';_permDebug='Admin — full access';return}
     myPerms={};
     const userLower=email.toLowerCase();
     const currentApp=location.pathname.includes('project-tracker')?'ProjectTracker':'Forms';
-    console.log('[Perms] User:',userLower,'App:',currentApp,'Total entries:',items.length);
+    _permDebug='User:'+userLower+' App:'+currentApp+' Entries:'+items.length;
+    var matched=0;
     items.forEach(item=>{
       if((item.Title||'').toLowerCase()===userLower){
-        const app=item.App||'Both';
-        console.log('[Perms] Match:',item.DeptID,item.Access,'App:',app);
-        if(app===currentApp||app==='Both'){
+        const app=(item.App||'Both').toLowerCase();
+        if(app===currentApp.toLowerCase()||app==='both'){
           myPerms[item.DeptID]=item.Access.toLowerCase();
+          matched++;
         }
       }
     });
-    console.log('[Perms] Result:',JSON.stringify(myPerms));
+    _permDebug+=' Matched:'+matched+' Perms:'+JSON.stringify(myPerms);
   }catch(e){
     console.error('[Perms] Error:',e.message);
+    _permDebug='Error: '+e.message;
     myPerms=isAdmin?'ALL':{};
   }
 }
@@ -491,7 +496,7 @@ function handleAuthResponse(resp){
     loadUserPerms().then(()=>{
       initDeptSelect();
       if(!hasAnyFormAccess()){
-        setEmpty('🔒','Access Denied','You do not have permission to access any department. Contact your administrator.');
+        setEmpty('🔒','Access Denied',(_permDebug||'No permissions found')+'. Contact your administrator.');
         document.getElementById('dept-select').disabled=true;
         return;
       }
@@ -1922,7 +1927,7 @@ function saveConfig(){
     if(accounts.length>0){
       spUser=accounts[0];
       msalApp.acquireTokenSilent({scopes:SP_SCOPES,account:spUser})
-        .then(r=>{spToken=r.accessToken;hideSigninOverlay();updateAuthUI();loadUserPerms().then(()=>{initDeptSelect();if(!hasAnyFormAccess()){setEmpty('🔒','Access Denied','You do not have permission to access any department. Contact your administrator.');document.getElementById('dept-select').disabled=true;}else{const d=storage.getItem('forms-last-dept');if(d)onDeptChange();}});})
+        .then(r=>{spToken=r.accessToken;hideSigninOverlay();updateAuthUI();loadUserPerms().then(()=>{initDeptSelect();if(!hasAnyFormAccess()){setEmpty('🔒','Access Denied',(_permDebug||'No permissions found')+'. Contact your administrator.');document.getElementById('dept-select').disabled=true;}else{const d=storage.getItem('forms-last-dept');if(d)onDeptChange();}});})
         .catch(()=>{spToken=null;showSigninProgress(true);ssoSilentAttempt().then(authed=>{showSigninProgress(false);if(!authed)updateAuthUI();}).catch(e=>{showSigninProgress(false);console.error('[SSO]',e);updateAuthUI();});});
     }else{
       showSigninProgress(true);
