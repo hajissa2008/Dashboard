@@ -452,11 +452,11 @@ function renderStats(){
 
 function itemBelongsToGroup(item,groupKey){
   const cfg=GROUP_CONFIG[groupKey];
-  const appValues=cfg.apps.map(a=>a.value);
+  const appValues=cfg.apps.map(a=>a.value.toLowerCase());
   const docIds=cfg.docTypes.map(d=>d.id);
   if(docIds.includes(item.DeptID))return true;
-  const app=item.App||'Both';
-  if(appValues.includes(app)||app==='Both')return true;
+  const app=(item.App||'Both').toLowerCase();
+  if(appValues.includes(app)||app==='both')return true;
   return false;
 }
 
