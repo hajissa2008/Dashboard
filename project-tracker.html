@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='16' fill='%234C5D71'/><text x='50' y='68' font-size='50' font-weight='bold' text-anchor='middle' fill='white'>AE</text></svg>">
 <title>AlEnshaiah - Project Tracker</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="https://alcdn.msauth.net/browser/2.32.2/js/msal-browser.min.js"></script>
@@ -2439,8 +2440,8 @@ async function loadUserPerms(){
     const currentApp='ProjectTracker';
     items.forEach(item=>{
       if((item.Title||'').toLowerCase()===userLower){
-        const app=item.App||'Both';
-        if(app===currentApp||app==='Both'){
+        const app=(item.App||'Both').toLowerCase();
+        if(app===currentApp.toLowerCase()||app==='both'){
           myPerms[item.DeptID]=item.Access.toLowerCase();
         }
       }
@@ -2600,16 +2601,18 @@ function finishSetup(){
         return;
     }
 
-    // Check cached accounts (survives page refresh)
-    const accounts = msalApp.getAllAccounts();
-    if(accounts.length>0){
+    // Handle redirect callback first
+    msalApp.handleRedirectPromise().then(resp=>{
+      if(resp&&resp.account){ spUser=resp.account; spToken=resp.accessToken; hideSigninOverlay(); updateAuthUI(); loadUserPerms().then(()=>autoConnectConfiguredViews()); finishSetup(); return; }
+      // Check cached accounts (survives page refresh)
+      const accounts = msalApp.getAllAccounts();
+      if(accounts.length>0){
         spUser = accounts[0];
         msalApp.acquireTokenSilent({ scopes: SP_SCOPES, account: spUser })
             .then(r=>{ spToken=r.accessToken; updateAuthUI(); loadUserPerms().then(()=>autoConnectConfiguredViews()); })
             .catch(()=>{ spToken=null; updateAuthUI(); })
             .finally(()=>{ finishSetup(); });
-    }else{
-        // Try ssoSilent for seamless popup SSO
+      }else{
         showSigninProgress(true);
         ssoSilentAttempt().then(authed=>{
             showSigninProgress(false);
@@ -2620,7 +2623,8 @@ function finishSetup(){
             console.error('[SSO]',e);
             updateAuthUI();
         });
-    }
+      }
+    }).catch(()=>{ finishSetup(); });
 
     }catch(e){
         document.getElementById('content').innerHTML='<div style="padding:40px;text-align:center"><h3>⚠️ Error</h3><p style="color:var(--red)">'+e.message+'</p><button class="btn btn-primary" onclick="location.reload()">Reload</button></div>';
