@@ -178,6 +178,14 @@ tr:hover td{background:var(--primary-light)}
 
 <div class="loading-overlay" id="loading"><div class="spinner"></div></div>
 
+<div class="modal-overlay" id="saving-overlay" style="z-index:300">
+  <div style="background:var(--white);border-radius:var(--radius);padding:32px 40px;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,.2)">
+    <div class="spinner" style="margin:0 auto 16px"></div>
+    <div style="font-size:15px;font-weight:600;color:var(--text)">Please wait...</div>
+    <div style="font-size:13px;color:var(--text2);margin-top:4px">Updating Permission</div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="add-modal">
   <div class="modal">
     <div class="modal-header">
@@ -700,6 +708,7 @@ async function savePerm(){
   });
   var toSave=allEntries.filter(function(e){return e.Access!=='none';});
   if(!toSave.length){showToast('Set at least one document type to Edit or Read','error');return;}
+  document.getElementById('saving-overlay').classList.add('show');
   try{
     if(editingId==='GROUP'||editingId==='BULK'){
       var targetEmails=editingId==='GROUP'?[email]:[];
@@ -719,8 +728,8 @@ async function savePerm(){
     }else{
       for(var m=0;m<toSave.length;m++){try{await spPost(permApi(),toSave[m]);}catch(e){}}
     }
-    closeModal();showToast('Permissions saved','success');await loadPerms();
-  }catch(e){showToast('Save failed: '+e.message,'error');}
+    closeModal();document.getElementById('saving-overlay').classList.remove('show');showToast('Permissions saved','success');await loadPerms();
+  }catch(e){document.getElementById('saving-overlay').classList.remove('show');showToast('Save failed: '+e.message,'error');}
 }
 
 async function deletePerm(id){
