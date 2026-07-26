@@ -382,7 +382,7 @@ function setStatusMsg(msg,isError){
 // ======================== AUTH ========================
 function initMsal(){
   const tenant=storage.getItem('pmt-tenant')||'684547e2-bb8b-450a-a3e1-3a6bc15e9471';
-  const client=storage.getItem('pmt-client')||'84b1fcd2-8c12-4f1b-8fa4-b0e6d99bf534';
+  const client=storage.getItem('pmt-client')||'04f83c11-e51c-4a8a-be86-9e3a49f3e952';
   if(!tenant||!client) return false;
   try{
     msalApp = new msal.PublicClientApplication({
@@ -438,20 +438,22 @@ async function getTokenSP(){
 }
 
 async function loadUserPerms(){
-  myPerms='ALL';
+  myPerms={};
   if(!spUser||!spToken)return;
   const email=spUser.username||'';
   if(!email)return;
   const siteUrl='https://sascontractingsa.sharepoint.com/sites/Alenshaiah';
+  const isAdmin=(email.toLowerCase()===ADMIN_EMAIL.toLowerCase());
   try{
     const token=await ensureSpSiteToken(siteUrl);
     const listEnc=PERM_LIST.replace(/'/g,"''");
     const url=siteUrl+'/_api/web/lists/getbytitle(\''+listEnc+'\')/items';
     const resp=await fetch(url,{headers:{'Authorization':'Bearer '+token,'Accept':'application/json'}});
-    if(!resp.ok){if(resp.status===404){myPerms='ALL';return}throw new Error('HTTP '+resp.status)}
+    if(!resp.ok){if(resp.status===404){myPerms=isAdmin?'ALL':{};return}throw new Error('HTTP '+resp.status)}
     const data=await resp.json();
     const items=data.d?data.d.results:data.value||[];
-    if(!items.length){myPerms='ALL';return}
+    if(!items.length){myPerms=isAdmin?'ALL':{};return}
+    if(isAdmin){myPerms='ALL';return}
     myPerms={};
     const userLower=email.toLowerCase();
     const currentApp=location.pathname.includes('project-tracker')?'ProjectTracker':'Forms';
@@ -468,7 +470,7 @@ async function loadUserPerms(){
     console.log('[Perms] Result:',JSON.stringify(myPerms));
   }catch(e){
     console.error('[Perms] Error:',e.message);
-    myPerms='ALL';
+    myPerms=isAdmin?'ALL':{};
   }
 }
 
