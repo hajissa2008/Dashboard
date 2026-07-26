@@ -23,7 +23,6 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(
 .btn-sm{padding:4px 10px;font-size:12px}
 .btn:disabled{opacity:.5;cursor:not-allowed}
 .main{max-width:1400px;margin:0 auto;padding:24px}
-
 .group-tabs{display:flex;gap:0;margin-bottom:24px;background:var(--white);border:1px solid var(--gray-border);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow)}
 .group-tab{flex:1;padding:16px 24px;cursor:pointer;text-align:center;transition:all .2s;border:none;background:var(--white);font-size:14px;font-weight:600;color:var(--text2);position:relative;border-right:1px solid var(--gray-border)}
 .group-tab:last-child{border-right:none}
@@ -32,8 +31,6 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(
 .group-tab.active::after{content:'';position:absolute;bottom:0;left:0;right:0;height:3px;background:var(--primary)}
 .group-tab .tab-count{display:inline-block;margin-left:8px;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;background:var(--gray-light);color:var(--text2)}
 .group-tab.active .tab-count{background:var(--primary);color:white}
-.group-tab .tab-icon{margin-right:6px}
-
 .toolbar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:20px}
 .toolbar input{padding:6px 12px;border:1px solid var(--gray-border);border-radius:var(--radius);font-size:13px;width:260px}
 .toolbar select{padding:6px 12px;border:1px solid var(--gray-border);border-radius:var(--radius);font-size:13px}
@@ -45,15 +42,13 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(
 table{width:100%;border-collapse:collapse}
 th{background:var(--gray-light);padding:8px 12px;text-align:left;font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);border-bottom:1px solid var(--gray-border);position:sticky;top:0}
 td{padding:6px 12px;border-bottom:1px solid var(--gray-border);font-size:13px;vertical-align:middle}
-tr:hover{background:var(--primary-light)}
-.group-header:hover{background:var(--gray-light) !important}
+tr:hover td{background:var(--primary-light)}
+.group-header:hover td{background:var(--gray-light) !important}
 .badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600}
 .badge-edit{background:var(--green-light);color:var(--green)}
 .badge-read{background:var(--blue-light);color:var(--blue)}
 .badge-none{background:var(--red-light);color:var(--red)}
 .badge-app{background:var(--primary-light);color:var(--primary)}
-.badge-tracker{background:#E8ECF0;color:var(--primary)}
-.badge-dc{background:var(--orange-light);color:var(--orange)}
 .empty-state{text-align:center;padding:60px 20px;color:var(--text2)}
 .empty-state .icon{font-size:48px;margin-bottom:12px}
 .empty-state h3{font-size:16px;color:var(--text);margin-bottom:4px}
@@ -102,25 +97,24 @@ tr:hover{background:var(--primary-light)}
 <div class="header">
   <div>
     <h1>AlEnshaiah Permissions Manager</h1>
-    <div class="subtitle">Manage user access for Tracker, DC Log &amp; DC Form</div>
+    <div class="subtitle">Manage user access across Project Tracker and DC systems</div>
   </div>
   <div class="auth-section">
     <span class="user-info" id="user-info" style="display:none"></span>
     <button class="btn btn-primary" id="login-btn" onclick="login()">Sign In</button>
-    <button class="btn" id="logout-btn" style="display:none" onclick="logout()">Sign Out</button>
+    <button class="btn" id="logout-btn" style="display:none" onclick="doLogout()">Sign Out</button>
   </div>
 </div>
 
 <div class="main" id="main-content" style="display:none">
   <div class="group-tabs" id="group-tabs">
     <button class="group-tab active" data-group="tracker" onclick="switchGroup('tracker')">
-      <span class="tab-icon">📐</span>Tracker Permissions <span class="tab-count" id="tab-count-tracker">0</span>
+      📐 Project Tracker <span class="tab-count" id="tab-count-tracker">0</span>
     </button>
     <button class="group-tab" data-group="dc" onclick="switchGroup('dc')">
-      <span class="tab-icon">📄</span>DC Permissions <span class="tab-count" id="tab-count-dc">0</span>
+      📄 DC Log <span class="tab-count" id="tab-count-dc">0</span>
     </button>
   </div>
-
   <div class="stats" id="stats"></div>
   <div class="toolbar">
     <input type="text" id="search" placeholder="Search by email..." oninput="renderTable()">
@@ -130,14 +124,12 @@ tr:hover{background:var(--primary-light)}
     <button class="btn" onclick="loadPerms()">🔄 Refresh</button>
     <button class="btn btn-primary" onclick="openAddModal()">+ Add User</button>
   </div>
-
   <div id="bulk-bar" class="bulk-bar" style="display:none">
     <span id="bulk-count">0 selected</span>
     <button class="btn btn-sm" style="color:white;border-color:rgba(255,255,255,.3)" onclick="bulkEdit()">Bulk Edit</button>
     <button class="btn btn-sm btn-danger" onclick="bulkDelete()">Delete Selected</button>
     <button class="btn btn-sm" style="color:white;border-color:rgba(255,255,255,.3)" onclick="clearSelection()">Cancel</button>
   </div>
-
   <div class="table-wrap">
     <table>
       <thead><tr>
@@ -178,8 +170,8 @@ tr:hover{background:var(--primary-light)}
       <div class="form-group">
         <label>Permission Group</label>
         <select id="inp-group" onchange="onModalGroupChange()">
-          <option value="tracker">Tracker Permissions</option>
-          <option value="dc">DC Permissions</option>
+          <option value="tracker">Project Tracker</option>
+          <option value="dc">DC Log</option>
         </select>
       </div>
       <div class="form-group">
@@ -213,7 +205,6 @@ tr:hover{background:var(--primary-light)}
 const SITE_URL='https://sascontractingsa.sharepoint.com/sites/Alenshaiah';
 const PERM_LIST='Permissions';
 const ADMIN_EMAIL='m.hajissa@alenshaiah.com';
-
 let msalApp=null,spToken=null,spUser=null,spSiteToken=null;
 let permItems=[];
 let selectedIds=new Set();
@@ -223,17 +214,18 @@ let currentGroup='tracker';
 
 const GROUP_CONFIG={
   tracker:{
+    label:'Project Tracker',
     apps:[{value:'ProjectTracker',label:'Project Tracker'},{value:'Forms',label:'Data Entry (Forms)'},{value:'Both',label:'Both'}],
     docTypes:[
       {id:'substructure',title:'Substructure',group:'Shop Drawing'},
       {id:'superstructure',title:'Superstructure',group:'Shop Drawing'},
-      {id:'calculations',title:'Calculations (Tracker)',group:'Tracker Lists'},
-      {id:'methodstatement',title:'Method Statement',group:'Tracker Lists'},
-      {id:'procurement',title:'Procurement',group:'Tracker Lists'},
-      {id:'pt-calculations',title:'Calculations (Forms)',group:'Forms Lists'}
+      {id:'calculations',title:'Calculations',group:'Tracker'},
+      {id:'methodstatement',title:'Method Statement',group:'Tracker'},
+      {id:'procurement',title:'Procurement',group:'Tracker'}
     ]
   },
   dc:{
+    label:'DC Log',
     apps:[{value:'DCLog',label:'DC Log'},{value:'DCForm',label:'DC Form'},{value:'Both',label:'Both'}],
     docTypes:[
       {id:'sor',title:'SOR',group:'Correspondence & Registers'},
@@ -283,37 +275,52 @@ const GROUP_CONFIG={
 };
 
 const ALL_DEPTS=[];
-Object.entries(GROUP_CONFIG).forEach(([gid,g])=>{g.docTypes.forEach(d=>{ALL_DEPTS.push({...d,groupKey:gid})});});
-const DEPTS_BY_ID={};ALL_DEPTS.forEach(d=>{DEPTS_BY_ID[d.id]=d});
+Object.entries(GROUP_CONFIG).forEach(([gid,g])=>{g.docTypes.forEach(d=>{ALL_DEPTS.push({...d,groupKey:gid});});});
+const DEPTS_BY_ID={};ALL_DEPTS.forEach(d=>{DEPTS_BY_ID[d.id]=d;});
 
 function htmlEscape(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
-function showToast(msg,type){const t=document.getElementById('toast');t.textContent=msg;t.className='toast '+(type||'')+' show';setTimeout(()=>t.classList.remove('show'),3000);}
+function showToast(msg,type){var t=document.getElementById('toast');t.textContent=msg;t.className='toast '+(type||'')+' show';setTimeout(function(){t.classList.remove('show');},3000);}
 function showLoading(show){document.getElementById('loading').classList.toggle('show',show);}
 
 function initMsal(){
-  const tenant='684547e2-bb8b-450a-a3e1-3a6bc15e9471';
-  const client='04f83c11-e51c-4a8a-be86-9e3a49f3e952';
+  var tenant='684547e2-bb8b-450a-a3e1-3a6bc15e9471';
+  var client='04f83c11-e51c-4a8a-be86-9e3a49f3e952';
   msalApp=new msal.PublicClientApplication({
     auth:{clientId:client,authority:'https://login.microsoftonline.com/'+tenant,redirectUri:location.origin+location.pathname},
-    cache:{cacheLocation:'localStorage'},system:{allowNativeBroker:false}
+    cache:{cacheLocation:'localStorage'},
+    system:{allowNativeBroker:false}
   });
 }
 
 async function login(){
   if(!msalApp)initMsal();
-  try{const resp=await msalApp.loginPopup({scopes:['Sites.ReadWrite.All','User.Read']});handleLogin(resp);}
-  catch(e){
-    try{await msalApp.loginRedirect({scopes:['Sites.ReadWrite.All','User.Read']});}catch(e2){showToast('Login failed: '+e2.message,'error');}
+  try{
+    var resp=await msalApp.loginPopup({scopes:['Sites.ReadWrite.All','User.Read']});
+    handleLogin(resp);
+  }catch(e){
+    try{
+      await msalApp.loginRedirect({scopes:['Sites.ReadWrite.All','User.Read']});
+    }catch(e2){
+      showToast('Login failed: '+e2.message,'error');
+    }
   }
 }
 
 async function trySSO(){
   if(!msalApp)initMsal();
   try{
-    await msalApp.handleRedirectPromise().then(r=>{if(r)handleLogin(r);});
+    var resp=await msalApp.handleRedirectPromise();
+    if(resp&&resp.account){handleLogin(resp);return;}
+  }catch(e){console.warn('[SSO] redirect:',e.message);}
+  try{
     if(!spUser){
-      const accounts=msalApp.getAllAccounts();
-      if(accounts.length){const resp=await msalApp.ssoSilent({scopes:['Sites.ReadWrite.All','User.Read'],account:accounts[0]});handleLogin(resp);}
+      var accounts=msalApp.getAllAccounts();
+      if(accounts.length){
+        try{
+          var r=await msalApp.ssoSilent({scopes:['Sites.ReadWrite.All','User.Read'],account:accounts[0]});
+          handleLogin(r);
+        }catch(e2){}
+      }
     }
   }catch(e){}
 }
@@ -323,7 +330,7 @@ function handleLogin(resp){
     spUser=resp.account;spToken=resp.accessToken;
     document.getElementById('login-btn').style.display='none';
     document.getElementById('logout-btn').style.display='';
-    const ui=document.getElementById('user-info');
+    var ui=document.getElementById('user-info');
     if((spUser.username||'').toLowerCase()!==ADMIN_EMAIL.toLowerCase()){
       ui.style.display='';ui.innerHTML='<strong>'+htmlEscape(spUser.name||spUser.username)+'</strong> <span style="color:var(--red);font-size:12px">(Not authorized)</span>';
       document.getElementById('empty-login').innerHTML='<div class="icon">🔒</div><h3>Access Denied</h3><p style="margin-top:8px">Only the administrator can manage permissions.</p>';
@@ -338,7 +345,7 @@ function handleLogin(resp){
   }
 }
 
-function logout(){
+function doLogout(){
   spUser=null;spToken=null;spSiteToken=null;
   if(msalApp)msalApp.logoutPopup();
   document.getElementById('login-btn').style.display='';
@@ -351,52 +358,66 @@ function logout(){
 async function ensureSpToken(){
   if(!spUser)throw new Error('Not authenticated');
   try{
-    if(spSiteToken){const r=await fetch(SITE_URL+'/_api/web/currentuser',{headers:{'Authorization':'Bearer '+spSiteToken,'Accept':'application/json'}});if(r.ok)return spSiteToken;}
-  }catch{}
-  const resp=await msalApp.acquireTokenSilent({scopes:[new URL(SITE_URL).origin+'/.default'],account:spUser});
+    if(spSiteToken){
+      var r=await fetch(SITE_URL+'/_api/web/currentuser',{headers:{'Authorization':'Bearer '+spSiteToken,'Accept':'application/json'}});
+      if(r.ok)return spSiteToken;
+    }
+  }catch(e){}
+  var resp=await msalApp.acquireTokenSilent({scopes:[new URL(SITE_URL).origin+'/.default'],account:spUser});
   spSiteToken=resp.accessToken;return spSiteToken;
 }
 
 async function spGet(url){
-  const token=await ensureSpToken();
-  const resp=await fetch(url,{headers:{'Authorization':'Bearer '+token,'Accept':'application/json'}});
-  if(!resp.ok){const t=await resp.text().catch(()=>'');throw new Error('HTTP '+resp.status+': '+t.substring(0,200));}
+  var token=await ensureSpToken();
+  var resp=await fetch(url,{headers:{'Authorization':'Bearer '+token,'Accept':'application/json'}});
+  if(!resp.ok){var t=await resp.text().catch(function(){return '';});throw new Error('HTTP '+resp.status+': '+t.substring(0,200));}
   return await resp.json();
 }
 async function spPost(url,body){
-  const token=await ensureSpToken();
-  const resp=await fetch(url,{method:'POST',headers:{'Authorization':'Bearer '+token,'Accept':'application/json','Content-Type':'application/json'},body:JSON.stringify(body)});
-  if(!resp.ok){const t=await resp.text().catch(()=>'');throw new Error('HTTP '+resp.status+': '+t.substring(0,200));}
-  return resp.status===204?null:await resp.json().catch(()=>null);
+  var token=await ensureSpToken();
+  var resp=await fetch(url,{method:'POST',headers:{'Authorization':'Bearer '+token,'Accept':'application/json','Content-Type':'application/json'},body:JSON.stringify(body)});
+  if(!resp.ok){var t=await resp.text().catch(function(){return '';});throw new Error('HTTP '+resp.status+': '+t.substring(0,200));}
+  return resp.status===204?null:await resp.json().catch(function(){return null;});
 }
 async function spDelete(url){
-  const token=await ensureSpToken();
-  const resp=await fetch(url,{method:'DELETE',headers:{'Authorization':'Bearer '+token,'Accept':'application/json','X-HTTP-Method':'DELETE','If-Match':'*'}});
-  if(!resp.ok){const t=await resp.text().catch(()=>'');throw new Error('HTTP '+resp.status+': '+t.substring(0,200));}
+  var token=await ensureSpToken();
+  var resp=await fetch(url,{method:'DELETE',headers:{'Authorization':'Bearer '+token,'Accept':'application/json','X-HTTP-Method':'DELETE','If-Match':'*'}});
+  if(!resp.ok){var t=await resp.text().catch(function(){return '';});throw new Error('HTTP '+resp.status+': '+t.substring(0,200));}
 }
 
 function permApi(id){
   return SITE_URL+"/_api/web/lists/getbytitle('"+PERM_LIST+"')"+(id?'/items('+id+')':'/items');
 }
 
+function itemBelongsToGroup(item,groupKey){
+  var cfg=GROUP_CONFIG[groupKey];
+  var docIds=cfg.docTypes.map(function(d){return d.id;});
+  var appLower=(item.App||'').toLowerCase();
+  var trackerApps=['projecttracker','forms','both'];
+  var dcApps=['dclog','dcform','both'];
+  if(docIds.indexOf(item.DeptID)>=0)return true;
+  if(groupKey==='tracker'&&trackerApps.indexOf(appLower)>=0)return true;
+  if(groupKey==='dc'&&dcApps.indexOf(appLower)>=0)return true;
+  return false;
+}
+
 async function loadPerms(){
   showLoading(true);
   try{
-    let allItems=[];
-    let nextUrl=permApi()+'?$top=5000&$orderby=ID asc';
+    var allItems=[];
+    var nextUrl=permApi()+'?$top=5000&$orderby=ID asc';
     while(nextUrl){
-      const data=await spGet(nextUrl);
-      const batch=data.d?data.d.results:(data.value||[]);
+      var data=await spGet(nextUrl);
+      var batch=data.d?data.d.results:(data.value||[]);
       allItems=allItems.concat(batch);
       nextUrl=(data.d&&data.d.__next)?data.d.__next:(data['@odata.nextLink']||null);
     }
     permItems=allItems;
-    console.log('[Perms] Loaded',permItems.length,'items');
-    console.log('[Perms] Unique DeptIDs:',[...new Set(permItems.map(i=>i.DeptID))]);
-    console.log('[Perms] Unique Apps:',[...new Set(permItems.map(i=>i.App))]);
-    console.log('[Perms] Sample item:',permItems[0]);
+    console.log('[Perms] Loaded '+permItems.length+' items');
+    console.log('[Perms] DeptIDs:',[...new Set(permItems.map(function(i){return i.DeptID;}))]);
+    console.log('[Perms] Apps:',[...new Set(permItems.map(function(i){return i.App;}))]);
   }catch(e){
-    if(e.message.includes('404')){permItems=[];showToast('Permissions list not found.','error');}
+    if(e.message.indexOf('404')>=0){permItems=[];showToast('Permissions list not found.','error');}
     else{showToast('Failed to load: '+e.message,'error');permItems=[];}
   }
   showLoading(false);
@@ -405,96 +426,92 @@ async function loadPerms(){
 
 function switchGroup(group){
   currentGroup=group;
-  document.querySelectorAll('.group-tab').forEach(t=>t.classList.toggle('active',t.dataset.group===group));
+  document.querySelectorAll('.group-tab').forEach(function(t){t.classList.toggle('active',t.dataset.group===group);});
   selectedIds.clear();
   populateFilters();renderStats();renderTable();
 }
 
 function updateTabCounts(){
-  document.getElementById('tab-count-tracker').textContent=permItems.filter(i=>itemBelongsToGroup(i,'tracker')).length;
-  document.getElementById('tab-count-dc').textContent=permItems.filter(i=>itemBelongsToGroup(i,'dc')).length;
+  var tc=permItems.filter(function(i){return itemBelongsToGroup(i,'tracker');}).length;
+  var dc=permItems.filter(function(i){return itemBelongsToGroup(i,'dc');}).length;
+  document.getElementById('tab-count-tracker').textContent=tc;
+  document.getElementById('tab-count-dc').textContent=dc;
 }
 
 function populateFilters(){
-  const cfg=GROUP_CONFIG[currentGroup];
-  const appSel=document.getElementById('filter-app');
-  const curApp=appSel.value;
-  appSel.innerHTML='<option value="">All Apps</option>'+cfg.apps.map(a=>'<option value="'+a.value+'">'+a.label+'</option>').join('');
-  if(curApp&&cfg.apps.find(a=>a.value===curApp))appSel.value=curApp;
+  var cfg=GROUP_CONFIG[currentGroup];
+  var appSel=document.getElementById('filter-app');
+  var curApp=appSel.value;
+  appSel.innerHTML='<option value="">All Apps</option>'+cfg.apps.map(function(a){return '<option value="'+a.value+'">'+a.label+'</option>';}).join('');
+  if(curApp){var found=cfg.apps.find(function(a){return a.value===curApp;});if(found)appSel.value=curApp;else appSel.value='';}
 
-  const deptSel=document.getElementById('filter-dept');
-  const curDept=deptSel.value;
+  var deptSel=document.getElementById('filter-dept');
+  var curDept=deptSel.value;
   deptSel.innerHTML='<option value="">All Document Types</option>';
-  const groups=[...new Set(cfg.docTypes.map(d=>d.group))];
-  groups.forEach(g=>{
-    const items=cfg.docTypes.filter(d=>d.group===g);
-    const og=document.createElement('optgroup');og.label=g;
-    items.forEach(d=>{const o=document.createElement('option');o.value=d.id;o.textContent=d.title;og.appendChild(o);});
+  var groups=[];
+  cfg.docTypes.forEach(function(d){if(groups.indexOf(d.group)<0)groups.push(d.group);});
+  groups.forEach(function(g){
+    var items=cfg.docTypes.filter(function(d){return d.group===g;});
+    var og=document.createElement('optgroup');og.label=g;
+    items.forEach(function(d){var o=document.createElement('option');o.value=d.id;o.textContent=d.title;og.appendChild(o);});
     deptSel.appendChild(og);
   });
   deptSel.value=curDept;
 }
 
 function renderStats(){
-  const cfg=GROUP_CONFIG[currentGroup];
-  const groupItems=permItems.filter(i=>itemBelongsToGroup(i,currentGroup));
-  const uniqueEmails=new Set(groupItems.map(i=>(i.Title||'').toLowerCase()));
-  const appCounts={};
-  cfg.apps.forEach(a=>{appCounts[a.value]=0;});
-  groupItems.forEach(i=>{const k=i.App||'Both';if(appCounts[k]!==undefined)appCounts[k]++;else if(appCounts['Both']!==undefined)appCounts['Both']++;});
-  let html='<div class="stat-card"><div class="label">Total Entries</div><div class="value">'+groupItems.length+'</div></div>'+
+  var cfg=GROUP_CONFIG[currentGroup];
+  var groupItems=permItems.filter(function(i){return itemBelongsToGroup(i,currentGroup);});
+  var uniqueEmails=new Set(groupItems.map(function(i){return (i.Title||'').toLowerCase();}));
+  var appCounts={};
+  cfg.apps.forEach(function(a){appCounts[a.value]=0;});
+  groupItems.forEach(function(i){var k=i.App||'Both';if(appCounts[k]!==undefined)appCounts[k]++;});
+  var html='<div class="stat-card"><div class="label">Total Entries</div><div class="value">'+groupItems.length+'</div></div>'+
     '<div class="stat-card"><div class="label">Unique Users</div><div class="value">'+uniqueEmails.size+'</div></div>';
-  cfg.apps.forEach(a=>{
-    html+='<div class="stat-card"><div class="label">'+htmlEscape(a.label)+'</div><div class="value">'+appCounts[a.value]+'</div></div>';
+  cfg.apps.forEach(function(a){
+    html+='<div class="stat-card"><div class="label">'+htmlEscape(a.label)+'</div><div class="value">'+(appCounts[a.value]||0)+'</div></div>';
   });
   document.getElementById('stats').innerHTML=html;
 }
 
-function itemBelongsToGroup(item,groupKey){
-  const cfg=GROUP_CONFIG[groupKey];
-  const appValues=cfg.apps.map(a=>a.value.toLowerCase());
-  const docIds=cfg.docTypes.map(d=>d.id);
-  if(docIds.includes(item.DeptID))return true;
-  const app=(item.App||'Both').toLowerCase();
-  if(appValues.includes(app)||app==='both')return true;
-  return false;
-}
-
 function getFiltered(){
-  const search=document.getElementById('search').value.toLowerCase();
-  const app=document.getElementById('filter-app').value;
-  const dept=document.getElementById('filter-dept').value;
-  const cfg=GROUP_CONFIG[currentGroup];
-  const validDocIds=new Set(cfg.docTypes.map(d=>d.id));
-  return permItems.filter(item=>{
+  var search=document.getElementById('search').value.toLowerCase();
+  var app=document.getElementById('filter-app').value;
+  var dept=document.getElementById('filter-dept').value;
+  var cfg=GROUP_CONFIG[currentGroup];
+  var validDocIds=cfg.docTypes.map(function(d){return d.id;});
+  return permItems.filter(function(item){
     if(!itemBelongsToGroup(item,currentGroup))return false;
-    const email=(item.Title||'').toLowerCase();
-    if(search&&!email.includes(search))return false;
+    var email=(item.Title||'').toLowerCase();
+    if(search&&email.indexOf(search)<0)return false;
     if(app&&(item.App||'Both')!==app)return false;
-    if(dept&&validDocIds.has(item.DeptID)&&(item.DeptID||'')!==dept)return false;
+    if(dept&&validDocIds.indexOf(item.DeptID)>=0&&item.DeptID!==dept)return false;
     return true;
   });
 }
 
 function renderTable(){
-  const items=getFiltered();
-  const tbody=document.getElementById('table-body');
+  var items=getFiltered();
+  var tbody=document.getElementById('table-body');
   if(!items.length){
     tbody.innerHTML='<tr><td colspan="6" class="empty-state"><div class="icon">📋</div><h3>No entries found</h3><p style="margin-top:4px;color:var(--text2)">Add user permissions or adjust your filters.</p></td></tr>';
     return;
   }
-  const groups={};
-  items.forEach(item=>{
-    const email=(item.Title||'').toLowerCase();
+  var groups={};
+  items.forEach(function(item){
+    var email=(item.Title||'').toLowerCase();
     if(!groups[email])groups[email]={email:item.Title||'',items:[]};
     groups[email].items.push(item);
   });
-  let html='';
-  Object.values(groups).sort((a,b)=>a.email.localeCompare(b.email)).forEach(g=>{
-    const apps=[...new Set(g.items.map(i=>i.App||'Both'))];
-    const appsStr=apps.map(a=>'<span class="badge badge-app">'+htmlEscape(a)+'</span>').join(' ');
-    const deptCount=g.items.length;
-    const safeEmailJS=htmlEscape(g.email).replace(/'/g,"\\'");
+  var html='';
+  var sortedEmails=Object.keys(groups).sort();
+  sortedEmails.forEach(function(email){
+    var g=groups[email];
+    var apps=[];
+    g.items.forEach(function(i){var a=i.App||'Both';if(apps.indexOf(a)<0)apps.push(a);});
+    var appsStr=apps.map(function(a){return '<span class="badge badge-app">'+htmlEscape(a)+'</span>';}).join(' ');
+    var safeEmailJS=htmlEscape(g.email).replace(/'/g,"\\'");
+    var deptCount=g.items.length;
     html+='<tr class="group-header" style="cursor:pointer;background:var(--gray-light)" onclick="toggleGroup(this,\''+safeEmailJS+'\')">'+
       '<td><input type="checkbox" onchange="toggleGroupSelect(\''+safeEmailJS+'\',this.checked)"></td>'+
       '<td><strong>'+htmlEscape(g.email)+'</strong></td>'+
@@ -502,11 +519,12 @@ function renderTable(){
       '<td colspan="2" style="color:var(--text2)">'+deptCount+' permission(s)</td>'+
       '<td><button class="btn btn-sm" onclick="event.stopPropagation();openEditGroupModal(\''+safeEmailJS+'\')">Edit</button> '+
         '<button class="btn btn-sm btn-danger" onclick="event.stopPropagation();deleteGroup(\''+safeEmailJS+'\')">Del All</button></td></tr>';
-    g.items.forEach(item=>{
-      const access=(item.Access||'edit').toLowerCase();
-      const deptMeta=DEPTS_BY_ID[item.DeptID];
-      const deptName=deptMeta?deptMeta.title:item.DeptID;
-      html+='<tr class="group-row group-'+safeEmailJS.replace(/[^a-z0-9]/gi,'')+'" style="display:none">'+
+    g.items.forEach(function(item){
+      var access=(item.Access||'edit').toLowerCase();
+      var deptMeta=DEPTS_BY_ID[item.DeptID];
+      var deptName=deptMeta?deptMeta.title:(item.DeptID||'—');
+      var cssKey=safeEmailJS.replace(/[^a-z0-9]/gi,'');
+      html+='<tr class="group-row group-'+cssKey+'" style="display:none">'+
         '<td></td><td style="padding-left:28px;color:var(--text2)">'+htmlEscape(g.email)+'</td>'+
         '<td><span class="badge badge-app">'+htmlEscape(item.App||'Both')+'</span></td>'+
         '<td>'+htmlEscape(deptName)+'</td>'+
@@ -519,65 +537,77 @@ function renderTable(){
   updateBulkBar();
 }
 
-const expandedGroups=new Set();
+var expandedGroups=new Set();
 function toggleGroup(tr,email){
-  const key=email.replace(/[^a-z0-9]/gi,'');
-  document.querySelectorAll('.group-'+key).forEach(r=>r.style.display=expandedGroups.has(email)?'none':'');
-  if(expandedGroups.has(email))expandedGroups.delete(email);else expandedGroups.add(email);
-  tr.style.background=expandedGroups.has(email)?'var(--gray-light)':'var(--white)';
+  var key=email.replace(/[^a-z0-9]/gi,'');
+  var rows=document.querySelectorAll('.group-'+key);
+  var wasOpen=expandedGroups.has(email);
+  rows.forEach(function(r){r.style.display=wasOpen?'none':'';});
+  if(wasOpen)expandedGroups.delete(email);else expandedGroups.add(email);
+  tr.style.background=wasOpen?'var(--gray-light)':'var(--white)';
 }
 function toggleGroupSelect(email,checked){
-  permItems.filter(i=>(i.Title||'').toLowerCase()===email.toLowerCase()).forEach(i=>{if(checked)selectedIds.add(i.Id);else selectedIds.delete(i.Id);});
+  permItems.filter(function(i){return (i.Title||'').toLowerCase()===email.toLowerCase();}).forEach(function(i){
+    if(checked)selectedIds.add(i.Id);else selectedIds.delete(i.Id);
+  });
   updateBulkBar();
 }
 function deleteGroup(email){
-  const group=permItems.filter(i=>(i.Title||'').toLowerCase()===email.toLowerCase());
+  var group=permItems.filter(function(i){return (i.Title||'').toLowerCase()===email.toLowerCase();});
   if(!group.length||!confirm('Delete all '+group.length+' permission(s) for '+email+'?'))return;
-  (async()=>{for(const item of group){try{await spDelete(permApi(item.Id));}catch{}}showToast('Deleted','success');selectedIds.clear();await loadPerms();})();
+  (async function(){for(var i=0;i<group.length;i++){try{await spDelete(permApi(group[i].Id));}catch(e){}}showToast('Deleted','success');selectedIds.clear();await loadPerms();})();
 }
 function openEditGroupModal(email){
-  const group=permItems.filter(i=>(i.Title||'').toLowerCase()===email.toLowerCase());
+  var group=permItems.filter(function(i){return (i.Title||'').toLowerCase()===email.toLowerCase();});
   editingId='GROUP';editingGroupEmail=email;
   document.getElementById('modal-title').textContent='Edit Permissions — '+email;
   document.getElementById('inp-email').value=email;
-  const existingPerms={};group.forEach(i=>{existingPerms[i.DeptID]=(i.Access||'edit').toLowerCase();});
-  const firstApp=group[0]?group[0].App:'Both';
-  const groupKey=firstApp==='ProjectTracker'||firstApp==='Forms'?'tracker':'dc';
+  var existingPerms={};
+  group.forEach(function(i){existingPerms[i.DeptID]=(i.Access||'edit').toLowerCase();});
+  var apps=[];
+  group.forEach(function(i){var a=i.App||'Both';if(apps.indexOf(a)<0)apps.push(a);});
+  var groupKey='dc';
+  apps.forEach(function(a){
+    var al=a.toLowerCase();
+    if(al==='projecttracker'||al==='forms')groupKey='tracker';
+  });
   document.getElementById('inp-group').value=groupKey;
   onModalGroupChange();
-  document.getElementById('inp-app').value=firstApp;
+  document.getElementById('inp-app').value=apps.length===1?apps[0]:'Both';
   document.getElementById('inp-access').value='edit';
   document.getElementById('dept-perms-grid').innerHTML=buildDeptGrid('edit',existingPerms);
   document.getElementById('add-modal').classList.add('show');
 }
 function toggleSelectAll(checked){
-  getFiltered().forEach(i=>{if(checked)selectedIds.add(i.Id);else selectedIds.delete(i.Id);});
-  document.querySelectorAll('.group-header input[type=checkbox]').forEach(cb=>cb.checked=checked);
+  getFiltered().forEach(function(i){if(checked)selectedIds.add(i.Id);else selectedIds.delete(i.Id);});
+  document.querySelectorAll('.group-header input[type=checkbox]').forEach(function(cb){cb.checked=checked;});
   renderTable();
 }
 function clearSelection(){selectedIds.clear();expandedGroups.clear();renderTable();}
 function updateBulkBar(){
-  const bar=document.getElementById('bulk-bar');
+  var bar=document.getElementById('bulk-bar');
   if(selectedIds.size>0){bar.style.display='';document.getElementById('bulk-count').textContent=selectedIds.size+' selected';}
   else{bar.style.display='none';}
 }
 
 function onModalGroupChange(){
-  const g=document.getElementById('inp-group').value;
-  const cfg=GROUP_CONFIG[g];
-  const appSel=document.getElementById('inp-app');
-  appSel.innerHTML=cfg.apps.map(a=>'<option value="'+a.value+'">'+a.label+'</option>').join('');
+  var g=document.getElementById('inp-group').value;
+  var cfg=GROUP_CONFIG[g];
+  var appSel=document.getElementById('inp-app');
+  appSel.innerHTML=cfg.apps.map(function(a){return '<option value="'+a.value+'">'+a.label+'</option>';}).join('');
 }
 
 function buildDeptGrid(defaultAccess,existingPerms){
-  const cfg=GROUP_CONFIG[document.getElementById('inp-group')?document.getElementById('inp-group').value:currentGroup];
-  let html='';
-  const groups=[...new Set(cfg.docTypes.map(d=>d.group))];
-  groups.forEach(g=>{
-    const items=cfg.docTypes.filter(d=>d.group===g);
+  var gKey=document.getElementById('inp-group')?document.getElementById('inp-group').value:currentGroup;
+  var cfg=GROUP_CONFIG[gKey];
+  var html='';
+  var groups=[];
+  cfg.docTypes.forEach(function(d){if(groups.indexOf(d.group)<0)groups.push(d.group);});
+  groups.forEach(function(g){
+    var items=cfg.docTypes.filter(function(d){return d.group===g;});
     html+='<div class="perms-section"><h4>'+htmlEscape(g)+'</h4><div class="perms-grid">';
-    items.forEach(d=>{
-      const val=existingPerms&&existingPerms[d.id]?existingPerms[d.id]:defaultAccess;
+    items.forEach(function(d){
+      var val=existingPerms&&existingPerms[d.id]?existingPerms[d.id]:defaultAccess;
       html+='<div class="perm-row"><label>'+htmlEscape(d.title)+'</label><select data-dept="'+d.id+'">'+
         '<option value="edit"'+(val==='edit'?' selected':'')+'>Edit</option>'+
         '<option value="read"'+(val==='read'?' selected':'')+'>Read</option>'+
@@ -589,7 +619,7 @@ function buildDeptGrid(defaultAccess,existingPerms){
 }
 
 function onAccessChange(){
-  document.querySelectorAll('#dept-perms-grid select').forEach(s=>{s.value=document.getElementById('inp-access').value;});
+  document.querySelectorAll('#dept-perms-grid select').forEach(function(s){s.value=document.getElementById('inp-access').value;});
 }
 
 function openAddModal(){
@@ -603,11 +633,12 @@ function openAddModal(){
   document.getElementById('add-modal').classList.add('show');
 }
 function openEditModal(id){
-  const item=permItems.find(i=>i.Id===id);if(!item)return;
+  var item=permItems.find(function(i){return i.Id===id;});if(!item)return;
   editingId=id;
   document.getElementById('modal-title').textContent='Edit User Permission';
   document.getElementById('inp-email').value=item.Title||'';
-  const groupKey=(item.App==='ProjectTracker'||item.App==='Forms')?'tracker':'dc';
+  var al=(item.App||'').toLowerCase();
+  var groupKey=(al==='projecttracker'||al==='forms')?'tracker':'dc';
   document.getElementById('inp-group').value=groupKey;
   onModalGroupChange();
   document.getElementById('inp-app').value=item.App||'Both';
@@ -618,22 +649,23 @@ function openEditModal(id){
 function closeModal(){document.getElementById('add-modal').classList.remove('show');}
 
 async function savePerm(){
-  const email=document.getElementById('inp-email').value.trim();
-  const app=document.getElementById('inp-app').value;
+  var email=document.getElementById('inp-email').value.trim();
+  var app=document.getElementById('inp-app').value;
   if(!email){showToast('Email is required','error');return;}
-  const deptPerms={};document.querySelectorAll('#dept-perms-grid select').forEach(s=>{deptPerms[s.dataset.dept]=s.value;});
-  const entries=Object.entries(deptPerms).map(([deptId,access])=>({Title:email,App:app,DeptID:deptId,Access:access}));
+  var deptPerms={};
+  document.querySelectorAll('#dept-perms-grid select').forEach(function(s){deptPerms[s.dataset.dept]=s.value;});
+  var entries=Object.keys(deptPerms).map(function(deptId){return {Title:email,App:app,DeptID:deptId,Access:deptPerms[deptId]};});
   if(!entries.length){showToast('No document types selected','error');return;}
   try{
     if(editingId==='GROUP'){
-      const oldItems=permItems.filter(i=>(i.Title||'').toLowerCase()===email.toLowerCase());
-      for(const item of oldItems){try{await spDelete(permApi(item.Id));}catch{}}
-      for(const e of entries){try{await spPost(permApi(),e);}catch{}}
+      var oldItems=permItems.filter(function(i){return (i.Title||'').toLowerCase()===email.toLowerCase();});
+      for(var i=0;i<oldItems.length;i++){try{await spDelete(permApi(oldItems[i].Id));}catch(e){}}
+      for(var j=0;j<entries.length;j++){try{await spPost(permApi(),entries[j]);}catch(e){}}
     }else if(editingId){
       await spDelete(permApi(editingId));
-      for(const e of entries){try{await spPost(permApi(),e);}catch{}}
+      for(var k=0;k<entries.length;k++){try{await spPost(permApi(),entries[k]);}catch(e){}}
     }else{
-      for(const e of entries){try{await spPost(permApi(),e);}catch{}}
+      for(var m=0;m<entries.length;m++){try{await spPost(permApi(),entries[m]);}catch(e){}}
     }
     closeModal();showToast('Permission saved','success');await loadPerms();
   }catch(e){showToast('Save failed: '+e.message,'error');}
@@ -647,8 +679,9 @@ async function deletePerm(id){
 
 async function bulkDelete(){
   if(!selectedIds.size||!confirm('Delete '+selectedIds.size+' entries?'))return;
-  let ok=0,fail=0;
-  for(const id of selectedIds){try{await spDelete(permApi(id));ok++;}catch{fail++;}}
+  var ok=0,fail=0;
+  var ids=Array.from(selectedIds);
+  for(var i=0;i<ids.length;i++){try{await spDelete(permApi(ids[i]));ok++;}catch(e){fail++;}}
   selectedIds.clear();showToast('Deleted '+ok+(fail?' ('+fail+' failed)':''),'success');await loadPerms();
 }
 
@@ -665,27 +698,32 @@ function bulkEdit(){
 
 document.getElementById('add-modal').addEventListener('click',function(e){if(e.target===this)closeModal();});
 
-let userSearchAbort=null;
+var userSearchAbort=null;
 async function onUserSearchInput(){
-  const q=document.getElementById('inp-email').value.trim();
+  var q=document.getElementById('inp-email').value.trim();
   if(q.length<2){document.getElementById('user-search-dropdown').classList.remove('show');return;}
   if(userSearchAbort)userSearchAbort.abort();
   userSearchAbort=new AbortController();
   try{
-    const token=await ensureSpToken();
-    const url='https://graph.microsoft.com/v1.0/users?$filter=startswith(displayName,\''+encodeURIComponent(q.replace(/'/g,"''"))+'\') or startswith(mail,\''+encodeURIComponent(q.replace(/'/g,"''"))+'\') or startswith(userPrincipalName,\''+encodeURIComponent(q.replace(/'/g,"''"))+'\')&$top=10&$select=displayName,mail,userPrincipalName&$orderby=displayName';
-    const resp=await fetch(url,{headers:{'Authorization':'Bearer '+token},signal:userSearchAbort.signal});
+    var token=await ensureSpToken();
+    var sq=q.replace(/'/g,"''");
+    var url='https://graph.microsoft.com/v1.0/users?$filter=startswith(displayName,\''+encodeURIComponent(sq)+'\') or startswith(mail,\''+encodeURIComponent(sq)+'\') or startswith(userPrincipalName,\''+encodeURIComponent(sq)+'\')&$top=10&$select=displayName,mail,userPrincipalName&$orderby=displayName';
+    var resp=await fetch(url,{headers:{'Authorization':'Bearer '+token},signal:userSearchAbort.signal});
     if(!resp.ok)return;
-    const data=await resp.json();const users=data.value||[];
-    const dd=document.getElementById('user-search-dropdown');
+    var data=await resp.json();var users=data.value||[];
+    var dd=document.getElementById('user-search-dropdown');
     if(!users.length){dd.innerHTML='<div class="search-status">No users found. Type full email to add manually.</div>';dd.classList.add('show');return;}
-    dd.innerHTML=users.map(u=>'<div class="user-item" onclick="selectSearchUser(\''+htmlEscape((u.mail||'').replace(/'/g,"\\'"))+'\',\''+htmlEscape((u.displayName||'').replace(/'/g,"\\'"))+'\')">'+
-      '<div class="ui-avatar">'+(u.displayName?u.displayName.charAt(0).toUpperCase():'?')+'</div>'+
-      '<div><div class="ui-name">'+htmlEscape(u.displayName||'')+'</div><div class="ui-email">'+htmlEscape(u.mail||u.userPrincipalName||'')+'</div></div></div>').join('');
+    dd.innerHTML=users.map(function(u){
+      var email=(u.mail||'').replace(/'/g,"\\'");
+      var name=(u.displayName||'').replace(/'/g,"\\'");
+      return '<div class="user-item" onclick="selectSearchUser(\''+htmlEscape(email)+'\',\''+htmlEscape(name)+'\')">'+
+        '<div class="ui-avatar">'+(u.displayName?u.displayName.charAt(0).toUpperCase():'?')+'</div>'+
+        '<div><div class="ui-name">'+htmlEscape(u.displayName||'')+'</div><div class="ui-email">'+htmlEscape(u.mail||u.userPrincipalName||'')+'</div></div></div>';
+    }).join('');
     dd.classList.add('show');
   }catch(e){if(e.name!=='AbortError')console.warn('Search failed:',e.message);}
 }
-function selectSearchUser(email,name){
+function selectSearchUser(email){
   document.getElementById('inp-email').value=email;
   document.getElementById('user-search-dropdown').classList.remove('show');
 }
@@ -693,11 +731,10 @@ function onUserSearchKeydown(e){
   if(e.key==='Escape')document.getElementById('user-search-dropdown').classList.remove('show');
 }
 document.addEventListener('click',function(e){
-  const w=document.querySelector('.user-search-wrap');
+  var w=document.querySelector('.user-search-wrap');
   if(w&&!w.contains(e.target))document.getElementById('user-search-dropdown').classList.remove('show');
 });
-
-document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
+document.addEventListener('keydown',function(e){if(e.key==='Escape')closeModal();});
 trySSO();
 </script>
 </body>
