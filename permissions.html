@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='16' fill='%234C5D71'/><text x='50' y='68' font-size='50' font-weight='bold' text-anchor='middle' fill='white'>AE</text></svg>">
 <title>AlEnshaiah - Permissions Manager</title>
 <style>
 :root{--primary:#4C5D71;--primary-dark:#3A4A5E;--primary-light:#E8ECF0;--green:#107C10;--green-light:#E6F7E6;--red:#D92C2C;--red-light:#FDE8E8;--orange:#ED7D31;--orange-light:#FFF0E0;--gray:#8A8886;--gray-light:#F3F2F1;--gray-border:#EDEBE9;--text:#201E1F;--text2:#605E5C;--white:#FFFFFF;--bg:#F3F2F1;--shadow:0 1px 3px rgba(0,0,0,.08);--radius:6px;--blue:#0078D4;--blue-light:#E3F2FD}
@@ -91,7 +92,26 @@ tr:hover td{background:var(--primary-light)}
 .user-search-dropdown .user-item .ui-avatar{width:28px;height:28px;border-radius:50%;background:var(--primary);color:white;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;flex-shrink:0}
 .user-search-dropdown .search-status{padding:10px 12px;text-align:center;font-size:12px;color:var(--text2)}
 .debug-bar{background:var(--white);border:1px solid var(--gray-border);border-radius:var(--radius);padding:8px 14px;margin-bottom:16px;font-size:11px;color:var(--text2);font-family:monospace;display:none;word-break:break-all}
-@media(max-width:768px){.stats{gap:8px}.stat-card{min-width:80px;padding:8px 12px}.stat-card .value{font-size:16px}.perms-grid{grid-template-columns:1fr}.toolbar{gap:8px}.group-tabs{flex-direction:column}.group-tab{border-right:none;border-bottom:1px solid var(--gray-border)}}
+.app-section{margin-top:16px;border:1px solid var(--gray-border);border-radius:var(--radius);overflow:hidden}
+.app-section:first-child{margin-top:0}
+.app-section-header{background:var(--primary);color:white;padding:10px 14px;display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600}
+.app-section-icon{font-size:16px}
+.app-section-title{flex:1}
+.subapp-block{border-bottom:1px solid var(--gray-border)}
+.subapp-block:last-child{border-bottom:none}
+.subapp-header{display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;background:var(--gray-light);transition:background .15s}
+.subapp-header:hover{background:var(--primary-light)}
+.subapp-name{font-size:13px;font-weight:600;flex:1}
+.subapp-count{font-size:11px;color:var(--text2);background:var(--white);padding:1px 8px;border-radius:10px}
+.subapp-access{padding:4px 8px;font-size:12px;width:auto;border:1px solid var(--gray-border);border-radius:var(--radius)}
+.subapp-grid{display:none;padding:10px 14px}
+.subapp-grid.show{display:block}
+.subapp-grid .perms-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.subapp-grid .perm-row{display:flex;align-items:center;justify-content:space-between;padding:5px 10px;border:1px solid var(--gray-border);border-radius:var(--radius);font-size:12px}
+.subapp-grid .perm-row label{margin:0;font-size:12px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.subapp-grid select{padding:3px 6px;font-size:11px;width:auto;flex-shrink:0}
+.modal{width:760px}
+@media(max-width:768px){.stats{gap:8px}.stat-card{min-width:80px;padding:8px 12px}.stat-card .value{font-size:16px}.subapp-grid .perms-grid{grid-template-columns:1fr}.toolbar{gap:8px}.group-tabs{flex-direction:column}.group-tab{border-right:none;border-bottom:1px solid var(--gray-border)}.modal{width:95vw}}
 </style>
 </head>
 <body>
@@ -172,30 +192,7 @@ tr:hover td{background:var(--primary-light)}
           <div class="user-search-dropdown" id="user-search-dropdown"></div>
         </div>
       </div>
-      <div class="form-group">
-        <label>Permission Group</label>
-        <select id="inp-group" onchange="onModalGroupChange()">
-          <option value="tracker">Project Tracker</option>
-          <option value="forms">Forms</option>
-          <option value="dc">DC Log</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label>Application</label>
-        <select id="inp-app"></select>
-      </div>
-      <div class="form-group">
-        <label>Default Access Level</label>
-        <select id="inp-access" onchange="onAccessChange()">
-          <option value="edit">Edit (Full Access)</option>
-          <option value="read">Read Only</option>
-          <option value="none">No Access</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label>Document Type Access</label>
-        <div id="dept-perms-grid" class="perms-grid"></div>
-      </div>
+      <div id="dept-perms-grid"></div>
     </div>
     <div class="modal-footer">
       <button class="btn" onclick="closeModal()">Cancel</button>
@@ -270,6 +267,13 @@ var DC_DOCTYPES=[
   {id:'cp',title:'Contractor Proposal (CP)',group:'Documents & Records'}
 ];
 var FORMS_DOCTYPES=TRACKER_DOCTYPES.concat(DC_DOCTYPES);
+
+var SUBAPPS={
+  tracker:{appValue:'ProjectTracker',label:'Tracker',docTypes:TRACKER_DOCTYPES,section:'tracker'},
+  forms:{appValue:'Forms',label:'Forms',docTypes:TRACKER_DOCTYPES,section:'tracker'},
+  dclog:{appValue:'DCLog',label:'DC Log',docTypes:DC_DOCTYPES,section:'dc'},
+  dcform:{appValue:'DCForm',label:'DC Form',docTypes:DC_DOCTYPES,section:'dc'}
+};
 
 var GROUP_CONFIG={
   tracker:{
@@ -598,18 +602,12 @@ function openEditGroupModal(email){
   document.getElementById('modal-title').textContent='Edit Permissions — '+email;
   document.getElementById('inp-email').value=email;
   var existingPerms={};
-  group.forEach(function(i){existingPerms[i.DeptID]=(i.Access||'edit').toLowerCase();});
-  var apps=[];group.forEach(function(i){var a=i.App||'Both';if(apps.indexOf(a)<0)apps.push(a);});
-  var groupKey='tracker';
-  apps.forEach(function(a){var al=a.toLowerCase();
-    if(al==='dclog'||al==='dcform')groupKey='dc';
-    else if(al==='forms')groupKey='forms';
+  group.forEach(function(i){
+    var app=i.App||'Both';
+    if(!existingPerms[app])existingPerms[app]={};
+    existingPerms[app][i.DeptID]=(i.Access||'edit').toLowerCase();
   });
-  document.getElementById('inp-group').value=groupKey;
-  onModalGroupChange();
-  document.getElementById('inp-app').value=apps.length===1?apps[0]:'Both';
-  document.getElementById('inp-access').value='edit';
-  document.getElementById('dept-perms-grid').innerHTML=buildDeptGrid('edit',existingPerms);
+  document.getElementById('dept-perms-grid').innerHTML=buildAllSubApps('edit',existingPerms);
   document.getElementById('add-modal').classList.add('show');
 }
 function toggleSelectAll(checked){
@@ -624,45 +622,61 @@ function updateBulkBar(){
   else{bar.style.display='none';}
 }
 
-function onModalGroupChange(){
-  var g=document.getElementById('inp-group').value;
-  var cfg=GROUP_CONFIG[g];
-  document.getElementById('inp-app').innerHTML=cfg.apps.map(function(a){return '<option value="'+a.value+'">'+a.label+'</option>';}).join('');
+function toggleSubApp(key){
+  var grid=document.getElementById('subapp-grid-'+key);
+  grid.classList.toggle('show');
 }
-
-function buildDeptGrid(defaultAccess,existingPerms){
-  var gKey=document.getElementById('inp-group')?document.getElementById('inp-group').value:currentGroup;
-  var cfg=GROUP_CONFIG[gKey];
+function onSubAppAccessChange(appValue,access){
+  document.querySelectorAll('#dept-perms-grid select[data-app="'+appValue+'"]').forEach(function(s){s.value=access;});
+}
+function buildSubAppGrid(appValue,docTypes,defaultAccess,existingPerms){
+  var html='<div class="perms-grid">';
+  docTypes.forEach(function(d){
+    var val=defaultAccess;
+    if(existingPerms){
+      if(existingPerms[appValue]&&existingPerms[appValue][d.id])val=existingPerms[appValue][d.id];
+      else if(existingPerms['Both']&&existingPerms['Both'][d.id])val=existingPerms['Both'][d.id];
+    }
+    html+='<div class="perm-row"><label>'+htmlEscape(d.title)+'</label><select data-app="'+appValue+'" data-dept="'+d.id+'">'+
+      '<option value="edit"'+(val==='edit'?' selected':'')+'>Edit</option>'+
+      '<option value="read"'+(val==='read'?' selected':'')+'>Read</option>'+
+      '<option value="none"'+(val==='none'?' selected':'')+'>None</option></select></div>';
+  });
+  html+='</div>';
+  return html;
+}
+function buildAllSubApps(defaultAccess,existingPerms){
+  existingPerms=existingPerms||{};
   var html='';
-  var groups=[];
-  cfg.docTypes.forEach(function(d){if(groups.indexOf(d.group)<0)groups.push(d.group);});
-  groups.forEach(function(g){
-    var items=cfg.docTypes.filter(function(d){return d.group===g;});
-    html+='<div class="perms-section"><h4>'+htmlEscape(g)+'</h4><div class="perms-grid">';
-    items.forEach(function(d){
-      var val=existingPerms&&existingPerms[d.id]?existingPerms[d.id]:defaultAccess;
-      html+='<div class="perm-row"><label>'+htmlEscape(d.title)+'</label><select data-dept="'+d.id+'">'+
-        '<option value="edit"'+(val==='edit'?' selected':'')+'>Edit</option>'+
-        '<option value="read"'+(val==='read'?' selected':'')+'>Read</option>'+
-        '<option value="none"'+(val==='none'?' selected':'')+'>None</option></select></div>';
+  var sections=[
+    {id:'tracker',label:'Project Tracker',icon:'📐',apps:['tracker','forms']},
+    {id:'dc',label:'DC Log',icon:'📄',apps:['dclog','dcform']}
+  ];
+  sections.forEach(function(sec){
+    html+='<div class="app-section"><div class="app-section-header"><span class="app-section-icon">'+sec.icon+'</span><span class="app-section-title">'+sec.label+'</span></div>';
+    sec.apps.forEach(function(key){
+      var sa=SUBAPPS[key];
+      var appAccess=defaultAccess;
+      if(existingPerms[sa.appValue]){var vals=Object.values(existingPerms[sa.appValue]);if(vals.length)appAccess=vals[0];}
+      else if(existingPerms['Both']){var bvals=Object.values(existingPerms['Both']);if(bvals.length)appAccess=bvals[0];}
+      html+='<div class="subapp-block"><div class="subapp-header" onclick="toggleSubApp(\''+key+'\')">';
+      html+='<span class="subapp-name">'+htmlEscape(sa.label)+'</span>';
+      html+='<span class="subapp-count">'+sa.docTypes.length+' lists</span>';
+      html+='<select class="subapp-access" data-app="'+sa.appValue+'" onclick="event.stopPropagation()" onchange="onSubAppAccessChange(\''+sa.appValue+'\',this.value)">';
+      ['edit','read','none'].forEach(function(v){html+='<option value="'+v+'"'+(appAccess===v?' selected':'')+'>'+v.charAt(0).toUpperCase()+v.slice(1)+'</option>';});
+      html+='</select></div>';
+      html+='<div class="subapp-grid" id="subapp-grid-'+key+'">'+buildSubAppGrid(sa.appValue,sa.docTypes,appAccess,existingPerms)+'</div>';
+      html+='</div>';
     });
-    html+='</div></div>';
+    html+='</div>';
   });
   return html;
 }
-
-function onAccessChange(){
-  document.querySelectorAll('#dept-perms-grid select').forEach(function(s){s.value=document.getElementById('inp-access').value;});
-}
-
 function openAddModal(){
   editingId=null;
   document.getElementById('modal-title').textContent='Add User Permission';
   document.getElementById('inp-email').value='';
-  document.getElementById('inp-group').value=currentGroup;
-  onModalGroupChange();
-  document.getElementById('inp-access').value='edit';
-  document.getElementById('dept-perms-grid').innerHTML=buildDeptGrid('edit');
+  document.getElementById('dept-perms-grid').innerHTML=buildAllSubApps('edit');
   document.getElementById('add-modal').classList.add('show');
 }
 function openEditModal(id){
@@ -670,39 +684,42 @@ function openEditModal(id){
   editingId=id;
   document.getElementById('modal-title').textContent='Edit User Permission';
   document.getElementById('inp-email').value=item.Title||'';
-  var al=(item.App||'').toLowerCase();
-  var groupKey='tracker';
-  if(al==='dclog'||al==='dcform')groupKey='dc';
-  else if(al==='forms')groupKey='forms';
-  document.getElementById('inp-group').value=groupKey;
-  onModalGroupChange();
-  document.getElementById('inp-app').value=item.App||'Both';
-  document.getElementById('inp-access').value=(item.Access||'edit').toLowerCase();
-  document.getElementById('dept-perms-grid').innerHTML=buildDeptGrid((item.Access||'edit').toLowerCase());
+  var existingPerms={};var app=item.App||'Both';
+  existingPerms[app]={};existingPerms[app][item.DeptID]=(item.Access||'edit').toLowerCase();
+  document.getElementById('dept-perms-grid').innerHTML=buildAllSubApps('none',existingPerms);
   document.getElementById('add-modal').classList.add('show');
 }
 function closeModal(){document.getElementById('add-modal').classList.remove('show');}
 
 async function savePerm(){
   var email=document.getElementById('inp-email').value.trim();
-  var app=document.getElementById('inp-app').value;
   if(!email){showToast('Email is required','error');return;}
-  var deptPerms={};
-  document.querySelectorAll('#dept-perms-grid select').forEach(function(s){deptPerms[s.dataset.dept]=s.value;});
-  var entries=Object.keys(deptPerms).map(function(deptId){return {Title:email,App:app,DeptID:deptId,Access:deptPerms[deptId]};});
-  if(!entries.length){showToast('No document types selected','error');return;}
+  var allEntries=[];
+  document.querySelectorAll('#dept-perms-grid select[data-dept]').forEach(function(s){
+    allEntries.push({Title:email,App:s.dataset.app,DeptID:s.dataset.dept,Access:s.value});
+  });
+  var toSave=allEntries.filter(function(e){return e.Access!=='none';});
+  if(!toSave.length){showToast('Set at least one document type to Edit or Read','error');return;}
   try{
-    if(editingId==='GROUP'){
-      var oldItems=permItems.filter(function(i){return (i.Title||'').toLowerCase()===email.toLowerCase();});
-      for(var i=0;i<oldItems.length;i++){try{await spDelete(permApi(oldItems[i].Id));}catch(e){}}
-      for(var j=0;j<entries.length;j++){try{await spPost(permApi(),entries[j]);}catch(e){}}
+    if(editingId==='GROUP'||editingId==='BULK'){
+      var targetEmails=editingId==='GROUP'?[email]:[];
+      if(editingId==='BULK'){
+        selectedIds.forEach(function(id){var it=permItems.find(function(i){return i.Id===id;});if(it&&targetEmails.indexOf((it.Title||'').toLowerCase())<0)targetEmails.push((it.Title||'').toLowerCase());});
+        if(!targetEmails.length)targetEmails=[email];
+      }
+      for(var t=0;t<targetEmails.length;t++){
+        var oldItems=permItems.filter(function(i){return (i.Title||'').toLowerCase()===targetEmails[t].toLowerCase();});
+        for(var i=0;i<oldItems.length;i++){try{await spDelete(permApi(oldItems[i].Id));}catch(e){}}
+        var userEntries=toSave.map(function(e){return {Title:targetEmails[t],App:e.App,DeptID:e.DeptID,Access:e.Access};});
+        for(var j=0;j<userEntries.length;j++){try{await spPost(permApi(),userEntries[j]);}catch(e){}}
+      }
     }else if(editingId){
       await spDelete(permApi(editingId));
-      for(var k=0;k<entries.length;k++){try{await spPost(permApi(),entries[k]);}catch(e){}}
+      for(var k=0;k<toSave.length;k++){try{await spPost(permApi(),toSave[k]);}catch(e){}}
     }else{
-      for(var m=0;m<entries.length;m++){try{await spPost(permApi(),entries[m]);}catch(e){}}
+      for(var m=0;m<toSave.length;m++){try{await spPost(permApi(),toSave[m]);}catch(e){}}
     }
-    closeModal();showToast('Permission saved','success');await loadPerms();
+    closeModal();showToast('Permissions saved','success');await loadPerms();
   }catch(e){showToast('Save failed: '+e.message,'error');}
 }
 
@@ -723,10 +740,7 @@ function bulkEdit(){
   if(!selectedIds.size)return;
   document.getElementById('modal-title').textContent='Bulk Edit ('+selectedIds.size+' entries)';
   document.getElementById('inp-email').value='';
-  document.getElementById('inp-group').value=currentGroup;
-  onModalGroupChange();
-  document.getElementById('inp-access').value='edit';
-  document.getElementById('dept-perms-grid').innerHTML=buildDeptGrid('edit');
+  document.getElementById('dept-perms-grid').innerHTML=buildAllSubApps('edit');
   editingId='BULK';document.getElementById('add-modal').classList.add('show');
 }
 
