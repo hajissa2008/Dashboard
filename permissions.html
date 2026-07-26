@@ -391,6 +391,10 @@ async function loadPerms(){
       nextUrl=(data.d&&data.d.__next)?data.d.__next:(data['@odata.nextLink']||null);
     }
     permItems=allItems;
+    console.log('[Perms] Loaded',permItems.length,'items');
+    console.log('[Perms] Unique DeptIDs:',[...new Set(permItems.map(i=>i.DeptID))]);
+    console.log('[Perms] Unique Apps:',[...new Set(permItems.map(i=>i.App))]);
+    console.log('[Perms] Sample item:',permItems[0]);
   }catch(e){
     if(e.message.includes('404')){permItems=[];showToast('Permissions list not found.','error');}
     else{showToast('Failed to load: '+e.message,'error');permItems=[];}
@@ -407,12 +411,8 @@ function switchGroup(group){
 }
 
 function updateTabCounts(){
-  const trackerIds=GROUP_CONFIG.tracker.docTypes.map(d=>d.id);
-  const dcIds=GROUP_CONFIG.dc.docTypes.map(d=>d.id);
-  const trackerCount=permItems.filter(i=>trackerIds.includes(i.DeptID)).length;
-  const dcCount=permItems.filter(i=>dcIds.includes(i.DeptID)).length;
-  document.getElementById('tab-count-tracker').textContent=trackerCount;
-  document.getElementById('tab-count-dc').textContent=dcCount;
+  document.getElementById('tab-count-tracker').textContent=permItems.filter(i=>itemBelongsToGroup(i,'tracker')).length;
+  document.getElementById('tab-count-dc').textContent=permItems.filter(i=>itemBelongsToGroup(i,'dc')).length;
 }
 
 function populateFilters(){
@@ -437,8 +437,7 @@ function populateFilters(){
 
 function renderStats(){
   const cfg=GROUP_CONFIG[currentGroup];
-  const docIds=cfg.docTypes.map(d=>d.id);
-  const groupItems=permItems.filter(i=>docIds.includes(i.DeptID));
+  const groupItems=permItems.filter(i=>itemBelongsToGroup(i,currentGroup));
   const uniqueEmails=new Set(groupItems.map(i=>(i.Title||'').toLowerCase()));
   const appCounts={};
   cfg.apps.forEach(a=>{appCounts[a.value]=0;});
@@ -451,6 +450,16 @@ function renderStats(){
   document.getElementById('stats').innerHTML=html;
 }
 
+function itemBelongsToGroup(item,groupKey){
+  const cfg=GROUP_CONFIG[groupKey];
+  const appValues=cfg.apps.map(a=>a.value);
+  const docIds=cfg.docTypes.map(d=>d.id);
+  if(docIds.includes(item.DeptID))return true;
+  const app=item.App||'Both';
+  if(appValues.includes(app)||app==='Both')return true;
+  return false;
+}
+
 function getFiltered(){
   const search=document.getElementById('search').value.toLowerCase();
   const app=document.getElementById('filter-app').value;
@@ -458,11 +467,11 @@ function getFiltered(){
   const cfg=GROUP_CONFIG[currentGroup];
   const validDocIds=new Set(cfg.docTypes.map(d=>d.id));
   return permItems.filter(item=>{
-    if(!validDocIds.has(item.DeptID))return false;
+    if(!itemBelongsToGroup(item,currentGroup))return false;
     const email=(item.Title||'').toLowerCase();
     if(search&&!email.includes(search))return false;
     if(app&&(item.App||'Both')!==app)return false;
-    if(dept&&(item.DeptID||'')!==dept)return false;
+    if(dept&&validDocIds.has(item.DeptID)&&(item.DeptID||'')!==dept)return false;
     return true;
   });
 }
