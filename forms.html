@@ -337,6 +337,7 @@ let selectedItem = null;
 let editingId = null;
 let columnDefs = [];
 let renameMap = {};
+let viewFieldOrder = [];
 let attachmentCounts = {};
 let myPerms = {}; // {} = no access until loaded, 'ALL' = full access, { deptId: 'read'|'edit' }
 const PERM_LIST = 'Permissions';
@@ -694,6 +695,24 @@ async function fetchColumnDefinitions(siteUrl,listName){
   return cols;
 }
 
+// Fetches the SharePoint list's own default-view field order (the same order you'd see
+// opening the list directly in SharePoint). Used to arrange the item detail card to match.
+async function fetchListViewFieldOrder(siteUrl,listName){
+  try{
+    const url=`${spRestListUrl(siteUrl,listName)}/views/getbytitle('All Items')/viewfields`;
+    const json=await spApiCallJson(url);
+    // The viewfields endpoint returns its field list as a SchemaXml string of <FieldRef Name="..."/>
+    // elements (both with and without odata=verbose), not a plain JSON array — parse it directly.
+    const xml=json.SchemaXml||(json.d&&json.d.SchemaXml)||'';
+    if(xml)return [...xml.matchAll(/<FieldRef\s+Name="([^"]+)"/g)].map(m=>m[1]);
+    const items=json.d?(json.d.Items?json.d.Items.results:json.d.results):(json.value||[]);
+    return items||[];
+  }catch(e){
+    console.warn('[fetchListViewFieldOrder] failed, will keep existing column order:',e.message);
+    return [];
+  }
+}
+
 async function fetchSPItems(siteUrl,listName){
   let allItems=[],nextUrl=graphListItemsUrl(siteUrl,listName);
   while(nextUrl){
@@ -1033,10 +1052,11 @@ async function loadDeptData(){
   setLoading(true);
   setStatusMsg('Loading schema...');
   try{
-    columnDefs=[]; renameMap={}; attachmentCounts={}; spSiteToken=null;
+    columnDefs=[]; renameMap={}; attachmentCounts={}; spSiteToken=null; viewFieldOrder=[];
     const cols=await fetchColumnDefinitions(currentDept.site,currentDept.list);
     columnDefs=cols;
     cols.forEach(c=>{if(c.name!==c.displayName)renameMap[c.name]=c.displayName;});
+    viewFieldOrder=await fetchListViewFieldOrder(currentDept.site,currentDept.list);
 
     const cached=formsCacheGet(deptIdAtStart);
     if(cached){
@@ -1200,6 +1220,19 @@ function renderTable(){
 }
 
 // ======================== DETAIL VIEW / EDIT / FORM ========================
+// Orders columns for the item detail card to match the SharePoint list's own default-view
+// field order (viewFieldOrder, fetched once per department). Columns not found in that order
+// (e.g. added after the view was last saved) are appended at the end, in their existing order.
+function orderColumnsForDetailCard(cols){
+  if(!viewFieldOrder||!viewFieldOrder.length)return [...cols];
+  const idx={};
+  viewFieldOrder.forEach((n,i)=>{idx[n]=i;});
+  const known=[],unknown=[];
+  cols.forEach(c=>{(idx[c.name]!==undefined?known:unknown).push(c);});
+  known.sort((a,b)=>idx[a.name]-idx[b.name]);
+  return [...known,...unknown];
+}
+
 function openDetail(idx){
   if(idx<0||idx>=filteredItems.length)return;
   selectedItem=filteredItems[idx]; renderTable();
@@ -1222,8 +1255,10 @@ function openDetail(idx){
   editBtn.style.display=access==='edit'?'':'none';
   const body=document.getElementById('form-body');
   const skipForm=new Set(['_id','_etag','ContentType','AppAuthor','AppEditor','Author','Editor']);
-  let html='';
-  reorderColumns(columnDefs).forEach(c=>{
+  const aN=attachmentCounts[item._id];
+  // Attachments shown first, matching the requested card layout.
+  let html=`<div class="form-group"><label>Attachments</label><div id="attachment-list-view" style="padding:6px 0;font-size:13px">${aN>0?'<div class="attachment-loading">Loading...</div>':'<span style="color:var(--text-secondary);font-style:italic">None</span>'}</div></div>`;
+  orderColumnsForDetailCard(columnDefs).forEach(c=>{
     if(skipForm.has(c.name)||c.hidden)return;
     const lookup=c.displayName||c.name;
     let raw=item[lookup]!==undefined&&item[lookup]!==null?item[lookup]:item[c.name]!==undefined?item[c.name]:'';
@@ -1234,8 +1269,6 @@ function openDetail(idx){
     const desc=c.description?`<div class="hint">${htmlEscape(stripHtml(c.description))}</div>`:'';
     html+=`<div class="form-group"><label>${htmlEscape(c.displayName||c.name)}</label>${desc}<div style="padding:6px 0;font-size:13px;color:var(--text-primary);word-break:break-word;border-bottom:1px solid var(--gray-border)">${vDisplay?htmlEscape(vDisplay):'<span style="color:var(--text-secondary);font-style:italic">Not set</span>'}</div></div>`;
   });
-  const aN=attachmentCounts[item._id];
-  html+=`<div class="form-group"><label>Attachments</label><div id="attachment-list-view" style="padding:6px 0;font-size:13px">${aN>0?'<div class="attachment-loading">Loading...</div>':'<span style="color:var(--text-secondary);font-style:italic">None</span>'}</div></div>`;
   body.innerHTML=html;
   document.getElementById('save-status').className='save-status';
   document.getElementById('save-status').textContent='';
