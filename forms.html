@@ -583,18 +583,7 @@ function spRestAttachmentsUrl(siteUrl,listName,itemId){
 
 async function ensureSpSiteToken(siteUrl){
   if(!msalApp||!spUser)throw new Error('Not authenticated');
-  if(spSiteToken){
-    try{
-      const u=new URL(siteUrl);
-      const controller=new AbortController();
-      const timer=setTimeout(()=>controller.abort(),5000);
-      const r=await fetch(u.origin+'/_api/web/currentuser',{headers:{'Authorization':'Bearer '+spSiteToken},signal:controller.signal});
-      clearTimeout(timer);
-      if(r.ok)return spSiteToken;
-    }catch(e){
-      if(e.name==='AbortError'){/*timeout, still usable*/return spSiteToken;}
-    }
-  }
+  if(spSiteToken)return spSiteToken;
   const u=new URL(siteUrl);
   const resp=await msalApp.acquireTokenSilent({scopes:[u.origin+'/.default'],account:spUser});
   spSiteToken=resp.accessToken;
@@ -606,12 +595,23 @@ async function spApiCall(url,method,body,binary,retryCount){
   const opts={method:method||'GET',headers:{'Authorization':'Bearer '+token,'Accept':'application/json'}};
   if(body&&!binary){opts.headers['Content-Type']='application/json';opts.body=JSON.stringify(body);}
   else if(body&&binary){opts.headers['Content-Type']='application/octet-stream';opts.body=body;}
-  let resp=await fetch(url,opts);
-  if(resp.status===401||resp.status===403||resp.redirected){
+  let resp;
+  try{resp=await fetch(url,opts);}
+  catch(e){
+    if(retryCount<3){
+      const wait=2000*(retryCount+1);
+      console.warn('[spApiCall] Network/CORS error, retry in',wait,'ms:',e.message);
+      await new Promise(r=>setTimeout(r,wait));
+      return spApiCall(url,method,body,binary,retryCount+1);
+    }
+    throw e;
+  }
+  if(resp.status===401||resp.status===403){
     spSiteToken=null;
     const freshToken=await ensureSpSiteToken(currentDept.site);
     opts.headers['Authorization']='Bearer '+freshToken;
-    resp=await fetch(url,opts);
+    try{resp=await fetch(url,opts);}
+    catch(e){throw e;}
   }
   if(resp.status===429&&retryCount<5){
     const delay=Math.min(2000*Math.pow(2,retryCount),30000);
@@ -847,13 +847,24 @@ async function deleteAttachmentItem(fileName){
 
 async function fetchAllAttachmentCounts(){
   if(!currentDept||!allItems.length)return;
-  const ids=allItems.map(i=>i._id);
-  for(let i=0;i<ids.length;i+=20){
-    const batch=ids.slice(i,i+20);
-    const results=await Promise.allSettled(batch.map(id=>
-      fetchAttachments(currentDept.site,currentDept.list,id).then(atts=>({id,count:atts.length}))
-    ));
-    results.forEach(r=>{if(r.status==='fulfilled')attachmentCounts[r.value.id]=r.value.count;});
+  const listUrl=spRestListUrl(currentDept.site,currentDept.list);
+  let nextUrl=listUrl+'/items?$select=Id,AttachmentFiles&$expand=AttachmentFiles&$top=5000';
+  try{
+    while(nextUrl){
+      const json=await spApiCallJson(nextUrl);
+      const items=json.d?json.d.results:(json.value||[]);
+      items.forEach(item=>{
+        const af=item.AttachmentFiles;
+        const atts=af?(af.results||af):[];
+        attachmentCounts[item.Id]=atts.length;
+      });
+      nextUrl=(json.d&&json.d.__next)?json.d.__next:(json['@odata.nextLink']||null);
+    }
+  }catch(e){
+    console.warn('[Perms] fetchAllAttachmentCounts fallback:',e.message);
+    for(const item of allItems){
+      if(attachmentCounts[item._id]===undefined)attachmentCounts[item._id]=0;
+    }
   }
   if(currentDept)renderTable();
 }
