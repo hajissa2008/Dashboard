@@ -320,7 +320,7 @@ body.dark th .sort-arrow{color:var(--text-secondary)}
     <div class="settings-body">
       <div class="cfg-section">
         <div class="cfg-section-title">Sign in with Microsoft</div>
-        <div class="cfg-section-desc">Authenticate via Azure AD to access the 42 DC Log SharePoint lists at sascontractingsa.sharepoint.com/sites/Alenshaiah.</div>
+        <div class="cfg-section-desc">Authenticate via Azure AD to access the 43 DC Log SharePoint lists at sascontractingsa.sharepoint.com/sites/Alenshaiah.</div>
         <label>Tenant ID</label>
         <input type="text" id="cfg-tenant" value="684547e2-bb8b-450a-a3e1-3a6bc15e9471">
         <div class="hint">From Azure AD &rarr; App registrations &rarr; Your app &rarr; Overview.</div>
@@ -343,7 +343,7 @@ body.dark th .sort-arrow{color:var(--text-secondary)}
       </div>
       <div class="cfg-section">
         <div class="cfg-section-title">About this app</div>
-        <div class="cfg-section-desc">DC Log connects live to all 42 SharePoint lists created for the MSL Skeleton DC Log (Outgoing Log). Data refreshes on demand via the 🔄 button. Use <strong>DC Form.html</strong> to add, edit, or attach files to records.</div>
+        <div class="cfg-section-desc">DC Log connects live to all 43 SharePoint lists created for the MSL Skeleton DC Log (Outgoing Log). Data refreshes on demand via the 🔄 button. Use <strong>DC Form.html</strong> to add, edit, or attach files to records.</div>
       </div>
     </div>
   </div>
@@ -380,7 +380,7 @@ const storage = {
   removeItem(k){ try{ localStorage.removeItem(k) }catch(e){ delete this._data[k]; } }
 };
 
-// ======================== LIST CONFIG (42 DC Log lists) ========================
+// ======================== LIST CONFIG (43 DC Log lists) ========================
 const DEPTS = [
   {
     "id": "sor",
@@ -589,6 +589,14 @@ const DEPTS = [
     "list": "Internal NCR's",
     "group": "Submittals & Approvals",
     "icon": "\u26a0\ufe0f"
+  },
+  {
+    "id": "pt",
+    "title": "Procurement Tracker (PT)",
+    "site": "https://sascontractingsa.sharepoint.com/sites/Alenshaiah",
+    "list": "PT",
+    "group": "Submittals & Approvals",
+    "icon": "\ud83d\udce6"
   },
   {
     "id": "mqr",
