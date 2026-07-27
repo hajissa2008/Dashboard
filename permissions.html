@@ -147,6 +147,7 @@ tr:hover td{background:var(--primary-light)}
     <select id="filter-dept" onchange="renderTable()"></select>
     <div style="flex:1"></div>
     <button class="btn" onclick="loadPerms()">🔄 Refresh</button>
+    <button class="btn" onclick="fixAllItemPermissions()" title="Grant Read access to all existing items for their users">🔑 Fix Item Access</button>
     <button class="btn btn-primary" onclick="openAddModal()">+ Add User</button>
   </div>
   <div id="bulk-bar" class="bulk-bar" style="display:none">
@@ -412,6 +413,18 @@ async function spDelete(url){
 
 function permApi(id){
   return SITE_URL+"/_api/web/lists/getbytitle('"+PERM_LIST+"')"+(id?'/items('+id+')':'/items');
+}
+
+async function grantReadAccess(itemId,email){
+  try{
+    await spPost(SITE_URL+"/_api/web/lists/getbytitle('"+PERM_LIST+"')/items("+itemId+")/BreakRoleInheritance(copyRoleAssignments=false,clearSubscopes=true)");
+    var readDef=await spGet(SITE_URL+"/_api/web/roledefinitions/getbyname('Read')");
+    var userId=null;
+    try{var u=await spGet(SITE_URL+"/_api/web/siteusers/getbyemail('"+email.replace(/'/g,"''")+"')");userId=u.d.Id;}catch(e){}
+    if(!userId){try{var nu=await spPost(SITE_URL+"/_api/web/siteusers",{LoginName:'i:0%23.f|membership|'+email,Email:email});userId=nu.d.Id;}catch(e){}}
+    if(userId&&readDef&&readDef.d){await spPost(SITE_URL+"/_api/web/lists/getbytitle('"+PERM_LIST+"')/items("+itemId+")/RoleAssignments/AddRoleAssignment(principalid="+userId+",roledefid="+readDef.d.Id+")");}
+    try{var au=await spGet(SITE_URL+"/_api/web/siteusers/getbyemail('"+ADMIN_EMAIL.replace(/'/g,"''")+"')");var fcDef=await spGet(SITE_URL+"/_api/web/roledefinitions/getbyname('Full Control')");if(au&&au.d&&fcDef&&fcDef.d){await spPost(SITE_URL+"/_api/web/lists/getbytitle('"+PERM_LIST+"')/items("+itemId+")/RoleAssignments/AddRoleAssignment(principalid="+au.d.Id+",roledefid="+fcDef.d.Id+")");}}catch(e){}
+  }catch(e){console.warn('[Perms] grantReadAccess failed for item',itemId,e.message);}
 }
 
 function itemBelongsToGroup(item,groupKey){
@@ -699,6 +712,19 @@ function openEditModal(id){
 }
 function closeModal(){document.getElementById('add-modal').classList.remove('show');}
 
+async function fixAllItemPermissions(){
+  if(!permItems.length){showToast('No items to fix','error');return;}
+  if(!confirm('Grant Read access to all '+permItems.length+' permission entries? This ensures each user can read their own entries.'))return;
+  document.getElementById('saving-overlay').classList.add('show');
+  var ok=0,fail=0;
+  for(var i=0;i<permItems.length;i++){
+    try{await grantReadAccess(permItems[i].Id,permItems[i].Title||'');ok++;}
+    catch(e){fail++;console.warn('fix failed:',permItems[i].Id,e.message);}
+  }
+  document.getElementById('saving-overlay').classList.remove('show');
+  showToast('Fixed '+ok+(fail?' ('+fail+' failed)':'')+' items','success');
+}
+
 async function savePerm(){
   var email=document.getElementById('inp-email').value.trim();
   if(!email){showToast('Email is required','error');return;}
@@ -720,13 +746,13 @@ async function savePerm(){
         var oldItems=permItems.filter(function(i){return (i.Title||'').toLowerCase()===targetEmails[t].toLowerCase();});
         for(var i=0;i<oldItems.length;i++){try{await spDelete(permApi(oldItems[i].Id));}catch(e){}}
         var userEntries=toSave.map(function(e){return {Title:targetEmails[t],App:e.App,DeptID:e.DeptID,Access:e.Access};});
-        for(var j=0;j<userEntries.length;j++){try{await spPost(permApi(),userEntries[j]);}catch(e){}}
+        for(var j=0;j<userEntries.length;j++){try{var cr=await spPost(permApi(),userEntries[j]);if(cr&&cr.d&&cr.d.Id)await grantReadAccess(cr.d.Id,targetEmails[t]);}catch(e){}}
       }
     }else if(editingId){
       await spDelete(permApi(editingId));
-      for(var k=0;k<toSave.length;k++){try{await spPost(permApi(),toSave[k]);}catch(e){}}
+      for(var k=0;k<toSave.length;k++){try{var sr=await spPost(permApi(),toSave[k]);if(sr&&sr.d&&sr.d.Id)await grantReadAccess(sr.d.Id,email);}catch(e){}}
     }else{
-      for(var m=0;m<toSave.length;m++){try{await spPost(permApi(),toSave[m]);}catch(e){}}
+      for(var m=0;m<toSave.length;m++){try{var nr=await spPost(permApi(),toSave[m]);if(nr&&nr.d&&nr.d.Id)await grantReadAccess(nr.d.Id,email);}catch(e){}}
     }
     closeModal();document.getElementById('saving-overlay').classList.remove('show');showToast('Permissions saved','success');await loadPerms();
   }catch(e){document.getElementById('saving-overlay').classList.remove('show');showToast('Save failed: '+e.message,'error');}

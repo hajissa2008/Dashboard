@@ -2407,7 +2407,7 @@ function logoutSP(){
 }
 
 // ======================== PERMISSIONS ========================
-let myPerms = 'ALL'; // 'ALL' = legacy, or { deptId: 'read'|'edit' }
+let myPerms = {}; // {} = no access until loaded, 'ALL' = full access, { deptId: 'read'|'edit' }
 const PERM_LIST = 'Permissions';
 const ADMIN_EMAIL = 'm.hajissa@alenshaiah.com';
 
@@ -2453,11 +2453,13 @@ async function loadUserPerms(){
 
 function getMyAccess(deptId){
   if(myPerms==='ALL')return 'edit';
+  if(!myPerms||typeof myPerms!=='object')return 'none';
   return myPerms[deptId]||'none';
 }
 
 function hasAnyAccess(){
   if(myPerms==='ALL') return true;
+  if(!myPerms||typeof myPerms!=='object') return false;
   return ['substructure','superstructure','calculations','methodstatement','procurement'].some(k=>getMyAccess(k)!=='none');
 }
 

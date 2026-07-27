@@ -739,7 +739,7 @@ let currentView = 'dashboard';
 window._kpiCache = [];
 
 // ======================== SHAREPOINT AUTH (MSAL.js) ========================
-const SP_SCOPES = ['Sites.Read.All','User.Read'];
+const SP_SCOPES = ['Sites.ReadWrite.All','User.Read'];
 let msalApp = null;
 let spToken = null;
 let spUser = null;

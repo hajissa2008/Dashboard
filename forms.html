@@ -338,7 +338,7 @@ let editingId = null;
 let columnDefs = [];
 let renameMap = {};
 let attachmentCounts = {};
-let myPerms = 'ALL'; // 'ALL' = legacy (no list), or { deptId: 'read'|'edit' }
+let myPerms = {}; // {} = no access until loaded, 'ALL' = full access, { deptId: 'read'|'edit' }
 const PERM_LIST = 'Permissions';
 const ADMIN_EMAIL = 'm.hajissa@alenshaiah.com';
 
@@ -480,11 +480,13 @@ async function loadUserPerms(){
 
 function getMyAccess(deptId){
   if(myPerms==='ALL')return 'edit';
+  if(!myPerms||typeof myPerms!=='object')return 'none';
   return myPerms[deptId]||'none';
 }
 
 function hasAnyFormAccess(){
   if(myPerms==='ALL') return true;
+  if(!myPerms||typeof myPerms!=='object') return false;
   return DEPTS.some(d=>getMyAccess(d.id)!=='none');
 }
 
