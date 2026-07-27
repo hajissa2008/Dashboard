@@ -909,13 +909,22 @@ async function ensureSpSiteToken(siteUrl){
   return spSiteToken;
 }
 
-async function spRestGet(siteUrl,url){
+async function spRestGet(siteUrl,url,retryCount){
+  retryCount=retryCount||0;
   let token=await ensureSpSiteToken(siteUrl);
   let resp=await fetch(url,{headers:{'Authorization':'Bearer '+token,'Accept':'application/json','Content-Type':'application/json'}});
   if(resp.status===401||resp.status===403||resp.redirected){
     spSiteToken=null;
     token=await ensureSpSiteToken(siteUrl);
     resp=await fetch(url,{headers:{'Authorization':'Bearer '+token,'Accept':'application/json','Content-Type':'application/json'}});
+  }
+  if(resp.status===429&&retryCount<5){
+    const delay=Math.min(2000*Math.pow(2,retryCount),30000);
+    const retryAfter=resp.headers.get('Retry-After');
+    const wait=retryAfter?parseInt(retryAfter)*1000:delay;
+    console.warn('[spRestGet] 429 throttled, retry in',wait,'ms (attempt '+(retryCount+1)+'/5)');
+    await new Promise(r=>setTimeout(r,wait));
+    return spRestGet(siteUrl,url,retryCount+1);
   }
   if(!resp.ok){let txt='';try{txt=await resp.text();}catch(e){}throw new Error(`HTTP ${resp.status}: ${txt.substring(0,200)}`);}
   return await resp.json();
