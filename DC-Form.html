@@ -890,9 +890,18 @@ function spRestAttachmentsUrl(siteUrl,listName,itemId){
 
 async function ensureSpSiteToken(siteUrl){
   if(!msalApp||!spUser)throw new Error('Not authenticated');
-  try{
-    if(spSiteToken){const u=new URL(siteUrl);const r=await fetch(u.origin+'/_api/web/currentuser',{headers:{'Authorization':'Bearer '+spSiteToken}});if(r.ok)return spSiteToken;}
-  }catch{}
+  if(spSiteToken){
+    try{
+      const u=new URL(siteUrl);
+      const controller=new AbortController();
+      const timer=setTimeout(()=>controller.abort(),5000);
+      const r=await fetch(u.origin+'/_api/web/currentuser',{headers:{'Authorization':'Bearer '+spSiteToken},signal:controller.signal});
+      clearTimeout(timer);
+      if(r.ok)return spSiteToken;
+    }catch(e){
+      if(e.name==='AbortError'){return spSiteToken;}
+    }
+  }
   const u=new URL(siteUrl);
   const resp=await msalApp.acquireTokenSilent({scopes:[u.origin+'/.default'],account:spUser});
   spSiteToken=resp.accessToken;
@@ -903,7 +912,13 @@ async function spApiCall(url,method,body,binary){
   const opts={method:method||'GET',headers:{'Authorization':'Bearer '+token,'Accept':'application/json'}};
   if(body&&!binary){opts.headers['Content-Type']='application/json';opts.body=JSON.stringify(body);}
   else if(body&&binary){opts.headers['Content-Type']='application/octet-stream';opts.body=body;}
-  const resp=await fetch(url,opts);
+  let resp=await fetch(url,opts);
+  if(resp.status===401||resp.status===403||resp.redirected){
+    spSiteToken=null;
+    const freshToken=await ensureSpSiteToken(currentDept.site);
+    opts.headers['Authorization']='Bearer '+freshToken;
+    resp=await fetch(url,opts);
+  }
   if(!resp.ok){const t=await resp.text().catch(()=>'');throw new Error(`HTTP ${resp.status}: ${t.substring(0,200)}`);}
   return resp;
 }

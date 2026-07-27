@@ -891,9 +891,18 @@ let spSiteToken=null;
 
 async function ensureSpSiteToken(siteUrl){
   if(!msalApp||!spUser)throw new Error('Not authenticated');
-  try{
-    if(spSiteToken){const u=new URL(siteUrl);const r=await fetch(u.origin+'/_api/web/currentuser',{headers:{'Authorization':'Bearer '+spSiteToken}});if(r.ok)return spSiteToken;}
-  }catch{}
+  if(spSiteToken){
+    try{
+      const u=new URL(siteUrl);
+      const controller=new AbortController();
+      const timer=setTimeout(()=>controller.abort(),5000);
+      const r=await fetch(u.origin+'/_api/web/currentuser',{headers:{'Authorization':'Bearer '+spSiteToken},signal:controller.signal});
+      clearTimeout(timer);
+      if(r.ok)return spSiteToken;
+    }catch(e){
+      if(e.name==='AbortError'){return spSiteToken;}
+    }
+  }
   const u=new URL(siteUrl);
   const resp=await msalApp.acquireTokenSilent({scopes:[u.origin+'/.default'],account:spUser});
   spSiteToken=resp.accessToken;
@@ -901,8 +910,13 @@ async function ensureSpSiteToken(siteUrl){
 }
 
 async function spRestGet(siteUrl,url){
-  const token=await ensureSpSiteToken(siteUrl);
-  const resp=await fetch(url,{headers:{'Authorization':'Bearer '+token,'Accept':'application/json','Content-Type':'application/json'}});
+  let token=await ensureSpSiteToken(siteUrl);
+  let resp=await fetch(url,{headers:{'Authorization':'Bearer '+token,'Accept':'application/json','Content-Type':'application/json'}});
+  if(resp.status===401||resp.status===403||resp.redirected){
+    spSiteToken=null;
+    token=await ensureSpSiteToken(siteUrl);
+    resp=await fetch(url,{headers:{'Authorization':'Bearer '+token,'Accept':'application/json','Content-Type':'application/json'}});
+  }
   if(!resp.ok){let txt='';try{txt=await resp.text();}catch(e){}throw new Error(`HTTP ${resp.status}: ${txt.substring(0,200)}`);}
   return await resp.json();
 }
