@@ -343,10 +343,10 @@ function initMsal(){
 async function login(){
   if(!msalApp)initMsal();
   try{
-    var resp=await msalApp.loginPopup({scopes:['Sites.ReadWrite.All','User.Read']});
+    var resp=await msalApp.loginPopup({scopes:['Sites.ReadWrite.All','User.Read','User.Read.All']});
     handleLogin(resp);
   }catch(e){
-    try{await msalApp.loginRedirect({scopes:['Sites.ReadWrite.All','User.Read']});}
+    try{await msalApp.loginRedirect({scopes:['Sites.ReadWrite.All','User.Read','User.Read.All']);}}
     catch(e2){showToast('Login failed: '+e2.message,'error');}
   }
 }
@@ -361,7 +361,7 @@ async function trySSO(){
     if(!spUser){
       var accounts=msalApp.getAllAccounts();
       if(accounts.length){
-        try{var r=await msalApp.ssoSilent({scopes:['Sites.ReadWrite.All','User.Read'],account:accounts[0]});handleLogin(r);}catch(e2){}
+        try{var r=await msalApp.ssoSilent({scopes:['Sites.ReadWrite.All','User.Read','User.Read.All'],account:accounts[0]});handleLogin(r);}catch(e2){}
       }
     }
   }catch(e){}
@@ -388,7 +388,7 @@ function handleLogin(resp){
 }
 
 function doLogout(){
-  spUser=null;spToken=null;spSiteToken=null;
+  spUser=null;spToken=null;spSiteToken=null;graphToken=null;
   if(msalApp)msalApp.logoutPopup();
   document.getElementById('login-btn').style.display='';
   document.getElementById('logout-btn').style.display='none';
@@ -835,13 +835,27 @@ function bulkEdit(){
 document.getElementById('add-modal').addEventListener('click',function(e){if(e.target===this)closeModal();});
 
 var userSearchAbort=null;
+var graphToken=null;
+async function ensureGraphToken(){
+  if(!spUser)throw new Error('Not authenticated');
+  if(graphToken){
+    try{var r=await fetch('https://graph.microsoft.com/v1.0/me?$select=id',{headers:{'Authorization':'Bearer '+graphToken}});if(r.ok)return graphToken;}catch(e){}
+  }
+  try{
+    var resp=await msalApp.acquireTokenSilent({scopes:['User.Read.All'],account:spUser});
+    graphToken=resp.accessToken;return graphToken;
+  }catch(e){
+    try{var resp2=await msalApp.acquireTokenPopup({scopes:['User.Read.All'],account:spUser});graphToken=resp2.accessToken;return graphToken;}
+    catch(e2){throw e2;}
+  }
+}
 async function onUserSearchInput(){
   var q=document.getElementById('inp-email').value.trim();
   if(q.length<2){document.getElementById('user-search-dropdown').classList.remove('show');return;}
   if(userSearchAbort)userSearchAbort.abort();
   userSearchAbort=new AbortController();
   try{
-    var token=await ensureSpToken();
+    var token=await ensureGraphToken();
     var sq=q.replace(/'/g,"''");
     var url='https://graph.microsoft.com/v1.0/users?$filter=startswith(displayName,\''+encodeURIComponent(sq)+'\') or startswith(mail,\''+encodeURIComponent(sq)+'\') or startswith(userPrincipalName,\''+encodeURIComponent(sq)+'\')&$top=10&$select=displayName,mail,userPrincipalName&$orderby=displayName';
     var resp=await fetch(url,{headers:{'Authorization':'Bearer '+token},signal:userSearchAbort.signal});
