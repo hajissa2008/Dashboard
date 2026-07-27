@@ -2428,7 +2428,8 @@ async function loadUserPerms(){
   try{
     const token=await ensureSpSiteToken(siteUrl);
     const listEnc=PERM_LIST.replace(/'/g,"''");
-    const url=siteUrl+'/_api/web/lists/getbytitle(\''+listEnc+'\')/items';
+    const safeEmail=email.replace(/'/g,"''");
+    const url=siteUrl+"/_api/web/lists/getbytitle('"+listEnc+"')/items?$filter=Title eq '"+safeEmail+"'&$top=5000";
     const resp=await fetch(url,{headers:{'Authorization':'Bearer '+token,'Accept':'application/json'}});
     if(!resp.ok){if(resp.status===404){myPerms=isAdmin?'ALL':{};return}throw new Error('HTTP '+resp.status)}
     const data=await resp.json();
@@ -2439,11 +2440,9 @@ async function loadUserPerms(){
     const userLower=email.toLowerCase();
     const currentApp='ProjectTracker';
     items.forEach(item=>{
-      if((item.Title||'').toLowerCase()===userLower){
-        const app=(item.App||'Both').toLowerCase();
-        if(app===currentApp.toLowerCase()||app==='both'){
-          myPerms[item.DeptID]=item.Access.toLowerCase();
-        }
+      const app=(item.App||'Both').toLowerCase();
+      if(app===currentApp.toLowerCase()||app==='both'){
+        myPerms[item.DeptID]=item.Access.toLowerCase();
       }
     });
   }catch(e){

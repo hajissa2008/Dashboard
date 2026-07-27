@@ -445,30 +445,29 @@ async function loadUserPerms(){
   if(!spUser||!spToken){_permDebug='No spUser or spToken';return;}
   const email=spUser.username||'';
   if(!email){_permDebug='No email';return;}
+  const userLower=email.toLowerCase();
   const siteUrl='https://sascontractingsa.sharepoint.com/sites/Alenshaiah';
-  const isAdmin=(email.toLowerCase()===ADMIN_EMAIL.toLowerCase());
+  const isAdmin=(userLower===ADMIN_EMAIL.toLowerCase());
   try{
     const token=await ensureSpSiteToken(siteUrl);
     const listEnc=PERM_LIST.replace(/'/g,"''");
-    const url=siteUrl+'/_api/web/lists/getbytitle(\''+listEnc+'\')/items';
+    const safeEmail=email.replace(/'/g,"''");
+    const url=siteUrl+"/_api/web/lists/getbytitle('"+listEnc+"')/items?$filter=Title eq '"+safeEmail+"'&$top=5000";
     const resp=await fetch(url,{headers:{'Authorization':'Bearer '+token,'Accept':'application/json'}});
     if(!resp.ok){_permDebug='Permissions API HTTP '+resp.status;myPerms=isAdmin?'ALL':{};return}
     const data=await resp.json();
     const items=data.d?data.d.results:data.value||[];
-    if(!items.length){_permDebug='Permissions list empty';myPerms=isAdmin?'ALL':{};return}
+    if(!items.length){_permDebug='No entries found for '+userLower;myPerms=isAdmin?'ALL':{};return}
     if(isAdmin){myPerms='ALL';_permDebug='Admin — full access';return}
     myPerms={};
-    const userLower=email.toLowerCase();
     const currentApp=location.pathname.includes('project-tracker')?'ProjectTracker':'Forms';
     _permDebug='User:'+userLower+' App:'+currentApp+' Entries:'+items.length;
     var matched=0;
     items.forEach(item=>{
-      if((item.Title||'').toLowerCase()===userLower){
-        const app=(item.App||'Both').toLowerCase();
-        if(app===currentApp.toLowerCase()||app==='both'){
-          myPerms[item.DeptID]=item.Access.toLowerCase();
-          matched++;
-        }
+      const app=(item.App||'Both').toLowerCase();
+      if(app===currentApp.toLowerCase()||app==='both'){
+        myPerms[item.DeptID]=item.Access.toLowerCase();
+        matched++;
       }
     });
     _permDebug+=' Matched:'+matched+' Perms:'+JSON.stringify(myPerms);
