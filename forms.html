@@ -745,6 +745,119 @@ async function spApiCallJson(url,method,body,binary){
   return await resp.json();
 }
 
+// ======================== FAST REST FETCH (large lists: 1500+ items) ========================
+// SUBSTRUCTURE / SUPERSTRUCTURE style lists can have 5000+ items with attachments. Rather than
+// paging through everything sequentially and separately $expand-ing AttachmentFiles for every
+// row (very slow at scale), large lists are fetched via parallel ID-range REST queries, and the
+// cheap boolean `Attachments` field is pulled inline instead of expanding the attachment collection.
+const LARGE_LIST_THRESHOLD=1500;
+const LARGE_LIST_CONCURRENCY=6;
+
+function spParseItemsResponse(json){
+  return json.value||(json.d&&json.d.results)||[];
+}
+function spParseNextLink(json){
+  return json['@odata.nextLink']||(json.d&&json.d.__next)||null;
+}
+
+async function spGetItemCount(siteUrl,listName){
+  try{
+    const json=await spApiCallJson(spRestListUrl(siteUrl,listName)+'?$select=ItemCount');
+    if(json.ItemCount!==undefined)return json.ItemCount;
+    if(json.d&&json.d.ItemCount!==undefined)return json.d.ItemCount;
+  }catch(e){ console.warn('[spGetItemCount] failed, falling back to slow path:',e.message); }
+  return null;
+}
+
+async function spGetMaxId(siteUrl,listName){
+  const url=spRestListUrl(siteUrl,listName)+'/items?$select=Id&$top=1&$orderby=Id desc';
+  const json=await spApiCallJson(url);
+  const items=spParseItemsResponse(json);
+  return items.length?(items[0].Id||items[0].ID):0;
+}
+
+async function spFetchIdRange(siteUrl,listName,lo,hi,selectParam){
+  let items=[];
+  let url=`${spRestListUrl(siteUrl,listName)}/items?$filter=Id ge ${lo} and Id le ${hi}&$top=2000${selectParam}`;
+  while(url){
+    const json=await spApiCallJson(url);
+    items=items.concat(spParseItemsResponse(json));
+    url=spParseNextLink(json);
+  }
+  return items;
+}
+
+// Parallel ID-range fetch for large lists. Runs `concurrency` REST queries at once, each scoped
+// to a contiguous ID range (ID is always indexed as the list's primary key, so this never trips
+// the 5000-item List View Threshold regardless of list size). Returns items already shaped to
+// match fetchSPItems()'s output (displayName-keyed fields, plus _id/_etag/_hasAttachments) so
+// callers don't need to know which fetch strategy was used.
+async function fetchSPItemsFastREST(siteUrl,listName,cols,concurrency){
+  concurrency=concurrency||LARGE_LIST_CONCURRENCY;
+  const maxId=await spGetMaxId(siteUrl,listName);
+  if(!maxId)return [];
+  const selectNames=['Id','Attachments'].concat(cols.map(c=>c.name));
+  const selectParam='&$select='+encodeURIComponent(selectNames.join(','));
+  const chunkSize=Math.max(1,Math.ceil(maxId/concurrency));
+  const tasks=[];
+  for(let i=0;i<concurrency;i++){
+    const lo=i*chunkSize+1, hi=Math.min((i+1)*chunkSize,maxId);
+    if(lo>hi)continue;
+    tasks.push(spFetchIdRange(siteUrl,listName,lo,hi,selectParam));
+  }
+  const chunkResults=await Promise.all(tasks);
+  const rawItems=chunkResults.flat();
+  return rawItems.map(it=>{
+    const fields={};
+    cols.forEach(c=>{
+      const v=it[c.name];
+      fields[c.displayName]=v;
+      if(c.displayName!==c.name)fields[c.name]=v;
+    });
+    fields._id=String(it.Id||it.ID);
+    fields._etag='';
+    fields._hasAttachments=!!it.Attachments;
+    return fields;
+  });
+}
+
+// Chooses the fast parallel REST path for large lists, otherwise falls back to the existing
+// Graph-based fetchSPItems() (needed for list types with Lookup/Person columns, whose value
+// shapes fetchSPItemsFastREST does not attempt to unwrap).
+async function fetchSPItemsAuto(siteUrl,listName,cols){
+  const count=await spGetItemCount(siteUrl,listName);
+  if(count!==null&&count>LARGE_LIST_THRESHOLD){
+    console.log('[fetchSPItemsAuto]',listName,'has',count,'items — using parallel REST fetch');
+    try{
+      return await fetchSPItemsFastREST(siteUrl,listName,cols);
+    }catch(e){
+      console.warn('[fetchSPItemsAuto] fast REST path failed, falling back to Graph:',e.message);
+    }
+  }
+  return await fetchSPItems(siteUrl,listName);
+}
+
+// ======================== SESSION CACHE (instant re-render on dept switch) ========================
+// Short-TTL sessionStorage cache so flipping between departments (or reopening one you already
+// loaded) renders instantly instead of re-fetching thousands of rows. Always followed by a silent
+// background revalidation so the view stays fresh; skipped if the user is mid-edit.
+const FORMS_CACHE_TTL_MS=2*60*1000;
+function formsCacheKey(deptId){ return 'forms-cache-'+deptId; }
+function formsCacheGet(deptId){
+  try{
+    const raw=sessionStorage.getItem(formsCacheKey(deptId));
+    if(!raw)return null;
+    const parsed=JSON.parse(raw);
+    if(!parsed||!parsed.ts||(Date.now()-parsed.ts)>FORMS_CACHE_TTL_MS)return null;
+    return parsed;
+  }catch(e){ return null; }
+}
+function formsCacheSet(deptId,items,cols,renameMapObj){
+  try{
+    sessionStorage.setItem(formsCacheKey(deptId),JSON.stringify({ts:Date.now(),items,cols,renameMap:renameMapObj}));
+  }catch(e){ console.warn('[formsCacheSet] skipped (storage quota?):',e.message); }
+}
+
 async function fetchAttachments(siteUrl,listName,itemId){
   const url=spRestAttachmentsUrl(siteUrl,listName,itemId);
   const json=await spApiCallJson(url);
@@ -847,18 +960,26 @@ async function deleteAttachmentItem(fileName){
 
 async function fetchAllAttachmentCounts(){
   if(!currentDept||!allItems.length)return;
+  // Fast REST path (large lists) already pulled the cheap `Attachments` boolean inline —
+  // no second network pass needed at all in that case.
+  if(allItems[0]._hasAttachments!==undefined){
+    allItems.forEach(item=>{ attachmentCounts[item._id]=item._hasAttachments?1:0; });
+    renderTable();
+    return;
+  }
+  // Otherwise (Graph-fetched items, smaller lists): use the lightweight boolean `Attachments`
+  // field instead of $expand=AttachmentFiles — avoids expanding the attachment collection for
+  // every row, which is the expensive part at scale.
   const listUrl=spRestListUrl(currentDept.site,currentDept.list);
-  let nextUrl=listUrl+'/items?$select=Id,AttachmentFiles&$expand=AttachmentFiles&$top=5000';
+  let nextUrl=listUrl+"/items?$select=Id,Attachments&$top=2000";
   try{
     while(nextUrl){
       const json=await spApiCallJson(nextUrl);
-      const items=json.d?json.d.results:(json.value||[]);
+      const items=spParseItemsResponse(json);
       items.forEach(item=>{
-        const af=item.AttachmentFiles;
-        const atts=af?(af.results||af):[];
-        attachmentCounts[item.Id]=atts.length;
+        attachmentCounts[item.Id]=item.Attachments?1:0;
       });
-      nextUrl=(json.d&&json.d.__next)?json.d.__next:(json['@odata.nextLink']||null);
+      nextUrl=spParseNextLink(json);
     }
   }catch(e){
     console.warn('[Perms] fetchAllAttachmentCounts fallback:',e.message);
@@ -908,6 +1029,7 @@ async function onDeptChange(){
 
 async function loadDeptData(){
   if(!currentDept)return;
+  const deptIdAtStart=currentDept.id;
   setLoading(true);
   setStatusMsg('Loading schema...');
   try{
@@ -915,9 +1037,39 @@ async function loadDeptData(){
     const cols=await fetchColumnDefinitions(currentDept.site,currentDept.list);
     columnDefs=cols;
     cols.forEach(c=>{if(c.name!==c.displayName)renameMap[c.name]=c.displayName;});
+
+    const cached=formsCacheGet(deptIdAtStart);
+    if(cached){
+      allItems=cached.items;
+      filteredItems=[...allItems];
+      const ageSec=Math.round((Date.now()-cached.ts)/1000);
+      setStatusMsg('Loaded '+allItems.length+' items from cache ('+ageSec+'s ago) — refreshing…');
+      document.getElementById('btn-new').style.display='';
+      document.getElementById('btn-refresh').style.display='';
+      document.getElementById('btn-template').style.display='';
+      document.getElementById('btn-bulk').style.display='';
+      document.getElementById('btn-export').style.display='';
+      onSearch();
+      setLoading(false);
+      if(allItems.length)fetchAllAttachmentCounts();
+      fetchSPItemsAuto(currentDept.site,currentDept.list,cols).then(freshItems=>{
+        formsCacheSet(deptIdAtStart,freshItems,cols,renameMap);
+        if(currentDept&&currentDept.id===deptIdAtStart&&!editingId){
+          allItems=freshItems;
+          filteredItems=[...allItems];
+          attachmentCounts={};
+          onSearch();
+          setStatusMsg('');
+          if(allItems.length)fetchAllAttachmentCounts();
+        }
+      }).catch(e=>console.warn('[loadDeptData] background revalidate failed:',e.message));
+      return;
+    }
+
     setStatusMsg('Loading items ('+cols.length+' columns)...');
-    allItems=await fetchSPItems(currentDept.site,currentDept.list);
+    allItems=await fetchSPItemsAuto(currentDept.site,currentDept.list,cols);
     filteredItems=[...allItems];
+    formsCacheSet(deptIdAtStart,allItems,cols,renameMap);
     setStatusMsg('');
     document.getElementById('btn-new').style.display='';
     document.getElementById('btn-refresh').style.display='';
@@ -938,11 +1090,12 @@ async function refreshItems(){
   if(!currentDept||!spToken){console.warn('REFRESH SKIP: currentDept=%o spToken=%o',currentDept,spToken);return;}
   setLoading(true);
   try{
-    allItems=await fetchSPItems(currentDept.site,currentDept.list);
+    allItems=await fetchSPItemsAuto(currentDept.site,currentDept.list,columnDefs);
     console.log('REFRESH: got',allItems.length,'items, first item id=',allItems[0]?._id,null);
     filteredItems=[...allItems];
     attachmentCounts={};
     onSearch();
+    formsCacheSet(currentDept.id,allItems,columnDefs,renameMap);
     showToast('Refreshed: '+allItems.length+' items','success');
   }catch(e){console.error('REFRESH FAIL:',e);showToast('Refresh failed: '+e.message,'error');}
   setLoading(false);
