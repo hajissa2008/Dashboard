@@ -430,6 +430,9 @@ async function grantReadAccess(itemId,email){
 function itemBelongsToGroup(item,groupKey){
   var cfg=GROUP_CONFIG[groupKey];
   var appLower=(item.App||'').toLowerCase();
+  if(appLower&&appLower!=='both'){
+    return cfg.appValues.indexOf(appLower)>=0;
+  }
   if(cfg.appValues.indexOf(appLower)>=0)return true;
   var docIds=cfg.docTypes.map(function(d){return d.id;});
   if(docIds.indexOf(item.DeptID)>=0)return true;
@@ -628,7 +631,7 @@ function openEditGroupModal(email){
     if(!existingPerms[app])existingPerms[app]={};
     existingPerms[app][i.DeptID]=(i.Access||'edit').toLowerCase();
   });
-  document.getElementById('dept-perms-grid').innerHTML=buildAllSubApps('edit',existingPerms);
+  document.getElementById('dept-perms-grid').innerHTML=buildAllSubApps('none',existingPerms);
   document.getElementById('add-modal').classList.add('show');
 }
 function toggleSelectAll(checked){
@@ -697,7 +700,7 @@ function openAddModal(){
   editingId=null;
   document.getElementById('modal-title').textContent='Add User Permission';
   document.getElementById('inp-email').value='';
-  document.getElementById('dept-perms-grid').innerHTML=buildAllSubApps('edit');
+  document.getElementById('dept-perms-grid').innerHTML=buildAllSubApps('none');
   document.getElementById('add-modal').classList.add('show');
 }
 function openEditModal(id){
@@ -775,7 +778,7 @@ function bulkEdit(){
   if(!selectedIds.size)return;
   document.getElementById('modal-title').textContent='Bulk Edit ('+selectedIds.size+' entries)';
   document.getElementById('inp-email').value='';
-  document.getElementById('dept-perms-grid').innerHTML=buildAllSubApps('edit');
+  document.getElementById('dept-perms-grid').innerHTML=buildAllSubApps('none');
   editingId='BULK';document.getElementById('add-modal').classList.add('show');
 }
 
