@@ -103,12 +103,14 @@ tr:hover td{background:var(--primary-light)}
 .subapp-header:hover{background:var(--primary-light)}
 .subapp-name{font-size:13px;font-weight:600;flex:1}
 .subapp-count{font-size:11px;color:var(--text2);background:var(--white);padding:1px 8px;border-radius:10px}
+.subapp-active{font-size:11px;color:var(--green);background:var(--green-light);padding:1px 8px;border-radius:10px;font-weight:600}
 .subapp-access{padding:4px 8px;font-size:12px;width:auto;border:1px solid var(--gray-border);border-radius:var(--radius)}
 .subapp-grid{display:none;padding:10px 14px}
 .subapp-grid.show{display:block}
 .subapp-grid .perms-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
 .subapp-grid .perm-row{display:flex;align-items:center;justify-content:space-between;padding:5px 10px;border:1px solid var(--gray-border);border-radius:var(--radius);font-size:12px}
 .subapp-grid .perm-row label{margin:0;font-size:12px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.subapp-grid .perm-row.active-perm{border-color:var(--green);background:var(--green-light)}
 .subapp-grid select{padding:3px 6px;font-size:11px;width:auto;flex-shrink:0}
 .modal{width:760px}
 @media(max-width:768px){.stats{gap:8px}.stat-card{min-width:80px;padding:8px 12px}.stat-card .value{font-size:16px}.subapp-grid .perms-grid{grid-template-columns:1fr}.toolbar{gap:8px}.group-tabs{flex-direction:column}.group-tab{border-right:none;border-bottom:1px solid var(--gray-border)}.modal{width:95vw}}
@@ -118,7 +120,7 @@ tr:hover td{background:var(--primary-light)}
 <div class="header">
   <div>
     <h1>AlEnshaiah Permissions Manager</h1>
-    <div class="subtitle">Manage user access — Project Tracker, Forms &amp; DC Log</div>
+    <div class="subtitle">Manage user access — Project Tracker, Forms, DC-Log &amp; DC-Form</div>
   </div>
   <div class="auth-section">
     <span class="user-info" id="user-info" style="display:none"></span>
@@ -135,8 +137,11 @@ tr:hover td{background:var(--primary-light)}
     <button class="group-tab" data-group="forms" onclick="switchGroup('forms')">
       📝 Forms <span class="tab-count" id="tab-count-forms">0</span>
     </button>
-    <button class="group-tab" data-group="dc" onclick="switchGroup('dc')">
-      📄 DC Log <span class="tab-count" id="tab-count-dc">0</span>
+    <button class="group-tab" data-group="dclog" onclick="switchGroup('dclog')">
+      📄 DC-Log <span class="tab-count" id="tab-count-dclog">0</span>
+    </button>
+    <button class="group-tab" data-group="dcform" onclick="switchGroup('dcform')">
+      📝 DC-Form <span class="tab-count" id="tab-count-dcform">0</span>
     </button>
   </div>
   <div class="stats" id="stats"></div>
@@ -275,7 +280,7 @@ var DC_DOCTYPES=[
   {id:'piv',title:'Photos (PIV)',group:'Documents & Records'},
   {id:'cp',title:'Contractor Proposal (CP)',group:'Documents & Records'}
 ];
-var FORMS_DOCTYPES=TRACKER_DOCTYPES.concat(DC_DOCTYPES);
+var FORMS_DOCTYPES=TRACKER_DOCTYPES;
 
 var SUBAPPS={
   tracker:{appValue:'ProjectTracker',label:'Tracker',docTypes:TRACKER_DOCTYPES,section:'tracker'},
@@ -294,13 +299,19 @@ var GROUP_CONFIG={
   forms:{
     label:'Forms',
     appValues:['forms','both'],
-    apps:[{value:'Forms',label:'Data Entry (Forms)'},{value:'Both',label:'Both'}],
-    docTypes:FORMS_DOCTYPES
+    apps:[{value:'Forms',label:'Forms'},{value:'Both',label:'Both'}],
+    docTypes:TRACKER_DOCTYPES
   },
-  dc:{
-    label:'DC Log',
-    appValues:['dclog','dcform','both'],
-    apps:[{value:'DCLog',label:'DC Log'},{value:'DCForm',label:'DC Form'},{value:'Both',label:'Both'}],
+  dclog:{
+    label:'DC-Log',
+    appValues:['dclog','both'],
+    apps:[{value:'DCLog',label:'DC Log'},{value:'Both',label:'Both'}],
+    docTypes:DC_DOCTYPES
+  },
+  dcform:{
+    label:'DC-Form',
+    appValues:['dcform','both'],
+    apps:[{value:'DCForm',label:'DC Form'},{value:'Both',label:'Both'}],
     docTypes:DC_DOCTYPES
   }
 };
@@ -460,9 +471,10 @@ async function loadPerms(){
   if(permItems.length){
     var tc=permItems.filter(function(i){return itemBelongsToGroup(i,'tracker');}).length;
     var fc=permItems.filter(function(i){return itemBelongsToGroup(i,'forms');}).length;
-    var dc=permItems.filter(function(i){return itemBelongsToGroup(i,'dc');}).length;
-    db.style.display='';db.innerHTML='Loaded <b>'+permItems.length+'</b> entries | Tracker: <b>'+tc+'</b> | Forms: <b>'+fc+'</b> | DC: <b>'+dc+'</b> | DeptIDs: ['+[...new Set(permItems.map(function(i){return i.DeptID||'?';}))].join(', ')+'] | Apps: ['+[...new Set(permItems.map(function(i){return i.App||'?';}))].join(', ')+']';
-    console.log('[Perms] Total:',permItems.length,'Tracker:',tc,'Forms:',fc,'DC:',dc);
+    var dcl=permItems.filter(function(i){return itemBelongsToGroup(i,'dclog');}).length;
+    var dcf=permItems.filter(function(i){return itemBelongsToGroup(i,'dcform');}).length;
+    db.style.display='';db.innerHTML='Loaded <b>'+permItems.length+'</b> entries | Tracker: <b>'+tc+'</b> | Forms: <b>'+fc+'</b> | DC-Log: <b>'+dcl+'</b> | DC-Form: <b>'+dcf+'</b> | DeptIDs: ['+[...new Set(permItems.map(function(i){return i.DeptID||'?';}))].join(', ')+'] | Apps: ['+[...new Set(permItems.map(function(i){return i.App||'?';}))].join(', ')+']';
+    console.log('[Perms] Total:',permItems.length,'Tracker:',tc,'Forms:',fc,'DC-Log:',dcl,'DC-Form:',dcf);
     console.log('[Perms] DeptIDs:',[...new Set(permItems.map(function(i){return i.DeptID;}))]);
     console.log('[Perms] Apps:',[...new Set(permItems.map(function(i){return i.App;}))]);
   }else{db.style.display='none';}
@@ -479,7 +491,8 @@ function switchGroup(group){
 function updateTabCounts(){
   document.getElementById('tab-count-tracker').textContent=permItems.filter(function(i){return itemBelongsToGroup(i,'tracker');}).length;
   document.getElementById('tab-count-forms').textContent=permItems.filter(function(i){return itemBelongsToGroup(i,'forms');}).length;
-  document.getElementById('tab-count-dc').textContent=permItems.filter(function(i){return itemBelongsToGroup(i,'dc');}).length;
+  document.getElementById('tab-count-dclog').textContent=permItems.filter(function(i){return itemBelongsToGroup(i,'dclog');}).length;
+  document.getElementById('tab-count-dcform').textContent=permItems.filter(function(i){return itemBelongsToGroup(i,'dcform');}).length;
 }
 
 function populateFilters(){
@@ -651,7 +664,23 @@ function toggleSubApp(key){
   grid.classList.toggle('show');
 }
 function onSubAppAccessChange(appValue,access){
-  document.querySelectorAll('#dept-perms-grid select[data-app="'+appValue+'"]').forEach(function(s){s.value=access;});
+  document.querySelectorAll('#dept-perms-grid select[data-app="'+appValue+'"]').forEach(function(s){
+    s.value=access;
+    var row=s.closest('.perm-row');
+    if(row)row.classList.toggle('active-perm',access!=='none');
+  });
+  var block=document.querySelector('.subapp-access[data-app="'+appValue+'"]');
+  if(block){
+    var subappBlock=block.closest('.subapp-block');
+    if(subappBlock){
+      var badge=subappBlock.querySelector('.subapp-active');
+      if(access!=='none'){
+        var count=subappBlock.querySelectorAll('select[data-app="'+appValue+'"]').length;
+        if(!badge){badge=document.createElement('span');badge.className='subapp-active';subappBlock.querySelector('.subapp-header').insertBefore(badge,subappBlock.querySelector('.subapp-count'));}
+        badge.textContent=count+' assigned';
+      }else if(badge)badge.remove();
+    }
+  }
 }
 function buildSubAppGrid(appValue,docTypes,defaultAccess,existingPerms){
   var html='<div class="perms-grid">';
@@ -661,7 +690,8 @@ function buildSubAppGrid(appValue,docTypes,defaultAccess,existingPerms){
       if(existingPerms[appValue]&&existingPerms[appValue][d.id])val=existingPerms[appValue][d.id];
       else if(existingPerms['Both']&&existingPerms['Both'][d.id])val=existingPerms['Both'][d.id];
     }
-    html+='<div class="perm-row"><label>'+htmlEscape(d.title)+'</label><select data-app="'+appValue+'" data-dept="'+d.id+'">'+
+    var hasActive=val!=='none';
+    html+='<div class="perm-row'+(hasActive?' active-perm':'')+'"><label>'+htmlEscape(d.title)+'</label><select data-app="'+appValue+'" data-dept="'+d.id+'" onchange="onPermSelectChange(this)">'+
       '<option value="edit"'+(val==='edit'?' selected':'')+'>Edit</option>'+
       '<option value="read"'+(val==='read'?' selected':'')+'>Read</option>'+
       '<option value="none"'+(val==='none'?' selected':'')+'>None</option></select></div>';
@@ -669,12 +699,27 @@ function buildSubAppGrid(appValue,docTypes,defaultAccess,existingPerms){
   html+='</div>';
   return html;
 }
+function onPermSelectChange(sel){
+  var row=sel.closest('.perm-row');
+  if(row){row.classList.toggle('active-perm',sel.value!=='none');}
+  var appValue=sel.dataset.app;
+  var block=sel.closest('.subapp-block');
+  if(block){
+    var activeCount=0;
+    block.querySelectorAll('select[data-app="'+appValue+'"]').forEach(function(s){if(s.value!=='none')activeCount++;});
+    var badge=block.querySelector('.subapp-active');
+    if(activeCount>0){if(!badge){badge=document.createElement('span');badge.className='subapp-active';block.querySelector('.subapp-header').insertBefore(badge,block.querySelector('.subapp-count'));}badge.textContent=activeCount+' assigned';}
+    else if(badge)badge.remove();
+  }
+}
 function buildAllSubApps(defaultAccess,existingPerms){
   existingPerms=existingPerms||{};
   var html='';
   var sections=[
-    {id:'tracker',label:'Project Tracker',icon:'📐',apps:['tracker','forms']},
-    {id:'dc',label:'DC Log',icon:'📄',apps:['dclog','dcform']}
+    {id:'tracker',label:'Project Tracker',icon:'📐',apps:['tracker']},
+    {id:'forms',label:'Forms',icon:'📝',apps:['forms']},
+    {id:'dclog',label:'DC-Log',icon:'📄',apps:['dclog']},
+    {id:'dcform',label:'DC-Form',icon:'📋',apps:['dcform']}
   ];
   sections.forEach(function(sec){
     html+='<div class="app-section"><div class="app-section-header"><span class="app-section-icon">'+sec.icon+'</span><span class="app-section-title">'+sec.label+'</span></div>';
@@ -683,13 +728,19 @@ function buildAllSubApps(defaultAccess,existingPerms){
       var appAccess=defaultAccess;
       if(existingPerms[sa.appValue]){var vals=Object.values(existingPerms[sa.appValue]);if(vals.length)appAccess=vals[0];}
       else if(existingPerms['Both']){var bvals=Object.values(existingPerms['Both']);if(bvals.length)appAccess=bvals[0];}
+      var activeCount=0;
+      sa.docTypes.forEach(function(d){
+        var v=(existingPerms[sa.appValue]&&existingPerms[sa.appValue][d.id])||(existingPerms['Both']&&existingPerms['Both'][d.id])||defaultAccess;
+        if(v!=='none')activeCount++;
+      });
       html+='<div class="subapp-block"><div class="subapp-header" onclick="toggleSubApp(\''+key+'\')">';
       html+='<span class="subapp-name">'+htmlEscape(sa.label)+'</span>';
+      if(activeCount>0)html+='<span class="subapp-active">'+activeCount+' assigned</span>';
       html+='<span class="subapp-count">'+sa.docTypes.length+' lists</span>';
       html+='<select class="subapp-access" data-app="'+sa.appValue+'" onclick="event.stopPropagation()" onchange="onSubAppAccessChange(\''+sa.appValue+'\',this.value)">';
       ['edit','read','none'].forEach(function(v){html+='<option value="'+v+'"'+(appAccess===v?' selected':'')+'>'+v.charAt(0).toUpperCase()+v.slice(1)+'</option>';});
       html+='</select></div>';
-      html+='<div class="subapp-grid" id="subapp-grid-'+key+'">'+buildSubAppGrid(sa.appValue,sa.docTypes,appAccess,existingPerms)+'</div>';
+      html+='<div class="subapp-grid'+(activeCount>0?' show':'')+'" id="subapp-grid-'+key+'">'+buildSubAppGrid(sa.appValue,sa.docTypes,appAccess,existingPerms)+'</div>';
       html+='</div>';
     });
     html+='</div>';
@@ -705,13 +756,7 @@ function openAddModal(){
 }
 function openEditModal(id){
   var item=permItems.find(function(i){return i.Id===id;});if(!item)return;
-  editingId=id;
-  document.getElementById('modal-title').textContent='Edit User Permission';
-  document.getElementById('inp-email').value=item.Title||'';
-  var existingPerms={};var app=item.App||'Both';
-  existingPerms[app]={};existingPerms[app][item.DeptID]=(item.Access||'edit').toLowerCase();
-  document.getElementById('dept-perms-grid').innerHTML=buildAllSubApps('none',existingPerms);
-  document.getElementById('add-modal').classList.add('show');
+  openEditGroupModal(item.Title||'');
 }
 function closeModal(){document.getElementById('add-modal').classList.remove('show');}
 
@@ -735,27 +780,32 @@ async function savePerm(){
   document.querySelectorAll('#dept-perms-grid select[data-dept]').forEach(function(s){
     allEntries.push({Title:email,App:s.dataset.app,DeptID:s.dataset.dept,Access:s.value});
   });
-  var toSave=allEntries.filter(function(e){return e.Access!=='none';});
+  var deduped={};
+  allEntries.forEach(function(e){if(e.Access!=='none')deduped[e.App+'|'+e.DeptID]=e;});
+  var toSave=Object.values(deduped);
   if(!toSave.length){showToast('Set at least one document type to Edit or Read','error');return;}
   document.getElementById('saving-overlay').classList.add('show');
   try{
-    if(editingId==='GROUP'||editingId==='BULK'){
-      var targetEmails=editingId==='GROUP'?[email]:[];
-      if(editingId==='BULK'){
-        selectedIds.forEach(function(id){var it=permItems.find(function(i){return i.Id===id;});if(it&&targetEmails.indexOf((it.Title||'').toLowerCase())<0)targetEmails.push((it.Title||'').toLowerCase());});
-        if(!targetEmails.length)targetEmails=[email];
-      }
-      for(var t=0;t<targetEmails.length;t++){
-        var oldItems=permItems.filter(function(i){return (i.Title||'').toLowerCase()===targetEmails[t].toLowerCase();});
-        for(var i=0;i<oldItems.length;i++){try{await spDelete(permApi(oldItems[i].Id));}catch(e){}}
-        var userEntries=toSave.map(function(e){return {Title:targetEmails[t],App:e.App,DeptID:e.DeptID,Access:e.Access};});
-        for(var j=0;j<userEntries.length;j++){try{var cr=await spPost(permApi(),userEntries[j]);if(cr&&cr.d&&cr.d.Id)await grantReadAccess(cr.d.Id,targetEmails[t]);}catch(e){}}
-      }
-    }else if(editingId){
-      await spDelete(permApi(editingId));
-      for(var k=0;k<toSave.length;k++){try{var sr=await spPost(permApi(),toSave[k]);if(sr&&sr.d&&sr.d.Id)await grantReadAccess(sr.d.Id,email);}catch(e){}}
+    var targetEmails=[];
+    if(editingId==='GROUP'){
+      targetEmails=[email];
+    }else if(editingId==='BULK'){
+      selectedIds.forEach(function(id){var it=permItems.find(function(i){return i.Id===id;});if(it&&targetEmails.indexOf((it.Title||'').toLowerCase())<0)targetEmails.push((it.Title||'').toLowerCase());});
+      if(!targetEmails.length)targetEmails=[email];
     }else{
-      for(var m=0;m<toSave.length;m++){try{var nr=await spPost(permApi(),toSave[m]);if(nr&&nr.d&&nr.d.Id)await grantReadAccess(nr.d.Id,email);}catch(e){}}
+      var existingEmail=permItems.filter(function(i){return (i.Title||'').toLowerCase()===email.toLowerCase();});
+      if(existingEmail.length){
+        targetEmails=[email];
+      }else{
+        for(var m=0;m<toSave.length;m++){try{var nr=await spPost(permApi(),toSave[m]);if(nr&&nr.d&&nr.d.Id)await grantReadAccess(nr.d.Id,email);}catch(e){}}
+        closeModal();document.getElementById('saving-overlay').classList.remove('show');showToast('Permissions saved','success');await loadPerms();return;
+      }
+    }
+    for(var t=0;t<targetEmails.length;t++){
+      var oldItems=permItems.filter(function(i){return (i.Title||'').toLowerCase()===targetEmails[t].toLowerCase();});
+      for(var i=0;i<oldItems.length;i++){try{await spDelete(permApi(oldItems[i].Id));}catch(e){}}
+      var userEntries=toSave.map(function(e){return {Title:targetEmails[t],App:e.App,DeptID:e.DeptID,Access:e.Access};});
+      for(var j=0;j<userEntries.length;j++){try{var cr=await spPost(permApi(),userEntries[j]);if(cr&&cr.d&&cr.d.Id)await grantReadAccess(cr.d.Id,targetEmails[t]);}catch(e){}}
     }
     closeModal();document.getElementById('saving-overlay').classList.remove('show');showToast('Permissions saved','success');await loadPerms();
   }catch(e){document.getElementById('saving-overlay').classList.remove('show');showToast('Save failed: '+e.message,'error');}
