@@ -2349,7 +2349,7 @@ function handleAuthResponse(resp){
     if(resp&&resp.account){
         spUser=resp.account; spToken=resp.accessToken;
         showSigninProgress(false); hideSigninOverlay(); updateAuthUI();
-        loadUserPerms().then(()=>{ autoConnectConfiguredViews(); finishSetup(); });
+        loadUserPerms().then(()=>{ buildNav(); autoConnectConfiguredViews(); finishSetup(); });
     }else{
         showSigninProgress(false); updateAuthUI();
     }
@@ -2467,6 +2467,43 @@ function hasAnyAccess(){
 function viewToDeptId(viewKey){
   const m={procurement:'procurement',substructure:'substructure',superstructure:'superstructure',calculations:'calculations',methodstatement:'methodstatement'};
   return m[viewKey]||null;
+}
+
+const NAV_DEPT_ICONS={substructure:'🏗️',superstructure:'🏢',procurement:'📦',calculations:'🧮',methodstatement:'📋'};
+const NAV_DEPT_TITLES={substructure:'Substructure',superstructure:'Superstructure',procurement:'Procurement',calculations:'Calculations',methodstatement:'Method Statement'};
+
+function buildNav(){
+  const nav=document.getElementById('nav');
+  if(!nav)return;
+  const isAdmin=(spUser&&spUser.username&&spUser.username.toLowerCase()===ADMIN_EMAIL.toLowerCase());
+  const allowed=isAdmin?['substructure','superstructure','calculations','methodstatement','procurement']:['substructure','superstructure','calculations','methodstatement','procurement'].filter(k=>getMyAccess(k)!=='none');
+  const shopDrawingDepts=allowed.filter(k=>k==='substructure'||k==='superstructure');
+  const otherDepts=allowed.filter(k=>k!=='substructure'&&k!=='superstructure');
+  let html='<div class="nav-section">Dashboard</div>'+
+    '<a class="nav-item active" data-view="dashboard" onclick="switchView(\'dashboard\')">'+
+    '<span class="icon">📊</span> Executive Dashboard <span class="count" id="count-all">0</span></a>';
+  if(shopDrawingDepts.length){
+    html+='<div class="nav-section">Department Views</div><div class="nav-folder">'+
+      '<div class="nav-folder-header" onclick="toggleFolder(this)"><span class="arrow">▶</span><span class="icon">📐</span> Shop Drawing</div>'+
+      '<div class="nav-folder-items">';
+    shopDrawingDepts.forEach(k=>{
+      html+='<a class="nav-item" data-view="'+k+'" onclick="switchView(\''+k+'\')">'+
+        '<span class="icon">'+NAV_DEPT_ICONS[k]+'</span> '+NAV_DEPT_TITLES[k]+
+        ' <span class="count" id="count-'+k+'">0</span>'+
+        '<span class="status-dot" id="dot-'+k+'" style="display:inline-block;vertical-align:middle;margin-left:4px"></span></a>';
+    });
+    html+='</div></div>';
+  }
+  if(otherDepts.length){
+    if(!shopDrawingDepts.length)html+='<div class="nav-section">Department Views</div>';
+    otherDepts.forEach(k=>{
+      html+='<a class="nav-item" data-view="'+k+'" onclick="switchView(\''+k+'\')">'+
+        '<span class="icon">'+NAV_DEPT_ICONS[k]+'</span> '+NAV_DEPT_TITLES[k]+
+        ' <span class="count" id="count-'+k+'">0</span>'+
+        '<span class="status-dot" id="dot-'+k+'" style="display:inline-block;vertical-align:middle;margin-left:4px"></span></a>';
+    });
+  }
+  nav.innerHTML=html;
 }
 
 function saveAuthConfig(){
@@ -2604,13 +2641,13 @@ function finishSetup(){
 
     // Handle redirect callback first
     msalApp.handleRedirectPromise().then(resp=>{
-      if(resp&&resp.account){ spUser=resp.account; spToken=resp.accessToken; hideSigninOverlay(); updateAuthUI(); loadUserPerms().then(()=>autoConnectConfiguredViews()); finishSetup(); return; }
+      if(resp&&resp.account){ spUser=resp.account; spToken=resp.accessToken; hideSigninOverlay(); updateAuthUI(); loadUserPerms().then(()=>{buildNav();autoConnectConfiguredViews();}); finishSetup(); return; }
       // Check cached accounts (survives page refresh)
       const accounts = msalApp.getAllAccounts();
       if(accounts.length>0){
         spUser = accounts[0];
         msalApp.acquireTokenSilent({ scopes: SP_SCOPES, account: spUser })
-            .then(r=>{ spToken=r.accessToken; updateAuthUI(); loadUserPerms().then(()=>autoConnectConfiguredViews()); })
+            .then(r=>{ spToken=r.accessToken; updateAuthUI(); loadUserPerms().then(()=>{buildNav();autoConnectConfiguredViews();}); })
             .catch(()=>{ spToken=null; updateAuthUI(); })
             .finally(()=>{ finishSetup(); });
       }else{
