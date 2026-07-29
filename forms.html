@@ -1255,37 +1255,23 @@ async function sendChangeNotification(itemId,fields){
     const now=new Date();
     const dateStr=now.toISOString().slice(0,10)+' '+now.toTimeString().slice(0,5);
     let rows='';
-    const revCols=columnDefs.filter(c=>/^REV\s*\d+\s*STATUS$/i.test(c.displayName||c.name));
-    const dsCol=columnDefs.find(c=>/drawing\s*status/i.test(c.displayName||c.name));
-    const alwaysCols=dsCol?[...revCols,dsCol]:revCols;
-    const otherChanged=Object.entries(fields).filter(([k])=>{
-      const col=columnDefs.find(c=>c.name===k);
-      const label=col?(col.displayName||k):k;
-      return !alwaysCols.some(a=>(a.displayName||a.name)===label||a.name===k);
-    });
-    alwaysCols.forEach(c=>{
+    const isRevDs=c=>/^REV\s*\d+\s*STATUS$/i.test(c.displayName||c.name)||/drawing\s*status/i.test(c.displayName||c.name);
+    columnDefs.forEach(c=>{
       const label=c.displayName||c.name;
+      if(/^(ID|Modified|Created|Editor|Author|AppAuthor|AppEditor|ContentType|_id|_etag)$/i.test(label))return;
       const newV=fields[c.name];
       const newStr=newV===null||newV===undefined?'':String(newV);
       const oldV=oldItem?(oldItem[c.name]??oldItem[label]??''):'';
       const oldStr=oldV===null||oldV===undefined?'':String(oldV);
       const changed=oldStr!==newStr;
-      rows+=`<tr style="${changed?'background:#fff4e8':''};border-bottom:1px solid #f0f0f0"><td style="padding:7px 12px;vertical-align:top;color:#555;font-size:13px;white-space:nowrap;font-weight:${changed?'600':'400'}">${label}</td><td style="padding:7px 12px;vertical-align:top;font-size:13px;color:#999;${changed?'text-decoration:line-through':''}">${changed?oldStr:'—'}</td><td style="padding:7px 12px;vertical-align:top;font-size:13px;color:${changed?'#d83b01':'#333'};${changed?'font-weight:600':'font-weight:400'}">${newStr||'—'}</td></tr>`;
-    });
-    otherChanged.forEach(([k,v])=>{
-      const col=columnDefs.find(c=>c.name===k);
-      const label=col?(col.displayName||k):k;
-      const oldV=oldItem?(oldItem[k]??oldItem[label]??''):'';
-      const oldStr=oldV===null||oldV===undefined?'':String(oldV);
-      const newStr=v===null||v===undefined?'':String(v);
-      if(oldStr!==newStr)rows+=`<tr style="border-bottom:1px solid #f0f0f0;background:#fff4e8"><td style="padding:7px 12px;vertical-align:top;color:#555;font-size:13px;white-space:nowrap;font-weight:600">${label}</td><td style="padding:7px 12px;vertical-align:top;font-size:13px;color:#999;text-decoration:line-through">${oldStr||'—'}</td><td style="padding:7px 12px;vertical-align:top;font-size:13px;color:#d83b01;font-weight:600">${newStr||'—'}</td></tr>`;
+      if(!changed&&!isRevDs(c))return;
+      rows+=`<tr${changed?' style="background:#fff4dc"':''}><td style="padding:10px 14px;border-bottom:1px solid #eaeaea;color:#555;font-size:13px;vertical-align:top">${label}</td><td style="padding:10px 14px;border-bottom:1px solid #eaeaea;font-size:13px;vertical-align:top;color:${changed?'#999':'#333'};${changed?'text-decoration:line-through':''}">${changed?oldStr||'—':newStr||'—'}</td><td style="padding:10px 14px;border-bottom:1px solid #eaeaea;font-size:13px;vertical-align:top;color:${changed?'#d83b01':'#333'};${changed?'font-weight:600':''}">${newStr||'—'}</td></tr>`;
     });
     if(!rows)return;
     const attachments=[];
     try{
       const atts=await fetchAttachments(currentDept.site,currentDept.list,itemId);
-      if(atts.length){
-        const a=atts[atts.length-1];
+      for(const a of atts){
         const resp=await spApiCall(spRestAttachmentsUrl(currentDept.site,currentDept.list,itemId)+`/getByFileName('${a.name.replace(/'/g,"''")}')/$value`);
         const buf=await resp.arrayBuffer();
         const bytes=new Uint8Array(buf);
@@ -1293,16 +1279,29 @@ async function sendChangeNotification(itemId,fields){
         attachments.push({'@odata.type':'#microsoft.graph.fileAttachment',name:a.name,contentBytes:btoa(binary)});
       }
     }catch(e2){console.warn('[Email] Failed to fetch attachment for email:',e2.message);}
-    const bkg=attachments.length?'background:linear-gradient(135deg,#0078d4 0,#106ebe 100%)':'background:linear-gradient(135deg,#d83b01 0,#a62a00 100%)';
-    const html=`<div style="font-family:'Segoe UI',Arial,sans-serif;max-width:640px;margin:0 auto;border-radius:8px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.12)">
-<div style="${bkg};padding:24px 28px;color:#fff"><h2 style="margin:0 0 4px;font-size:18px;font-weight:600">Update Notification</h2><p style="margin:0;font-size:13px;opacity:.9">${deptName} · ${listName} · Item #${itemId}</p></div>
-<div style="padding:20px 28px;background:#fff">
-<table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:20px">
-<thead><tr style="border-bottom:2px solid #e0e0e0"><th style="padding:8px 12px;text-align:left;font-weight:600;color:#333;font-size:12px;text-transform:uppercase;letter-spacing:.5px">Field</th><th style="padding:8px 12px;text-align:left;font-weight:600;color:#333;font-size:12px;text-transform:uppercase;letter-spacing:.5px">Old Value</th><th style="padding:8px 12px;text-align:left;font-weight:600;color:#333;font-size:12px;text-transform:uppercase;letter-spacing:.5px">New Value</th></tr></thead>
+    const bkg=attachments.length?'background:linear-gradient(135deg,#005a9e 0,#004578 100%)':'background:linear-gradient(135deg,#8c3b0b 0,#5c2607 100%)';
+    const html=`<table cellpadding="0" cellspacing="0" width="100%" style="background:#f5f5f5;font-family:'Segoe UI',Arial,sans-serif;padding:30px 0"><tr><td align="center">
+<table cellpadding="0" cellspacing="0" style="max-width:620px;width:100%;background:#fff;border-radius:6px;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,.08)">
+<tr><td style="${bkg};padding:22px 28px;color:#fff">
+<table cellpadding="0" cellspacing="0" width="100%"><tr>
+<td style="vertical-align:middle"><h1 style="margin:0;font-size:16px;font-weight:600;letter-spacing:.3px">SHOP DRAWING UPDATE</h1><p style="margin:4px 0 0;font-size:12px;opacity:.8;letter-spacing:.2px">${deptName} &nbsp;·&nbsp; ${listName} &nbsp;·&nbsp; Item #${itemId}</p></td>
+<td style="vertical-align:middle;text-align:right;font-size:11px;opacity:.7;white-space:nowrap">${dateStr}</td>
+</tr></table>
+</td></tr>
+<tr><td style="padding:0">
+<table cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;font-size:13px">
+<thead><tr style="background:#fafafa"><th style="padding:10px 14px;text-align:left;font-weight:600;color:#666;font-size:11px;text-transform:uppercase;letter-spacing:.6px;border-bottom:1px solid #e0e0e0">Field</th><th style="padding:10px 14px;text-align:left;font-weight:600;color:#666;font-size:11px;text-transform:uppercase;letter-spacing:.6px;border-bottom:1px solid #e0e0e0;width:30%">Previous</th><th style="padding:10px 14px;text-align:left;font-weight:600;color:#666;font-size:11px;text-transform:uppercase;letter-spacing:.6px;border-bottom:1px solid #e0e0e0;width:30%">Current</th></tr></thead>
 <tbody>${rows}</tbody></table>
-<div style="font-size:12px;color:#999;border-top:1px solid #f0f0f0;padding-top:12px;margin-top:8px">Updated by ${spUser.name||spUser.username} on ${dateStr} · ${attachments.length?'📎 1 attachment attached':'No attachments'}</div>
-</div></div>`;
-    const email={message:{subject:'[Forms] '+deptName+' — Item Updated',importance:'normal',body:{contentType:'HTML',content:html},toRecipients:[{emailAddress:{address:'m.hajissa@alenshaiah.com'}}]}};
+</td></tr>
+<tr><td style="padding:14px 28px;background:#fafafa;border-top:1px solid #e8e8e8">
+<table cellpadding="0" cellspacing="0" width="100%"><tr>
+<td style="font-size:12px;color:#888;vertical-align:middle">Updated by ${spUser.name||spUser.username}</td>
+<td style="font-size:12px;color:#888;vertical-align:middle;text-align:right">${attachments.length?'📎 '+attachments.length+' file'+(attachments.length>1?'s':''):''}</td>
+</tr></table>
+</td></tr>
+</table>
+</td></tr></table>`;
+    const email={message:{subject:'[Forms] '+deptName+' — Item #'+itemId+' Updated',importance:'normal',body:{contentType:'HTML',content:html},toRecipients:[{emailAddress:{address:'m.hajissa@alenshaiah.com'}}]}};
     if(attachments.length)email.message.attachments=attachments;
     await apiCall('https://graph.microsoft.com/v1.0/me/sendMail','POST',email);
     console.log('[Email] Update notification sent for item',itemId);
