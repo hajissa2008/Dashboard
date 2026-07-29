@@ -1261,7 +1261,7 @@ async function sendChangeNotification(itemId,fields){
       const oldV=oldItem?(oldItem[k]??oldItem[label]??''):'';
       const oldStr=oldV===null||oldV===undefined?'':String(oldV);
       const newStr=v===null||v===undefined?'':String(v);
-      if(oldStr!==newStr)rows+=`<tr style="border-bottom:1px solid #e0e0e0"><td style="padding:8px 12px;vertical-align:top;white-space:nowrap;color:#666;font-size:13px">${label}</td><td style="padding:8px 12px;vertical-align:top;color:#999;font-size:13px;text-decoration:line-through">${oldStr||'—'}</td><td style="padding:8px 12px;vertical-align:top;color:#d83b01;font-weight:600;font-size:13px">${newStr||'—'}</td></tr>`;
+      if(oldStr!==newStr)rows+=`<tr style="border-bottom:1px solid #f0f0f0;background:#fff4e8"><td style="padding:7px 12px;vertical-align:top;color:#555;font-size:13px;white-space:nowrap">${label}</td><td style="padding:7px 12px;vertical-align:top;font-size:13px;color:#999;text-decoration:line-through">${oldStr||'—'}</td><td style="padding:7px 12px;vertical-align:top;font-size:13px;color:#d83b01;font-weight:600">${newStr||'—'}</td></tr>`;
     });
     if(!rows)return;
     const attachments=[];
