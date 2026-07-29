@@ -818,7 +818,6 @@ async function uploadSelectedAttachments(){
   try{
     for(const file of input.files){
       await uploadAttachment(currentDept.site,currentDept.list,editingId,file.name,file);
-      sendAttachmentNotification(file.name,file.size);
     }
     input.value='';
     showToast('Uploaded','success');
@@ -1245,7 +1244,7 @@ function closeForm(){
 }
 
 // ======================== EMAIL NOTIFICATION ========================
-async function sendChangeNotification(action,fields,itemId){
+async function sendChangeNotification(itemId,fields){
   if(!spUser){console.warn('[Email] No spUser');return;}
   const userEmail=(spUser.username||'').toLowerCase();
   console.log('[Email] Current user:',userEmail,spUser.name);
@@ -1253,45 +1252,22 @@ async function sendChangeNotification(action,fields,itemId){
   try{
     const deptName=currentDept?currentDept.title:'Unknown';
     const listName=currentDept?currentDept.list:'Unknown';
-    let subject='[Forms] '+action+' — '+deptName;
+    const oldItem=allItems.find(i=>String(i._id)===String(itemId)||String(i.ID)===String(itemId));
     let rows='';
-    if(action==='Created'){
-      Object.entries(fields).forEach(([k,v])=>{
-        const col=columnDefs.find(c=>c.name===k);
-        const label=col?(col.displayName||k):k;
-        if(v!==null&&v!==undefined&&v!=='')rows+=`<tr><td style="padding:6px 10px;border:1px solid #ddd;font-weight:600">${label}</td><td style="padding:6px 10px;border:1px solid #ddd">${v}</td></tr>`;
-      });
-    }else{
-      const oldItem=allItems.find(i=>String(i._id)===String(itemId)||String(i.ID)===String(itemId));
-      Object.entries(fields).forEach(([k,v])=>{
-        const col=columnDefs.find(c=>c.name===k);
-        const label=col?(col.displayName||k):k;
-        const oldV=oldItem?(oldItem[k]??oldItem[label]??''):'';
-        const oldStr=oldV===null||oldV===undefined?'':String(oldV);
-        const newStr=v===null||v===undefined?'':String(v);
-        if(oldStr!==newStr)rows+=`<tr><td style="padding:6px 10px;border:1px solid #ddd;font-weight:600">${label}</td><td style="padding:6px 10px;border:1px solid #ddd;text-decoration:line-through;color:#999">${oldStr||'(empty)'}</td><td style="padding:6px 10px;border:1px solid #ddd;color:#107C10;font-weight:600">${newStr||'(empty)'}</td></tr>`;
-      });
-    }
+    Object.entries(fields).forEach(([k,v])=>{
+      const col=columnDefs.find(c=>c.name===k);
+      const label=col?(col.displayName||k):k;
+      const oldV=oldItem?(oldItem[k]??oldItem[label]??''):'';
+      const oldStr=oldV===null||oldV===undefined?'':String(oldV);
+      const newStr=v===null||v===undefined?'':String(v);
+      if(oldStr!==newStr)rows+=`<tr><td style="padding:6px 10px;border:1px solid #ddd;font-weight:600">${label}</td><td style="padding:6px 10px;border:1px solid #ddd;text-decoration:line-through;color:#999">${oldStr||'(empty)'}</td><td style="padding:6px 10px;border:1px solid #ddd;color:#107C10;font-weight:600">${newStr||'(empty)'}</td></tr>`;
+    });
     if(!rows)return;
-    const html=`<div style="font-family:Segoe UI,sans-serif;max-width:700px"><h2 style="color:#4C5D71;margin-bottom:4px">📋 Form ${action} Notification</h2><p style="color:#605E5C;margin:0 0 12px"><strong>User:</strong> ${spUser.name||spUser.username} &nbsp;|&nbsp; <strong>Department:</strong> ${deptName} &nbsp;|&nbsp; <strong>List:</strong> ${listName}${itemId?' &nbsp;|&nbsp; <strong>Item ID:</strong> '+itemId:''}</p><table style="border-collapse:collapse;width:100%;font-size:13px"><thead><tr>${action==='Created'?'<th style="padding:6px 10px;border:1px solid #ddd;background:#f3f2f1;text-align:left">Field</th><th style="padding:6px 10px;border:1px solid #ddd;background:#f3f2f1;text-align:left">Value</th>':'<th style="padding:6px 10px;border:1px solid #ddd;background:#f3f2f1;text-align:left">Field</th><th style="padding:6px 10px;border:1px solid #ddd;background:#f3f2f1;text-align:left">Old Value</th><th style="padding:6px 10px;border:1px solid #ddd;background:#f3f2f1;text-align:left">New Value</th>'}</tr></thead><tbody>${rows}</tbody></table></div>`;
-    const email={message:{subject,importance:'normal',body:{contentType:'HTML',content:html},toRecipients:[{emailAddress:{address:'m.hajissa@alenshaiah.com'}}]}};
+    const html=`<div style="font-family:Segoe UI,sans-serif;max-width:700px"><h2 style="color:#4C5D71;margin-bottom:4px">📋 Update Notification</h2><p style="color:#605E5C;margin:0 0 12px"><strong>User:</strong> ${spUser.name||spUser.username} &nbsp;|&nbsp; <strong>Department:</strong> ${deptName} &nbsp;|&nbsp; <strong>List:</strong> ${listName} &nbsp;|&nbsp; <strong>Item ID:</strong> ${itemId}</p><table style="border-collapse:collapse;width:100%;font-size:13px"><thead><tr><th style="padding:6px 10px;border:1px solid #ddd;background:#f3f2f1;text-align:left">Field</th><th style="padding:6px 10px;border:1px solid #ddd;background:#f3f2f1;text-align:left">Old Value</th><th style="padding:6px 10px;border:1px solid #ddd;background:#f3f2f1;text-align:left">New Value</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+    const email={message:{subject:'[Forms] Updated — '+deptName,importance:'normal',body:{contentType:'HTML',content:html},toRecipients:[{emailAddress:{address:'m.hajissa@alenshaiah.com'}}]}};
     await apiCall('https://graph.microsoft.com/v1.0/me/sendMail','POST',email);
-    console.log('[Email] Change notification sent for',action,'in',deptName);
+    console.log('[Email] Update notification sent for item',itemId,'in',deptName);
   }catch(e){console.warn('[Email] Failed to send notification:',e.message,e);}
-}
-
-async function sendAttachmentNotification(fileName,fileSize){
-  if(!spUser){console.warn('[Email] No spUser');return;}
-  const userEmail=(spUser.username||'').toLowerCase();
-  console.log('[Email] Attachment user:',userEmail);
-  if(userEmail!=='technical@alenshaiah.com'){console.log('[Email] Skipping attachment — user is not technical');return;}
-  try{
-    const deptName=currentDept?currentDept.title:'Unknown';
-    const html=`<div style="font-family:Segoe UI,sans-serif;max-width:700px"><h2 style="color:#4C5D71;margin-bottom:4px">📎 Attachment Added</h2><p style="color:#605E5C;margin:0 0 12px"><strong>User:</strong> ${spUser.name||spUser.username} &nbsp;|&nbsp; <strong>Department:</strong> ${deptName}</p><table style="border-collapse:collapse;width:100%;font-size:13px"><tr><td style="padding:6px 10px;border:1px solid #ddd;font-weight:600">File Name</td><td style="padding:6px 10px;border:1px solid #ddd">${fileName}</td></tr><tr><td style="padding:6px 10px;border:1px solid #ddd;font-weight:600">Size</td><td style="padding:6px 10px;border:1px solid #ddd">${(fileSize/1024).toFixed(1)} KB</td></tr></table></div>`;
-    const email={message:{subject:'[Forms] Attachment Added — '+deptName,importance:'normal',body:{contentType:'HTML',content:html},toRecipients:[{emailAddress:{address:'m.hajissa@alenshaiah.com'}}]}};
-    await apiCall('https://graph.microsoft.com/v1.0/me/sendMail','POST',email);
-    console.log('[Email] Attachment notification sent for',fileName);
-  }catch(e){console.warn('[Email] Failed to send attachment notification:',e.message);}
 }
 
 // ======================== SAVE ========================
@@ -1337,8 +1313,8 @@ async function saveItem(){
     }
     console.log('SAVE:',{editingId,fields,dept:currentDept.id,list:currentDept.list});
     if(Object.keys(fields).length===0)throw new Error('No fields to save - form fields may be empty');
-    if(editingId){await updateSPItem(currentDept.site,currentDept.list,editingId,fields); statusEl.textContent='✓ Updated'; showToast('Item updated','success'); sendChangeNotification('Updated',fields,editingId);}
-    else{await createSPItem(currentDept.site,currentDept.list,fields); statusEl.textContent='✓ Created'; showToast('Item created','success'); sendChangeNotification('Created',fields,null);}
+    if(editingId){await updateSPItem(currentDept.site,currentDept.list,editingId,fields); statusEl.textContent='✓ Updated'; showToast('Item updated','success'); sendChangeNotification(editingId,fields);}
+    else{await createSPItem(currentDept.site,currentDept.list,fields); statusEl.textContent='✓ Created'; showToast('Item created','success');}
     statusEl.className='save-status saved';
     await refreshItems();
     setTimeout(()=>closeForm(),600);
