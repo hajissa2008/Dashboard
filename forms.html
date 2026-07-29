@@ -818,6 +818,8 @@ async function uploadSelectedAttachments(){
   try{
     for(const file of input.files){
       await uploadAttachment(currentDept.site,currentDept.list,editingId,file.name,file);
+      if(!window._recentUploads)window._recentUploads=[];
+      window._recentUploads.push(file.name);
     }
     input.value='';
     showToast('Uploaded','success');
@@ -1231,11 +1233,8 @@ function openForm(title,data){
   document.getElementById('form-overlay').classList.remove('hidden');
   document.getElementById('save-status').className='save-status';
   document.getElementById('save-btn').textContent=editingId?'💾 Update':'💾 Create';
-  window._prevAttNames=new Set();
-  if(editingId){
-    fetchAttachments(currentDept.site,currentDept.list,editingId).then(atts=>{window._prevAttNames=new Set(atts.map(a=>a.name));}).catch(()=>{});
-    loadAttachmentsList();
-  }
+  window._recentUploads=[];
+  if(editingId)loadAttachmentsList();
 }
 
 function closeForm(){
@@ -1285,8 +1284,8 @@ async function sendChangeNotification(itemId,fields){
     const attachments=[];
     try{
       const allAtts=await fetchAttachments(currentDept.site,currentDept.list,itemId);
-      const prev=window._prevAttNames||new Set();
-      const newAtts=allAtts.filter(a=>!prev.has(a.name));
+      const recent=window._recentUploads||[];
+      const newAtts=recent.length?allAtts.filter(a=>recent.includes(a.name)):allAtts.slice(-1);
       for(const a of newAtts){
         const resp=await spApiCall(spRestAttachmentsUrl(currentDept.site,currentDept.list,itemId)+`/getByFileName('${a.name.replace(/'/g,"''")}')/$value`);
         const buf=await resp.arrayBuffer();
