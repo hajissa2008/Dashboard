@@ -1231,7 +1231,11 @@ function openForm(title,data){
   document.getElementById('form-overlay').classList.remove('hidden');
   document.getElementById('save-status').className='save-status';
   document.getElementById('save-btn').textContent=editingId?'💾 Update':'💾 Create';
-  if(editingId)loadAttachmentsList();
+  window._prevAttNames=new Set();
+  if(editingId){
+    fetchAttachments(currentDept.site,currentDept.list,editingId).then(atts=>{window._prevAttNames=new Set(atts.map(a=>a.name));}).catch(()=>{});
+    loadAttachmentsList();
+  }
 }
 
 function closeForm(){
@@ -1256,7 +1260,17 @@ async function sendChangeNotification(itemId,fields){
     const dateStr=now.toISOString().slice(0,10)+' '+now.toTimeString().slice(0,5);
     let rows='';
     const isRevDs=c=>/^REV\s*\d+\s*STATUS$/i.test(c.displayName||c.name)||/drawing\s*status/i.test(c.displayName||c.name);
-    columnDefs.forEach(c=>{
+    const isHeader=c=>/shop\s*(drawing\s*)?(no|number)/i.test(c.displayName||c.name)||/sheet\s*name/i.test(c.displayName||c.name);
+    const headerCols=columnDefs.filter(c=>isHeader(c));
+    const bodyCols=columnDefs.filter(c=>!isHeader(c));
+    headerCols.forEach(c=>{
+      const label=c.displayName||c.name;
+      const newV=fields[c.name];
+      const newStr=newV===null||newV===undefined?'':String(newV);
+      rows+=`<tr><td style="padding:10px 14px;border-bottom:1px solid #eaeaea;color:#333;font-size:13px;vertical-align:top;font-weight:600">${label}</td><td colspan="2" style="padding:10px 14px;border-bottom:1px solid #eaeaea;font-size:13px;vertical-align:top;color:#555">${newStr||'—'}</td></tr>`;
+    });
+    if(headerCols.length)rows+=`<tr><td colspan="3" style="padding:6px 14px;background:#fafafa;border-bottom:1px solid #eaeaea;font-size:11px;color:#999;text-transform:uppercase;letter-spacing:.4px">Changes</td></tr>`;
+    bodyCols.forEach(c=>{
       const label=c.displayName||c.name;
       if(/^(ID|Modified|Created|Editor|Author|AppAuthor|AppEditor|ContentType|_id|_etag)$/i.test(label))return;
       const newV=fields[c.name];
@@ -1270,8 +1284,10 @@ async function sendChangeNotification(itemId,fields){
     if(!rows)return;
     const attachments=[];
     try{
-      const atts=await fetchAttachments(currentDept.site,currentDept.list,itemId);
-      for(const a of atts){
+      const allAtts=await fetchAttachments(currentDept.site,currentDept.list,itemId);
+      const prev=window._prevAttNames||new Set();
+      const newAtts=allAtts.filter(a=>!prev.has(a.name));
+      for(const a of newAtts){
         const resp=await spApiCall(spRestAttachmentsUrl(currentDept.site,currentDept.list,itemId)+`/getByFileName('${a.name.replace(/'/g,"''")}')/$value`);
         const buf=await resp.arrayBuffer();
         const bytes=new Uint8Array(buf);
