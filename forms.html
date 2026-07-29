@@ -1255,13 +1255,30 @@ async function sendChangeNotification(itemId,fields){
     const now=new Date();
     const dateStr=now.toISOString().slice(0,10)+' '+now.toTimeString().slice(0,5);
     let rows='';
-    Object.entries(fields).forEach(([k,v])=>{
+    const revCols=columnDefs.filter(c=>/^REV\s*\d+\s*STATUS$/i.test(c.displayName||c.name));
+    const dsCol=columnDefs.find(c=>/drawing\s*status/i.test(c.displayName||c.name));
+    const alwaysCols=dsCol?[...revCols,dsCol]:revCols;
+    const otherChanged=Object.entries(fields).filter(([k])=>{
+      const col=columnDefs.find(c=>c.name===k);
+      const label=col?(col.displayName||k):k;
+      return !alwaysCols.some(a=>(a.displayName||a.name)===label||a.name===k);
+    });
+    alwaysCols.forEach(c=>{
+      const label=c.displayName||c.name;
+      const newV=fields[c.name];
+      const newStr=newV===null||newV===undefined?'':String(newV);
+      const oldV=oldItem?(oldItem[c.name]??oldItem[label]??''):'';
+      const oldStr=oldV===null||oldV===undefined?'':String(oldV);
+      const changed=oldStr!==newStr;
+      rows+=`<tr style="${changed?'background:#fff4e8':''};border-bottom:1px solid #f0f0f0"><td style="padding:7px 12px;vertical-align:top;color:#555;font-size:13px;white-space:nowrap;font-weight:${changed?'600':'400'}">${label}</td><td style="padding:7px 12px;vertical-align:top;font-size:13px;color:#999;${changed?'text-decoration:line-through':''}">${changed?oldStr:'—'}</td><td style="padding:7px 12px;vertical-align:top;font-size:13px;color:${changed?'#d83b01':'#333'};${changed?'font-weight:600':'font-weight:400'}">${newStr||'—'}</td></tr>`;
+    });
+    otherChanged.forEach(([k,v])=>{
       const col=columnDefs.find(c=>c.name===k);
       const label=col?(col.displayName||k):k;
       const oldV=oldItem?(oldItem[k]??oldItem[label]??''):'';
       const oldStr=oldV===null||oldV===undefined?'':String(oldV);
       const newStr=v===null||v===undefined?'':String(v);
-      if(oldStr!==newStr)rows+=`<tr style="border-bottom:1px solid #f0f0f0;background:#fff4e8"><td style="padding:7px 12px;vertical-align:top;color:#555;font-size:13px;white-space:nowrap">${label}</td><td style="padding:7px 12px;vertical-align:top;font-size:13px;color:#999;text-decoration:line-through">${oldStr||'—'}</td><td style="padding:7px 12px;vertical-align:top;font-size:13px;color:#d83b01;font-weight:600">${newStr||'—'}</td></tr>`;
+      if(oldStr!==newStr)rows+=`<tr style="border-bottom:1px solid #f0f0f0;background:#fff4e8"><td style="padding:7px 12px;vertical-align:top;color:#555;font-size:13px;white-space:nowrap;font-weight:600">${label}</td><td style="padding:7px 12px;vertical-align:top;font-size:13px;color:#999;text-decoration:line-through">${oldStr||'—'}</td><td style="padding:7px 12px;vertical-align:top;font-size:13px;color:#d83b01;font-weight:600">${newStr||'—'}</td></tr>`;
     });
     if(!rows)return;
     const attachments=[];
