@@ -1713,7 +1713,7 @@ async function exportAllExcel(depts,dateFrom,dateTo,filters,dateCol,fn,status){
     const filtered=applyExportFilters(items,cols,dateFrom,dateTo,filters,dateCol);
     const visible=reorderForExport(cols);
     const rows=filtered.map(item=>{
-      const row={};visible.forEach(c=>{let v=item[c.name]??item[c.displayName||c.name]??'';if(String(v).includes('<')){const d=document.createElement('div');d.innerHTML=String(v);v=(d.textContent||d.innerText||v).trim();}row[c.displayName||c.name]=v;});return row;
+      const row={};visible.forEach(c=>{let v=item[c.name]??item[c.displayName||c.name]??'';if(String(v).includes('<')){const d=document.createElement('div');d.innerHTML=String(v);v=(d.textContent||d.innerText||v).trim();}if(typeof v==='string'&&/^\d{4}-\d{2}-\d{2}T/.test(v))v=v.substring(0,10);row[c.displayName||c.name]=v;});return row;
     });
     const ws=XLSX.utils.json_to_sheet(rows);
     XLSX.utils.sheet_add_aoa(ws,[[d.title+' - AlEnshaiah','','','','Generated: '+new Date().toLocaleDateString()]],{origin:'A1'});
@@ -1729,7 +1729,7 @@ async function exportExcel(items,cols,dept,fn,status){
   const wb=XLSX.utils.book_new();
   const visible=reorderForExport(cols);
   const rows=items.map(item=>{
-    const row={};visible.forEach(c=>{let v=item[c.name]??item[c.displayName||c.name]??'';if(String(v).includes('<')){const d=document.createElement('div');d.innerHTML=String(v);v=(d.textContent||d.innerText||v).trim();}row[c.displayName||c.name]=v;});return row;
+    const row={};visible.forEach(c=>{let v=item[c.name]??item[c.displayName||c.name]??'';if(String(v).includes('<')){const d=document.createElement('div');d.innerHTML=String(v);v=(d.textContent||d.innerText||v).trim();}if(typeof v==='string'&&/^\d{4}-\d{2}-\d{2}T/.test(v))v=v.substring(0,10);row[c.displayName||c.name]=v;});return row;
   });
   const ws=XLSX.utils.json_to_sheet(rows);
   XLSX.utils.sheet_add_aoa(ws,[['AlEnshaiah - Project Management System']],{origin:'A1'});
