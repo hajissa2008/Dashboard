@@ -640,7 +640,10 @@ const SKIP_COLS = new Set([
   'LinkFilenameNoMenu','FSObjType','SortBehavior','PermMask','FileDirRef','Last_x0020_Modified',
   'Created_x0020_Date','Editor','Author'
 ]);
-const EXPORT_SKIP_COLS = SKIP_COLS;
+const EXPORT_SKIP_COLS = new Set([...SKIP_COLS,
+  'AppAuthor','AppEditor','ComplianceAssetId',
+  'App Created By','App Modified By','Compliance Asset Id'
+]);
 
 async function ensureGraphToken(){
   if(!msalApp||!spUser)throw new Error('Not authenticated');
