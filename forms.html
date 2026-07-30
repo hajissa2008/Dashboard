@@ -1608,8 +1608,15 @@ async function runExport(){
     }else{
       let dept=deptVal==='current'?currentDept:DEPTS.find(d=>d.id===deptVal);
       if(!dept)dept=currentDept;
-      let items=dept.id===currentDept.id?filteredItems:await fetchSPItems(dept.site,dept.list);
-      let cols=dept.id===currentDept.id?columnDefs:await fetchColumnDefinitions(dept.site,dept.list);
+      let items,cols;
+      if(dept.id===currentDept.id){
+        items=filteredItems; cols=columnDefs;
+      }else{
+        cols=await fetchColumnDefinitions(dept.site,dept.list);
+        const rm={}; cols.forEach(c=>{if(c.name!==c.displayName)rm[c.name]=c.displayName;});
+        const prev=renameMap; renameMap=rm;
+        try{items=await fetchSPItems(dept.site,dept.list);}finally{renameMap=prev;}
+      }
       items=applyExportFilters(items,cols,dateFrom,dateTo,excludeChoices);
       if(format==='excel'){await exportExcel(items,cols,dept,dateFrom,dateTo,excludeChoices,fn,status);}
       else{await exportPDF(items,cols,dept,dateFrom,dateTo,excludeChoices,fn,status);}
@@ -1627,7 +1634,7 @@ function applyExportFilters(items,cols,dateFrom,dateTo,excludeChoices){
       const dc=dateCols[0].name;
       result=result.filter(item=>{
         const val=item[dc];
-        if(!val)return false;
+        if(!val)return true;
         const d=new Date(val);
         if(isNaN(d.getTime()))return true;
         if(dateFrom&&d<new Date(dateFrom))return false;
@@ -1646,8 +1653,13 @@ function applyExportFilters(items,cols,dateFrom,dateTo,excludeChoices){
 }
 async function fetchDeptData(dept){
   const cols=await fetchColumnDefinitions(dept.site,dept.list);
-  const items=await fetchSPItems(dept.site,dept.list);
-  return {cols,items};
+  const rm={};
+  cols.forEach(c=>{if(c.name!==c.displayName)rm[c.name]=c.displayName;});
+  const prev=renameMap; renameMap=rm;
+  try{
+    const items=await fetchSPItems(dept.site,dept.list);
+    return {cols,items};
+  }finally{renameMap=prev;}
 }
 async function exportAllExcel(depts,dateFrom,dateTo,excludeChoices,fn,status){
   if(typeof XLSX==='undefined'){showToast('Excel library not loaded','error');return;}
