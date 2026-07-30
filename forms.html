@@ -403,17 +403,10 @@ async function loginSP(){
   if(typeof msal==='undefined'){ showSigninError('⚠️ Microsoft Authentication Library (MSAL) failed to load. Check your internet connection or ad blocker and reload.'); return; }
   if(!initMsal()){ showSigninError('⚠️ Azure AD is not configured. Click the ⚙️ link below to set up your Tenant ID and Client ID.'); return; }
   showSigninProgress(true);
-  try{
-    const resp = await msalApp.loginPopup({ scopes: SP_SCOPES });
-    handleAuthResponse(resp);
-  }catch(e){
-    try{
-      await msalApp.loginRedirect({ scopes: SP_SCOPES });
-    }catch(e2){
-      showSigninProgress(false);
-      showSigninError('Login failed: '+e2.message);
-    }
-  }
+  msalApp.loginRedirect({ scopes: SP_SCOPES }).catch(e=>{
+    showSigninProgress(false);
+    showSigninError('Login failed: '+e.message);
+  });
 }
 
 async function ssoSilentAttempt(){
