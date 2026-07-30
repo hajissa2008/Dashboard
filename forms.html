@@ -978,8 +978,10 @@ function reorderColumns(cols){
   return result;
 }
 function fmtVal(v){
-  if(typeof v==='string'&&/^\d{4}-\d{2}-\d{2}[T ]/.test(v))return v.substring(0,10);
-  return String(v??'');
+  const s=String(v??'');
+  if(s.includes('<')){const d=document.createElement('div');d.innerHTML=s;return (d.textContent||d.innerText||s).trim();}
+  if(/^\d{4}-\d{2}-\d{2}[T ]/.test(s))return s.substring(0,10);
+  return s;
 }
 function reorderForExport(cols){
   if(currentDept&&currentDept.id==='calculations'){
@@ -1707,7 +1709,7 @@ async function exportAllExcel(depts,dateFrom,dateTo,filters,dateCol,fn,status){
     const filtered=applyExportFilters(items,cols,dateFrom,dateTo,filters,dateCol);
     const visible=reorderForExport(cols);
     const rows=filtered.map(item=>{
-      const row={};visible.forEach(c=>{row[c.displayName||c.name]=item[c.name]??item[c.displayName||c.name]??'';});return row;
+      const row={};visible.forEach(c=>{let v=item[c.name]??item[c.displayName||c.name]??'';if(String(v).includes('<')){const d=document.createElement('div');d.innerHTML=String(v);v=(d.textContent||d.innerText||v).trim();}row[c.displayName||c.name]=v;});return row;
     });
     const ws=XLSX.utils.json_to_sheet(rows);
     XLSX.utils.sheet_add_aoa(ws,[[d.title+' - AlEnshaiah','','','','Generated: '+new Date().toLocaleDateString()]],{origin:'A1'});
@@ -1723,7 +1725,7 @@ async function exportExcel(items,cols,dept,fn,status){
   const wb=XLSX.utils.book_new();
   const visible=reorderForExport(cols);
   const rows=items.map(item=>{
-    const row={};visible.forEach(c=>{row[c.displayName||c.name]=item[c.name]??item[c.displayName||c.name]??'';});return row;
+    const row={};visible.forEach(c=>{let v=item[c.name]??item[c.displayName||c.name]??'';if(String(v).includes('<')){const d=document.createElement('div');d.innerHTML=String(v);v=(d.textContent||d.innerText||v).trim();}row[c.displayName||c.name]=v;});return row;
   });
   const ws=XLSX.utils.json_to_sheet(rows);
   XLSX.utils.sheet_add_aoa(ws,[['AlEnshaiah - Project Management System']],{origin:'A1'});
