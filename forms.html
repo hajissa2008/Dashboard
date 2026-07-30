@@ -1763,36 +1763,31 @@ function downloadBlob(blob,name){
 function exportVisibleCols(cols){
   return cols.filter(c=>!EXPORT_SKIP_COLS.has(c.name)&&!EXPORT_SKIP_COLS.has(c.displayName)&&!c.name.startsWith('_'));
 }
-function calcColWidths(headers,data,usableWidth){
+function filterEmptyCols(headers,data){
+  const keepIdx=[];
+  for(let i=0;i<headers.length;i++){
+    let hasData=false;
+    for(let r=0;r<data.length;r++){if(data[r]&&data[r][i]&&String(data[r][i]).trim()!==''){hasData=true;break;}}
+    if(hasData)keepIdx.push(i);
+  }
+  return{
+    headers:keepIdx.map(i=>headers[i]),
+    data:data.map(row=>keepIdx.map(i=>row[i]))
+  };
+}
+function calcColWidths(headers,data){
   const n=headers.length;
   if(n===0)return[];
-  const minW=10,maxW=70;
-  // Content weight per column (header + data length)
+  const minW=20,charW=2.2;
   const weights=headers.map((h,i)=>{
     let maxLen=h.length;
     for(let r=0;r<Math.min(data.length,200);r++){
       if(data[r]&&data[r][i])maxLen=Math.max(maxLen,String(data[r][i]).length);
     }
-    return Math.max(maxLen,1);
+    return maxLen;
   });
-  const totalW=weights.reduce((a,b)=>a+b,0);
-  if(totalW<=0)return Array(n).fill(usableWidth/n);
-  // Distribute proportionally
-  let widths=weights.map(w=>(w/totalW)*usableWidth);
-  // Iteratively enforce min/max and redistribute surplus/deficit
-  for(let iter=0;iter<20;iter++){
-    const clamped=widths.map(w=>Math.max(minW,Math.min(maxW,w)));
-    const sum=clamped.reduce((a,b)=>a+b,0);
-    if(Math.abs(sum-usableWidth)<0.5)return clamped;
-    const freeIdx=[];
-    for(let i=0;i<n;i++)if(clamped[i]>minW&&clamped[i]<maxW)freeIdx.push(i);
-    if(freeIdx.length===0)return clamped;
-    const diff=usableWidth-sum;
-    const freeWeight=freeIdx.reduce((s,i)=>s+weights[i],0);
-    if(freeWeight<=0)return clamped;
-    widths=clamped.map((w,i)=>freeIdx.includes(i)?w+diff*(weights[i]/freeWeight):w);
-  }
-  return widths.map(w=>Math.max(minW,Math.min(maxW,w)));
+  let widths=weights.map(w=>Math.max(minW,w*charW));
+  return widths;
 }
 async function loadLogoDataURL(){
   try{
@@ -2012,9 +2007,10 @@ async function exportPDF(items,cols,dept,fn,status){
   const ml=6,mr=6,usableW=pw-ml-mr;
   const logoData=await loadLogoDataURL();
   const visible=reorderForExport(cols);
-  const headers=visible.map(c=>(c.displayName||c.name));
-  const data=items.map(item=>visible.map(c=>fmtVal(item[c.name]??item[c.displayName||c.name])));
-  const widths=calcColWidths(headers,data,usableW);
+  let headers=visible.map(c=>(c.displayName||c.name));
+  let data=items.map(item=>visible.map(c=>fmtVal(item[c.name]??item[c.displayName||c.name])));
+  const cleaned=filterEmptyCols(headers,data);headers=cleaned.headers;data=cleaned.data;
+  const widths=calcColWidths(headers,data);
   const colStyles={};widths.forEach((w,i)=>{colStyles[i]={cellWidth:w};});
   addPDFHeader(doc,dept.title+' - Tracker Log','','',logoData);
   let startY=35;
@@ -2051,9 +2047,10 @@ async function exportAllPDF(depts,dateFrom,dateTo,filters,dateCol,fn,status){
     const filtered=applyExportFilters(items,cols,dateFrom,dateTo,filters,dateCol);
     if(!filtered.length)continue;
     const visible=reorderForExport(cols);
-    const headers=visible.map(c=>(c.displayName||c.name));
-    const data=filtered.map(item=>visible.map(c=>fmtVal(item[c.name]??item[c.displayName||c.name])));
-    const widths=calcColWidths(headers,data,usableW);
+    let headers=visible.map(c=>(c.displayName||c.name));
+    let data=filtered.map(item=>visible.map(c=>fmtVal(item[c.name]??item[c.displayName||c.name])));
+    const cleaned=filterEmptyCols(headers,data);headers=cleaned.headers;data=cleaned.data;
+    const widths=calcColWidths(headers,data);
     const colStyles={};widths.forEach((w,i)=>{colStyles[i]={cellWidth:w};});
     if(startY>doc.internal.pageSize.getHeight()-20){doc.addPage();startY=8;}
     doc.setFontSize(8);doc.setFont('helvetica','bold');
