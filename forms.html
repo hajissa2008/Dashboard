@@ -174,6 +174,13 @@ html,body{height:100%;font-family:'Segoe UI',-apple-system,system-ui,sans-serif;
 .export-format-group label:hover{border-color:var(--primary);background:var(--primary-light)}
 .export-format-group input:checked+span{font-weight:600}
 .export-format-group input{accent-color:var(--primary)}
+.export-preview{max-height:280px;overflow:auto;border:1px solid var(--gray-border);border-radius:4px;margin-top:10px;display:none}
+.export-preview.show{display:block}
+.export-preview table{width:100%;border-collapse:collapse;font-size:11px}
+.export-preview th{position:sticky;top:0;background:#f5f5f5;padding:6px 8px;border-bottom:2px solid var(--gray-border);text-align:left;font-weight:600;color:var(--text-secondary);white-space:nowrap;z-index:1}
+.export-preview td{padding:5px 8px;border-bottom:1px solid var(--gray-border);color:var(--text-primary);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.export-preview tr:hover td{background:var(--primary-light)}
+.export-preview .count{font-size:12px;color:var(--text-secondary);padding:6px 8px}
 .bulk-progress-text{font-size:11px;color:var(--text-secondary);text-align:center}
 .dark-toggle{background:none;border:none;font-size:18px;cursor:pointer;padding:4px;border-radius:50%;color:var(--text-primary);transition:background .15s;line-height:1}
 .dark-toggle:hover{background:var(--gray-light)}
@@ -312,6 +319,7 @@ html,body{height:100%;font-family:'Segoe UI',-apple-system,system-ui,sans-serif;
     <div class="export-modal-foot">
       <span class="save-status" id="export-status"></span>
       <button class="btn btn-outline" onclick="closeExport()">Cancel</button>
+      <button class="btn btn-outline" id="preview-btn" onclick="previewExport()">👁 Preview</button>
       <button class="btn btn-primary" id="export-btn" onclick="runExport()">📥 Export</button>
     </div>
   </div>
@@ -1549,27 +1557,37 @@ function openExport(){
   document.getElementById('export-status').textContent='';
   document.getElementById('export-btn').disabled=false;
   const depts=DEPTS;
-  const choiceCols=columnDefs.filter(c=>c.type==='choice'&&c.choices&&c.choices.length);
+  const filterNames=['Drawing Status','Discipline','Phase','Category','Shop Drawing No','Sheet Name'];
+  const filterCols=columnDefs.filter(c=>filterNames.some(f=>new RegExp(f.replace(/[-\/\\^$*+?.()|[\]{}]/g,'\\$&'),'i').test(c.displayName||c.name)));
   const dateCols=columnDefs.filter(c=>c.type==='date');
+  const actionDateCol=dateCols.find(c=>/latest|submission|response|action|revision|update/i.test(c.displayName||c.name))||dateCols[0];
   let html='';
   html+='<div class="export-section"><div class="export-section-title">Department</div><div class="export-row">';
-  html+='<select id="export-dept"><option value="current">'+htmlEscape(currentDept.title)+' (Current)</option>';
+  html+='<select id="export-dept" onchange="onExportDeptChange()"><option value="current">'+htmlEscape(currentDept.title)+' (Current)</option>';
   depts.forEach(d=>{if(d.id!==currentDept.id)html+='<option value="'+d.id+'">'+htmlEscape(d.title)+'</option>';});
   html+='<option value="all">All Departments</option></select></div></div>';
   if(dateCols.length){
+    html+='<div class="export-section"><div class="export-section-title">Date Column</div><div class="export-row">';
+    html+='<select id="export-date-col">';
+    dateCols.forEach(c=>{
+      const sel=c.name===(actionDateCol?actionDateCol.name:'')?' selected':'';
+      html+='<option value="'+c.name+'"'+sel+'>'+htmlEscape(c.displayName||c.name)+'</option>';
+    });
+    html+='</select></div></div>';
     html+='<div class="export-section"><div class="export-section-title">Date Range</div><div class="export-row">';
     html+='<label>From: <input type="date" id="export-date-from"></label>';
     html+='<label>To: <input type="date" id="export-date-to"></label></div></div>';
   }
-  choiceCols.forEach(c=>{
-    html+='<div class="export-section"><div class="export-section-title">'+htmlEscape(c.displayName||c.name)+'</div>';
-    html+='<div class="export-status-group">';
-    html+='<label><input type="checkbox" class="export-choice-all" data-col="'+c.name+'" checked onchange="toggleChoiceGroup(this)"> All</label>';
-    c.choices.forEach(ch=>{
-      html+='<label><input type="checkbox" class="export-choice" data-col="'+c.name+'" value="'+htmlEscape(ch)+'" checked> '+htmlEscape(ch)+'</label>';
-    });
-    html+='</div></div>';
+  filterCols.forEach(c=>{
+    const vals=new Set();
+    allItems.forEach(item=>{const v=item[c.name]??item[c.displayName||c.name];if(v&&v!=='')vals.add(String(v));});
+    const sorted=[...vals].sort();
+    html+='<div class="export-section"><div class="export-section-title">'+htmlEscape(c.displayName||c.name)+'</div><div class="export-row">';
+    html+='<select id="export-filter-'+c.name+'" class="export-filter"><option value="">All</option>';
+    sorted.forEach(v=>html+='<option value="'+htmlEscape(v)+'">'+htmlEscape(v)+'</option>');
+    html+='</select></div></div>';
   });
+  html+='<div class="export-preview" id="export-preview"><table><thead><tr><th>'+filterCols.map(c=>htmlEscape(c.displayName||c.name)).join('</th><th>')+'</th></tr></thead><tbody id="preview-body"></tbody></table><div class="count" id="preview-count"></div></div>';
   html+='<div class="export-section"><div class="export-section-title">Format</div><div class="export-format-group">';
   html+='<label><input type="radio" name="export-format" value="excel" checked><span>📗 Excel</span></label>';
   html+='<label><input type="radio" name="export-format" value="pdf"><span>📄 PDF</span></label></div></div>';
@@ -1583,6 +1601,33 @@ function toggleChoiceGroup(el){
   const checked=el.checked;
   el.closest('.export-section').querySelectorAll('.export-choice').forEach(cb=>cb.checked=checked);
 }
+async function onExportDeptChange(){}
+function getExportFilters(){
+  const dateColEl=document.getElementById('export-date-col');
+  const dateFrom=document.getElementById('export-date-from')?document.getElementById('export-date-from').value:'';
+  const dateTo=document.getElementById('export-date-to')?document.getElementById('export-date-to').value:'';
+  const dateCol=dateColEl?dateColEl.value:'';
+  const filters={};
+  document.querySelectorAll('.export-filter').forEach(sel=>{
+    if(sel.value)filters[sel.id.replace('export-filter-','')]=sel.value;
+  });
+  return {dateFrom,dateTo,dateCol,filters};
+}
+function previewExport(){
+  const {dateFrom,dateTo,dateCol,filters}=getExportFilters();
+  const previewEl=document.getElementById('export-preview');
+  const tbody=document.getElementById('preview-body');
+  const countEl=document.getElementById('preview-count');
+  let filtered=[...filteredItems];
+  filtered=applyExportFilters(filtered,columnDefs,dateFrom,dateTo,null,dateCol);
+  Object.entries(filters).forEach(([col,val])=>{
+    filtered=filtered.filter(item=>(item[col]??item[columnDefs.find(c=>c.name===col)?.['displayName']||''])===val);
+  });
+  const filterCols=columnDefs.filter(c=>/drawing\s*status|discipline|phase|category|shop.*drawing.*(no|number)|sheet\s*name/i.test(c.displayName||c.name));
+  tbody.innerHTML=filtered.slice(0,200).map(item=>'<tr>'+filterCols.map(c=>'<td>'+htmlEscape(String(item[c.name]??item[c.displayName||c.name]??''))+'</td>').join('')+'</tr>').join('');
+  countEl.textContent=filtered.length+' item'+(filtered.length!==1?'s':'')+(filtered.length>200?' (showing first 200)':'');
+  previewEl.classList.add('show');
+}
 async function runExport(){
   const btn=document.getElementById('export-btn');
   const status=document.getElementById('export-status');
@@ -1590,21 +1635,12 @@ async function runExport(){
   try{
     const format=document.querySelector('input[name="export-format"]:checked').value;
     const deptVal=document.getElementById('export-dept').value;
-    const dateFrom=document.getElementById('export-date-from')?document.getElementById('export-date-from').value:'';
-    const dateTo=document.getElementById('export-date-to')?document.getElementById('export-date-to').value:'';
-    const choiceFilters={};
-    document.querySelectorAll('.export-choice').forEach(cb=>{
-      if(!cb.checked){
-        if(!choiceFilters[cb.dataset.col])choiceFilters[cb.dataset.col]=[];
-        choiceFilters[cb.dataset.col].push(cb.value);
-      }
-    });
-    const excludeChoices=Object.keys(choiceFilters).length?choiceFilters:null;
+    const {dateFrom,dateTo,dateCol,filters}=getExportFilters();
     const fn=htmlEscape(currentDept.title).replace(/[^a-z0-9]/gi,'_')+'_Export_'+new Date().toISOString().slice(0,10);
     if(deptVal==='all'){
       const allDepts=DEPTS;
-      if(format==='excel'){await exportAllExcel(allDepts,dateFrom,dateTo,excludeChoices,fn,status);}
-      else{await exportAllPDF(allDepts,dateFrom,dateTo,excludeChoices,fn,status);}
+      if(format==='excel'){await exportAllExcel(allDepts,dateFrom,dateTo,filters,dateCol,fn,status);}
+      else{await exportAllPDF(allDepts,dateFrom,dateTo,filters,dateCol,fn,status);}
     }else{
       let dept=deptVal==='current'?currentDept:DEPTS.find(d=>d.id===deptVal);
       if(!dept)dept=currentDept;
@@ -1617,21 +1653,20 @@ async function runExport(){
         const prev=renameMap; renameMap=rm;
         try{items=await fetchSPItems(dept.site,dept.list);}finally{renameMap=prev;}
       }
-      items=applyExportFilters(items,cols,dateFrom,dateTo,excludeChoices);
-      if(format==='excel'){await exportExcel(items,cols,dept,dateFrom,dateTo,excludeChoices,fn,status);}
-      else{await exportPDF(items,cols,dept,dateFrom,dateTo,excludeChoices,fn,status);}
+      items=applyExportFilters(items,cols,dateFrom,dateTo,filters,dateCol);
+      if(format==='excel'){await exportExcel(items,cols,dept,fn,status);}
+      else{await exportPDF(items,cols,dept,fn,status);}
     }
     status.className='save-status saved';status.textContent='✓ Exported';
     showToast('Export complete','success');
   }catch(e){console.error('Export:',e);status.className='save-status error';status.textContent='Error: '+e.message;showToast('Export failed: '+e.message,'error');}
   btn.disabled=false;
 }
-function applyExportFilters(items,cols,dateFrom,dateTo,excludeChoices){
+function applyExportFilters(items,cols,dateFrom,dateTo,includeFilters,dateCol){
   let result=items;
   if(dateFrom||dateTo){
-    const dateCols=cols.filter(c=>c.type==='date');
-    if(dateCols.length){
-      const dc=dateCols[0].name;
+    const dc=dateCol||(cols.filter(c=>c.type==='date')[0]||{}).name;
+    if(dc){
       result=result.filter(item=>{
         const val=item[dc];
         if(!val)return true;
@@ -1643,10 +1678,11 @@ function applyExportFilters(items,cols,dateFrom,dateTo,excludeChoices){
       });
     }
   }
-  if(excludeChoices){
-    Object.keys(excludeChoices).forEach(col=>{
-      const excluded=excludeChoices[col];
-      result=result.filter(item=>!excluded.includes(item[col]));
+  if(includeFilters){
+    Object.entries(includeFilters).forEach(([col,val])=>{
+      const colDef=cols.find(c=>c.name===col);
+      const dn=colDef?colDef.displayName:col;
+      result=result.filter(item=>String(item[col]??item[dn]??'')===String(val));
     });
   }
   return result;
@@ -1661,14 +1697,14 @@ async function fetchDeptData(dept){
     return {cols,items};
   }finally{renameMap=prev;}
 }
-async function exportAllExcel(depts,dateFrom,dateTo,excludeChoices,fn,status){
+async function exportAllExcel(depts,dateFrom,dateTo,filters,dateCol,fn,status){
   if(typeof XLSX==='undefined'){showToast('Excel library not loaded','error');return;}
   const wb=XLSX.utils.book_new();
   for(let i=0;i<depts.length;i++){
     const d=depts[i];
     status.textContent='Fetching '+d.title+'...';
     const {cols,items}=await fetchDeptData(d);
-    const filtered=applyExportFilters(items,cols,dateFrom,dateTo,excludeChoices);
+    const filtered=applyExportFilters(items,cols,dateFrom,dateTo,filters,dateCol);
     const visible=reorderForExport(cols);
     const rows=filtered.map(item=>{
       const row={};visible.forEach(c=>{row[c.displayName||c.name]=item[c.name]??item[c.displayName||c.name]??'';});return row;
@@ -1682,7 +1718,7 @@ async function exportAllExcel(depts,dateFrom,dateTo,excludeChoices,fn,status){
   }
   XLSX.writeFile(wb,fn+'.xlsx');
 }
-async function exportExcel(items,cols,dept,dateFrom,dateTo,excludeChoices,fn,status){
+async function exportExcel(items,cols,dept,fn,status){
   if(typeof XLSX==='undefined'){showToast('Excel library not loaded','error');return;}
   const wb=XLSX.utils.book_new();
   const visible=reorderForExport(cols);
@@ -1692,11 +1728,9 @@ async function exportExcel(items,cols,dept,dateFrom,dateTo,excludeChoices,fn,sta
   const ws=XLSX.utils.json_to_sheet(rows);
   XLSX.utils.sheet_add_aoa(ws,[['AlEnshaiah - Project Management System']],{origin:'A1'});
   XLSX.utils.sheet_add_aoa(ws,[[dept.title+' - Data Export','','','','Generated: '+new Date().toLocaleDateString()]],{origin:'A2'});
-  if(dateFrom||dateTo){XLSX.utils.sheet_add_aoa(ws,[['Date Range: '+(dateFrom||'...')+' to '+(dateTo||'...')]],{origin:'A3'});}
   const headers=visible.map(c=>c.displayName||c.name);
-  XLSX.utils.sheet_add_aoa(ws,[headers],{origin:{r:dateFrom||dateTo?3:2,c:0}});
-  const startRow=dateFrom||dateTo?4:3;
-  XLSX.utils.sheet_add_json(ws,rows,{origin:{r:startRow,c:0},skipHeader:true});
+  XLSX.utils.sheet_add_aoa(ws,[headers],{origin:{r:2,c:0}});
+  XLSX.utils.sheet_add_json(ws,rows,{origin:{r:3,c:0},skipHeader:true});
   ws['!merges']=[{s:{r:0,c:0},e:{r:0,c:Math.max(visible.length-1,4)}}];
   ws['!cols']=visible.map(()=>({wch:22}));
   XLSX.utils.book_append_sheet(wb,ws,'Data');
@@ -1964,7 +1998,7 @@ function addKpiSection(doc,items,startY,dept){
   doc.setTextColor(0,0,0);doc.setFont('helvetica','normal');
   return sepY+3;
 }
-async function exportPDF(items,cols,dept,dateFrom,dateTo,excludeChoices,fn,status){
+async function exportPDF(items,cols,dept,fn,status){
   if(typeof jspdf==='undefined'){showToast('PDF library not loaded','error');return;}
   const {jsPDF}=window.jspdf;
   const doc=new jsPDF('l','mm','a3');
@@ -1976,8 +2010,8 @@ async function exportPDF(items,cols,dept,dateFrom,dateTo,excludeChoices,fn,statu
   const data=items.map(item=>visible.map(c=>fmtVal(item[c.name]??item[c.displayName||c.name])));
   const widths=calcColWidths(headers,data,usableW);
   const colStyles={};widths.forEach((w,i)=>{colStyles[i]={cellWidth:w};});
-  addPDFHeader(doc,dept.title+' - Tracker Log',dateFrom,dateTo,logoData);
-  let startY=dateFrom||dateTo?38:35;
+  addPDFHeader(doc,dept.title+' - Tracker Log','','',logoData);
+  let startY=35;
   startY=addKpiSection(doc,items,startY,dept);
   if(startY>doc.internal.pageSize.getHeight()-15){startY=10;doc.addPage();}
   doc.autoTable({
@@ -1995,20 +2029,20 @@ async function exportPDF(items,cols,dept,dateFrom,dateTo,excludeChoices,fn,statu
   });
   try{downloadBlob(doc.output('blob'),fn+'.pdf');}catch(e){console.warn('Blob output failed, using doc.save:',e);doc.save(fn+'.pdf');}
 }
-async function exportAllPDF(depts,dateFrom,dateTo,excludeChoices,fn,status){
+async function exportAllPDF(depts,dateFrom,dateTo,filters,dateCol,fn,status){
   if(typeof jspdf==='undefined'){showToast('PDF library not loaded','error');return;}
   const {jsPDF}=window.jspdf;
   const doc=new jsPDF('l','mm','a3');
   const pw=doc.internal.pageSize.getWidth();
   const ml=6,mr=6,usableW=pw-ml-mr;
   const logoData=await loadLogoDataURL();
-  addPDFHeader(doc,'All Departments - Tracker Log',dateFrom,dateTo,logoData);
-  let startY=dateFrom||dateTo?38:35;
+  addPDFHeader(doc,'All Departments - Tracker Log','','',logoData);
+  let startY=35;
   for(let i=0;i<depts.length;i++){
     const d=depts[i];
     status.textContent='Fetching '+d.title+'...';
     const {cols,items}=await fetchDeptData(d);
-    const filtered=applyExportFilters(items,cols,dateFrom,dateTo,excludeChoices);
+    const filtered=applyExportFilters(items,cols,dateFrom,dateTo,filters,dateCol);
     if(!filtered.length)continue;
     const visible=reorderForExport(cols);
     const headers=visible.map(c=>(c.displayName||c.name));
