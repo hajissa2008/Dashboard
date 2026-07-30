@@ -1775,7 +1775,7 @@ function filterEmptyCols(headers,data){
     data:data.map(row=>keepIdx.map(i=>row[i]))
   };
 }
-function calcColWidths(headers,data){
+function calcColWidths(headers,data,pageWidth){
   const n=headers.length;
   if(n===0)return[];
   const minW=20,charW=2.2;
@@ -1787,6 +1787,8 @@ function calcColWidths(headers,data){
     return maxLen;
   });
   let widths=weights.map(w=>Math.max(minW,w*charW));
+  const total=widths.reduce((a,b)=>a+b,0);
+  if(pageWidth&&total>pageWidth)widths=widths.map(w=>Math.max(minW*0.6,w*(pageWidth/total)));
   return widths;
 }
 async function loadLogoDataURL(){
@@ -2010,7 +2012,7 @@ async function exportPDF(items,cols,dept,fn,status){
   let headers=visible.map(c=>(c.displayName||c.name));
   let data=items.map(item=>visible.map(c=>fmtVal(item[c.name]??item[c.displayName||c.name])));
   const cleaned=filterEmptyCols(headers,data);headers=cleaned.headers;data=cleaned.data;
-  const widths=calcColWidths(headers,data);
+  const widths=calcColWidths(headers,data,usableW);
   const colStyles={};widths.forEach((w,i)=>{colStyles[i]={cellWidth:w};});
   addPDFHeader(doc,dept.title+' - Tracker Log','','',logoData);
   let startY=35;
@@ -2050,7 +2052,7 @@ async function exportAllPDF(depts,dateFrom,dateTo,filters,dateCol,fn,status){
     let headers=visible.map(c=>(c.displayName||c.name));
     let data=filtered.map(item=>visible.map(c=>fmtVal(item[c.name]??item[c.displayName||c.name])));
     const cleaned=filterEmptyCols(headers,data);headers=cleaned.headers;data=cleaned.data;
-    const widths=calcColWidths(headers,data);
+    const widths=calcColWidths(headers,data,usableW);
     const colStyles={};widths.forEach((w,i)=>{colStyles[i]={cellWidth:w};});
     if(startY>doc.internal.pageSize.getHeight()-20){doc.addPage();startY=8;}
     doc.setFontSize(8);doc.setFont('helvetica','bold');
