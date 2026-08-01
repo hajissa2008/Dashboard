@@ -1625,14 +1625,35 @@ function processBulkGrid(grid){
   });
   if(bestScore===0){showToast('No column headers matched the department fields. Use the downloaded template or an exported file.','error');return;}
   const headers=rows[headerIdx].map(h=>String(h===undefined||h===null?'':h).trim());
-  const nonEmptyRows=rows.slice(headerIdx+1).filter(r=>r.some(c=>String(c===undefined||c===null?'':c).trim()!==''));
-  if(!nonEmptyRows.length){showToast('No data rows found','error');return;}
   const mapping=headers.map(h=>{
     const trimmed=h.trim();
     let match=colDefs.find(c=>(c.displayName||c.name).toLowerCase()===trimmed.toLowerCase());
     if(!match&&/^title$/i.test(trimmed))match={name:'Title',displayName:'Title',type:'text'};
     return {header:trimmed,col:match||null,skip:!match};
   });
+  const sampleVals=mapping.map(m=>{
+    if(!m.col)return null;
+    if(m.col.type==='date')return '04/03/2021';
+    if(m.col.type==='choice'&&m.col.choices&&m.col.choices.length)return String(m.col.choices[0]);
+    if(m.col.type==='number'||m.col.type==='currency')return '0';
+    if(m.col.type==='boolean')return 'true';
+    return '';
+  });
+  const isSampleRow=(row)=>{
+    let any=false;
+    for(let ci=0;ci<row.length;ci++){
+      const sv=sampleVals[ci];
+      if(sv===null)continue;
+      const cell=String(row[ci]===undefined||row[ci]===null?'':row[ci]).trim();
+      const svLow=sv.toLowerCase();
+      const match=(svLow==='0')?(Number(cell)===0):(cell.toLowerCase()===svLow);
+      if(match)any=true;
+      else if(cell!=='')return false;
+    }
+    return any;
+  };
+  const nonEmptyRows=rows.slice(headerIdx+1).filter(r=>r.some(c=>String(c===undefined||c===null?'':c).trim()!=='')).filter(r=>!isSampleRow(r));
+  if(!nonEmptyRows.length){showToast('No data rows found','error');return;}
   const previewRows=nonEmptyRows.slice(0,10);
   let html='<div style="margin-bottom:8px;font-size:12px;color:var(--text-secondary)">'+
     '<strong>'+nonEmptyRows.length+'</strong> row(s) parsed'+
@@ -1809,20 +1830,27 @@ async function importBulkItems(){
   const matches=prepared.map(p=>findMatch(p.matchVals,prepItems));
   const replaceCount=matches.filter(Boolean).length;
   if(replaceCount<total){
-    console.warn('BULK MATCH: file mapping ->',bulkData.mapping.map(m=>({header:m.header,col:m.col?m.col.name+' / '+(m.col.displayName||''):null})));
+    const mappingInfo=bulkData.mapping.map(m=>({header:m.header,col:m.col?m.col.name+' ('+(m.col.displayName||'')+')':null}));
+    console.warn('BULK MATCH: detected headers = '+JSON.stringify(bulkData.headers));
+    console.warn('BULK MATCH: mapping = '+JSON.stringify(mappingInfo));
+    console.warn('BULK MATCH: first 2 raw file rows = '+JSON.stringify(bulkData.rows.slice(0,2)));
+    console.warn('BULK MATCH: sample list items = '+JSON.stringify(allItems.slice(0,2).map(it=>{
+      const o={id:it._id};
+      Object.keys(it).forEach(k=>{if(k!=='_id'&&k!=='_etag')o[k]=cleanText(it[k]).slice(0,60);});
+      return o;
+    })));
+    let shown=0;
     prepared.forEach((p,i)=>{
-      if(!matches[i]){
+      if(!matches[i]&&shown<5){
+        shown++;
         const mvInfo=p.matchVals.map(mv=>({header:mv.header,keys:mv.keys,val:mv.val}));
-        console.warn('BULK MATCH: row '+i+' has '+p.matchVals.length+' key(s) ->',mvInfo,'no match found in',allItems.length,'items');
+        console.warn('BULK MATCH: row '+i+' keys = '+JSON.stringify(mvInfo));
         const containing=prepItems.filter(({fields})=>p.matchVals.some(mv=>{
           if(mv.val===null||mv.val===undefined)return false;
           const wn=numOrNull(mv.val);
           return Object.keys(fields).some(k=>fields[k].n===mv.val||(wn!==null&&fields[k].num===wn));
         }));
-        console.warn('BULK MATCH: '+containing.length+' item(s) contain any of these key values ->',containing.slice(0,5).map(({it,fields})=>({
-          id:it._id,
-          keyVals:Object.fromEntries(Object.entries(fields).filter(([k,f])=>p.matchVals.some(mv=>f.n===mv.val||(numOrNull(mv.val)!==null&&f.num===numOrNull(mv.val)))).slice(0,8))
-        })));
+        console.warn('BULK MATCH: row '+i+' -> '+containing.length+' item(s) contain any key value = '+JSON.stringify(containing.slice(0,3).map(({it})=>({id:it._id,vals:Object.fromEntries(Object.entries(it).filter(([k])=>k!=='_id'&&k!=='_etag').map(([k,v])=>[k,cleanText(v).slice(0,40)]))}))));
       }
     });
   }
