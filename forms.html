@@ -1939,11 +1939,14 @@ async function exportAllExcel(depts,dateFrom,dateTo,filters,dateCol,fn,status){
     const {cols,items}=await fetchDeptData(d);
     const filtered=applyExportFilters(items,cols,dateFrom,dateTo,filters,dateCol);
     const visible=reorderForExport(cols);
-    const rows=filtered.map(item=>{
-      const row={};visible.forEach(c=>{let v=item[c.name]??item[c.displayName||c.name]??'';if(String(v).includes('<')){const d=document.createElement('div');d.innerHTML=String(v);v=(d.textContent||d.innerText||v).trim();}if(typeof v==='string'&&/^\d{4}-\d{2}-\d{2}/.test(v))v=fmtDateUAE(v);row[c.displayName||c.name]=v;});return row;
-    });
-    const ws=XLSX.utils.json_to_sheet(rows);
-    XLSX.utils.sheet_add_aoa(ws,[[d.title+' - AlEnshaiah','','','','Generated: '+new Date().toLocaleDateString()]],{origin:'A1'});
+    const headers=visible.map(c=>c.displayName||c.name);
+    const body=filtered.map(item=>visible.map(c=>{
+      let v=item[c.name]??item[c.displayName||c.name]??'';
+      if(String(v).includes('<')){const d=document.createElement('div');d.innerHTML=String(v);v=(d.textContent||d.innerText||v).trim();}
+      if(typeof v==='string'&&/^\d{4}-\d{2}-\d{2}/.test(v))v=fmtDateUAE(v);
+      return v;
+    }));
+    const ws=XLSX.utils.aoa_to_sheet([[d.title+' - AlEnshaiah','','','','Generated: '+new Date().toLocaleDateString()],headers,...body]);
     ws['!merges']=[{s:{r:0,c:0},e:{r:0,c:Math.max(visible.length-1,4)}}];
     const wscols=visible.map(()=>({wch:20}));
     ws['!cols']=wscols;
@@ -1955,15 +1958,14 @@ async function exportExcel(items,cols,dept,fn,status){
   if(typeof XLSX==='undefined'){showToast('Excel library not loaded','error');return;}
   const wb=XLSX.utils.book_new();
   const visible=reorderForExport(cols);
-  const rows=items.map(item=>{
-    const row={};visible.forEach(c=>{let v=item[c.name]??item[c.displayName||c.name]??'';if(String(v).includes('<')){const d=document.createElement('div');d.innerHTML=String(v);v=(d.textContent||d.innerText||v).trim();}if(typeof v==='string'&&/^\d{4}-\d{2}-\d{2}/.test(v))v=fmtDateUAE(v);row[c.displayName||c.name]=v;});return row;
-  });
-  const ws=XLSX.utils.json_to_sheet(rows);
-  XLSX.utils.sheet_add_aoa(ws,[['AlEnshaiah - Project Management System']],{origin:'A1'});
-  XLSX.utils.sheet_add_aoa(ws,[[dept.title+' - Data Export','','','','Generated: '+new Date().toLocaleDateString()]],{origin:'A2'});
   const headers=visible.map(c=>c.displayName||c.name);
-  XLSX.utils.sheet_add_aoa(ws,[headers],{origin:{r:2,c:0}});
-  XLSX.utils.sheet_add_json(ws,rows,{origin:{r:3,c:0},skipHeader:true});
+  const body=items.map(item=>visible.map(c=>{
+    let v=item[c.name]??item[c.displayName||c.name]??'';
+    if(String(v).includes('<')){const d=document.createElement('div');d.innerHTML=String(v);v=(d.textContent||d.innerText||v).trim();}
+    if(typeof v==='string'&&/^\d{4}-\d{2}-\d{2}/.test(v))v=fmtDateUAE(v);
+    return v;
+  }));
+  const ws=XLSX.utils.aoa_to_sheet([['AlEnshaiah - Project Management System'],[dept.title+' - Data Export','','','','Generated: '+new Date().toLocaleDateString()],headers,...body]);
   ws['!merges']=[{s:{r:0,c:0},e:{r:0,c:Math.max(visible.length-1,4)}}];
   ws['!cols']=visible.map(()=>({wch:22}));
   XLSX.utils.book_append_sheet(wb,ws,'Data');
