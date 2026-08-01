@@ -678,10 +678,10 @@ async function fetchColumnDefinitions(siteUrl,listName){
   (json.value||[]).forEach(col=>{
     const n=col.name;
     if(!n||SKIP_COLS.has(n)||n.startsWith('_')||col.calculated)return;
-    let type='text',choices=null;
+    let type='text',choices=null,allowTextEntry=false;
     if(col.text)type='text';
     else if(col.note)type='note';
-    else if(col.choice){type='choice';choices=col.choice.choices||[];}
+    else if(col.choice){type='choice';choices=col.choice.choices||[];allowTextEntry=!!col.choice.allowTextEntry;}
     else if(col.number)type='number';
     else if(col.currency)type='currency';
     else if(col.dateTime)type='date';
@@ -690,7 +690,7 @@ async function fetchColumnDefinitions(siteUrl,listName){
     else if(col.personOrGroup)type='person';
     else if(col.taxonomy)type='taxonomy';
     else type='text';
-    cols.push({name:n,displayName:col.displayName||n,type,choices,required:col.required||false,description:col.description||''});
+    cols.push({name:n,displayName:col.displayName||n,type,choices,allowTextEntry,required:col.required||false,description:col.description||''});
   });
   return cols;
 }
@@ -1507,9 +1507,9 @@ async function importBulkItems(){
   if(!bulkData||!bulkData.rows.length||!currentDept||!spToken)return;
   const btn=document.getElementById('bulk-import-btn');
   const statusEl=document.getElementById('bulk-status');
-  btn.disabled=true;statusEl.className='save-status saving';statusEl.textContent='Importing...';
+  btn.disabled=true;statusEl.className='save-status saving';statusEl.textContent='Analyzing uploaded data...';
   const total=bulkData.rows.length;
-  let success=0,fail=0,updated=0,created=0;
+  let success=0,fail=0,updated=0,created=0,partial=0,skippedChoices=0;
   const isKeyCol=(c)=>{
     const dn=(c.displayName||c.name||'').toUpperCase();
     const cn=(c.name||'').toUpperCase();
@@ -1546,36 +1546,71 @@ async function importBulkItems(){
     }
     return best;
   }
+  function buildRow(row){
+    const fields={};
+    const matchVals=[];
+    const choiceWarnings=[];
+    bulkData.mapping.forEach((m,ci)=>{
+      const raw=(row[ci]!==undefined&&row[ci]!==null)?String(row[ci]).trim():'';
+      if(raw==='')return;
+      if(m.col){
+        let val=raw;
+        if(m.col.type==='number'||m.col.type==='currency'){const n=Number(raw);if(isNaN(n))val=null;}
+        else if(m.col.type==='boolean'){val=raw.toLowerCase()==='true'||raw==='1'||raw==='yes';}
+        else if(m.col.type==='choice'&&m.col.choices&&m.col.choices.length){
+          const allowed=m.col.choices.some(ch=>String(ch).toLowerCase()===raw.toLowerCase());
+          if(!allowed&&!m.col.allowTextEntry){choiceWarnings.push((m.col.displayName||m.col.name)+'="'+raw+'"');val=null;}
+        }
+        if(val!==null&&val!==undefined)fields[m.col.name]=val;
+        if(isKeyCol(m.col))matchVals.push({key:m.col.name,aliases:[m.col.name,m.col.displayName].filter(Boolean),val:normalized(val)});
+      }else if(isKeyHeader(m.header)){
+        matchVals.push({key:m.header,aliases:[m.header],val:normalized(raw)});
+      }
+    });
+    return {fields,matchVals,choiceWarnings};
+  }
+  async function createWithIsolation(fields){
+    try{await createSPItem(currentDept.site,currentDept.list,fields);return{created:true,bad:null};}
+    catch(e){
+      if(!/400|badArgument|invalidRequest/i.test(e.message))throw e;
+      const keys=Object.keys(fields);
+      if(keys.length<=1)throw e;
+      for(const k of keys){
+        const subset={...fields};
+        delete subset[k];
+        try{await createSPItem(currentDept.site,currentDept.list,subset);return{created:true,bad:k};}
+        catch(e2){}
+      }
+      throw e;
+    }
+  }
+  const prepared=bulkData.rows.map(buildRow);
+  const matches=prepared.map(p=>findMatch(p.matchVals,allItems));
+  const replaceCount=matches.filter(Boolean).length;
+  if(replaceCount>0){
+    const ok=confirm('⚠️ '+replaceCount+' of '+total+' uploaded row(s) match existing documents and will be REPLACED (updated in place).\n\nAny rows that do not match will be created as new items.\n\nPress OK to continue, Cancel to abort.');
+    if(!ok){btn.disabled=false;statusEl.className='save-status';statusEl.textContent='Import cancelled';return;}
+  }
+  statusEl.textContent='Importing... 0%';
   const BATCH=10;
   for(let b=0;b<total;b+=BATCH){
-    const batch=bulkData.rows.slice(b,b+BATCH);
-    const tasks=batch.map((row,bi)=>{
-      const fields={};
-      const matchVals=[];
-      bulkData.mapping.forEach((m,ci)=>{
-        const raw=(row[ci]!==undefined&&row[ci]!==null)?String(row[ci]).trim():'';
-        if(raw==='')return;
-        if(m.col){
-          let val=raw;
-          if(m.col.type==='number'||m.col.type==='currency'){const n=Number(raw);if(isNaN(n))val=null;}
-          else if(m.col.type==='boolean'){val=raw.toLowerCase()==='true'||raw==='1'||raw==='yes';}
-          if(val!==null&&val!==undefined)fields[m.col.name]=val;
-          if(isKeyCol(m.col))matchVals.push({key:m.col.name,aliases:[m.col.name,m.col.displayName].filter(Boolean),val:normalized(val)});
-        }else if(isKeyHeader(m.header)){
-          matchVals.push({key:m.header,aliases:[m.header],val:normalized(raw)});
-        }
-      });
+    const batch=prepared.slice(b,b+BATCH);
+    const tasks=batch.map((p,bi)=>{
+      const {fields,choiceWarnings}=p;
+      skippedChoices+=choiceWarnings.length;
       return (async()=>{
-        if(!Object.keys(fields).length)throw new Error('No mapped fields for this row');
-        const matched=findMatch(matchVals,allItems);
+        if(!Object.keys(fields).length)throw new Error('No mapped fields for this row'+(choiceWarnings.length?' (invalid choices: '+choiceWarnings.join(', ')+')':''));
+        const matched=findMatch(p.matchVals,allItems);
         if(matched){await updateSPItem(currentDept.site,currentDept.list,matched._id,fields);return{type:'updated',item:matched};}
-        else{await createSPItem(currentDept.site,currentDept.list,fields);return{type:'created'};}
-      })().then(r=>{success++;if(r.type==='created')created++;else if(r.type==='updated')updated++;return r;}).catch(e=>{fail++;console.error('Bulk import row '+(b+bi)+':',e.message,'fields=',JSON.stringify(fields));return{type:'failed'};});
+        else{const r=await createWithIsolation(fields);return{type:'created',bad:r.bad};}
+      })().then(r=>{success++;if(r.type==='created'){created++;if(r.bad)partial++;}else if(r.type==='updated')updated++;return r;}).catch(e=>{fail++;console.error('Bulk import row '+(b+bi)+':',e.message,'fields=',JSON.stringify(fields));return{type:'failed'};});
     });
     await Promise.allSettled(tasks);
     statusEl.textContent='Importing... '+Math.round(Math.min(b+BATCH,total)/total*100)+'% ('+success+' ok, '+fail+' failed)';
   }
-  const msg=created>0&&updated>0?(created+' created, '+updated+' updated'):created>0?(created+' created'):(updated+' updated');
+  let msg=created>0&&updated>0?(created+' created, '+updated+' updated'):created>0?(created+' created'):(updated+' updated');
+  if(partial>0)msg+=' ('+partial+' with an invalid field excluded)';
+  if(skippedChoices>0)msg+=', '+skippedChoices+' invalid choice value(s) skipped';
   statusEl.className='save-status '+(fail===0?'saved':'error');
   statusEl.textContent=fail===0?'✓ '+msg:'✓ '+msg+', ✗ '+fail+' failed';
   showToast(fail===0?msg:msg+', '+fail+' failed','success');
