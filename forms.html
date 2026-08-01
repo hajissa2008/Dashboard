@@ -1359,7 +1359,7 @@ function openForm(title,data){
   if(currentDept&&(currentDept.id==='substructure'||currentDept.id==='superstructure')){
     const revMatches=[];
     columnDefs.forEach(c=>{
-      if(/^REV\s*\d+\s*STATUS$/i.test(c.displayName||c.name)){
+      if(/^REV\s*\d+\s*STATUS$/i.test((c.displayName||c.name).trim())){
         const fid='f_'+c.name.replace(/[^a-zA-Z0-9_-]/g,'_');
         const el=document.getElementById(fid);
         if(el){
@@ -1412,7 +1412,7 @@ async function sendChangeNotification(itemId,fields){
     const now=new Date();
     const dateStr=now.toISOString().slice(0,10)+' '+now.toTimeString().slice(0,5);
     let rows='';
-    const isRevDs=c=>/^REV\s*\d+\s*STATUS$/i.test(c.displayName||c.name)||/drawing\s*status/i.test(c.displayName||c.name);
+    const isRevDs=c=>/^REV\s*\d+\s*STATUS$/i.test((c.displayName||c.name).trim())||/drawing\s*status/i.test(c.displayName||c.name);
     const isHeader=c=>/(shop\s*)?draw(ing)?(s)?\s*(no|num|number)/i.test(c.displayName||c.name)||/sheet\s*name/i.test(c.displayName||c.name);
     const headerCols=columnDefs.filter(c=>isHeader(c));
     const bodyCols=columnDefs.filter(c=>!isHeader(c));
@@ -1525,7 +1525,7 @@ async function saveItem(){
       if(dup)throw new Error('Duplicate '+(c.displayName||c.name)+': "'+v+'" already exists on item #'+dup._id+'. This value must be unique.');
     }
     if(currentDept.id==='substructure'||currentDept.id==='superstructure'){
-      const revCols=columnDefs.filter(c=>/^REV\s*\d+\s*STATUS$/i.test(c.displayName||c.name));
+      const revCols=columnDefs.filter(c=>/^REV\s*\d+\s*STATUS$/i.test((c.displayName||c.name).trim()));
       revCols.sort((a,b)=>{
         const na=parseInt((a.displayName||a.name).match(/\d+/)||[0]);
         const nb=parseInt((b.displayName||b.name).match(/\d+/)||[0]);
@@ -1862,20 +1862,17 @@ async function importBulkItems(){
   }
   const prepared=bulkData.rows.map(buildRow);
   if(currentDept&&(currentDept.id==='substructure'||currentDept.id==='superstructure')){
-    const revCols=columnDefs.filter(c=>/^REV\s*\d+\s*STATUS$/i.test(c.displayName||c.name));
+    const revCols=columnDefs.filter(c=>/^REV\s*\d+\s*STATUS$/i.test((c.displayName||c.name).trim()));
     revCols.sort((a,b)=>parseInt((b.displayName||b.name).match(/\d+/)||[0])-parseInt((a.displayName||a.name).match(/\d+/)||[0]));
     const dsCol=columnDefs.find(c=>/drawing\s*status/i.test(c.displayName||c.name));
     if(dsCol&&revCols.length){
       prepared.forEach(p=>{
-        const hasDS=p.fields[dsCol.name]!==null&&p.fields[dsCol.name]!==undefined&&String(p.fields[dsCol.name]).trim()!=='';
-        if(!hasDS){
-          let ds=null;
-          for(const rc of revCols){
-            const v=p.fields[rc.name];
-            if(v!==null&&v!==undefined&&String(v).trim()!==''){ds=v;break;}
-          }
-          p.fields[dsCol.name]=ds;
+        let ds=null;
+        for(const rc of revCols){
+          const v=p.fields[rc.name];
+          if(v!==null&&v!==undefined&&String(v).trim()!==''){ds=v;break;}
         }
+        p.fields[dsCol.name]=ds;
       });
     }
   }
