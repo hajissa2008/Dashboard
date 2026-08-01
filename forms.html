@@ -1311,6 +1311,8 @@ function openForm(title,data){
   let html='';
   reorderColumns(columnDefs).forEach(c=>{
     if(skipForm.has(c.name)||c.hidden)return;
+    const skipDn=(c.displayName||c.name||'').trim().toLowerCase();
+    if(/^(compliance asset id|app created by|app modified by)$/.test(skipDn))return;
     const lookup=c.displayName||c.name;
     let raw=data[lookup]!==undefined&&data[lookup]!==null?data[lookup]:data[c.name]!==undefined?data[c.name]:'';
     let vDisplay=raw;
@@ -1486,6 +1488,8 @@ async function saveItem(){
     const skipForm=new Set(['_id','_etag','ID','ContentType','AppAuthor','AppEditor','Author','Editor','Created','Modified']);
     columnDefs.forEach(c=>{
       if(skipForm.has(c.name))return;
+      const skipDn=(c.displayName||c.name||'').trim().toLowerCase();
+      if(/^(compliance asset id|app created by|app modified by)$/.test(skipDn))return;
       const fid='f_'+c.name.replace(/[^a-zA-Z0-9_-]/g,'_');
       const el=document.getElementById(fid);
       if(!el)return;
@@ -1530,7 +1534,7 @@ async function saveItem(){
       let drawingStatus=null;
       for(const rc of revCols){
         const v=fields[rc.name];
-        if(v!==null&&v!==undefined&&v!==''){drawingStatus=v;break;}
+        if(v!==null&&v!==undefined&&String(v).trim()!==''){drawingStatus=v;break;}
       }
       const dsCol=columnDefs.find(c=>/drawing\s*status/i.test(c.displayName||c.name));
       if(dsCol)fields[dsCol.name]=drawingStatus;
@@ -1857,6 +1861,24 @@ async function importBulkItems(){
     }
   }
   const prepared=bulkData.rows.map(buildRow);
+  if(currentDept&&(currentDept.id==='substructure'||currentDept.id==='superstructure')){
+    const revCols=columnDefs.filter(c=>/^REV\s*\d+\s*STATUS$/i.test(c.displayName||c.name));
+    revCols.sort((a,b)=>parseInt((b.displayName||b.name).match(/\d+/)||[0])-parseInt((a.displayName||a.name).match(/\d+/)||[0]));
+    const dsCol=columnDefs.find(c=>/drawing\s*status/i.test(c.displayName||c.name));
+    if(dsCol&&revCols.length){
+      prepared.forEach(p=>{
+        const hasDS=p.fields[dsCol.name]!==null&&p.fields[dsCol.name]!==undefined&&String(p.fields[dsCol.name]).trim()!=='';
+        if(!hasDS){
+          let ds=null;
+          for(const rc of revCols){
+            const v=p.fields[rc.name];
+            if(v!==null&&v!==undefined&&String(v).trim()!==''){ds=v;break;}
+          }
+          p.fields[dsCol.name]=ds;
+        }
+      });
+    }
+  }
   const matches=prepared.map(p=>findMatch(p.matchVals,prepItems));
   const replaceCount=matches.filter(Boolean).length;
   if(replaceCount<total){
