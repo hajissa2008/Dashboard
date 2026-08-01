@@ -1492,7 +1492,7 @@ async function saveItem(){
 // ======================== BULK UPLOAD ========================
 function downloadTemplate(){
   if(!columnDefs.length||!currentDept){showToast('No columns loaded','error');return;}
-  const cols=columnDefs;
+  const cols=reorderForExport(columnDefs);
   const headers=cols.map(c=>c.displayName||c.name);
   const sample=cols.map(c=>{
     if(c.type==='date')return '04/03/2021';
@@ -1502,9 +1502,9 @@ function downloadTemplate(){
     return '';
   });
   const esc=(v)=>'"'+String(v).replace(/"/g,'""')+'"';
-  const csv=esc('Title')+','+headers.map(esc).join(',')+'\n'+
-            esc('Sample Item')+','+sample.map(esc).join(',')+'\n'+
-            esc('')+','+headers.map(()=>'').join(',')+'\n';
+  const csv=headers.map(esc).join(',')+'\n'+
+            sample.map(esc).join(',')+'\n'+
+            headers.map(()=>'').join(',')+'\n';
   const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);
   a.download=(currentDept.title||'template')+'_template.csv';
@@ -1520,11 +1520,11 @@ function openBulkUpload(){
   document.getElementById('bulk-status').textContent='';
   document.getElementById('bulk-body').innerHTML=
     '<div class="bulk-drop-zone" id="bulk-drop-zone" onclick="document.getElementById(\'bulk-file-input\').click()">'+
-      '<div class="icon">📄</div><p>Click to select a CSV file or drag & drop here</p>'+
-      '<p style="font-size:11px">First row should be column headers matching the department fields</p>'+
+      '<div class="icon">📄</div><p>Click to select a CSV or Excel (.xlsx/.xls) file or drag & drop here</p>'+
+      '<p style="font-size:11px">Accepts the downloaded template OR any exported file — rows are matched by Title / S.No / Shop Drawing No</p>'+
       '<div class="hint" style="margin-top:8px;font-size:11px">📥 <a href="#" onclick="downloadTemplate();return false" style="color:var(--blue)">Download template</a> first if needed</div>'+
     '</div>'+
-    '<input type="file" id="bulk-file-input" accept=".csv" style="display:none" onchange="handleBulkFile(this.files)">'+
+    '<input type="file" id="bulk-file-input" accept=".csv,.xlsx,.xls" style="display:none" onchange="handleBulkFile(this.files)">'+
     '<div id="bulk-preview-area"></div>';
   const dz=document.getElementById('bulk-drop-zone');
   dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('dragover');});
@@ -1541,22 +1541,46 @@ function closeBulkUpload(){
 function handleBulkFile(files){
   if(!files||!files.length)return;
   const file=files[0];
-  const reader=new FileReader();
-  reader.onload=function(e){
-    const text=e.target.result;
-    parseBulkCSV(text);
-  };
-  reader.readAsText(file);
+  const lower=file.name.toLowerCase();
+  if(lower.endsWith('.csv')||lower.endsWith('.txt')){
+    const reader=new FileReader();
+    reader.onload=function(e){parseBulkCSV(e.target.result);};
+    reader.readAsText(file);
+  }else if(lower.endsWith('.xlsx')||lower.endsWith('.xls')){
+    if(typeof XLSX==='undefined'){showToast('Excel library not loaded','error');return;}
+    file.arrayBuffer().then(buf=>{
+      try{
+        const wb=XLSX.read(buf);
+        const ws=wb.Sheets[wb.SheetNames[0]];
+        const grid=XLSX.utils.sheet_to_json(ws,{header:1,raw:false,defval:''});
+        processBulkGrid(grid);
+      }catch(err){console.error('XLSX parse:',err);showToast('Failed to read Excel file: '+err.message,'error');}
+    }).catch(err=>{console.error('XLSX read:',err);showToast('Failed to read file: '+err.message,'error');});
+  }else{
+    showToast('Unsupported file type. Use .csv, .xlsx or .xls','error');
+  }
 }
 
 function parseBulkCSV(text){
-  const lines=text.split(/\r?\n/).filter(l=>l.trim());
-  if(lines.length<2){showToast('CSV must have headers and at least one data row','error');return;}
-  const headers=parseCSVLine(lines[0]);
-  const rows=lines.slice(1).map(l=>parseCSVLine(l));
-  const nonEmptyRows=rows.filter(r=>r.some(c=>c.trim()));
-  if(!nonEmptyRows.length){showToast('No data rows found','error');return;}
+  const grid=text.split(/\r?\n/).map(l=>parseCSVLine(l));
+  processBulkGrid(grid);
+}
+
+function processBulkGrid(grid){
+  const rows=grid.filter(r=>r.some(c=>String(c===undefined||c===null?'':c).trim()!==''));
+  if(rows.length<2){showToast('File must have headers and at least one data row','error');return;}
   const colDefs=columnDefs.filter(c=>!c.name.startsWith('_')&&c.name!=='ID'&&c.name!=='ContentType');
+  const knownNames=new Set(['title']);
+  colDefs.forEach(c=>knownNames.add((c.displayName||c.name).toLowerCase()));
+  let headerIdx=0,bestScore=0;
+  rows.forEach((row,i)=>{
+    const score=row.reduce((n,c)=>{const s=String(c===undefined||c===null?'':c).trim().toLowerCase();return knownNames.has(s)?n+1:n;},0);
+    if(score>bestScore){bestScore=score;headerIdx=i;}
+  });
+  if(bestScore===0){showToast('No column headers matched the department fields. Use the downloaded template or an exported file.','error');return;}
+  const headers=rows[headerIdx].map(h=>String(h===undefined||h===null?'':h).trim());
+  const nonEmptyRows=rows.slice(headerIdx+1).filter(r=>r.some(c=>String(c===undefined||c===null?'':c).trim()!==''));
+  if(!nonEmptyRows.length){showToast('No data rows found','error');return;}
   const mapping=headers.map(h=>{
     const trimmed=h.trim();
     let match=colDefs.find(c=>(c.displayName||c.name).toLowerCase()===trimmed.toLowerCase());
@@ -1577,7 +1601,7 @@ function parseBulkCSV(text){
   previewRows.forEach(row=>{
     html+=`<tr>`;
     row.forEach((cell,i)=>{
-      html+=`<td>${htmlEscape(cell.substring(0,100))}</td>`;
+      html+=`<td>${htmlEscape(String(cell===undefined||cell===null?'':cell).substring(0,100))}</td>`;
     });
     html+=`</tr>`;
   });
@@ -1706,7 +1730,7 @@ async function importBulkItems(){
   const matches=prepared.map(p=>findMatch(p.matchVals,allItems));
   const replaceCount=matches.filter(Boolean).length;
   if(replaceCount>0){
-    const ok=confirm('⚠️ '+replaceCount+' of '+total+' uploaded row(s) match existing documents and will be REPLACED (updated in place).\n\nAny rows that do not match will be created as new items.\n\nPress OK to continue, Cancel to abort.');
+    const ok=confirm('⚠️ '+replaceCount+' of '+total+' uploaded row(s) match existing documents (by Title / S.No / Shop Drawing No) and will be REPLACED (updated in place).\n\nAny rows that do not match will be created as new items.\n\nPress OK to continue, Cancel to abort.');
     if(!ok){btn.disabled=false;statusEl.className='save-status';statusEl.textContent='Import cancelled';return;}
   }
   statusEl.textContent='Importing... 0%';
