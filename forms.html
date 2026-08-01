@@ -1756,7 +1756,7 @@ async function importBulkItems(){
     return {fields,clears,matchVals,choiceWarnings};
   }
   async function createWithIsolation(fields){
-    try{await createSPItem(currentDept.site,currentDept.list,fields);return{created:true,bad:null};}
+    try{const created=await createSPItem(currentDept.site,currentDept.list,fields);return{created:true,bad:null,id:created&&created.id};}
     catch(e){
       if(!/400|badArgument|invalidRequest/i.test(e.message))throw e;
       const keys=Object.keys(fields);
@@ -1764,7 +1764,7 @@ async function importBulkItems(){
       for(const k of keys){
         const subset={...fields};
         delete subset[k];
-        try{await createSPItem(currentDept.site,currentDept.list,subset);return{created:true,bad:k};}
+        try{const created=await createSPItem(currentDept.site,currentDept.list,subset);return{created:true,bad:k,id:created&&created.id};}
         catch(e2){}
       }
       throw e;
@@ -1787,13 +1787,14 @@ async function importBulkItems(){
     });
   });
   const rowErrors=(p,matched,i)=>{
-    const errs=[];
+    const blocking=[];
+    const warnings=[];
     drawingCols.forEach(c=>{
       const v=p.fields[c.name];
       const isEmpty=(v===null||v===undefined||String(v).trim()==='');
       if(isEmpty){
-        if(!matched){errs.push((c.displayName||c.name)+' is required');}
-        else if(p.clears.some(cl=>cl.name===c.name)){errs.push((c.displayName||c.name)+' is required and cannot be cleared');}
+        if(!matched)blocking.push((c.displayName||c.name)+' must be filled');
+        else if(p.clears.some(cl=>cl.name===c.name))blocking.push((c.displayName||c.name)+' cannot be cleared (required)');
         return;
       }
       const collider=allItems.find(it=>{
@@ -1801,31 +1802,39 @@ async function importBulkItems(){
         const iv=it[c.name]??it[c.displayName||c.name];
         return iv!==null&&iv!==undefined&&String(iv).trim().toLowerCase()===String(v).trim().toLowerCase();
       });
-      if(collider)errs.push('Duplicate '+(c.displayName||c.name)+': "'+v+'" already exists on item #'+collider._id);
+      if(collider)warnings.push('Duplicate '+(c.displayName||c.name)+': "'+v+'" — will be replaced (item #'+collider._id+')');
     });
     drawingCols.forEach(c=>{
       const v=p.fields[c.name];
       if(v===null||v===undefined||String(v).trim()==='')return;
       const nv=normalized(v);
       const row=usedVals[c.name]&&usedVals[c.name].get(nv);
-      if(row!==undefined&&row!==i)errs.push('Duplicate '+(c.displayName||c.name)+': "'+v+'" already used in row '+(row+1));
+      if(row!==undefined&&row!==i)warnings.push('Duplicate '+(c.displayName||c.name)+': "'+v+'" — also used in row '+(row+1)+', will be replaced');
     });
-    return errs;
+    return {blocking,warnings};
   };
-  const errRows=prepared.map((p,i)=>({i,errs:rowErrors(p,matches[i],i)})).filter(x=>x.errs.length);
-  if(errRows.length){
-    const lines=errRows.slice(0,8).map(x=>'Row '+(x.i+1)+': '+x.errs.join('; '));
-    const more=errRows.length>8?('\n...and '+(errRows.length-8)+' more row(s)'):'';
-    const ok=confirm('⚠️ '+errRows.length+' row(s) have validation problems (Drawing No / Shop Drawing No must be filled and unique):\n\n'+lines.join('\n')+more+'\n\nThese rows will be SKIPPED. Press OK to continue with the valid rows, Cancel to abort.');
+  const errors=prepared.map((p,i)=>rowErrors(p,matches[i],i));
+  const blockRows=errors.map((e,i)=>({i,errs:e.blocking})).filter(x=>x.errs.length);
+  if(blockRows.length){
+    const lines=blockRows.slice(0,10).map(x=>'Row '+(x.i+1)+': '+x.errs.join('; '));
+    const more=blockRows.length>10?('\n...and '+(blockRows.length-10)+' more row(s)'):'';
+    alert('⚠️ Upload NOT allowed — Drawing No / Shop Drawing No must be filled:\n\n'+lines.join('\n')+more+'\n\nPlease fill the required values and try again.');
+    btn.disabled=false;statusEl.className='save-status';statusEl.textContent='Import cancelled — required fields missing';return;
+  }
+  const dupRows=errors.map((e,i)=>({i,warns:e.warnings})).filter(x=>x.warns.length);
+  if(dupRows.length){
+    const lines=dupRows.slice(0,10).map(x=>'Row '+(x.i+1)+': '+x.warns.join('; '));
+    const more=dupRows.length>10?('\n...and '+(dupRows.length-10)+' more row(s)'):'';
+    const ok=confirm('⚠️ The following row(s) contain DUPLICATE values and will REPLACE existing records:\n\n'+lines.join('\n')+more+'\n\nPress OK to continue (they will be replaced), Cancel to abort.');
     if(!ok){btn.disabled=false;statusEl.className='save-status';statusEl.textContent='Import cancelled';return;}
-    errRows.forEach(x=>{prepared[x.i].skip=true;});
   }
   if(replaceCount>0){
     const ok=confirm('⚠️ '+replaceCount+' of '+total+' uploaded row(s) match existing documents (by Title / S.No / Shop Drawing No) and will be REPLACED (updated in place).\n\nOnly the columns present in the file are updated — emptied cells will CLEAR that data on the list. Any rows that do not match will be created as new items.\n\nPress OK to continue, Cancel to abort.');
     if(!ok){btn.disabled=false;statusEl.className='save-status';statusEl.textContent='Import cancelled';return;}
   }
   statusEl.textContent='Importing... 0%';
-  let skipped=0;
+  let replaced=0;
+  const createdByDrawing=new Map();
   const BATCH=10;
   for(let b=0;b<total;b+=BATCH){
     const batch=prepared.slice(b,b+BATCH);
@@ -1833,18 +1842,27 @@ async function importBulkItems(){
       const {fields,clears,choiceWarnings}=p;
       skippedChoices+=choiceWarnings.length;
       return (async()=>{
-        if(p.skip)return{type:'skipped'};
         if(!Object.keys(fields).length)throw new Error('No mapped fields for this row'+(choiceWarnings.length?' (invalid choices: '+choiceWarnings.join(', ')+')':''));
         const matched=findMatch(p.matchVals,allItems);
         if(matched){await updateSPItem(currentDept.site,currentDept.list,matched._id,fields,clears);return{type:'updated',item:matched};}
-        else{const r=await createWithIsolation(fields);return{type:'created',bad:r.bad};}
-      })().then(r=>{if(r.type==='skipped'){skipped++;return r;}success++;if(r.type==='created'){created++;if(r.bad)partial++;}else if(r.type==='updated')updated++;return r;}).catch(e=>{fail++;console.error('Bulk import row '+(b+bi)+':',e.message,'fields=',JSON.stringify(fields),'clears=',JSON.stringify(clears.map(c=>c.name)));return{type:'failed'};});
+        const drawingKey=drawingCols.map(c=>{const v=fields[c.name];if(v===null||v===undefined||String(v).trim()==='')return null;return c.name+'|'+normalized(v);}).filter(Boolean).sort().join('||');
+        if(drawingKey){
+          const existingId=createdByDrawing.get(drawingKey);
+          if(existingId!==undefined){await updateSPItem(currentDept.site,currentDept.list,existingId,fields,clears);return{type:'replaced'};}
+        }
+        const r=await createWithIsolation(fields);
+        if(drawingKey&&r.id)createdByDrawing.set(drawingKey,r.id);
+        return{type:'created',bad:r.bad};
+      })().then(r=>{success++;if(r.type==='created'){created++;if(r.bad)partial++;}else if(r.type==='updated')updated++;else if(r.type==='replaced')replaced++;return r;}).catch(e=>{fail++;console.error('Bulk import row '+(b+bi)+':',e.message,'fields=',JSON.stringify(fields),'clears=',JSON.stringify(clears.map(c=>c.name)));return{type:'failed'};});
     });
     await Promise.allSettled(tasks);
-    statusEl.textContent='Importing... '+Math.round(Math.min(b+BATCH,total)/total*100)+'% ('+success+' ok, '+fail+' failed'+(skipped?' , '+skipped+' skipped':'')+')';
+    statusEl.textContent='Importing... '+Math.round(Math.min(b+BATCH,total)/total*100)+'% ('+success+' ok, '+fail+' failed'+(replaced?' , '+replaced+' replaced':'')+')';
   }
-  let msg=created>0&&updated>0?(created+' created, '+updated+' updated'):created>0?(created+' created'):(updated+' updated');
-  if(skipped>0)msg=(msg?msg+' , ':'')+skipped+' skipped (validation)';
+  const parts=[];
+  if(created>0)parts.push(created+' created');
+  if(updated>0)parts.push(updated+' updated');
+  if(replaced>0)parts.push(replaced+' replaced (in-file duplicate)');
+  let msg=parts.join(', ');
   if(partial>0)msg+=' ('+partial+' with an invalid field excluded)';
   if(skippedChoices>0)msg+=', '+skippedChoices+' invalid choice value(s) skipped';
   statusEl.className='save-status '+(fail===0?'saved':'error');
