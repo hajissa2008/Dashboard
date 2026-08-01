@@ -897,98 +897,11 @@ async function fetchColumnNames(siteUrl, listName){
     return { rename, allColumns: allCols };
 }
 
-// ======================== FAST REST FETCH (large lists: 1500+ items) ========================
-// Substructure/Superstructure-style lists can hold 5000+ items. Paging through them one Graph
-// page at a time is slow; large lists are instead fetched via parallel ID-range REST queries
-// (ID is always indexed as the list's primary key, so range-filtering on it never trips the
-// 5000-item List View Threshold regardless of list size).
-const PT_LARGE_LIST_THRESHOLD = 1500;
-const PT_LARGE_LIST_CONCURRENCY = 6;
-
-function ptParseItems(json){ return json.value||(json.d&&json.d.results)||[]; }
-function ptParseNext(json){ return json['@odata.nextLink']||(json.d&&json.d.__next)||null; }
-
-async function spRestGetJson(siteUrl, url){
-    const token = await ensureSpSiteToken(siteUrl);
-    const resp = await fetch(url, { headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' } });
-    if(!resp.ok) throw new Error('HTTP ' + resp.status + ' for ' + url);
-    return resp.json();
-}
-
-async function ptGetItemCount(siteUrl, listName){
-    try{
-        const enc = listName.replace(/'/g,"''");
-        const json = await spRestGetJson(siteUrl, siteUrl.replace(/\/+$/,'') + `/_api/web/lists/getbytitle('${enc}')?$select=ItemCount`);
-        return json.ItemCount!==undefined ? json.ItemCount : (json.d ? json.d.ItemCount : null);
-    }catch(e){ console.warn('[ptGetItemCount] failed, will use normal path:', e.message); return null; }
-}
-
-async function ptGetMaxId(siteUrl, listName){
-    const enc = listName.replace(/'/g,"''");
-    const json = await spRestGetJson(siteUrl, siteUrl.replace(/\/+$/,'') + `/_api/web/lists/getbytitle('${enc}')/items?$select=Id&$top=1&$orderby=Id desc`);
-    const items = ptParseItems(json);
-    return items.length ? (items[0].Id||items[0].ID) : 0;
-}
-
-async function ptFetchIdRange(siteUrl, listName, lo, hi, selectParam){
-    const enc = listName.replace(/'/g,"''");
-    let items=[];
-    let url = siteUrl.replace(/\/+$/,'') + `/_api/web/lists/getbytitle('${enc}')/items?$filter=Id ge ${lo} and Id le ${hi}&$top=2000${selectParam}`;
-    while(url){
-        const json = await spRestGetJson(siteUrl, url);
-        items = items.concat(ptParseItems(json));
-        url = ptParseNext(json);
-    }
-    return items;
-}
-
-// Parallel ID-range fetch for large lists. Returns items already shaped the same way the
-// Graph-based path does (displayName-keyed fields + ID) so callers don't need to care which
-// strategy was used.
-async function fetchSPListItemsFastREST(siteUrl, listName, rename, allColumns){
-    const maxId = await ptGetMaxId(siteUrl, listName);
-    if(!maxId) return [];
-    const selectNames = ['Id'].concat(allColumns && allColumns.length ? allColumns : []);
-    const selectParam = selectNames.length>1 ? ('&$select=' + encodeURIComponent(selectNames.join(','))) : '';
-    const chunkSize = Math.max(1, Math.ceil(maxId / PT_LARGE_LIST_CONCURRENCY));
-    const tasks = [];
-    for(let i=0;i<PT_LARGE_LIST_CONCURRENCY;i++){
-        const lo = i*chunkSize+1, hi = Math.min((i+1)*chunkSize, maxId);
-        if(lo>hi) continue;
-        tasks.push(ptFetchIdRange(siteUrl, listName, lo, hi, selectParam));
-    }
-    const chunkResults = await Promise.all(tasks);
-    const rawItems = chunkResults.flat();
-    return rawItems.map(it=>{
-        const fields = {};
-        for(const [k,v] of Object.entries(it)){
-            if(k==='__metadata'||k==='Id'||k==='ID'||k.startsWith('odata.'))continue;
-            fields[rename[k]||k] = v;
-        }
-        fields.ID = it.Id||it.ID;
-        return fields;
-    });
-}
-
 async function fetchSPListItems(siteUrl, listName){
     if(spToken){
         // Fetch column definitions per-list and cache
         if(!columnNameMap[listName]) columnNameMap[listName] = await fetchColumnNames(siteUrl, listName) || {rename:{},allColumns:[]};
         const rename = columnNameMap[listName].rename || {};
-        const allColumns = columnNameMap[listName].allColumns || [];
-
-        // Large lists (5000+ items, e.g. Substructure/Superstructure): parallel ID-range REST fetch.
-        const itemCount = await ptGetItemCount(siteUrl, listName);
-        if(itemCount!==null && itemCount>PT_LARGE_LIST_THRESHOLD){
-            console.log('[SP]', listName, 'has', itemCount, 'items — using parallel REST fetch');
-            try{
-                const fastItems = await fetchSPListItemsFastREST(siteUrl, listName, rename, allColumns);
-                console.log('[SP] Parallel fetch got', fastItems.length, 'items for', listName);
-                return fastItems;
-            }catch(e){
-                console.warn('[SP] Parallel REST fetch failed for', listName, '- falling back to Graph paging:', e.message);
-            }
-        }
 
         // Fetch all pages of items
         let allItems = [], nextUrl = graphListItemsUrl(siteUrl, listName);
@@ -2064,6 +1977,21 @@ function renderTable(){
 function arrow(col){return sortCol===col?(sortAsc?'▲':'▼'):''}
 function sortBy(col){if(sortCol===col)sortAsc=!sortAsc;else{sortCol=col;sortAsc=true;}renderTable();}
 
+function fmtDateUAE(v){
+  if(v===null||v===undefined)return v;
+  const s=String(v);
+  const m=s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if(m)return m[3]+'/'+m[2]+'/'+m[1];
+  const dm=s.match(/\/Date\((\d+)\)/);
+  if(dm){
+    const d=new Date(parseInt(dm[1]));
+    if(!isNaN(d.getTime())){
+      const y=d.getFullYear(),mo=String(d.getMonth()+1).padStart(2,'0'),dd=String(d.getDate()).padStart(2,'0');
+      return dd+'/'+mo+'/'+y;
+    }
+  }
+  return s;
+}
 function cellValue(item,col){
     let v=getVal(item,col);
     if(v!==null&&v!==undefined&&typeof v==='object'){v=v.Title||v.LookupValue||v.Email||String(v);}
@@ -2087,6 +2015,7 @@ function cellValue(item,col){
     if(col==='id'||col==='actId'||col==='dwgNo'||col==='rfq'||col==='po'||col==='pr'||col==='rfi'||col==='tq'||col==='qaInsp'||col==='qaNcr'||col==='ncr'||col==='inspReq'||col==='permit'||col==='primId'){
         return v?`<span class="drawing-link">${v}</span>`:'-';
     }
+    if(typeof v==='string'&&(/^\d{4}-\d{2}-\d{2}/.test(v)||/\/Date\(/.test(v)))return fmtDateUAE(v);
     return v||'-';
 }
 

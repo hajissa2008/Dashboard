@@ -980,10 +980,16 @@ function reorderColumns(cols){
   }
   return result;
 }
+function fmtDateUAE(v){
+  const s=String(v??'');
+  const m=s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if(m)return m[3]+'/'+m[2]+'/'+m[1];
+  return s;
+}
 function fmtVal(v){
   const s=String(v??'');
   if(s.includes('<')){const d=document.createElement('div');d.innerHTML=s;return (d.textContent||d.innerText||s).trim();}
-  if(/^\d{4}-\d{2}-\d{2}[T ]/.test(s))return s.substring(0,10);
+  if(/^\d{4}-\d{2}-\d{2}/.test(s))return fmtDateUAE(s);
   return s;
 }
 function reorderForExport(cols){
@@ -1044,7 +1050,7 @@ function renderTable(){
         let v=item[lookup]!==undefined?item[lookup]:'';
         if(v&&typeof v==='object'){v=v.LookupValue||v.Title||v.Email||JSON.stringify(v).substring(0,50);}
         if(c.type==='boolean')v=v?'✓':'';
-        if((c.type==='date'||c.type==='DateTime')&&typeof v==='string')v=v.slice(0,10);
+        if((c.type==='date'||c.type==='DateTime')&&typeof v==='string')v=fmtDateUAE(v);
         const s=htmlEscape(stripHtml(v));
         return `<td title="${s}">${s.substring(0,80)}</td>`;
       }).join('')}
@@ -1084,6 +1090,7 @@ function openDetail(idx){
     let vDisplay=raw;
     if(raw&&typeof raw==='object'){vDisplay=raw.LookupValue||raw.Title||raw.Email||JSON.stringify(raw);}
     vDisplay=stripHtml(vDisplay);
+    if((c.type==='date'||c.type==='DateTime')&&vDisplay&&typeof vDisplay==='string'&&/^\d{4}-\d{2}-\d{2}/.test(vDisplay))vDisplay=fmtDateUAE(vDisplay);
     const desc=c.description?`<div class="hint">${htmlEscape(stripHtml(c.description))}</div>`:'';
     html+=`<div class="form-group"><label>${htmlEscape(c.displayName||c.name)}</label>${desc}<div style="padding:6px 0;font-size:13px;color:var(--text-primary);word-break:break-word;border-bottom:1px solid var(--gray-border)">${vDisplay?htmlEscape(vDisplay):'<span style="color:var(--text-secondary);font-style:italic">Not set</span>'}</div></div>`;
   });
@@ -1393,7 +1400,7 @@ function downloadTemplate(){
   const cols=columnDefs;
   const headers=cols.map(c=>c.displayName||c.name);
   const sample=cols.map(c=>{
-    if(c.type==='date')return '2025-01-01';
+    if(c.type==='date')return '04/03/2021';
     if(c.type==='choice'&&c.choices&&c.choices.length)return c.choices[0];
     if(c.type==='number'||c.type==='currency')return '0';
     if(c.type==='boolean')return 'true';
@@ -1525,6 +1532,21 @@ async function importBulkItems(){
     return false;
   };
   const normalized=(v)=>{if(v===undefined||v===null)return null;const s=String(v).trim();return s===''?null:s.toLowerCase();};
+  const normalizeDate=(v)=>{
+    if(v===undefined||v===null)return null;
+    const s=String(v).trim();
+    if(!s)return null;
+    if(/^\d{4}-\d{2}-\d{2}/.test(s))return s.substring(0,10);
+    const m=s.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})$/);
+    if(m){
+      const dd=Number(m[1]),mm=Number(m[2]);
+      if(dd>=1&&dd<=31&&mm>=1&&mm<=12)return m[3]+'-'+m[2].padStart(2,'0')+'-'+m[1].padStart(2,'0');
+    }
+    const d=new Date(s);
+    if(isNaN(d.getTime()))return null;
+    const y=d.getFullYear(),mo=String(d.getMonth()+1).padStart(2,'0'),da=String(d.getDate()).padStart(2,'0');
+    return y+'-'+mo+'-'+da;
+  };
   function findMatch(matchVals,existing){
     let best=null,bestCount=0;
     for(const item of existing){
@@ -1555,7 +1577,8 @@ async function importBulkItems(){
       if(raw==='')return;
       if(m.col){
         let val=raw;
-        if(m.col.type==='number'||m.col.type==='currency'){const n=Number(raw);if(isNaN(n))val=null;}
+        if(m.col.type==='date'){val=normalizeDate(raw);}
+        else if(m.col.type==='number'||m.col.type==='currency'){const n=Number(raw);if(isNaN(n))val=null;}
         else if(m.col.type==='boolean'){val=raw.toLowerCase()==='true'||raw==='1'||raw==='yes';}
         else if(m.col.type==='choice'&&m.col.choices&&m.col.choices.length){
           const allowed=m.col.choices.some(ch=>String(ch).toLowerCase()===raw.toLowerCase());
@@ -1693,7 +1716,7 @@ function previewExport(){
     filtered=filtered.filter(item=>(item[col]??item[columnDefs.find(c=>c.name===col)?.['displayName']||''])===val);
   });
   const filterCols=columnDefs.filter(c=>/drawing\s*status|discipline|phase|category|shop.*drawing.*(no|number)|sheet\s*name/i.test(c.displayName||c.name));
-  tbody.innerHTML=filtered.slice(0,200).map(item=>'<tr>'+filterCols.map(c=>'<td>'+htmlEscape(String(item[c.name]??item[c.displayName||c.name]??''))+'</td>').join('')+'</tr>').join('');
+  tbody.innerHTML=filtered.slice(0,200).map(item=>'<tr>'+filterCols.map(c=>'<td>'+htmlEscape(String(fmtVal(item[c.name]??item[c.displayName||c.name]??'')))+'</td>').join('')+'</tr>').join('');
   countEl.textContent=filtered.length+' item'+(filtered.length!==1?'s':'')+(filtered.length>200?' (showing first 200)':'');
   previewEl.classList.add('show');
 }
@@ -1776,7 +1799,7 @@ async function exportAllExcel(depts,dateFrom,dateTo,filters,dateCol,fn,status){
     const filtered=applyExportFilters(items,cols,dateFrom,dateTo,filters,dateCol);
     const visible=reorderForExport(cols);
     const rows=filtered.map(item=>{
-      const row={};visible.forEach(c=>{let v=item[c.name]??item[c.displayName||c.name]??'';if(String(v).includes('<')){const d=document.createElement('div');d.innerHTML=String(v);v=(d.textContent||d.innerText||v).trim();}if(typeof v==='string'&&/^\d{4}-\d{2}-\d{2}T/.test(v))v=v.substring(0,10);row[c.displayName||c.name]=v;});return row;
+      const row={};visible.forEach(c=>{let v=item[c.name]??item[c.displayName||c.name]??'';if(String(v).includes('<')){const d=document.createElement('div');d.innerHTML=String(v);v=(d.textContent||d.innerText||v).trim();}if(typeof v==='string'&&/^\d{4}-\d{2}-\d{2}/.test(v))v=fmtDateUAE(v);row[c.displayName||c.name]=v;});return row;
     });
     const ws=XLSX.utils.json_to_sheet(rows);
     XLSX.utils.sheet_add_aoa(ws,[[d.title+' - AlEnshaiah','','','','Generated: '+new Date().toLocaleDateString()]],{origin:'A1'});
@@ -1792,7 +1815,7 @@ async function exportExcel(items,cols,dept,fn,status){
   const wb=XLSX.utils.book_new();
   const visible=reorderForExport(cols);
   const rows=items.map(item=>{
-    const row={};visible.forEach(c=>{let v=item[c.name]??item[c.displayName||c.name]??'';if(String(v).includes('<')){const d=document.createElement('div');d.innerHTML=String(v);v=(d.textContent||d.innerText||v).trim();}if(typeof v==='string'&&/^\d{4}-\d{2}-\d{2}T/.test(v))v=v.substring(0,10);row[c.displayName||c.name]=v;});return row;
+    const row={};visible.forEach(c=>{let v=item[c.name]??item[c.displayName||c.name]??'';if(String(v).includes('<')){const d=document.createElement('div');d.innerHTML=String(v);v=(d.textContent||d.innerText||v).trim();}if(typeof v==='string'&&/^\d{4}-\d{2}-\d{2}/.test(v))v=fmtDateUAE(v);row[c.displayName||c.name]=v;});return row;
   });
   const ws=XLSX.utils.json_to_sheet(rows);
   XLSX.utils.sheet_add_aoa(ws,[['AlEnshaiah - Project Management System']],{origin:'A1'});
