@@ -725,6 +725,15 @@ function isDrawingNoCol(c){
   const s=(c.displayName||c.name||'').trim();
   return /(draw(ing|ings?)?|dwg)\s*(no|number|num|#)\.?$/i.test(s);
 }
+function isSheetNameCol(c){
+  return /sheet\s*name/i.test(c.displayName||c.name||'');
+}
+function isMandatoryCol(c){
+  return isDrawingNoCol(c)||isSheetNameCol(c);
+}
+function isUniqueCol(c){
+  return isDrawingNoCol(c);
+}
 function emptyFieldValue(c){
   if(c.type==='boolean')return false;
   if(c.type==='number'||c.type==='currency')return null;
@@ -1286,7 +1295,7 @@ function openForm(title,data){
     let vDisplay=raw;
     if(raw&&typeof raw==='object'){vDisplay=raw.LookupValue||raw.Title||raw.Email||'';}
     vDisplay=stripHtml(vDisplay);
-    const mustReq=c.required||isDrawingNoCol(c);
+    const mustReq=c.required||isMandatoryCol(c);
     const req=mustReq?' required':'';
     const reqStar=mustReq?' class="required"':'';
     const desc=c.description?`<div class="hint">${htmlEscape(stripHtml(c.description))}</div>`:'';
@@ -1472,12 +1481,17 @@ async function saveItem(){
       else if(val===null||val==='')fields[c.name]=null;
     });
     if(!currentDept)throw new Error('No department selected');
-    const drawingCols=columnDefs.filter(isDrawingNoCol);
-    for(const c of drawingCols){
+    const mandatoryCols=columnDefs.filter(isMandatoryCol);
+    for(const c of mandatoryCols){
       const v=fields[c.name];
       if(v===null||v===undefined||String(v).trim()===''){
         throw new Error((c.displayName||c.name)+' is required.');
       }
+    }
+    const uniqueCols=columnDefs.filter(isUniqueCol);
+    for(const c of uniqueCols){
+      const v=fields[c.name];
+      if(v===null||v===undefined||String(v).trim()==='')continue;
       const dup=allItems.find(it=>{
         if(editingId&&String(it._id)===String(editingId))return false;
         const iv=it[c.name]??it[c.displayName||c.name];
@@ -1778,10 +1792,11 @@ async function importBulkItems(){
       if(!matches[i])console.warn('BULK MATCH: row '+i+' has '+p.matchVals.length+' key(s) ->',p.matchVals.map(mv=>({header:mv.header,keys:mv.keys,val:mv.val})),'no match found in',allItems.length,'items');
     });
   }
-  const drawingCols=columnDefs.filter(isDrawingNoCol);
+  const mandatoryCols=columnDefs.filter(isMandatoryCol);
+  const uniqueCols=columnDefs.filter(isUniqueCol);
   const usedVals={};
   prepared.forEach((p,i)=>{
-    drawingCols.forEach(c=>{
+    uniqueCols.forEach(c=>{
       const v=p.fields[c.name];
       if(v!==null&&v!==undefined&&String(v).trim()!==''){const nv=normalized(v);(usedVals[c.name]=usedVals[c.name]||new Map()).set(nv,i);}
     });
@@ -1789,47 +1804,52 @@ async function importBulkItems(){
   const rowErrors=(p,matched,i)=>{
     const blocking=[];
     const warnings=[];
-    drawingCols.forEach(c=>{
+    mandatoryCols.forEach(c=>{
       const v=p.fields[c.name];
       const isEmpty=(v===null||v===undefined||String(v).trim()==='');
       if(isEmpty){
-        if(!matched)blocking.push((c.displayName||c.name)+' must be filled');
-        else if(p.clears.some(cl=>cl.name===c.name))blocking.push((c.displayName||c.name)+' cannot be cleared (required)');
+        if(!matched)blocking.push('Row '+(i+1)+' — '+(c.displayName||c.name)+' must be filled');
+        else if(p.clears.some(cl=>cl.name===c.name))blocking.push('Item #'+matched._id+' — '+(c.displayName||c.name)+' can\'t be blanked');
         return;
       }
+    });
+    uniqueCols.forEach(c=>{
+      const v=p.fields[c.name];
+      if(v===null||v===undefined||String(v).trim()==='')return;
       const collider=allItems.find(it=>{
         if(matched&&String(it._id)===String(matched._id))return false;
         const iv=it[c.name]??it[c.displayName||c.name];
         return iv!==null&&iv!==undefined&&String(iv).trim().toLowerCase()===String(v).trim().toLowerCase();
       });
-      if(collider)warnings.push('Duplicate '+(c.displayName||c.name)+': "'+v+'" — will be replaced (item #'+collider._id+')');
+      if(collider)warnings.push('Row '+(i+1)+' — Duplicate '+(c.displayName||c.name)+': "'+v+'" — will be replaced (item #'+collider._id+')');
     });
-    drawingCols.forEach(c=>{
+    uniqueCols.forEach(c=>{
       const v=p.fields[c.name];
       if(v===null||v===undefined||String(v).trim()==='')return;
       const nv=normalized(v);
       const row=usedVals[c.name]&&usedVals[c.name].get(nv);
-      if(row!==undefined&&row!==i)warnings.push('Duplicate '+(c.displayName||c.name)+': "'+v+'" — also used in row '+(row+1)+', will be replaced');
+      if(row!==undefined&&row!==i)warnings.push('Row '+(i+1)+' — Duplicate '+(c.displayName||c.name)+': "'+v+'" — also used in row '+(row+1)+', will be replaced');
     });
     return {blocking,warnings};
   };
   const errors=prepared.map((p,i)=>rowErrors(p,matches[i],i));
   const blockRows=errors.map((e,i)=>({i,errs:e.blocking})).filter(x=>x.errs.length);
   if(blockRows.length){
-    const lines=blockRows.slice(0,10).map(x=>'Row '+(x.i+1)+': '+x.errs.join('; '));
+    const lines=blockRows.slice(0,10).map(x=>x.errs.join('; '));
     const more=blockRows.length>10?('\n...and '+(blockRows.length-10)+' more row(s)'):'';
-    alert('⚠️ Upload NOT allowed — Drawing No / Shop Drawing No must be filled:\n\n'+lines.join('\n')+more+'\n\nPlease fill the required values and try again.');
+    alert('⚠️ Upload NOT allowed — Shop Drawing No. / Sheet Name must be filled and can\'t be blanked:\n\n'+lines.join('\n')+more+'\n\nPlease fix the values and try again.');
     btn.disabled=false;statusEl.className='save-status';statusEl.textContent='Import cancelled — required fields missing';return;
   }
   const dupRows=errors.map((e,i)=>({i,warns:e.warnings})).filter(x=>x.warns.length);
   if(dupRows.length){
-    const lines=dupRows.slice(0,10).map(x=>'Row '+(x.i+1)+': '+x.warns.join('; '));
+    const lines=dupRows.slice(0,10).map(x=>x.warns.join('; '));
     const more=dupRows.length>10?('\n...and '+(dupRows.length-10)+' more row(s)'):'';
     const ok=confirm('⚠️ The following row(s) contain DUPLICATE values and will REPLACE existing records:\n\n'+lines.join('\n')+more+'\n\nPress OK to continue (they will be replaced), Cancel to abort.');
     if(!ok){btn.disabled=false;statusEl.className='save-status';statusEl.textContent='Import cancelled';return;}
   }
   if(replaceCount>0){
-    const ok=confirm('⚠️ '+replaceCount+' of '+total+' uploaded row(s) match existing documents (by Title / S.No / Shop Drawing No) and will be REPLACED (updated in place).\n\nOnly the columns present in the file are updated — emptied cells will CLEAR that data on the list. Any rows that do not match will be created as new items.\n\nPress OK to continue, Cancel to abort.');
+    const newCount=total-replaceCount;
+    const ok=confirm('⚠️ '+replaceCount+' item(s) will be UPDATED with the uploaded data'+(newCount>0?(' and '+newCount+' new item(s) will be created'):'')+'.\n\nOnly the columns present in the file are updated — emptied cells will CLEAR that data on the list.\n\nPress OK to continue, Cancel to abort.');
     if(!ok){btn.disabled=false;statusEl.className='save-status';statusEl.textContent='Import cancelled';return;}
   }
   statusEl.textContent='Importing... 0%';
@@ -1845,7 +1865,7 @@ async function importBulkItems(){
         if(!Object.keys(fields).length)throw new Error('No mapped fields for this row'+(choiceWarnings.length?' (invalid choices: '+choiceWarnings.join(', ')+')':''));
         const matched=findMatch(p.matchVals,allItems);
         if(matched){await updateSPItem(currentDept.site,currentDept.list,matched._id,fields,clears);return{type:'updated',item:matched};}
-        const drawingKey=drawingCols.map(c=>{const v=fields[c.name];if(v===null||v===undefined||String(v).trim()==='')return null;return c.name+'|'+normalized(v);}).filter(Boolean).sort().join('||');
+        const drawingKey=uniqueCols.map(c=>{const v=fields[c.name];if(v===null||v===undefined||String(v).trim()==='')return null;return c.name+'|'+normalized(v);}).filter(Boolean).sort().join('||');
         if(drawingKey){
           const existingId=createdByDrawing.get(drawingKey);
           if(existingId!==undefined){await updateSPItem(currentDept.site,currentDept.list,existingId,fields,clears);return{type:'replaced'};}
