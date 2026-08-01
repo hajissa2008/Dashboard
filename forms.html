@@ -1627,8 +1627,17 @@ function processBulkGrid(grid){
   const headers=rows[headerIdx].map(h=>String(h===undefined||h===null?'':h).trim());
   const mapping=headers.map(h=>{
     const trimmed=h.trim();
-    let match=colDefs.find(c=>(c.displayName||c.name).toLowerCase()===trimmed.toLowerCase());
+    const tl=trimmed.toLowerCase();
+    let match=colDefs.find(c=>(c.displayName||c.name).toLowerCase()===tl);
     if(!match&&/^title$/i.test(trimmed))match={name:'Title',displayName:'Title',type:'text'};
+    if(!match){
+      match=colDefs.find(c=>{
+        if(/sheet\s*name/i.test(tl))return isSheetNameCol(c);
+        if(/^s\.?\s?no\b/.test(tl))return /^s[\.\s]?no\b/i.test(c.displayName||c.name);
+        if(/(draw(ing|ings?)?|dwg)\s*(no|number|num|#)\.?$/i.test(tl))return isDrawingNoCol(c);
+        return false;
+      });
+    }
     return {header:trimmed,col:match||null,skip:!match};
   });
   const sampleVals=mapping.map(m=>{
@@ -1924,7 +1933,7 @@ async function importBulkItems(){
       skippedChoices+=choiceWarnings.length;
       return (async()=>{
         if(!Object.keys(fields).length)throw new Error('No mapped fields for this row'+(choiceWarnings.length?' (invalid choices: '+choiceWarnings.join(', ')+')':''));
-        const matched=findMatch(p.matchVals,allItems);
+        const matched=findMatch(p.matchVals,prepItems);
         if(matched){await updateSPItem(currentDept.site,currentDept.list,matched._id,fields,clears);return{type:'updated',item:matched};}
         const drawingKey=uniqueCols.map(c=>{const v=fields[c.name];if(v===null||v===undefined||String(v).trim()==='')return null;return c.name+'|'+normalized(v);}).filter(Boolean).sort().join('||');
         if(drawingKey){
