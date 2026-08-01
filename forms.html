@@ -1457,7 +1457,8 @@ function parseBulkCSV(text){
   const colDefs=columnDefs.filter(c=>!c.name.startsWith('_')&&c.name!=='ID'&&c.name!=='ContentType');
   const mapping=headers.map(h=>{
     const trimmed=h.trim();
-    const match=colDefs.find(c=>(c.displayName||c.name).toLowerCase()===trimmed.toLowerCase());
+    let match=colDefs.find(c=>(c.displayName||c.name).toLowerCase()===trimmed.toLowerCase());
+    if(!match&&/^title$/i.test(trimmed))match={name:'Title',displayName:'Title',type:'text'};
     return {header:trimmed,col:match||null,skip:!match};
   });
   const previewRows=nonEmptyRows.slice(0,10);
@@ -1510,20 +1511,28 @@ async function importBulkItems(){
   const validCols=bulkData.mapping.filter(m=>m.col).map(m=>m.col.name);
   const total=bulkData.rows.length;
   let success=0,fail=0,updated=0,created=0;
-  const matchKeys=['Title','DRAWINGS NO.','DRAWING NO.','Drawing_x0020_Number','DrawingNumber','Drawing No.','S.No','S_x002e_No_x002e_'];
+  const matchKeys=['Title'];
+  (columnDefs||[]).forEach(c=>{
+    const dn=(c.displayName||c.name||'').toUpperCase();
+    const cn=(c.name||'').toUpperCase();
+    if(cn==='S_X002E_NO_X002E_'||/^S\.?\s?NO\b/.test(dn)||/^S\.?\s?NO\b/.test(cn))matchKeys.push(c.name);
+    if(/(DRAWING|DRAWINGS).*(NO|NUMBER)/.test(dn)||/(DRAWING|DRAWINGS).*(NO|NUMBER)/.test(cn))matchKeys.push(c.name);
+  });
+  const normalized=(v)=>{if(v===undefined||v===null)return null;const s=String(v).trim();return s===''?null:s.toLowerCase();};
   function findMatch(fields,existing){
-    for(const ek of matchKeys){
-      const fv=fields[ek];
-      if(fv===undefined||fv===null||String(fv).trim()==='')continue;
-      const v=String(fv).trim();
-      for(const item of existing){
-        for(const ik of matchKeys){
-          const iv=item[ik];
-          if(iv!==undefined&&iv!==null&&String(iv).trim()!==''&&String(iv).trim()===v)return item;
-        }
+    let best=null,bestCount=0;
+    for(const item of existing){
+      let count=0;
+      for(const ek of matchKeys){
+        const v=normalized(fields[ek]);
+        const iv=normalized(item[ek]);
+        if(!v||!iv)continue;
+        if(iv===v)count++;
+        else if(!isNaN(Number(fields[ek]))&&!isNaN(Number(item[ek]))&&Number(fields[ek])===Number(item[ek]))count++;
       }
+      if(count>bestCount){best=item;bestCount=count;}
     }
-    return null;
+    return best;
   }
   const BATCH=10;
   for(let b=0;b<total;b+=BATCH){
