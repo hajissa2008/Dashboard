@@ -677,7 +677,7 @@ async function fetchColumnDefinitions(siteUrl,listName){
   const cols=[];
   (json.value||[]).forEach(col=>{
     const n=col.name;
-    if(!n||SKIP_COLS.has(n)||n.startsWith('_'))return;
+    if(!n||SKIP_COLS.has(n)||n.startsWith('_')||col.calculated)return;
     let type='text',choices=null;
     if(col.text)type='text';
     else if(col.note)type='note';
@@ -1508,27 +1508,39 @@ async function importBulkItems(){
   const btn=document.getElementById('bulk-import-btn');
   const statusEl=document.getElementById('bulk-status');
   btn.disabled=true;statusEl.className='save-status saving';statusEl.textContent='Importing...';
-  const validCols=bulkData.mapping.filter(m=>m.col).map(m=>m.col.name);
   const total=bulkData.rows.length;
   let success=0,fail=0,updated=0,created=0;
-  const matchKeys=['Title'];
-  (columnDefs||[]).forEach(c=>{
+  const isKeyCol=(c)=>{
     const dn=(c.displayName||c.name||'').toUpperCase();
     const cn=(c.name||'').toUpperCase();
-    if(cn==='S_X002E_NO_X002E_'||/^S\.?\s?NO\b/.test(dn)||/^S\.?\s?NO\b/.test(cn))matchKeys.push(c.name);
-    if(/(DRAWING|DRAWINGS).*(NO|NUMBER)/.test(dn)||/(DRAWING|DRAWINGS).*(NO|NUMBER)/.test(cn))matchKeys.push(c.name);
-  });
+    if(cn==='TITLE'||cn==='S_X002E_NO_X002E_')return true;
+    if(/^S\.?\s?NO\b/.test(dn)||/^S\.?\s?NO\b/.test(cn))return true;
+    if(/(DRAWING|DRAWINGS).*(NO|NUMBER)/.test(dn)||/(DRAWING|DRAWINGS).*(NO|NUMBER)/.test(cn))return true;
+    return false;
+  };
+  const isKeyHeader=(h)=>{
+    const u=(h||'').toUpperCase();
+    if(/^TITLE$/.test(u)||/^S\.?\s?NO/.test(u))return true;
+    if(/(DRAWING|DRAWINGS).*(NO|NUMBER)/.test(u))return true;
+    return false;
+  };
   const normalized=(v)=>{if(v===undefined||v===null)return null;const s=String(v).trim();return s===''?null:s.toLowerCase();};
-  function findMatch(fields,existing){
+  function findMatch(matchVals,existing){
     let best=null,bestCount=0;
     for(const item of existing){
       let count=0;
-      for(const ek of matchKeys){
-        const v=normalized(fields[ek]);
-        const iv=normalized(item[ek]);
-        if(!v||!iv)continue;
-        if(iv===v)count++;
-        else if(!isNaN(Number(fields[ek]))&&!isNaN(Number(item[ek]))&&Number(fields[ek])===Number(item[ek]))count++;
+      for(const mv of matchVals){
+        const iv=normalized(item[mv.key]);
+        const ivN=Number(item[mv.key]);
+        const vN=Number(mv.val);
+        if(iv===mv.val||(!isNaN(ivN)&&!isNaN(vN)&&ivN===vN)){count++;continue;}
+        let aliasHit=false;
+        for(const al of mv.aliases){
+          const av=normalized(item[al]);
+          const avN=Number(item[al]);
+          if(av===mv.val||(!isNaN(avN)&&!isNaN(vN)&&avN===vN)){aliasHit=true;break;}
+        }
+        if(aliasHit)count++;
       }
       if(count>bestCount){best=item;bestCount=count;}
     }
@@ -1539,19 +1551,26 @@ async function importBulkItems(){
     const batch=bulkData.rows.slice(b,b+BATCH);
     const tasks=batch.map((row,bi)=>{
       const fields={};
+      const matchVals=[];
       bulkData.mapping.forEach((m,ci)=>{
-        if(m.col&&row[ci]!==undefined&&row[ci].trim()!==''){
-          let val=row[ci].trim();
-          if(m.col.type==='number'||m.col.type==='currency'){const n=Number(val);if(!isNaN(n))val=n;}
-          else if(m.col.type==='boolean'){val=val.toLowerCase()==='true'||val==='1'||val==='yes';}
-          fields[m.col.name]=val;
+        const raw=(row[ci]!==undefined&&row[ci]!==null)?String(row[ci]).trim():'';
+        if(raw==='')return;
+        if(m.col){
+          let val=raw;
+          if(m.col.type==='number'||m.col.type==='currency'){const n=Number(raw);if(isNaN(n))val=null;}
+          else if(m.col.type==='boolean'){val=raw.toLowerCase()==='true'||raw==='1'||raw==='yes';}
+          if(val!==null&&val!==undefined)fields[m.col.name]=val;
+          if(isKeyCol(m.col))matchVals.push({key:m.col.name,aliases:[m.col.name,m.col.displayName].filter(Boolean),val:normalized(val)});
+        }else if(isKeyHeader(m.header)){
+          matchVals.push({key:m.header,aliases:[m.header],val:normalized(raw)});
         }
       });
       return (async()=>{
-        const matched=findMatch(fields,allItems);
-        if(matched){await updateSPItem(currentDept.site,currentDept.list,matched._id,fields);return{type:'updated'};}
+        if(!Object.keys(fields).length)throw new Error('No mapped fields for this row');
+        const matched=findMatch(matchVals,allItems);
+        if(matched){await updateSPItem(currentDept.site,currentDept.list,matched._id,fields);return{type:'updated',item:matched};}
         else{await createSPItem(currentDept.site,currentDept.list,fields);return{type:'created'};}
-      })().then(r=>{success++;if(r.type==='created')created++;else if(r.type==='updated')updated++;return r;}).catch(e=>{fail++;console.error('Bulk import row '+(b+bi)+':',e.message);return{type:'failed'};});
+      })().then(r=>{success++;if(r.type==='created')created++;else if(r.type==='updated')updated++;return r;}).catch(e=>{fail++;console.error('Bulk import row '+(b+bi)+':',e.message,'fields=',JSON.stringify(fields));return{type:'failed'};});
     });
     await Promise.allSettled(tasks);
     statusEl.textContent='Importing... '+Math.round(Math.min(b+BATCH,total)/total*100)+'% ('+success+' ok, '+fail+' failed)';
