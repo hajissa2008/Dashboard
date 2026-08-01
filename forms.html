@@ -721,6 +721,12 @@ async function createSPItem(siteUrl,listName,itemFields){
   return await apiCall(graphListUrl(siteUrl,listName)+'/items','POST',body);
 }
 
+function cleanText(v){
+  let s=String(v===undefined||v===null?'':v).trim();
+  if(s.includes('<')){const d=document.createElement('div');d.innerHTML=s;s=(d.textContent||d.innerText||s).trim();}
+  s=s.replace(/\u00A0/g,' ').replace(/\s+/g,' ');
+  return s;
+}
 function isDrawingNoCol(c){
   const s=(c.displayName||c.name||'').trim();
   return /(draw(ing|ings?)?|dwg)\s*(no|number|num|#)\.?$/i.test(s);
@@ -1484,18 +1490,18 @@ async function saveItem(){
     const mandatoryCols=columnDefs.filter(isMandatoryCol);
     for(const c of mandatoryCols){
       const v=fields[c.name];
-      if(v===null||v===undefined||String(v).trim()===''){
+      if(cleanText(v)===''){
         throw new Error((c.displayName||c.name)+' is required.');
       }
     }
     const uniqueCols=columnDefs.filter(isUniqueCol);
     for(const c of uniqueCols){
       const v=fields[c.name];
-      if(v===null||v===undefined||String(v).trim()==='')continue;
+      if(cleanText(v)==='')continue;
       const dup=allItems.find(it=>{
         if(editingId&&String(it._id)===String(editingId))return false;
         const iv=it[c.name]??it[c.displayName||c.name];
-        return iv!==null&&iv!==undefined&&String(iv).trim().toLowerCase()===String(v).trim().toLowerCase();
+        return iv!==null&&iv!==undefined&&cleanText(iv).toLowerCase()===cleanText(v).toLowerCase();
       });
       if(dup)throw new Error('Duplicate '+(c.displayName||c.name)+': "'+v+'" already exists on item #'+dup._id+'. This value must be unique.');
     }
@@ -1690,13 +1696,25 @@ async function importBulkItems(){
     if(/(DRAWING|DRAWINGS|DWG).*(NO|NUMBER)/.test(u)||/SHOP.*DRAWING/.test(u))return true;
     return false;
   };
-  const normalized=(v)=>{if(v===undefined||v===null)return null;const s=String(v).trim();return s===''?null:s.toLowerCase();};
-  const normEq=(a,b)=>{
-    const iv=normalized(a),v=normalized(b);
-    if(iv!==null&&v!==null&&iv===v)return true;
-    const an=Number(a),bn=Number(b);
-    return !isNaN(an)&&!isNaN(bn)&&an===bn;
+  const normalized=(v)=>{if(v===undefined||v===null)return null;const s=cleanText(v);return s===''?null:s.toLowerCase();};
+  const numOrNull=(v)=>{
+    if(v===undefined||v===null)return null;
+    const t=String(v).trim();
+    if(t==='')return null;
+    const n=Number(t);
+    return isNaN(n)?null:n;
   };
+  const prepItems=allItems.map(it=>{
+    const fields={};
+    for(const k in it){
+      if(k==='_id'||k==='_etag')continue;
+      const v=it[k];
+      if(v===undefined||v===null)continue;
+      const s=cleanText(v);
+      fields[k]={n:s.toLowerCase(),num:numOrNull(v)};
+    }
+    return {it,fields};
+  });
   const anchorKey=(k,header)=>{
     const u=String(header||'').toUpperCase().replace(/[^A-Z0-9 ]/g,' ');
     const kn=String(k).toUpperCase().replace(/_X0020_/g,' ').replace(/_/g,' ');
@@ -1722,25 +1740,28 @@ async function importBulkItems(){
   };
   function findMatch(matchVals,existing){
     let best=null,bestCount=0;
-    for(const item of existing){
-      let count=0,strong=false;
+    for(const {it,fields} of existing){
+      let count=0;
       for(const mv of matchVals){
         if(mv.val===null||mv.val===undefined)continue;
+        const want=mv.val;
+        const wn=numOrNull(want);
         let hit=false;
         for(const k of (mv.keys||[])){
           if(!k)continue;
-          if(item[k]!==undefined&&item[k]!==null&&normEq(item[k],mv.val)){hit=true;strong=true;break;}
+          const f=fields[k];
+          if(f&&(f.n===want||(wn!==null&&f.num===wn))){hit=true;break;}
         }
         if(!hit&&mv.header){
-          for(const k in item){
-            if(k==='_id'||k==='_etag')continue;
-            if(item[k]===undefined||item[k]===null)continue;
-            if(anchorKey(k,mv.header)&&normEq(item[k],mv.val)){hit=true;strong=true;break;}
+          for(const k in fields){
+            if(!anchorKey(k,mv.header))continue;
+            const f=fields[k];
+            if(f&&(f.n===want||(wn!==null&&f.num===wn))){hit=true;break;}
           }
         }
         if(hit)count++;
       }
-      if(strong&&count>bestCount){best=item;bestCount=count;}
+      if(count>bestCount){best=it;bestCount=count;}
     }
     return best;
   }
@@ -1785,11 +1806,24 @@ async function importBulkItems(){
     }
   }
   const prepared=bulkData.rows.map(buildRow);
-  const matches=prepared.map(p=>findMatch(p.matchVals,allItems));
+  const matches=prepared.map(p=>findMatch(p.matchVals,prepItems));
   const replaceCount=matches.filter(Boolean).length;
   if(replaceCount<total){
+    console.warn('BULK MATCH: file mapping ->',bulkData.mapping.map(m=>({header:m.header,col:m.col?m.col.name+' / '+(m.col.displayName||''):null})));
     prepared.forEach((p,i)=>{
-      if(!matches[i])console.warn('BULK MATCH: row '+i+' has '+p.matchVals.length+' key(s) ->',p.matchVals.map(mv=>({header:mv.header,keys:mv.keys,val:mv.val})),'no match found in',allItems.length,'items');
+      if(!matches[i]){
+        const mvInfo=p.matchVals.map(mv=>({header:mv.header,keys:mv.keys,val:mv.val}));
+        console.warn('BULK MATCH: row '+i+' has '+p.matchVals.length+' key(s) ->',mvInfo,'no match found in',allItems.length,'items');
+        const containing=prepItems.filter(({fields})=>p.matchVals.some(mv=>{
+          if(mv.val===null||mv.val===undefined)return false;
+          const wn=numOrNull(mv.val);
+          return Object.keys(fields).some(k=>fields[k].n===mv.val||(wn!==null&&fields[k].num===wn));
+        }));
+        console.warn('BULK MATCH: '+containing.length+' item(s) contain any of these key values ->',containing.slice(0,5).map(({it,fields})=>({
+          id:it._id,
+          keyVals:Object.fromEntries(Object.entries(fields).filter(([k,f])=>p.matchVals.some(mv=>f.n===mv.val||(numOrNull(mv.val)!==null&&f.num===numOrNull(mv.val)))).slice(0,8))
+        })));
+      }
     });
   }
   const mandatoryCols=columnDefs.filter(isMandatoryCol);
@@ -1806,8 +1840,7 @@ async function importBulkItems(){
     const warnings=[];
     mandatoryCols.forEach(c=>{
       const v=p.fields[c.name];
-      const isEmpty=(v===null||v===undefined||String(v).trim()==='');
-      if(isEmpty){
+      if(cleanText(v)===''){
         if(!matched)blocking.push('Row '+(i+1)+' — '+(c.displayName||c.name)+' must be filled');
         else if(p.clears.some(cl=>cl.name===c.name))blocking.push('Item #'+matched._id+' — '+(c.displayName||c.name)+' can\'t be blanked');
         return;
@@ -1815,11 +1848,11 @@ async function importBulkItems(){
     });
     uniqueCols.forEach(c=>{
       const v=p.fields[c.name];
-      if(v===null||v===undefined||String(v).trim()==='')return;
+      if(cleanText(v)==='')return;
       const collider=allItems.find(it=>{
         if(matched&&String(it._id)===String(matched._id))return false;
         const iv=it[c.name]??it[c.displayName||c.name];
-        return iv!==null&&iv!==undefined&&String(iv).trim().toLowerCase()===String(v).trim().toLowerCase();
+        return iv!==null&&iv!==undefined&&cleanText(iv).toLowerCase()===cleanText(v).toLowerCase();
       });
       if(collider)warnings.push('Row '+(i+1)+' — Duplicate '+(c.displayName||c.name)+': "'+v+'" — will be replaced (item #'+collider._id+')');
     });
