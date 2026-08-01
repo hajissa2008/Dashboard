@@ -721,9 +721,17 @@ async function createSPItem(siteUrl,listName,itemFields){
   return await apiCall(graphListUrl(siteUrl,listName)+'/items','POST',body);
 }
 
-async function updateSPItem(siteUrl,listName,itemId,itemFields){
+function emptyFieldValue(c){
+  if(c.type==='boolean')return false;
+  if(c.type==='number'||c.type==='currency')return null;
+  if(c.type==='date')return null;
+  if(c.type==='lookup'||c.type==='person'||c.type==='taxonomy')return null;
+  return '';
+}
+async function updateSPItem(siteUrl,listName,itemId,itemFields,clears){
   const body={};
   for(const [k,v] of Object.entries(itemFields)){if(!k.startsWith('_'))body[k]=v;}
+  (clears||[]).forEach(c=>{body[c.name]=emptyFieldValue(c);});
   const listEnc=listName.replace(/'/g,"''");
   const url=`${siteUrl.replace(/\/+$/,'')}/_api/web/lists/getbytitle('${listEnc}')/items(${itemId})`;
   const token=await ensureSpSiteToken(siteUrl);
@@ -1706,12 +1714,13 @@ async function importBulkItems(){
   }
   function buildRow(row){
     const fields={};
+    const clears=[];
     const matchVals=[];
     const choiceWarnings=[];
     bulkData.mapping.forEach((m,ci)=>{
       const raw=(row[ci]!==undefined&&row[ci]!==null)?String(row[ci]).trim():'';
-      if(raw==='')return;
       if(m.col){
+        if(raw===''){clears.push(m.col);return;}
         let val=raw;
         if(m.col.type==='date'){val=normalizeDate(raw);}
         else if(m.col.type==='number'||m.col.type==='currency'){const n=Number(raw);if(isNaN(n))val=null;}
@@ -1722,11 +1731,11 @@ async function importBulkItems(){
         }
         if(val!==null&&val!==undefined)fields[m.col.name]=val;
         if(isKeyCol(m.col)&&val!==null&&val!==undefined)matchVals.push({keys:[m.col.name,m.col.displayName,m.header],header:m.header,val:normalized(val)});
-      }else if(isKeyHeader(m.header)){
+      }else if(raw!==''&&isKeyHeader(m.header)){
         matchVals.push({keys:[m.header],header:m.header,val:normalized(raw)});
       }
     });
-    return {fields,matchVals,choiceWarnings};
+    return {fields,clears,matchVals,choiceWarnings};
   }
   async function createWithIsolation(fields){
     try{await createSPItem(currentDept.site,currentDept.list,fields);return{created:true,bad:null};}
@@ -1752,7 +1761,7 @@ async function importBulkItems(){
     });
   }
   if(replaceCount>0){
-    const ok=confirm('⚠️ '+replaceCount+' of '+total+' uploaded row(s) match existing documents (by Title / S.No / Shop Drawing No) and will be REPLACED (updated in place).\n\nAny rows that do not match will be created as new items.\n\nPress OK to continue, Cancel to abort.');
+    const ok=confirm('⚠️ '+replaceCount+' of '+total+' uploaded row(s) match existing documents (by Title / S.No / Shop Drawing No) and will be REPLACED (updated in place).\n\nOnly the columns present in the file are updated — emptied cells will CLEAR that data on the list. Any rows that do not match will be created as new items.\n\nPress OK to continue, Cancel to abort.');
     if(!ok){btn.disabled=false;statusEl.className='save-status';statusEl.textContent='Import cancelled';return;}
   }
   statusEl.textContent='Importing... 0%';
@@ -1760,14 +1769,14 @@ async function importBulkItems(){
   for(let b=0;b<total;b+=BATCH){
     const batch=prepared.slice(b,b+BATCH);
     const tasks=batch.map((p,bi)=>{
-      const {fields,choiceWarnings}=p;
+      const {fields,clears,choiceWarnings}=p;
       skippedChoices+=choiceWarnings.length;
       return (async()=>{
         if(!Object.keys(fields).length)throw new Error('No mapped fields for this row'+(choiceWarnings.length?' (invalid choices: '+choiceWarnings.join(', ')+')':''));
         const matched=findMatch(p.matchVals,allItems);
-        if(matched){await updateSPItem(currentDept.site,currentDept.list,matched._id,fields);return{type:'updated',item:matched};}
+        if(matched){await updateSPItem(currentDept.site,currentDept.list,matched._id,fields,clears);return{type:'updated',item:matched};}
         else{const r=await createWithIsolation(fields);return{type:'created',bad:r.bad};}
-      })().then(r=>{success++;if(r.type==='created'){created++;if(r.bad)partial++;}else if(r.type==='updated')updated++;return r;}).catch(e=>{fail++;console.error('Bulk import row '+(b+bi)+':',e.message,'fields=',JSON.stringify(fields));return{type:'failed'};});
+      })().then(r=>{success++;if(r.type==='created'){created++;if(r.bad)partial++;}else if(r.type==='updated')updated++;return r;}).catch(e=>{fail++;console.error('Bulk import row '+(b+bi)+':',e.message,'fields=',JSON.stringify(fields),'clears=',JSON.stringify(clears.map(c=>c.name)));return{type:'failed'};});
     });
     await Promise.allSettled(tasks);
     statusEl.textContent='Importing... '+Math.round(Math.min(b+BATCH,total)/total*100)+'% ('+success+' ok, '+fail+' failed)';
