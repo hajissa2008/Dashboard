@@ -745,7 +745,7 @@ function isMandatoryCol(c){
   return isDrawingNoCol(c)||isSheetNameCol(c);
 }
 function isUniqueCol(c){
-  return isDrawingNoCol(c);
+  return isShopDrawingsCol(c);
 }
 function emptyFieldValue(c){
   if(c.type==='boolean')return false;
