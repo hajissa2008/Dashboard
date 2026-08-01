@@ -1641,16 +1641,30 @@ async function importBulkItems(){
     const cn=(c.name||'').toUpperCase();
     if(cn==='TITLE'||cn==='S_X002E_NO_X002E_')return true;
     if(/^S\.?\s?NO\b/.test(dn)||/^S\.?\s?NO\b/.test(cn))return true;
-    if(/(DRAWING|DRAWINGS).*(NO|NUMBER)/.test(dn)||/(DRAWING|DRAWINGS).*(NO|NUMBER)/.test(cn))return true;
+    if(/(DRAWING|DRAWINGS|DWG).*(NO|NUMBER)/.test(dn)||/(DRAWING|DRAWINGS|DWG).*(NO|NUMBER)/.test(cn)||/SHOP.*DRAWING/.test(dn)||/SHOP.*DRAWING/.test(cn))return true;
     return false;
   };
   const isKeyHeader=(h)=>{
     const u=(h||'').toUpperCase();
     if(/^TITLE$/.test(u)||/^S\.?\s?NO/.test(u))return true;
-    if(/(DRAWING|DRAWINGS).*(NO|NUMBER)/.test(u))return true;
+    if(/(DRAWING|DRAWINGS|DWG).*(NO|NUMBER)/.test(u)||/SHOP.*DRAWING/.test(u))return true;
     return false;
   };
   const normalized=(v)=>{if(v===undefined||v===null)return null;const s=String(v).trim();return s===''?null:s.toLowerCase();};
+  const normEq=(a,b)=>{
+    const iv=normalized(a),v=normalized(b);
+    if(iv!==null&&v!==null&&iv===v)return true;
+    const an=Number(a),bn=Number(b);
+    return !isNaN(an)&&!isNaN(bn)&&an===bn;
+  };
+  const anchorKey=(k,header)=>{
+    const u=String(header||'').toUpperCase().replace(/[^A-Z0-9 ]/g,' ');
+    const kn=String(k).toUpperCase().replace(/_X0020_/g,' ').replace(/_/g,' ');
+    if(/^S\.?\s?NO/.test(u))return /^S[\.\s]?NO/.test(kn);
+    if(/(DRAWING|DRAWINGS|DWG)/.test(u))return /(DRAWING|DRAWINGS|DWG)/.test(kn);
+    if(/^TITLE$/.test(u))return /^TITLE$/.test(kn);
+    return false;
+  };
   const normalizeDate=(v)=>{
     if(v===undefined||v===null)return null;
     const s=String(v).trim();
@@ -1669,21 +1683,24 @@ async function importBulkItems(){
   function findMatch(matchVals,existing){
     let best=null,bestCount=0;
     for(const item of existing){
-      let count=0;
+      let count=0,strong=false;
       for(const mv of matchVals){
-        const iv=normalized(item[mv.key]);
-        const ivN=Number(item[mv.key]);
-        const vN=Number(mv.val);
-        if(iv===mv.val||(!isNaN(ivN)&&!isNaN(vN)&&ivN===vN)){count++;continue;}
-        let aliasHit=false;
-        for(const al of mv.aliases){
-          const av=normalized(item[al]);
-          const avN=Number(item[al]);
-          if(av===mv.val||(!isNaN(avN)&&!isNaN(vN)&&avN===vN)){aliasHit=true;break;}
+        if(mv.val===null||mv.val===undefined)continue;
+        let hit=false;
+        for(const k of (mv.keys||[])){
+          if(!k)continue;
+          if(item[k]!==undefined&&item[k]!==null&&normEq(item[k],mv.val)){hit=true;strong=true;break;}
         }
-        if(aliasHit)count++;
+        if(!hit&&mv.header){
+          for(const k in item){
+            if(k==='_id'||k==='_etag')continue;
+            if(item[k]===undefined||item[k]===null)continue;
+            if(anchorKey(k,mv.header)&&normEq(item[k],mv.val)){hit=true;strong=true;break;}
+          }
+        }
+        if(hit)count++;
       }
-      if(count>bestCount){best=item;bestCount=count;}
+      if(strong&&count>bestCount){best=item;bestCount=count;}
     }
     return best;
   }
@@ -1704,9 +1721,9 @@ async function importBulkItems(){
           if(!allowed&&!m.col.allowTextEntry){choiceWarnings.push((m.col.displayName||m.col.name)+'="'+raw+'"');val=null;}
         }
         if(val!==null&&val!==undefined)fields[m.col.name]=val;
-        if(isKeyCol(m.col))matchVals.push({key:m.col.name,aliases:[m.col.name,m.col.displayName].filter(Boolean),val:normalized(val)});
+        if(isKeyCol(m.col)&&val!==null&&val!==undefined)matchVals.push({keys:[m.col.name,m.col.displayName,m.header],header:m.header,val:normalized(val)});
       }else if(isKeyHeader(m.header)){
-        matchVals.push({key:m.header,aliases:[m.header],val:normalized(raw)});
+        matchVals.push({keys:[m.header],header:m.header,val:normalized(raw)});
       }
     });
     return {fields,matchVals,choiceWarnings};
@@ -1729,6 +1746,11 @@ async function importBulkItems(){
   const prepared=bulkData.rows.map(buildRow);
   const matches=prepared.map(p=>findMatch(p.matchVals,allItems));
   const replaceCount=matches.filter(Boolean).length;
+  if(replaceCount<total){
+    prepared.forEach((p,i)=>{
+      if(!matches[i])console.warn('BULK MATCH: row '+i+' has '+p.matchVals.length+' key(s) ->',p.matchVals.map(mv=>({header:mv.header,keys:mv.keys,val:mv.val})),'no match found in',allItems.length,'items');
+    });
+  }
   if(replaceCount>0){
     const ok=confirm('⚠️ '+replaceCount+' of '+total+' uploaded row(s) match existing documents (by Title / S.No / Shop Drawing No) and will be REPLACED (updated in place).\n\nAny rows that do not match will be created as new items.\n\nPress OK to continue, Cancel to abort.');
     if(!ok){btn.disabled=false;statusEl.className='save-status';statusEl.textContent='Import cancelled';return;}
