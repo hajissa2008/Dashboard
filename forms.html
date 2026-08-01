@@ -732,7 +732,10 @@ function isDrawingNoCol(c){
   return /(draw(ing|ings?)?|dwg)\s*(no|number|num|#)\.?$/i.test(s);
 }
 function isSheetNameCol(c){
-  return /sheet\s*name/i.test(c.displayName||c.name||'');
+  return /sheet\s*name/i.test((c.displayName||c.name||'').trim());
+}
+function isShopDrawingsCol(c){
+  return /shop\s*draw/i.test((c.displayName||c.name||'').trim());
 }
 function isMandatoryCol(c){
   return isDrawingNoCol(c)||isSheetNameCol(c);
@@ -1617,7 +1620,7 @@ function processBulkGrid(grid){
   if(rows.length<2){showToast('File must have headers and at least one data row','error');return;}
   const colDefs=columnDefs.filter(c=>!c.name.startsWith('_')&&c.name!=='ID'&&c.name!=='ContentType');
   const knownNames=new Set(['title']);
-  colDefs.forEach(c=>knownNames.add((c.displayName||c.name).toLowerCase()));
+  colDefs.forEach(c=>{const n=(c.displayName||c.name);knownNames.add(n.toLowerCase());knownNames.add(n.trim().toLowerCase());});
   let headerIdx=0,bestScore=0;
   rows.forEach((row,i)=>{
     const score=row.reduce((n,c)=>{const s=String(c===undefined||c===null?'':c).trim().toLowerCase();return knownNames.has(s)?n+1:n;},0);
@@ -1628,13 +1631,19 @@ function processBulkGrid(grid){
   const mapping=headers.map(h=>{
     const trimmed=h.trim();
     const tl=trimmed.toLowerCase();
-    let match=colDefs.find(c=>(c.displayName||c.name).toLowerCase()===tl);
+    let match=colDefs.find(c=>(c.displayName||c.name).trim().toLowerCase()===tl);
     if(!match&&/^title$/i.test(trimmed))match={name:'Title',displayName:'Title',type:'text'};
     if(!match){
+      const isShop=/shop\s*draw/i.test(tl);
+      const isSheet=/sheet\s*name/i.test(tl);
+      const isDraw=/(draw(ing|ings?)?|dwg)\s*(no|number|num|#)\.?$/i.test(tl);
+      const isSno=/^s\.?\s?no\b/.test(tl);
       match=colDefs.find(c=>{
-        if(/sheet\s*name/i.test(tl))return isSheetNameCol(c);
-        if(/^s\.?\s?no\b/.test(tl))return /^s[\.\s]?no\b/i.test(c.displayName||c.name);
-        if(/(draw(ing|ings?)?|dwg)\s*(no|number|num|#)\.?$/i.test(tl))return isDrawingNoCol(c);
+        const dn=(c.displayName||c.name||'').trim();
+        if(isSheet)return isSheetNameCol(c);
+        if(isSno)return /^s[\.\s]?no\b/i.test(dn);
+        if(isShop)return isShopDrawingsCol(c);
+        if(isDraw)return isDrawingNoCol(c)&&!isShopDrawingsCol(c);
         return false;
       });
     }
