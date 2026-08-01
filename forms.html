@@ -2009,16 +2009,19 @@ function openExport(){
   document.getElementById('export-status').className='save-status';
   document.getElementById('export-status').textContent='';
   document.getElementById('export-btn').disabled=false;
-  const depts=DEPTS;
+  const isTechUser=(spUser.username||'').toLowerCase()==='technical@alenshaiah.com';
+  const depts=isTechUser?DEPTS.filter(d=>d.id==='substructure'||d.id==='superstructure'):DEPTS;
   const filterNames=['Drawing Status','Discipline','Phase','Category','Shop Drawing No','Sheet Name'];
   const filterCols=columnDefs.filter(c=>filterNames.some(f=>new RegExp(f.replace(/[-\/\\^$*+?.()|[\]{}]/g,'\\$&'),'i').test(c.displayName||c.name)));
   const dateCols=columnDefs.filter(c=>c.type==='date');
   const actionDateCol=dateCols.find(c=>/latest|submission|response|action|revision|update/i.test(c.displayName||c.name))||dateCols[0];
   let html='';
-  html+='<div class="export-section"><div class="export-section-title">Department</div><div class="export-row">';
-  html+='<select id="export-dept" onchange="onExportDeptChange()"><option value="current">'+htmlEscape(currentDept.title)+' (Current)</option>';
+  html+='<div class="export-section"><div class="export-section-title">Documents Type</div><div class="export-row">';
+  html+='<select id="export-dept" onchange="onExportDeptChange()">';
+  if(depts.some(d=>d.id===currentDept.id))html+='<option value="current">'+htmlEscape(currentDept.title)+' (Current)</option>';
   depts.forEach(d=>{if(d.id!==currentDept.id)html+='<option value="'+d.id+'">'+htmlEscape(d.title)+'</option>';});
-  html+='<option value="all">All Departments</option></select></div></div>';
+  if(!isTechUser)html+='<option value="all">All Departments</option>';
+  html+='</select></div></div>';
   if(dateCols.length){
     html+='<div class="export-section"><div class="export-section-title">Date Column</div><div class="export-row">';
     html+='<select id="export-date-col">';
