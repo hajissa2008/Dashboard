@@ -261,6 +261,7 @@ html,body{height:100%;font-family:'Segoe UI',-apple-system,system-ui,sans-serif;
     <button class="btn btn-outline" onclick="downloadTemplate()" id="btn-template" style="display:none">📥 Template</button>
     <button class="btn btn-outline" onclick="openBulkUpload()" id="btn-bulk" style="display:none">📤 Bulk Upload</button>
     <button class="btn btn-outline" onclick="openExport()" id="btn-export" style="display:none">📊 Export</button>
+    <button class="btn btn-outline" onclick="deleteSelected()" id="btn-delete" style="display:none">🗑️ Delete Selected</button>
     <button class="btn btn-outline" onclick="openPermManager()" id="btn-permissions" style="display:none">👥 Permissions</button>
     <span class="status-msg" id="status-msg"></span>
     <button class="btn btn-outline" onclick="showConfig()">⚙️ Config</button>
@@ -343,6 +344,7 @@ let allItems = [];
 let filteredItems = [];
 let selectedItem = null;
 let editingId = null;
+const selectedIds = new Set();
 let columnDefs = [];
 let renameMap = {};
 let attachmentCounts = {};
@@ -893,7 +895,7 @@ async function onDeptChange(){
   document.getElementById('btn-template').style.display='none';
   document.getElementById('btn-bulk').style.display='none';
   closeForm();
-  selectedItem=null; editingId=null;
+  selectedItem=null; editingId=null; selectedIds.clear();
   if(!id){currentDept=null; setEmpty('📋','Select a department','Choose a department above to load items from SharePoint.'); return;}
   currentDept=DEPTS.find(d=>d.id===id);
   if(!spToken||!spUser){setEmpty('🔒','Sign in required','Sign in with your Microsoft account...'); return;}
@@ -905,6 +907,7 @@ async function onDeptChange(){
   if(access==='edit'){
     document.getElementById('btn-new').style.display='';
     document.getElementById('btn-bulk').style.display='';
+    document.getElementById('btn-delete').style.display='';
   }
   await loadDeptData();
 }
@@ -927,6 +930,7 @@ async function loadDeptData(){
     document.getElementById('btn-template').style.display='';
     document.getElementById('btn-bulk').style.display='';
     document.getElementById('btn-export').style.display='';
+    if(getMyAccess(currentDept.id)==='edit')document.getElementById('btn-delete').style.display='';
     onSearch();
   }catch(e){
     console.error('loadDeptData:',e);
@@ -1044,6 +1048,7 @@ function renderTable(){
     if(currentDept)setEmpty('🔍','No results','Try a different search or click + New Item.');
     else setEmpty('📋','Select a department','Choose a department above.');
     document.getElementById('result-count').textContent='0 items';
+    updateDeleteBtn();
     return;
   }
   document.getElementById('empty-state').style.display='none';
@@ -1053,12 +1058,15 @@ function renderTable(){
   const shownCols=reorderColumns(columnDefs.filter(c=>!SKIP_COLS.has(c.name)&&c.name!=='Title'));
   const titleCol=columnDefs.find(c=>c.name==='Title');
   if(titleCol&&!shownCols.includes(titleCol))shownCols.unshift(titleCol);
-  document.getElementById('table-head').innerHTML='<tr><th style="width:18px"></th><th style="width:30px">#</th><th style="width:32px;text-align:center" title="Attachments">📎</th>'+shownCols.map(c=>`<th>${htmlEscape(c.displayName)}</th>`).join('')+'</tr>';
+  const allSelected=filteredItems.length>0&&filteredItems.every(item=>selectedIds.has(item._id));
+  document.getElementById('table-head').innerHTML='<tr><th style="width:24px;text-align:center"><input type="checkbox" id="select-all" '+(allSelected?'checked':'')+' title="Select all" onchange="toggleSelectAll(this.checked)"></th><th style="width:18px"></th><th style="width:30px">#</th><th style="width:32px;text-align:center" title="Attachments">📎</th>'+shownCols.map(c=>`<th>${htmlEscape(c.displayName)}</th>`).join('')+'</tr>';
 
   document.getElementById('table-body').innerHTML=filteredItems.map((item,i)=>{
     const isSel=selectedItem&&item._id===selectedItem._id;
     const aN=attachmentCounts[item._id];
+    const checked=selectedIds.has(item._id)?'checked':'';
     return `<tr class="${isSel?'selected':''}" onclick="openDetail(${i})">
+      <td style="text-align:center" onclick="event.stopPropagation()"><input type="checkbox" data-id="${item._id}" ${checked} onchange="toggleSelect(this.dataset.id,this.checked)"></td>
       <td><span style="color:var(--blue);font-size:11px;cursor:pointer" onclick="event.stopPropagation();startEdit(${i})">✏️</span></td>
       <td style="color:var(--text-secondary)">${i+1}</td>
       <td style="text-align:center;font-size:12px;color:var(--text-secondary)">${aN>0?'📎'+aN:aN===0?'—':''}</td>
@@ -1073,6 +1081,76 @@ function renderTable(){
       }).join('')}
     </tr>`;
   }).join('');
+  updateDeleteBtn();
+}
+
+function toggleSelect(id,checked){
+  if(checked)selectedIds.add(id);else selectedIds.delete(id);
+  const all=document.getElementById('select-all');
+  if(all)all.checked=filteredItems.length>0&&filteredItems.every(item=>selectedIds.has(item._id));
+  updateDeleteBtn();
+}
+
+function toggleSelectAll(checked){
+  filteredItems.forEach(item=>{if(checked)selectedIds.add(item._id);else selectedIds.delete(item._id);});
+  renderTable();
+}
+
+function updateDeleteBtn(){
+  const btn=document.getElementById('btn-delete');
+  if(!btn)return;
+  const n=selectedIds.size;
+  if(n>0){
+    btn.style.display='';
+    btn.disabled=false;
+    btn.style.opacity='1';
+    btn.textContent='🗑️ Delete Selected ('+n+')';
+  }else{
+    btn.style.display='';
+    btn.disabled=true;
+    btn.style.opacity='.5';
+    btn.textContent='🗑️ Delete Selected';
+  }
+}
+
+async function deleteSelected(){
+  const ids=[...selectedIds];
+  if(!ids.length){showToast('No items selected','error');return;}
+  if(!confirm('Are you sure you want to delete the '+ids.length+' selected item(s)?'))return;
+  if(!confirm('⚠️ ATTENTION: Once deleted, these item(s) will be NO LONGER AVAILABLE on the log and cannot be recovered. Do you still want to continue?'))return;
+  const btn=document.getElementById('btn-delete');
+  btn.disabled=true;
+  let ok=0,fail=0;
+  for(const id of ids){
+    try{
+      await deleteSPItem(currentDept.site,currentDept.list,id);
+      selectedIds.delete(id);
+      ok++;
+    }catch(e){
+      fail++;
+      console.error('Delete item '+id+':',e);
+    }
+  }
+  showToast(ok+' item(s) deleted'+(fail?', '+fail+' failed':'')+(fail?' — see console for details':''),fail===0?'success':'error');
+  await refreshItems();
+  updateDeleteBtn();
+}
+
+async function deleteSPItem(siteUrl,listName,itemId){
+  const listEnc=listName.replace(/'/g,"''");
+  const url=`${siteUrl.replace(/\/+$/,'')}/_api/web/lists/getbytitle('${listEnc}')/items(${itemId})`;
+  const token=await ensureSpSiteToken(siteUrl);
+  const resp=await fetch(url,{
+    method:'POST',
+    headers:{
+      'Authorization':'Bearer '+token,
+      'Accept':'application/json',
+      'IF-MATCH':'*',
+      'X-HTTP-Method':'DELETE'
+    }
+  });
+  if(!resp.ok){let txt;try{txt=await resp.text();}catch{txt='';}throw new Error('SP DELETE HTTP '+resp.status+': '+txt.substring(0,300));}
+  return resp;
 }
 
 // ======================== DETAIL VIEW / EDIT / FORM ========================
