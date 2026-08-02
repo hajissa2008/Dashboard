@@ -2294,6 +2294,10 @@ function toggleChoiceGroup(el){
   el.closest('.export-section').querySelectorAll('.export-choice').forEach(cb=>cb.checked=checked);
 }
 async function onExportDeptChange(){}
+function exportBaseItems(){
+  if(selectedIds.size>0)return filteredItems.filter(it=>selectedIds.has(it._id));
+  return filteredItems;
+}
 function getExportFilters(){
   const dateColEl=document.getElementById('export-date-col');
   const dateFrom=document.getElementById('export-date-from')?document.getElementById('export-date-from').value:'';
@@ -2310,14 +2314,15 @@ function previewExport(){
   const previewEl=document.getElementById('export-preview');
   const tbody=document.getElementById('preview-body');
   const countEl=document.getElementById('preview-count');
-  let filtered=[...filteredItems];
+  const selOnly=selectedIds.size>0;
+  let filtered=[...exportBaseItems()];
   filtered=applyExportFilters(filtered,columnDefs,dateFrom,dateTo,null,dateCol);
   Object.entries(filters).forEach(([col,val])=>{
     filtered=filtered.filter(item=>(item[col]??item[columnDefs.find(c=>c.name===col)?.['displayName']||''])===val);
   });
   const filterCols=columnDefs.filter(c=>/drawing\s*status|discipline|phase|category|shop.*drawing.*(no|number)|sheet\s*name/i.test(c.displayName||c.name));
   tbody.innerHTML=filtered.slice(0,200).map(item=>'<tr>'+filterCols.map(c=>'<td>'+htmlEscape(String(fmtVal(item[c.name]??item[c.displayName||c.name]??'')))+'</td>').join('')+'</tr>').join('');
-  countEl.textContent=filtered.length+' item'+(filtered.length!==1?'s':'')+(filtered.length>200?' (showing first 200)':'');
+  countEl.textContent=filtered.length+' item'+(filtered.length!==1?'s':'')+(selOnly?' (selected)':'')+(filtered.length>200?' (showing first 200)':'');
   previewEl.classList.add('show');
 }
 async function runExport(){
@@ -2338,7 +2343,7 @@ async function runExport(){
       if(!dept)dept=currentDept;
       let items,cols;
       if(dept.id===currentDept.id){
-        items=filteredItems; cols=columnDefs;
+        items=exportBaseItems(); cols=columnDefs;
       }else{
         cols=await fetchColumnDefinitions(dept.site,dept.list);
         const rm={}; cols.forEach(c=>{if(c.name!==c.displayName)rm[c.name]=c.displayName;});
