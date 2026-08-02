@@ -275,6 +275,8 @@ html,body{height:100%;font-family:'Segoe UI',-apple-system,system-ui,sans-serif;
     </div>
     <span class="count-badge" id="result-count">0 items</span>
     <select id="group-select" class="group-select" title="Group by column" style="display:none" onchange="setGroup(this.value)"></select>
+    <button class="btn btn-outline" id="btn-collapse-all" title="Collapse all groups" style="display:none" onclick="collapseAllGroups()">▸ Collapse all</button>
+    <button class="btn btn-outline" id="btn-expand-all" title="Expand all groups" style="display:none" onclick="expandAllGroups()">▾ Expand all</button>
     <button class="btn btn-outline" id="btn-reset-view" title="Clear search, filters, sort and grouping" style="display:none" onclick="resetTableView();onSearch();">⟲ Reset</button>
     <button class="btn btn-success" onclick="startCreate()" id="btn-new" style="display:none">+ New Item</button>
     <button class="btn btn-outline" onclick="refreshItems()" id="btn-refresh" style="display:none">🔄 Refresh</button>
@@ -1061,6 +1063,10 @@ function applyTableState(){
   filteredItems=arr;
   const rv=document.getElementById('btn-reset-view');
   if(rv)rv.style.display=(searchQuery||sortKey||Object.keys(tableFilters).length||groupKey)?'':'none';
+  const ca=document.getElementById('btn-collapse-all');
+  const ea=document.getElementById('btn-expand-all');
+  if(ca)ca.style.display=groupKey?'':'none';
+  if(ea)ea.style.display=groupKey?'':'none';
   renderTable();
 }
 function setSortByEl(el){
@@ -1082,6 +1088,40 @@ function setGroup(val){
 function toggleGroup(el){
   const label=el.dataset.g;
   if(collapsedGroups.has(label))collapsedGroups.delete(label);else collapsedGroups.add(label);
+  renderTable();
+}
+function currentGroupLabels(){
+  const groupCol=groupKey?columnDefs.find(c=>c.name===groupKey):null;
+  if(!groupCol)return [];
+  const labels=new Set();
+  filteredItems.forEach(item=>{
+    const raw=colValue(item,groupCol);
+    const label=(raw===null||raw===undefined||String(raw).trim()==='')?'(blank)':String(raw).trim();
+    labels.add(label);
+  });
+  return [...labels];
+}
+function toggleGroupSelect(el){
+  const label=el.dataset.group;
+  const groupCol=groupKey?columnDefs.find(c=>c.name===groupKey):null;
+  if(!groupCol)return;
+  const ids=[];
+  filteredItems.forEach(item=>{
+    const raw=colValue(item,groupCol);
+    const l=(raw===null||raw===undefined||String(raw).trim()==='')?'(blank)':String(raw).trim();
+    if(l===label)ids.push(item._id);
+  });
+  const checked=el.checked;
+  ids.forEach(id=>{if(checked)selectedIds.add(id);else selectedIds.delete(id);});
+  renderTable();
+  updateDeleteBtn();
+}
+function collapseAllGroups(){
+  currentGroupLabels().forEach(label=>collapsedGroups.add(label));
+  renderTable();
+}
+function expandAllGroups(){
+  collapsedGroups.clear();
   renderTable();
 }
 function initGroupSelect(){
@@ -1243,7 +1283,11 @@ function renderTable(){
     labels.forEach(label=>{
       const idxs=groups.get(label);
       const collapsed=collapsedGroups.has(label);
-      bodyHtml+=`<tr class="group-row" data-g="${htmlEscape(label)}" onclick="toggleGroup(this)"><td colspan="${colspan}">${collapsed?'▸':'▾'} ${htmlEscape(label)} <span class="group-count">(${idxs.length})</span></td></tr>`;
+      const groupAll=idxs.length>0&&idxs.every(i=>selectedIds.has(filteredItems[i]._id));
+      bodyHtml+=`<tr class="group-row" data-g="${htmlEscape(label)}" onclick="toggleGroup(this)">
+        <td style="text-align:center" onclick="event.stopPropagation()"><input type="checkbox" data-group="${htmlEscape(label)}" ${groupAll?'checked':''} onchange="toggleGroupSelect(this)" title="Select all in this group"></td>
+        <td colspan="${colspan-1}">${collapsed?'▸':'▾'} ${htmlEscape(label)} <span class="group-count">(${idxs.length})</span></td>
+      </tr>`;
       if(!collapsed)bodyHtml+=idxs.map(i=>rowHtml(i)).join('');
     });
   }else{
