@@ -57,6 +57,20 @@ html,body{height:100%;font-family:'Segoe UI',-apple-system,system-ui,sans-serif;
 .results-panel tr{cursor:pointer;transition:background .1s}
 .results-panel tr:hover td{background:var(--primary-light)}
 .results-panel tr.selected td{background:var(--primary-light);border-bottom-color:var(--primary)}
+.results-panel tbody tr.band-even td{background:var(--white)}
+.results-panel tbody tr.band-odd td{background:#f4f7fb}
+.results-panel tbody tr.selected td{background:var(--primary-light);border-bottom-color:var(--primary)}
+.results-panel tbody tr:hover td{background:var(--primary-light)}
+.results-panel th.sortable{cursor:pointer;user-select:none}
+.results-panel th.sortable:hover{background:var(--primary-light)}
+.results-panel .head-filter th{background:var(--white);padding:3px 6px;border-bottom:1px solid var(--gray-border)}
+.results-panel .col-filter{width:100%;min-width:70px;max-width:170px;padding:3px 4px;font-size:11px;border:1px solid var(--gray-border);border-radius:3px;background:var(--white);color:var(--text-primary);outline:none}
+.results-panel .col-filter:focus{border-color:var(--primary)}
+.results-panel tr.group-row td{background:#eef3f8;font-weight:700;font-size:12px;color:var(--text-secondary);cursor:pointer;padding:6px 10px;border-bottom:1px solid var(--gray-border)}
+.results-panel tr.group-row:hover td{background:#e3ebf3}
+.results-panel .group-count{color:var(--blue);font-weight:600;font-size:11px}
+.toolbar .group-select{font-size:12px;padding:5px 8px;border:1px solid var(--gray-border);border-radius:4px;background:var(--white);color:var(--text-primary);outline:none}
+.toolbar .group-select:focus{border-color:var(--primary)}
 .results-panel .empty-state{text-align:center;padding:60px 20px;color:var(--text-secondary)}
 .results-panel .empty-state .icon{font-size:48px;margin-bottom:12px}
 .results-panel .empty-state h3{font-size:16px;font-weight:600;margin-bottom:4px;color:var(--text-primary)}
@@ -260,6 +274,8 @@ html,body{height:100%;font-family:'Segoe UI',-apple-system,system-ui,sans-serif;
       <button type="button" id="search-clear" class="search-clear" title="Clear search" onclick="clearSearch()" style="display:none">✕</button>
     </div>
     <span class="count-badge" id="result-count">0 items</span>
+    <select id="group-select" class="group-select" title="Group by column" style="display:none" onchange="setGroup(this.value)"></select>
+    <button class="btn btn-outline" id="btn-reset-view" title="Clear search, filters, sort and grouping" style="display:none" onclick="resetTableView();onSearch();">⟲ Reset</button>
     <button class="btn btn-success" onclick="startCreate()" id="btn-new" style="display:none">+ New Item</button>
     <button class="btn btn-outline" onclick="refreshItems()" id="btn-refresh" style="display:none">🔄 Refresh</button>
     <button class="btn btn-outline" onclick="downloadTemplate()" id="btn-template" style="display:none">📥 Template</button>
@@ -353,6 +369,12 @@ let columnDefs = [];
 let renameMap = {};
 let attachmentCounts = {};
 let myPerms = {}; // {} = no access until loaded, 'ALL' = full access, { deptId: 'read'|'edit' }
+let sortKey=null, sortDir=1;
+const tableFilters={};
+let groupKey=null, groupDir=1;
+const collapsedGroups=new Set();
+let filterOptions={};
+let searchQuery='';
 const PERM_LIST = 'Permissions';
 const ADMIN_EMAIL = 'm.hajissa@alenshaiah.com';
 
@@ -938,6 +960,7 @@ async function loadDeptData(){
   setLoading(true);
   setStatusMsg('Loading schema...');
   try{
+    resetTableView();
     columnDefs=[]; renameMap={}; attachmentCounts={}; spSiteToken=null;
     const cols=await fetchColumnDefinitions(currentDept.site,currentDept.list);
     columnDefs=cols;
@@ -945,6 +968,8 @@ async function loadDeptData(){
     setStatusMsg('Loading items ('+cols.length+' columns)...');
     allItems=await fetchSPItems(currentDept.site,currentDept.list);
     filteredItems=[...allItems];
+    buildFilterOptions();
+    initGroupSelect();
     setStatusMsg('');
     document.getElementById('btn-new').style.display='';
     document.getElementById('btn-refresh').style.display='';
@@ -970,6 +995,7 @@ async function refreshItems(){
     console.log('REFRESH: got',allItems.length,'items, first item id=',allItems[0]?._id,null);
     filteredItems=[...allItems];
     attachmentCounts={};
+    buildFilterOptions();
     onSearch();
     showToast('Refreshed: '+allItems.length+' items','success');
   }catch(e){console.error('REFRESH FAIL:',e);showToast('Refresh failed: '+e.message,'error');}
@@ -996,17 +1022,99 @@ function itemSearchText(item){
   return parts.join(' ').toLowerCase();
 }
 function onSearch(){
-  const q=document.getElementById('search-input').value.trim().toLowerCase();
+  const input=document.getElementById('search-input');
+  searchQuery=input?input.value.trim().toLowerCase():'';
   const clearBtn=document.getElementById('search-clear');
-  if(clearBtn)clearBtn.style.display=q?'':'none';
-  filteredItems=q?allItems.filter(item=>itemSearchText(item).includes(q)):[...allItems];
-  renderTable();
+  if(clearBtn)clearBtn.style.display=searchQuery?'':'none';
+  applyTableState();
 }
 function clearSearch(){
   const input=document.getElementById('search-input');
   input.value='';
+  searchQuery='';
   onSearch();
   input.focus();
+}
+function colValue(item,col){
+  let v=item[col.name]!==undefined?item[col.name]:item[col.displayName||col.name];
+  if(v&&typeof v==='object')v=v.LookupValue||v.Title||v.Email||'';
+  return v;
+}
+function applyTableState(){
+  let arr=allItems;
+  if(searchQuery)arr=arr.filter(item=>itemSearchText(item).includes(searchQuery));
+  Object.entries(tableFilters).forEach(([colName,val])=>{
+    if(val===''||val==null)return;
+    const col=columnDefs.find(c=>c.name===colName);
+    if(!col)return;
+    arr=arr.filter(item=>String(colValue(item,col)??'')===String(val));
+  });
+  if(sortKey){
+    const col=columnDefs.find(c=>c.name===sortKey)||{name:sortKey,displayName:sortKey};
+    arr=[...arr].sort((a,b)=>{
+      const sa=String(colValue(a,col)??'').trim(), sb=String(colValue(b,col)??'').trim();
+      const na=parseFloat(sa), nb=parseFloat(sb);
+      if(sa!==''&&sb!==''&&!isNaN(na)&&!isNaN(nb))return (na-nb)*sortDir;
+      return sa.localeCompare(sb,undefined,{numeric:true})*sortDir;
+    });
+  }
+  filteredItems=arr;
+  const rv=document.getElementById('btn-reset-view');
+  if(rv)rv.style.display=(searchQuery||sortKey||Object.keys(tableFilters).length||groupKey)?'':'none';
+  renderTable();
+}
+function setSortByEl(el){
+  const name=el.dataset.col;
+  if(sortKey===name)sortDir*=-1;
+  else{sortKey=name;sortDir=1;}
+  applyTableState();
+}
+function setColFilter(sel){
+  const name=sel.dataset.col;
+  if(sel.value==='')delete tableFilters[name];else tableFilters[name]=sel.value;
+  applyTableState();
+}
+function setGroup(val){
+  groupKey=val||null;
+  collapsedGroups.clear();
+  applyTableState();
+}
+function toggleGroup(el){
+  const label=el.dataset.g;
+  if(collapsedGroups.has(label))collapsedGroups.delete(label);else collapsedGroups.add(label);
+  renderTable();
+}
+function initGroupSelect(){
+  const sel=document.getElementById('group-select');
+  if(!sel)return;
+  let h='<option value="">Group by</option>';
+  columnDefs.forEach(c=>{if(SKIP_COLS.has(c.name)||c.name==='Title')return;const n=c.displayName||c.name;h+=`<option value="${htmlEscape(c.name)}"${groupKey===c.name?' selected':''}>${htmlEscape(n)}</option>`;});
+  sel.innerHTML=h;
+  sel.style.display='';
+}
+function buildFilterOptions(){
+  filterOptions={};
+  columnDefs.forEach(c=>{
+    if(SKIP_COLS.has(c.name)||c.name==='Title')return;
+    const vals=new Set();
+    allItems.forEach(item=>{
+      const v=colValue(item,c);
+      if(v===null||v===undefined)return;
+      const s=String(v).trim();
+      if(s==='')return;
+      vals.add(s);
+    });
+    if(vals.size)filterOptions[c.name]=[...vals].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true})).slice(0,500);
+  });
+}
+function resetTableView(){
+  sortKey=null; sortDir=1;
+  Object.keys(tableFilters).forEach(k=>delete tableFilters[k]);
+  groupKey=null; groupDir=1;
+  collapsedGroups.clear();
+  searchQuery='';
+  const si=document.getElementById('search-input'); if(si)si.value='';
+  const gs=document.getElementById('group-select'); if(gs)gs.value='';
 }
 
 // ======================== TABLE ========================
@@ -1074,7 +1182,7 @@ function reorderForExport(cols){
 }
 function renderTable(){
   if(!currentDept||filteredItems.length===0){
-    if(currentDept)setEmpty('🔍','No results','Try a different search or click + New Item.');
+    if(currentDept)setEmpty('🔍','No results','Try a different search or adjust the column filters.');
     else setEmpty('📋','Select a department','Choose a department above.');
     document.getElementById('result-count').textContent='0 items';
     updateDeleteBtn();
@@ -1088,13 +1196,23 @@ function renderTable(){
   const titleCol=columnDefs.find(c=>c.name==='Title');
   if(titleCol&&!shownCols.includes(titleCol))shownCols.unshift(titleCol);
   const allSelected=filteredItems.length>0&&filteredItems.every(item=>selectedIds.has(item._id));
-  document.getElementById('table-head').innerHTML='<tr><th style="width:24px;text-align:center"><input type="checkbox" id="select-all" '+(allSelected?'checked':'')+' title="Select all" onchange="toggleSelectAll(this.checked)"></th><th style="width:18px"></th><th style="width:30px">#</th><th style="width:32px;text-align:center" title="Attachments">📎</th>'+shownCols.map(c=>`<th>${htmlEscape(c.displayName)}</th>`).join('')+'</tr>';
+  const mainHead='<tr class="head-main"><th style="width:24px;text-align:center"><input type="checkbox" id="select-all" '+(allSelected?'checked':'')+' title="Select all" onchange="toggleSelectAll(this.checked)"></th><th style="width:18px"></th><th style="width:30px">#</th><th style="width:32px;text-align:center" title="Attachments">📎</th>'
+    +shownCols.map(c=>`<th class="sortable" data-col="${htmlEscape(c.name)}" onclick="setSortByEl(this)" title="Sort by ${htmlEscape(c.displayName)}">${htmlEscape(c.displayName)}${sortKey===c.name?(sortDir>0?' ▲':' ▼'):''}</th>`).join('')
+    +'</tr>';
+  const filterHead='<tr class="head-filter"><th></th><th></th><th></th><th></th>'
+    +shownCols.map(c=>`<th>${filterSelectHtml(c)}</th>`).join('')
+    +'</tr>';
+  document.getElementById('table-head').innerHTML=mainHead+filterHead;
 
-  document.getElementById('table-body').innerHTML=filteredItems.map((item,i)=>{
+  const colspan=shownCols.length+4;
+  let bandIdx=0;
+  const rowHtml=i=>{
+    const item=filteredItems[i];
     const isSel=selectedItem&&item._id===selectedItem._id;
     const aN=attachmentCounts[item._id];
     const checked=selectedIds.has(item._id)?'checked':'';
-    return `<tr class="${isSel?'selected':''}" onclick="openDetail(${i})">
+    const band=(bandIdx++%2===0)?'band-even':'band-odd';
+    return `<tr class="${isSel?'selected ':''}${band}" onclick="openDetail(${i})">
       <td style="text-align:center" onclick="event.stopPropagation()"><input type="checkbox" data-id="${item._id}" ${checked} onchange="toggleSelect(this.dataset.id,this.checked)"></td>
       <td><span style="color:var(--blue);font-size:11px;cursor:pointer" onclick="event.stopPropagation();startEdit(${i})">✏️</span></td>
       <td style="color:var(--text-secondary)">${i+1}</td>
@@ -1109,8 +1227,38 @@ function renderTable(){
         return `<td title="${s}">${s.substring(0,80)}</td>`;
       }).join('')}
     </tr>`;
-  }).join('');
+  };
+
+  let bodyHtml='';
+  const groupCol=groupKey?columnDefs.find(c=>c.name===groupKey):null;
+  if(groupCol){
+    const groups=new Map();
+    filteredItems.forEach((item,i)=>{
+      const raw=colValue(item,groupCol);
+      const label=(raw===null||raw===undefined||String(raw).trim()==='')?'(blank)':String(raw).trim();
+      if(!groups.has(label))groups.set(label,[]);
+      groups.get(label).push(i);
+    });
+    const labels=[...groups.keys()].sort((a,b)=>groupDir*a.localeCompare(b,undefined,{numeric:true}));
+    labels.forEach(label=>{
+      const idxs=groups.get(label);
+      const collapsed=collapsedGroups.has(label);
+      bodyHtml+=`<tr class="group-row" data-g="${htmlEscape(label)}" onclick="toggleGroup(this)"><td colspan="${colspan}">${collapsed?'▸':'▾'} ${htmlEscape(label)} <span class="group-count">(${idxs.length})</span></td></tr>`;
+      if(!collapsed)bodyHtml+=idxs.map(i=>rowHtml(i)).join('');
+    });
+  }else{
+    bodyHtml=filteredItems.map((item,i)=>rowHtml(i)).join('');
+  }
+  document.getElementById('table-body').innerHTML=bodyHtml;
   updateDeleteBtn();
+}
+
+function filterSelectHtml(c){
+  const opts=filterOptions[c.name]||[];
+  let h='<select class="col-filter" data-col="'+htmlEscape(c.name)+'" onchange="setColFilter(this)"><option value="">All</option>';
+  opts.forEach(v=>{h+='<option value="'+htmlEscape(v)+'"'+(tableFilters[c.name]===v?' selected':'')+'>'+htmlEscape(v)+'</option>';});
+  h+='</select>';
+  return h;
 }
 
 function toggleSelect(id,checked){
