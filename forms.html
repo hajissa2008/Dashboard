@@ -1996,6 +1996,20 @@ async function importBulkItems(){
     }
     return {it,fields};
   });
+  const uniqueCols=columnDefs.filter(isUniqueCol);
+  const uniqueIndex={};
+  const keyFastIndex=new Map();
+  uniqueCols.forEach(c=>{uniqueIndex[c.name]=new Map();});
+  prepItems.forEach(({it,fields})=>{
+    uniqueCols.forEach(c=>{
+      const f=fields[c.name];
+      if(f&&f.n){
+        if(!uniqueIndex[c.name].has(f.n))uniqueIndex[c.name].set(f.n,it);
+        if(!keyFastIndex.has(f.n))keyFastIndex.set(f.n,it);
+        if(f.num!==null&&!keyFastIndex.has('\u0000n'+f.num))keyFastIndex.set('\u0000n'+f.num,it);
+      }
+    });
+  });
   const anchorKey=(k,header)=>{
     const u=String(header||'').toUpperCase().replace(/[^A-Z0-9 ]/g,' ');
     const kn=String(k).toUpperCase().replace(/_X0020_/g,' ').replace(/_/g,' ');
@@ -2020,6 +2034,15 @@ async function importBulkItems(){
     return y+'-'+mo+'-'+da;
   };
   function findMatch(matchVals,existing){
+    for(const mv of matchVals){
+      if(mv.val===null||mv.val===undefined)continue;
+      let hit=keyFastIndex.get(mv.val);
+      if(!hit){
+        const wn=numOrNull(mv.val);
+        if(wn!==null)hit=keyFastIndex.get('\u0000n'+wn);
+      }
+      if(hit)return hit;
+    }
     let best=null,bestCount=0;
     for(const {it,fields} of existing){
       let count=0;
@@ -2130,7 +2153,6 @@ async function importBulkItems(){
     });
   }
   const mandatoryCols=columnDefs.filter(isMandatoryCol);
-  const uniqueCols=columnDefs.filter(isUniqueCol);
   const usedVals={};
   prepared.forEach((p,i)=>{
     uniqueCols.forEach(c=>{
@@ -2152,11 +2174,8 @@ async function importBulkItems(){
     uniqueCols.forEach(c=>{
       const v=p.fields[c.name];
       if(cleanText(v)==='')return;
-      const collider=allItems.find(it=>{
-        if(matched&&String(it._id)===String(matched._id))return false;
-        const iv=it[c.name]??it[c.displayName||c.name];
-        return iv!==null&&iv!==undefined&&cleanText(iv).toLowerCase()===cleanText(v).toLowerCase();
-      });
+      let collider=(uniqueIndex[c.name]&&uniqueIndex[c.name].get(normalized(v)))||null;
+      if(collider&&matched&&String(collider._id)===String(matched._id))collider=null;
       if(collider)warnings.push('Row '+(i+1)+' — Duplicate '+(c.displayName||c.name)+': "'+v+'" — will be replaced (item #'+collider._id+')');
     });
     uniqueCols.forEach(c=>{
@@ -2201,7 +2220,7 @@ async function importBulkItems(){
       const sheet=(sheetNameCol&&fields[sheetNameCol.name]!==null&&fields[sheetNameCol.name]!==undefined)?String(fields[sheetNameCol.name]):'';
       return (async()=>{
         if(!Object.keys(fields).length)throw new Error('No mapped fields for this row'+(choiceWarnings.length?' (invalid choices: '+choiceWarnings.join(', ')+')':''));
-        const matched=findMatch(p.matchVals,prepItems);
+        const matched=matches[b+bi];
         if(matched){await updateSPItem(currentDept.site,currentDept.list,matched._id,fields,clears);return{type:'updated',item:matched};}
         const drawingKey=uniqueCols.map(c=>{const v=fields[c.name];if(v===null||v===undefined||String(v).trim()==='')return null;return c.name+'|'+normalized(v);}).filter(Boolean).sort().join('||');
         if(drawingKey){
