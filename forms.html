@@ -1049,7 +1049,13 @@ function applyTableState(){
     if(val===''||val==null)return;
     const col=columnDefs.find(c=>c.name===colName);
     if(!col)return;
-    arr=arr.filter(item=>String(colValue(item,col)??'')===String(val));
+    arr=arr.filter(item=>{
+      const raw=colValue(item,col);
+      if(val==='__BLANK__'){
+        return String(raw===null||raw===undefined?'':raw).trim()==='';
+      }
+      return String(raw??'')===String(val);
+    });
   });
   if(sortKey){
     const col=columnDefs.find(c=>c.name===sortKey)||{name:sortKey,displayName:sortKey};
@@ -1300,6 +1306,7 @@ function renderTable(){
 function filterSelectHtml(c){
   const opts=filterOptions[c.name]||[];
   let h='<select class="col-filter" data-col="'+htmlEscape(c.name)+'" onchange="setColFilter(this)"><option value="">All</option>';
+  h+='<option value="__BLANK__"'+(tableFilters[c.name]==='__BLANK__'?' selected':'')+'>'+htmlEscape('(blank)')+'</option>';
   opts.forEach(v=>{h+='<option value="'+htmlEscape(v)+'"'+(tableFilters[c.name]===v?' selected':'')+'>'+htmlEscape(v)+'</option>';});
   h+='</select>';
   return h;
@@ -1650,7 +1657,7 @@ async function sendChangeNotification(itemId,fields){
 </td></tr>
 </table>
 </td></tr></table>`;
-    const email={message:{subject:'[Forms] '+deptName+' — Item #'+itemId+' Updated',importance:'normal',body:{contentType:'HTML',content:html},toRecipients:[{emailAddress:{address:'m.hajissa@alenshaiah.com'}}]}};
+    const email={message:{subject:'[Forms] '+deptName+' — Item #'+itemId+' Updated',importance:'normal',body:{contentType:'HTML',content:html},toRecipients:[{emailAddress:{address:'shopdrawing@alenshaiah.com'}}]}};
     if(attachments.length)email.message.attachments=attachments;
     await apiCall('https://graph.microsoft.com/v1.0/me/sendMail','POST',email);
     console.log('[Email] Update notification sent for item',itemId);
@@ -1696,7 +1703,7 @@ async function sendBulkNotification(rows){
 </td></tr>
 </table>
 </td></tr></table>`;
-    const email={message:{subject:'[Forms] Bulk Upload — '+deptName+' — '+rows.length+' item(s)',importance:'normal',body:{contentType:'HTML',content:html},toRecipients:[{emailAddress:{address:'muhannad@alenshaiah.com'}}]}};
+    const email={message:{subject:'[Forms] Bulk Upload — '+deptName+' — '+rows.length+' item(s)',importance:'normal',body:{contentType:'HTML',content:html},toRecipients:[{emailAddress:{address:'shopdrawing@alenshaiah.com'}}]}};
     await apiCall('https://graph.microsoft.com/v1.0/me/sendMail','POST',email);
     console.log('[Email] Bulk upload notification sent for',rows.length,'item(s)');
   }catch(e){console.warn('[Email] Failed to send bulk notification:',e.message,e);}
