@@ -1552,13 +1552,14 @@ function openDetail(idx){
     html+=`<div class="form-group"><label>${htmlEscape(c.displayName||c.name)}</label>${desc}<div style="padding:6px 0;font-size:13px;color:var(--text-primary);word-break:break-word;border-bottom:1px solid var(--gray-border)">${vDisplay?htmlEscape(vDisplay):'<span style="color:var(--text-secondary);font-style:italic">Not set</span>'}</div></div>`;
   });
   const aN=attachmentCounts[item._id];
-  html+=`<div class="form-group"><label>Attachments</label><div id="attachment-list-view" style="padding:6px 0;font-size:13px">${aN>0?'<div class="attachment-loading">Loading...</div>':'<span style="color:var(--text-secondary);font-style:italic">None</span>'}</div></div>`;
+  const aKnown=aN!==undefined&&aN!==null&&aN>=0;
+  html+=`<div class="form-group"><label>Attachments</label><div id="attachment-list-view" style="padding:6px 0;font-size:13px">${aKnown&&aN===0?'<span style="color:var(--text-secondary);font-style:italic">None</span>':'<div class="attachment-loading">Loading...</div>'}</div></div>`;
   body.innerHTML=html;
   document.getElementById('save-status').className='save-status';
   document.getElementById('save-status').textContent='';
   // Footer: only Close button
   // Load attachment files with download buttons in view mode
-  if(aN>0&&item._id){
+  if(item._id&&(!aKnown||aN>0)){
     fetchAttachments(currentDept.site,currentDept.list,item._id).then(atts=>{
       const el=document.getElementById('attachment-list-view');
       if(!el)return;
@@ -1830,6 +1831,8 @@ async function sendBulkNotification(rows){
 <td style="padding:8px 12px;border-bottom:1px solid #eaeaea;font-size:12px;color:${typeColor[r.type]||'#333'};font-weight:600">${typeLabel[r.type]||r.type}</td>
 <td style="padding:8px 12px;border-bottom:1px solid #eaeaea;font-size:12px;color:#555">${r.id?('#'+r.id):'—'}</td>
 </tr>`).join('');
+    const baseUrl=location.origin+location.pathname;
+    const deptLink=baseUrl+'?dept='+encodeURIComponent(currentDept?currentDept.id:'');
     const html=`<table cellpadding="0" cellspacing="0" width="100%" style="background:#f5f5f5;font-family:'Segoe UI',Arial,sans-serif;padding:30px 0"><tr><td align="center">
 <table cellpadding="0" cellspacing="0" style="max-width:680px;width:100%;background:#fff;border-radius:6px;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,.08)">
 <tr><td style="background:linear-gradient(135deg,#005a9e 0,#004578 100%);padding:22px 28px;color:#fff">
@@ -1842,6 +1845,9 @@ async function sendBulkNotification(rows){
 <table cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;font-size:13px">
 <thead><tr style="background:#fafafa"><th style="padding:10px 14px;text-align:left;font-weight:600;color:#666;font-size:11px;text-transform:uppercase;letter-spacing:.6px;border-bottom:1px solid #e0e0e0">#</th><th style="padding:10px 14px;text-align:left;font-weight:600;color:#666;font-size:11px;text-transform:uppercase;letter-spacing:.6px;border-bottom:1px solid #e0e0e0">Shop Drawing No</th><th style="padding:10px 14px;text-align:left;font-weight:600;color:#666;font-size:11px;text-transform:uppercase;letter-spacing:.6px;border-bottom:1px solid #e0e0e0">Sheet Name</th><th style="padding:10px 14px;text-align:left;font-weight:600;color:#666;font-size:11px;text-transform:uppercase;letter-spacing:.6px;border-bottom:1px solid #e0e0e0">Result</th><th style="padding:10px 14px;text-align:left;font-weight:600;color:#666;font-size:11px;text-transform:uppercase;letter-spacing:.6px;border-bottom:1px solid #e0e0e0">Item #</th></tr></thead>
 <tbody>${tableRows}</tbody></table>
+</td></tr>
+<tr><td style="padding:14px 28px;text-align:center;background:#fafafa;border-top:1px solid #e8e8e8">
+<a href="${deptLink}" style="display:inline-block;background:#005a9e;color:#ffffff;padding:10px 22px;border-radius:6px;text-decoration:none;font-size:13px;font-weight:600">🔗 Open ${deptName} in Tracker</a>
 </td></tr>
 <tr><td style="padding:14px 28px;background:#fafafa;border-top:1px solid #e8e8e8">
 <table cellpadding="0" cellspacing="0" width="100%"><tr>
