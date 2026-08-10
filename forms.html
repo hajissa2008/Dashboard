@@ -66,7 +66,7 @@ html,body{height:100%;font-family:'Segoe UI',-apple-system,system-ui,sans-serif;
 .results-panel .col-resize{position:absolute;top:0;right:-4px;width:8px;height:100%;cursor:col-resize;z-index:6}
 .results-panel .col-resize:hover,.results-panel .col-resize.resizing{background:rgba(0,0,0,.18)}
 body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:none}
-.results-panel .head-filter th{background:var(--white);padding:3px 6px;border-bottom:1px solid var(--gray-border)}
+.results-panel .head-filter th{background:var(--white);padding:3px 6px;border-bottom:1px solid var(--gray-border);top:var(--filter-top,34px);z-index:3}
 .results-panel .col-filter{width:100%;min-width:70px;max-width:170px;padding:3px 4px;font-size:11px;border:1px solid var(--gray-border);border-radius:3px;background:var(--white);color:var(--text-primary);outline:none}
 .results-panel .col-filter:focus{border-color:var(--primary)}
 .results-panel tr.group-row td{background:var(--group-bg);font-weight:700;font-size:12px;color:var(--text-secondary);cursor:pointer;padding:6px 10px;border-bottom:1px solid var(--gray-border)}
@@ -1257,6 +1257,9 @@ function renderTable(){
     +shownCols.map(c=>`<th>${filterSelectHtml(c)}</th>`).join('')
     +'</tr>';
   document.getElementById('table-head').innerHTML=mainHead+filterHead;
+  const _headEl=document.getElementById('table-head');
+  const _mainRowEl=_headEl.querySelector('.head-main');
+  if(_mainRowEl)_headEl.style.setProperty('--filter-top',_mainRowEl.offsetHeight+'px');
 
   const colspan=shownCols.length+4;
   let bandIdx=0;
