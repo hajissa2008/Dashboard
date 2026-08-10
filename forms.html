@@ -1235,16 +1235,14 @@ function reorderForExport(cols){
   return result;
 }
 function renderTable(){
-  if(!currentDept||filteredItems.length===0){
-    if(currentDept)setEmpty('🔍','No results','Try a different search or adjust the column filters.');
-    else setEmpty('📋','Select a department','Choose a department above.');
+  if(!currentDept||!columnDefs.length){
+    setEmpty('📋','Select a department','Choose a department above.');
     document.getElementById('result-count').textContent='0 items';
     updateDeleteBtn();
     return;
   }
   document.getElementById('empty-state').style.display='none';
   document.getElementById('results-table').style.display='';
-  document.getElementById('result-count').textContent=filteredItems.length+' items';
 
   const shownCols=reorderColumns(columnDefs.filter(c=>!SKIP_COLS.has(c.name)&&c.name!=='Title'));
   const titleCol=columnDefs.find(c=>c.name==='Title');
@@ -1262,6 +1260,14 @@ function renderTable(){
   if(_mainRowEl)_headEl.style.setProperty('--filter-top',_mainRowEl.offsetHeight+'px');
 
   const colspan=shownCols.length+4;
+  if(filteredItems.length===0){
+    document.getElementById('result-count').textContent='0 items';
+    document.getElementById('table-body').innerHTML='<tr><td colspan="'+colspan+'" style="padding:40px 20px;text-align:center;color:var(--text-secondary)">🔍 No results — try a different search or adjust the column filters above.</td></tr>';
+    updateDeleteBtn();
+    return;
+  }
+  document.getElementById('result-count').textContent=filteredItems.length+' items';
+
   let bandIdx=0;
   const rowHtml=i=>{
     const item=filteredItems[i];
