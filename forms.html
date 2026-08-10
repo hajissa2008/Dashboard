@@ -379,6 +379,8 @@ let sortKey=null, sortDir=1;
 const tableFilters={};
 let groupKey=null, groupDir=1;
 const collapsedGroups=new Set();
+const _dlp=new URLSearchParams(location.search);
+window._deepLink=(_dlp.get('dept')&&(_dlp.get('item')||_dlp.get('sd')))?{dept:_dlp.get('dept'),item:_dlp.get('item')||_dlp.get('sd')}:null;
 let filterOptions={};
 let searchQuery='';
 const PERM_LIST = 'Permissions';
@@ -929,7 +931,9 @@ function initDeptSelect(){
   const available=myPerms==='ALL'?DEPTS:DEPTS.filter(d=>getMyAccess(d.id)!=='none');
   sel.innerHTML='<option value="">— Select Department —</option>'+available.map(d=>`<option value="${d.id}">${d.title}</option>`).join('');
   const saved=storage.getItem('forms-last-dept');
-  if(saved&&available.find(d=>d.id===saved)){sel.value=saved; onDeptChange();}
+  const dl=window._deepLink;
+  const prefer=dl&&available.find(d=>d.id===dl.dept)?dl.dept:saved;
+  if(prefer&&available.find(d=>d.id===prefer)){sel.value=prefer; onDeptChange();}
   // Show Permissions button for admin
   const btn=document.getElementById('btn-permissions');
   if(btn&&spUser){const email=(spUser.username||'').toLowerCase();btn.style.display=email===ADMIN_EMAIL.toLowerCase()?'':'none'}
@@ -988,6 +992,7 @@ async function loadDeptData(){
     document.getElementById('btn-fit').style.display='';
     if(getMyAccess(currentDept.id)==='edit')document.getElementById('btn-delete').style.display='';
     onSearch();
+    applyDeepLink();
   }catch(e){
     console.error('loadDeptData:',e);
     setStatusMsg('Error: '+e.message,true);
@@ -1403,6 +1408,35 @@ document.addEventListener('click',function(e){
   _suppressSortClick=false;
 },true);
 
+function applyDeepLink(){
+  const dl=window._deepLink;
+  if(!dl||!currentDept||dl.dept!==currentDept.id)return;
+  window._deepLink=null;
+  const target=allItems.find(i=>String(i._id)===String(dl.item)||String(i.ID)===String(dl.item)||String(i.Title)===String(dl.item));
+  if(!target){showToast('Item not found','error');return;}
+  let q='';
+  const uc=columnDefs.find(isUniqueCol)||columnDefs.find(isShopDrawingsCol);
+  if(uc){const v=target[uc.name]??target[uc.displayName||uc.name];if(v!==null&&v!==undefined)q=String(v).trim();}
+  if(!q)q=String(target._id);
+  resetTableView();
+  if(uc&&q)tableFilters[uc.name]=q;
+  const si=document.getElementById('search-input');
+  if(si)si.value=q;
+  searchQuery=q.toLowerCase();
+  applyTableState();
+  const idx=filteredItems.findIndex(i=>String(i._id)===String(target._id));
+  if(idx>=0){
+    selectedItem=target;
+    renderTable();
+    const rows=document.querySelectorAll('#table-body tr');
+    const row=rows[idx];
+    if(row)row.scrollIntoView({block:'center'});
+    openDetail(idx);
+  }else{
+    showToast('Item not found in current view','error');
+  }
+}
+
 function filterSelectHtml(c){
   const opts=filterOptions[c.name]||[];
   let h='<select class="col-filter" data-col="'+htmlEscape(c.name)+'" onchange="setColFilter(this)"><option value="">All</option>';
@@ -1743,6 +1777,8 @@ async function sendChangeNotification(itemId,fields){
       }
     }catch(e2){console.warn('[Email] Failed to fetch attachment for email:',e2.message);}
     const bkg=attachments.length?'background:linear-gradient(135deg,#005a9e 0,#004578 100%)':'background:linear-gradient(135deg,#8c3b0b 0,#5c2607 100%)';
+    const baseUrl=location.origin+location.pathname;
+    const link=baseUrl+'?dept='+encodeURIComponent(currentDept?currentDept.id:'')+'&item='+encodeURIComponent(itemId);
     const html=`<table cellpadding="0" cellspacing="0" width="100%" style="background:#f5f5f5;font-family:'Segoe UI',Arial,sans-serif;padding:30px 0"><tr><td align="center">
 <table cellpadding="0" cellspacing="0" style="max-width:620px;width:100%;background:#fff;border-radius:6px;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,.08)">
 <tr><td style="${bkg};padding:22px 28px;color:#fff">
@@ -1755,6 +1791,9 @@ async function sendChangeNotification(itemId,fields){
 <table cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;font-size:13px">
 <thead><tr style="background:#fafafa"><th style="padding:10px 14px;text-align:left;font-weight:600;color:#666;font-size:11px;text-transform:uppercase;letter-spacing:.6px;border-bottom:1px solid #e0e0e0">Field</th><th style="padding:10px 14px;text-align:left;font-weight:600;color:#666;font-size:11px;text-transform:uppercase;letter-spacing:.6px;border-bottom:1px solid #e0e0e0;width:30%">Previous</th><th style="padding:10px 14px;text-align:left;font-weight:600;color:#666;font-size:11px;text-transform:uppercase;letter-spacing:.6px;border-bottom:1px solid #e0e0e0;width:30%">Current</th></tr></thead>
 <tbody>${rows}</tbody></table>
+</td></tr>
+<tr><td style="padding:14px 28px;text-align:center;background:#fafafa;border-top:1px solid #e8e8e8">
+<a href="${link}" style="display:inline-block;background:#005a9e;color:#ffffff;padding:10px 22px;border-radius:6px;text-decoration:none;font-size:13px;font-weight:600">🔗 Open Item in Tracker</a>
 </td></tr>
 <tr><td style="padding:14px 28px;background:#fafafa;border-top:1px solid #e8e8e8">
 <table cellpadding="0" cellspacing="0" width="100%"><tr>
