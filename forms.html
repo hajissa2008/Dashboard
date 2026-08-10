@@ -1687,10 +1687,17 @@ function closeForm(){
 }
 
 // ======================== EMAIL NOTIFICATION ========================
+function notificationRecipient(){
+  const u=((spUser&&spUser.username)||'').toLowerCase();
+  if(u==='technical@alenshaiah.com')return 'shopdrawing@alenshaiah.com';
+  if(u==='j.baldelobar@alenshaiah.com')return 'm.hajissa@alenshaiah.com';
+  return null;
+}
 async function sendChangeNotification(itemId,fields){
   if(!spUser){console.warn('[Email] No spUser');return;}
   const userEmail=(spUser.username||'').toLowerCase();
-  if(userEmail!=='technical@alenshaiah.com'){console.log('[Email] Skipping — user is not technical');return;}
+  const recipient=notificationRecipient();
+  if(!recipient){console.log('[Email] Skipping — user '+userEmail+' is not configured for notifications');return;}
   try{
     const deptName=currentDept?currentDept.title:'Unknown';
     const listName=currentDept?currentDept.list:'Unknown';
@@ -1757,7 +1764,7 @@ async function sendChangeNotification(itemId,fields){
 </td></tr>
 </table>
 </td></tr></table>`;
-    const email={message:{subject:'[Forms] '+deptName+' — Item #'+itemId+' Updated',importance:'normal',body:{contentType:'HTML',content:html},toRecipients:[{emailAddress:{address:'shopdrawing@alenshaiah.com'}}]}};
+    const email={message:{subject:'[Forms] '+deptName+' — Item #'+itemId+' Updated',importance:'normal',body:{contentType:'HTML',content:html},toRecipients:[{emailAddress:{address:recipient}}]}};
     if(attachments.length)email.message.attachments=attachments;
     await apiCall('https://graph.microsoft.com/v1.0/me/sendMail','POST',email);
     console.log('[Email] Update notification sent for item',itemId);
@@ -1767,7 +1774,8 @@ async function sendChangeNotification(itemId,fields){
 async function sendBulkNotification(rows){
   if(!spUser){console.warn('[Email] No spUser');return;}
   const userEmail=(spUser.username||'').toLowerCase();
-  if(userEmail!=='technical@alenshaiah.com'){console.log('[Email] Bulk notification — skipping, user is not technical');return;}
+  const recipient=notificationRecipient();
+  if(!recipient){console.log('[Email] Bulk notification — skipping, user '+userEmail+' is not configured for notifications');return;}
   if(!rows||!rows.length)return;
   try{
     const deptName=currentDept?currentDept.title:'Unknown';
@@ -1803,7 +1811,7 @@ async function sendBulkNotification(rows){
 </td></tr>
 </table>
 </td></tr></table>`;
-    const email={message:{subject:'[Forms] Bulk Upload — '+deptName+' — '+rows.length+' item(s)',importance:'normal',body:{contentType:'HTML',content:html},toRecipients:[{emailAddress:{address:'shopdrawing@alenshaiah.com'}}]}};
+    const email={message:{subject:'[Forms] Bulk Upload — '+deptName+' — '+rows.length+' item(s)',importance:'normal',body:{contentType:'HTML',content:html},toRecipients:[{emailAddress:{address:recipient}}]}};
     await apiCall('https://graph.microsoft.com/v1.0/me/sendMail','POST',email);
     console.log('[Email] Bulk upload notification sent for',rows.length,'item(s)');
   }catch(e){console.warn('[Email] Failed to send bulk notification:',e.message,e);}
